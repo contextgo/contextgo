@@ -722,7 +722,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="ContextGo Cloud Auth Service", lifespan=lifespan)
 remote_relay_hub = RemoteRelayHub()
-obsidian_sync_store = ObsidianSyncStore()
+obsidian_sync_store = ObsidianSyncStore(settings)
 
 allowed_origins = [
     "https://contextgo.io",
@@ -3541,8 +3541,9 @@ async def api_sync_pull(
 async def api_obsidian_sync_register_replica(
     request: Request, payload: ObsidianReplicaRegisterRequest
 ) -> JSONResponse:
-    _user, device = require_current_device(request)
+    user, device = require_current_device(request)
     result = obsidian_sync_store.register_replica(
+        user_id=user.id,
         space_id=payload.spaceId,
         device_id=payload.deviceId or device.id,
         platform=payload.platform,
@@ -3562,8 +3563,9 @@ async def api_obsidian_sync_register_replica(
 
 @app.post("/api/obsidian-sync/batches/push")
 async def api_obsidian_sync_push_batch(request: Request, payload: ObsidianBatchPushRequest) -> JSONResponse:
-    require_current_device(request)
+    user, _device = require_current_device(request)
     result = obsidian_sync_store.push_batch(
+        user_id=user.id,
         vault_binding_id=payload.vaultBindingId,
         replica_id=payload.replicaId,
         base_cursor=payload.baseCursor,
@@ -3587,8 +3589,9 @@ async def api_obsidian_sync_push_batch(request: Request, payload: ObsidianBatchP
 
 @app.post("/api/obsidian-sync/batches/pull")
 async def api_obsidian_sync_pull_batches(request: Request, payload: ObsidianBatchPullRequest) -> JSONResponse:
-    require_current_device(request)
+    user, _device = require_current_device(request)
     result = obsidian_sync_store.pull_batches(
+        user_id=user.id,
         vault_binding_id=payload.vaultBindingId,
         replica_id=payload.replicaId,
         after_cursor=payload.afterCursor,
@@ -3598,15 +3601,15 @@ async def api_obsidian_sync_pull_batches(request: Request, payload: ObsidianBatc
             "success": True,
             "batches": [
                 {
-                    "vaultBindingId": batch["vault_binding_id"],
-                    "replicaId": batch["replica_id"],
-                    "baseCursor": batch["base_cursor"],
-                    "assignedCursor": batch["assigned_cursor"],
+                    "vaultBindingId": batch["vaultBindingId"],
+                    "replicaId": batch["replicaId"],
+                    "baseCursor": batch["baseCursor"],
+                    "assignedCursor": batch["assignedCursor"],
                     "entries": [
                         {
                             "path": entry["path"],
-                            "fileClass": entry["file_class"],
-                            "contentHash": entry["content_hash"],
+                            "fileClass": entry.get("fileClass") or entry.get("file_class"),
+                            "contentHash": entry.get("contentHash") or entry.get("content_hash"),
                             "body": entry.get("body"),
                         }
                         for entry in batch["entries"]
@@ -3620,8 +3623,8 @@ async def api_obsidian_sync_pull_batches(request: Request, payload: ObsidianBatc
 
 @app.get("/api/obsidian-sync/spaces/{space_id}")
 async def api_obsidian_sync_space_status(space_id: str, request: Request) -> JSONResponse:
-    require_current_device(request)
-    binding = obsidian_sync_store.get_binding_status(space_id=space_id)
+    user, _device = require_current_device(request)
+    binding = obsidian_sync_store.get_binding_status(user_id=user.id, space_id=space_id)
     return JSONResponse(
         {
             "success": True,

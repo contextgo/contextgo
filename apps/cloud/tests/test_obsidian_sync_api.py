@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import importlib
 import unittest
 
-from tests.test_cloud_api import CloudApiTestCase
+from tests.test_cloud_api import CloudApiTestCase, unload_modules
 
 
 class ObsidianSyncApiTestCase(unittest.TestCase):
@@ -172,3 +173,48 @@ class ObsidianSyncApiTestCase(unittest.TestCase):
         self.assertTrue(payload["success"])
         self.assertEqual(payload["binding"]["vaultBindingId"], "vault_space_1")
         self.assertEqual(len(payload["binding"]["replicas"]), 2)
+
+    def test_obsidian_sync_state_survives_store_recreation(self) -> None:
+        desktop = self._register_device(device_name="Studio", platform="macos")
+        headers = {"Authorization": f"Bearer {desktop['token']}"}
+
+        self.client.post(
+            "/api/obsidian-sync/replicas/register",
+            headers=headers,
+            json={
+                "spaceId": "space_1",
+                "deviceId": desktop["device"]["id"],
+                "platform": "desktop",
+                "vaultFingerprint": "vault_hash_1",
+            },
+        )
+        self.client.post(
+            "/api/obsidian-sync/batches/push",
+            headers=headers,
+            json={
+                "vaultBindingId": "vault_space_1",
+                "replicaId": f"replica_{desktop['device']['id']}",
+                "baseCursor": 0,
+                "entries": [
+                    {
+                        "path": "Space Home.md",
+                        "fileClass": "content",
+                        "contentHash": "h1",
+                        "body": "# home",
+                    }
+                ],
+            },
+        )
+
+        unload_modules()
+        db_module = importlib.import_module("contextgo_cloud.db")
+        obsidian_sync_module = importlib.import_module("contextgo_cloud.obsidian_sync")
+        recreated_store = obsidian_sync_module.ObsidianSyncStore(self.settings, db_module)
+
+        binding = recreated_store.get_binding_status(
+            user_id=desktop["device"]["userId"],
+            space_id="space_1",
+        )
+        self.assertIsNotNone(binding)
+        self.assertEqual(binding["vaultBindingId"], "vault_space_1")
+        self.assertEqual(len(binding["replicas"]), 1)

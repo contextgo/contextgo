@@ -323,6 +323,48 @@ def initialize_database(settings: Settings) -> None:
               FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
               FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE SET NULL
             );
+
+            CREATE TABLE IF NOT EXISTS obsidian_vault_bindings (
+              vault_binding_id TEXT PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              space_id TEXT NOT NULL,
+              risk_level TEXT NOT NULL DEFAULT 'normal',
+              last_global_cursor INTEGER NOT NULL DEFAULT 0,
+              updated_at TEXT NOT NULL,
+              UNIQUE(user_id, space_id),
+              FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS obsidian_replicas (
+              replica_id TEXT PRIMARY KEY,
+              vault_binding_id TEXT NOT NULL,
+              user_id TEXT NOT NULL,
+              device_id TEXT NOT NULL,
+              platform TEXT NOT NULL,
+              vault_fingerprint TEXT NOT NULL,
+              applied_cursor INTEGER NOT NULL DEFAULT 0,
+              last_push_cursor INTEGER NOT NULL DEFAULT 0,
+              last_pull_cursor INTEGER NOT NULL DEFAULT 0,
+              updated_at TEXT NOT NULL,
+              UNIQUE(vault_binding_id, device_id),
+              FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+              FOREIGN KEY(vault_binding_id) REFERENCES obsidian_vault_bindings(vault_binding_id) ON DELETE CASCADE,
+              FOREIGN KEY(device_id) REFERENCES devices(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS obsidian_batches (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              vault_binding_id TEXT NOT NULL,
+              user_id TEXT NOT NULL,
+              replica_id TEXT NOT NULL,
+              base_cursor INTEGER NOT NULL,
+              assigned_cursor INTEGER NOT NULL UNIQUE,
+              entries_json TEXT NOT NULL,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+              FOREIGN KEY(vault_binding_id) REFERENCES obsidian_vault_bindings(vault_binding_id) ON DELETE CASCADE,
+              FOREIGN KEY(replica_id) REFERENCES obsidian_replicas(replica_id) ON DELETE CASCADE
+            );
             """
         )
         _ensure_device_kind_column(connection)
@@ -1185,4 +1227,181 @@ def pull_sync_events(settings: Settings, user_id: str, cursor: int, limit: int) 
         "events": events,
         "cursor": next_cursor,
         "hasMore": has_more,
+    }
+
+
+def register_obsidian_replica(
+    settings: Settings,
+    *,
+    user_id: str,
+    space_id: str,
+    device_id: str,
+    platform: str,
+    vault_fingerprint: str,
+) -> dict[str, Any]:
+    vault_binding_id = f"vault_{space_id}"
+    replica_id = f"replica_{device_id}"
+    now = utc_now_iso()
+
+    with get_connection(settings) as connection:
+        connection.execute(
+            """
+            INSERT INTO obsidian_vault_bindings (
+              vault_binding_id, user_id, space_id, risk_level, last_global_cursor, updated_at
+            )
+            VALUES (?, ?, ?, 'normal', 0, ?)
+            ON CONFLICT(vault_binding_id) DO UPDATE SET
+              updated_at = excluded.updated_at
+            """,
+            (vault_binding_id, user_id, space_id, now),
+        )
+        connection.execute(
+            """
+            INSERT INTO obsidian_replicas (
+              replica_id, vault_binding_id, user_id, device_id, platform, vault_fingerprint,
+              applied_cursor, last_push_cursor, last_pull_cursor, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0, ?)
+            ON CONFLICT(replica_id) DO UPDATE SET
+              platform = excluded.platform,
+              vault_fingerprint = excluded.vault_fingerprint,
+              updated_at = excluded.updated_at
+            """,
+            (replica_id, vault_binding_id, user_id, device_id, platform, vault_fingerprint, now),
+        )
+
+    return {
+        "vault_binding_id": vault_binding_id,
+        "replica_id": replica_id,
+        "checkpoint": {"applied_cursor": 0},
+    }
+
+
+def push_obsidian_batch(
+    settings: Settings,
+    *,
+    user_id: str,
+    vault_binding_id: str,
+    replica_id: str,
+    base_cursor: int,
+    entries: list[dict[str, Any]],
+) -> dict[str, Any]:
+    now = utc_now_iso()
+    with get_connection(settings) as connection:
+        latest_cursor_row = connection.execute(
+            "SELECT COALESCE(MAX(assigned_cursor), 0) AS cursor FROM obsidian_batches WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        assigned_cursor = int(latest_cursor_row["cursor"]) + 1 if latest_cursor_row is not None else 1
+
+        connection.execute(
+            """
+            INSERT INTO obsidian_batches (
+              vault_binding_id, user_id, replica_id, base_cursor, assigned_cursor, entries_json, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (vault_binding_id, user_id, replica_id, base_cursor, assigned_cursor, json.dumps(entries), now),
+        )
+        connection.execute(
+            """
+            UPDATE obsidian_vault_bindings
+            SET last_global_cursor = ?, updated_at = ?
+            WHERE vault_binding_id = ? AND user_id = ?
+            """,
+            (assigned_cursor, now, vault_binding_id, user_id),
+        )
+        connection.execute(
+            """
+            UPDATE obsidian_replicas
+            SET last_push_cursor = ?, applied_cursor = ?, updated_at = ?
+            WHERE replica_id = ? AND user_id = ?
+            """,
+            (assigned_cursor, assigned_cursor, now, replica_id, user_id),
+        )
+
+    return {"assigned_cursor": assigned_cursor}
+
+
+def pull_obsidian_batches(
+    settings: Settings,
+    *,
+    user_id: str,
+    vault_binding_id: str,
+    replica_id: str,
+    after_cursor: int,
+) -> dict[str, Any]:
+    with get_connection(settings) as connection:
+        rows = connection.execute(
+            """
+            SELECT assigned_cursor, entries_json, base_cursor, replica_id, vault_binding_id
+            FROM obsidian_batches
+            WHERE user_id = ? AND vault_binding_id = ? AND assigned_cursor > ? AND replica_id != ?
+            ORDER BY assigned_cursor ASC
+            """,
+            (user_id, vault_binding_id, after_cursor, replica_id),
+        ).fetchall()
+
+        batches = [
+            {
+                "assignedCursor": int(row["assigned_cursor"]),
+                "baseCursor": int(row["base_cursor"]),
+                "replicaId": row["replica_id"],
+                "vaultBindingId": row["vault_binding_id"],
+                "entries": json.loads(row["entries_json"]),
+            }
+            for row in rows
+        ]
+
+        if batches:
+            latest_cursor = int(batches[-1]["assignedCursor"])
+            connection.execute(
+                """
+                UPDATE obsidian_replicas
+                SET last_pull_cursor = ?, applied_cursor = ?, updated_at = ?
+                WHERE replica_id = ? AND user_id = ?
+                """,
+                (latest_cursor, latest_cursor, utc_now_iso(), replica_id, user_id),
+            )
+
+    return {"batches": batches}
+
+
+def get_obsidian_binding_status(settings: Settings, *, user_id: str, space_id: str) -> dict[str, Any] | None:
+    vault_binding_id = f"vault_{space_id}"
+    with get_connection(settings) as connection:
+        binding = connection.execute(
+            """
+            SELECT vault_binding_id, space_id, risk_level
+            FROM obsidian_vault_bindings
+            WHERE user_id = ? AND space_id = ?
+            """,
+            (user_id, space_id),
+        ).fetchone()
+        if binding is None:
+            return None
+
+        replica_rows = connection.execute(
+            """
+            SELECT replica_id, platform, applied_cursor, updated_at
+            FROM obsidian_replicas
+            WHERE user_id = ? AND vault_binding_id = ?
+            ORDER BY replica_id ASC
+            """,
+            (user_id, vault_binding_id),
+        ).fetchall()
+
+    return {
+        "vaultBindingId": binding["vault_binding_id"],
+        "spaceId": binding["space_id"],
+        "riskLevel": binding["risk_level"],
+        "replicas": [
+            {
+                "replicaId": row["replica_id"],
+                "platform": row["platform"],
+                "healthStatus": "ok",
+                "lastSyncedAt": row["updated_at"],
+            }
+            for row in replica_rows
+        ],
     }
