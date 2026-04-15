@@ -10,8 +10,17 @@ This directory contains the lightweight cloud-side auth and API service for Cont
 - desktop device registration and ownership
 - Official Remote relay presence and long-lived device connections
 - lightweight cloud APIs such as sync and provider bootstrap
+- Obsidian vault sync orchestration objects such as `vault_binding`, `replica`,
+  `file_manifest`, `change_batch`, and `sync_checkpoint`
 
 It is **not** the public marketing website, and it is **not** meant to run a second hosted copy of the product UI.
+
+Important sync boundary:
+
+- `apps/cloud` is the sync orchestration authority
+- it is not the only file authority
+- desktop and mobile replicas still keep their own local full-vault copies
+- remote WebUI remains a control/status surface rather than the only sync execution surface
 
 Current domain split:
 
@@ -28,6 +37,7 @@ Current domain split:
 - Browser-session-backed device registration and device management
 - WebSocket-based Official Remote cloud relay for live desktop sessions
 - Device-token-backed sync API with append-only event cursor
+- Obsidian multi-replica vault sync control plane
 - Shared secure session cookie for `*.contextgo.io`
 - Human-friendly login page on `auth.contextgo.io`
 - JSON session API on `api.contextgo.io`
@@ -120,6 +130,29 @@ python3 -m unittest discover -s tests
 3. Persist the returned `ctxdev_...` token on the device
 4. Use `Authorization: Bearer ctxdev_...` for sync APIs
 
+## Obsidian Vault Sync Model
+
+For Obsidian vault sync, `apps/cloud` should act as the control plane for:
+
+- `vault_binding`
+- `replica`
+- `file_manifest`
+- `change_batch`
+- `sync_checkpoint`
+
+The intended product model is:
+
+- one `Space` maps to one `vault binding`
+- desktop and mobile can both register writable replicas for that binding
+- `apps/cloud` allocates cursors, records checkpoints, and routes batches
+- local plugins remain responsible for watching, pushing, pulling, and applying vault changes
+
+This model intentionally differs from a single central cloud filesystem:
+
+- Cloud orchestrates sync
+- replicas still own their local full-vault copies
+- risk from third-party sync tools may be detected and surfaced, but coexistence is not a formal compatibility target in the MVP
+
 ## Public Endpoints
 
 - `GET /healthz`
@@ -144,6 +177,9 @@ python3 -m unittest discover -s tests
 - `GET /api/integrations/infermesh/provider`
 - `POST /api/sync/push`
 - `GET /api/sync/pull`
+- `POST /api/obsidian-sync/replicas/register`
+- `POST /api/obsidian-sync/batches/push`
+- `POST /api/obsidian-sync/batches/pull`
 
 ## InferMesh Integration
 

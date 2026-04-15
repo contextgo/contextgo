@@ -112,6 +112,26 @@ Those are adjacent capabilities, but they are not the same module boundary.
 - `api.contextgo.io`: cloud API and sync service from `apps/cloud/`
 - `remote.contextgo.io`: official remote control-plane entry from `apps/cloud/`; device selection happens here, but the actual runtime should resolve to the desktop-hosted WebUI instead of a separate cloud-hosted frontend
 
+## Obsidian Sync Boundary
+
+`obsidian` needs a stricter cross-repository ownership split so the product repo, cloud service,
+and connector repo do not compete for the same sync responsibilities.
+
+Canonical rule:
+
+- `contextgo/contextgo` defines product semantics for `Space`, `vault binding`, `replica`, risk
+  presentation, and the user-facing distinction between remote access and vault sync
+- `apps/cloud` owns the Obsidian vault sync control plane, including `vault_binding`,
+  `replica`, `file_manifest`, `change_batch`, and `sync_checkpoint`
+- `../connector` owns the Obsidian connector runtime, local vault watch / apply execution, and the
+  official Obsidian plugin project
+
+Important product interpretation:
+
+- `ContextGo Cloud` is the sync orchestration authority, not the only file authority
+- desktop and mobile each keep their own local full-vault replica
+- remote WebUI is a control and status surface, not the only sync execution surface
+
 ## Local Commands
 
 - `bun run web:install`

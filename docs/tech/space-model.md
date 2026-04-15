@@ -187,6 +187,57 @@ Space -> Project -> Thread -> Agent execution
 - `connector` 也不是 coding runtime
 - `connector` 更不是某个 skill 本身
 
+### Vault Binding / Replica
+
+当 `obsidian` 进入正式多设备同步模型后，`Space` 还需要补两个一等对象：
+
+- `vault binding`
+- `replica`
+
+它们分别回答不同问题：
+
+#### Vault Binding
+
+`vault binding` 回答：
+
+- 这个 `Space` 当前绑定的是哪一个 Obsidian vault 同步面
+- 这个同步面采用什么策略
+- 它当前是否存在风险（例如第三方同步痕迹、高漂移 workspace 状态）
+
+它是 `Space` 下的稳定逻辑对象，而不是某台设备上的路径本体。
+
+#### Replica
+
+`replica` 回答：
+
+- 哪些设备持有这个 `Space` 对应的本地完整 vault 副本
+- 每个设备当前的同步 cursor / checkpoint 在哪里
+- 哪个设备当前健康，哪个设备落后，哪个设备存在风险
+
+关键原则：
+
+- 一个 `Space` 可以有多个 replica
+- replica 是设备 / runtime 维度的状态对象
+- replica 不是 UI 状态，也不是 host-local 的路径别名
+
+对于 `obsidian` 的单人多设备整库同步，建议采用：
+
+```text
+Space
+  -> Obsidian Vault Binding
+    -> Desktop Replica
+    -> Mobile Replica
+```
+
+这里必须继续区分：
+
+- `remote access`
+  - 用户是否能远程连到某个 host
+- `vault sync`
+  - 这个 `Space` 对应的整份 vault 是否在多个 replica 之间同步健康
+
+两者相关，但不是同一个对象，也不应被同一段产品文案混用。
+
 ### Channel / Publication
 
 `Channel` / `Publication` 是 Agent 对外发布与交互的渠道边界。
