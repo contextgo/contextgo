@@ -19,15 +19,15 @@ const translations: Record<string, string> = {
   'common.copy': 'Copy',
   'settings.cloud.loading': 'Checking cloud account status...',
   'settings.webui.officialRemoteSignedOut': 'Official Remote is not connected yet.',
-  'settings.webui.officialRemoteDeviceReady': 'This device is linked and ready for Official Remote.',
-  'settings.webui.officialRemotePreparing': 'ContextGo is preparing this desktop for Official Remote.',
-  'settings.webui.officialRemoteConnecting': 'ContextGo is reconnecting this desktop to Official Remote.',
+  'settings.webui.officialRemoteDeviceReady': 'This host runtime is linked and ready through Official Remote.',
+  'settings.webui.officialRemotePreparing': 'ContextGo is preparing this host runtime for Official Remote.',
+  'settings.webui.officialRemoteConnecting': 'ContextGo is reconnecting this host runtime to Official Remote.',
   'settings.webui.officialRemoteNeedsRelogin':
-    'Official Remote needs a fresh cloud login before this desktop can reconnect.',
-  'settings.webui.officialRemoteUnavailable': 'Official Remote is not ready on this desktop yet.',
+    'Official Remote needs a fresh cloud login before this host runtime can reconnect.',
+  'settings.webui.officialRemoteUnavailable': 'This host runtime is not ready through Official Remote yet.',
   'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this device.',
   'settings.webui.officialRemoteRuntimeHint':
-    'Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.',
+    'Official Remote prepares the host runtime path automatically. You do not need to enable Local & Self-Hosted Access below.',
   'settings.webui.editUsernameTooltip': 'Edit username',
   'settings.webui.resetPasswordTooltip': 'Set new password',
   'settings.webui.setNewUsername': 'Set new username',
@@ -469,10 +469,12 @@ describe('WebuiModalContent', () => {
 
     render(<WebuiModalContent />);
 
-    expect(await screen.findByText('This device is linked and ready for Official Remote.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('This host runtime is linked and ready through Official Remote.')
+    ).toBeInTheDocument();
     expect(
       await screen.findByText(
-        'Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.'
+        'Official Remote prepares the host runtime path automatically. You do not need to enable Local & Self-Hosted Access below.'
       )
     ).toBeInTheDocument();
     expect(screen.queryByText('http://localhost:3000')).not.toBeInTheDocument();
@@ -543,7 +545,7 @@ describe('WebuiModalContent', () => {
     render(<WebuiModalContent />);
 
     await screen.findByText(
-      'Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.'
+      'Official Remote prepares the host runtime path automatically. You do not need to enable Local & Self-Hosted Access below.'
     );
     expect(screen.queryByText('Running')).not.toBeInTheDocument();
   });

@@ -48,10 +48,11 @@ const translations: Record<string, string> = {
   'settings.webui.officialRemoteDesc': 'Official Remote description',
   'settings.webui.officialRemoteLoginRequired': 'Official Remote requires cloud login',
   'settings.webui.officialRemoteSignedIn': 'Signed in as {{name}}',
-  'settings.webui.officialRemoteDeviceReady': 'This device is linked and ready for Official Remote.',
-  'settings.webui.officialRemoteDevicePending': 'Cloud session is active, but this device is not fully linked yet.',
+  'settings.webui.officialRemoteDeviceReady': 'This host runtime is linked and ready through Official Remote.',
+  'settings.webui.officialRemoteDevicePending':
+    'Cloud session is active. ContextGo is still linking this host runtime to Official Remote.',
   'settings.webui.officialRemoteRuntimeHint':
-    'Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.',
+    'Official Remote prepares the host runtime path automatically. You do not need to enable Local & Self-Hosted Access below.',
   'settings.webui.openOfficialRemote': 'Open Official Remote',
   'settings.webui.officialRemoteSignedOut': 'Official Remote is not connected yet.',
   'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this device.',
@@ -391,7 +392,9 @@ describe('CloudSyncSection', () => {
     render(<WebuiModalContent />);
 
     expect(await screen.findByText('Signed in as {{name}}')).toBeInTheDocument();
-    expect(screen.getByText('Cloud session is active, but this device is not fully linked yet.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Cloud session is active. ContextGo is still linking this host runtime to Official Remote.')
+    ).toBeInTheDocument();
     expect(screen.queryByText('Official Remote is not enabled on this desktop yet.')).not.toBeInTheDocument();
   });
 });
