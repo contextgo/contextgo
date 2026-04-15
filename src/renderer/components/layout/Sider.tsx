@@ -10,6 +10,7 @@ import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { changeLanguage } from '@/renderer/services/i18n';
 import type { Theme } from '@/renderer/hooks/system/useTheme';
 import {
+  CheckSmall,
   Computer,
   ConnectionPoint,
   Down,
@@ -32,8 +33,11 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { iconColors } from '@renderer/styles/colors';
 import InfermeshMenuLogo from '@renderer/assets/logos/brand/infermesh-menu.png';
+import AppleDashboardLogo from '@renderer/assets/logos/tools/apple-dashboard.svg';
 import GithubDashboardLogo from '@renderer/assets/logos/tools/github-dashboard.svg';
 import GoogleDashboardLogo from '@renderer/assets/logos/tools/google-dashboard.svg';
+import LinuxDashboardLogo from '@renderer/assets/logos/tools/linux-dashboard.svg';
+import MicrosoftDashboardLogo from '@renderer/assets/logos/tools/microsoft-dashboard.svg';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
@@ -103,6 +107,32 @@ const renderCloudAuthButtonContent = (icon: React.ReactNode, label: string) => (
     <span>{label}</span>
   </span>
 );
+
+type DevicePlatformVisual = {
+  label: string;
+  iconSrc: string;
+};
+
+const resolveDevicePlatformVisual = (platform?: string): DevicePlatformVisual | null => {
+  const normalizedPlatform = platform?.trim().toLowerCase();
+  if (!normalizedPlatform) {
+    return null;
+  }
+
+  if (normalizedPlatform.includes('mac')) {
+    return { label: 'macOS', iconSrc: AppleDashboardLogo };
+  }
+
+  if (normalizedPlatform.includes('win')) {
+    return { label: 'Windows', iconSrc: MicrosoftDashboardLogo };
+  }
+
+  if (normalizedPlatform.includes('linux')) {
+    return { label: 'Linux', iconSrc: LinuxDashboardLogo };
+  }
+
+  return null;
+};
 
 const isObsidianVaultProviderRef = (providerRef?: SpaceProviderRef): providerRef is SpaceVaultProviderRef => {
   return providerRef != null && 'kind' in providerRef && providerRef.kind === 'obsidian-vault';
@@ -811,7 +841,52 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     return `${currentLanguageLabel} · ${currentThemeLabel}`;
   }, [cloudSignedOutLabel, currentLanguageLabel, currentThemeLabel, isCloudAuthenticated, user?.email, user?.username]);
   const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
-  const currentDeviceSummary = isCloudAuthenticated ? currentDeviceName : cloudSignedOutLabel;
+  const currentDevicePlatform = useMemo(() => resolveDevicePlatformVisual(cloudStatus?.device?.platform), [cloudStatus?.device?.platform]);
+  const currentDeviceSummary = isCloudAuthenticated ? (
+    <span
+      className='sider-user-menu__status-icons'
+      data-testid='device-switch-indicators'
+      title={
+        cloudStatus?.device
+          ? `${currentDeviceName} · ${currentDevicePlatform?.label || t('settings.cloud.deviceName')} · ${t('settings.webui.switchDeviceCurrent')}`
+          : currentDeviceName
+      }
+      aria-label={
+        cloudStatus?.device
+          ? `${currentDeviceName} · ${currentDevicePlatform?.label || t('settings.cloud.deviceName')} · ${t('settings.webui.switchDeviceCurrent')}`
+          : currentDeviceName
+      }
+    >
+      {currentDevicePlatform ? (
+        <img
+          src={currentDevicePlatform.iconSrc}
+          alt={currentDevicePlatform.label}
+          className='sider-user-menu__status-icon'
+          data-testid='device-switch-platform-icon'
+        />
+      ) : (
+        <Computer
+          theme='outline'
+          size='14'
+          fill={iconColors.secondary}
+          className='app-icon shrink-0'
+          data-testid='device-switch-platform-fallback'
+        />
+      )}
+      {cloudStatus?.device ? (
+        <span
+          className='sider-user-menu__status-badge'
+          data-testid='device-switch-local-indicator'
+          title={t('settings.webui.switchDeviceCurrent')}
+          aria-label={t('settings.webui.switchDeviceCurrent')}
+        >
+          <CheckSmall theme='outline' size='12' fill='currentColor' className='app-icon shrink-0' />
+        </span>
+      ) : null}
+    </span>
+  ) : (
+    cloudSignedOutLabel
+  );
   const createEntryDropdownTriggerProps = {
     autoAlignPopupWidth: true,
     autoFitPosition: true,
