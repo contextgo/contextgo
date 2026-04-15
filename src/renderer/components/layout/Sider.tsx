@@ -51,7 +51,14 @@ import { useConversationAgents } from '@renderer/pages/conversation/hooks/useCon
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
-import { isElectronDesktop, isMacOS, isMobileShellWebView, openExternalUrl } from '@renderer/utils/platform';
+import {
+  isAndroidMobileShell,
+  isElectronDesktop,
+  isMacOS,
+  isMobileShellWebView,
+  openExternalUrl,
+  requestAndroidObsidianVaultSetup,
+} from '@renderer/utils/platform';
 import {
   buildOfficialRemoteDevicesRoute,
   getCurrentHostRuntimeStatusKey,
@@ -149,6 +156,47 @@ const isOpenableRemoteDevice = (device: CloudRemoteDevice): boolean => {
   );
 };
 
+<<<<<<< HEAD
+const isCurrentCloudDeviceReady = (cloudStatus: CloudStatus | null): boolean => {
+  return Boolean(
+    cloudStatus?.authenticated &&
+    (cloudStatus.officialRemoteReady === true ||
+      (cloudStatus.officialRemote.running === true && cloudStatus.officialRemote.browserEntryReady === true))
+  );
+};
+
+const shouldEnsureCurrentCloudDevice = (cloudStatus: CloudStatus | null): boolean => {
+  if (!cloudStatus?.authenticated || !cloudStatus.device || !cloudStatus.deviceTokenAvailable) {
+    return false;
+  }
+
+  if (cloudStatus.officialRemote?.needsAttention === true) {
+    return false;
+  }
+
+  return !isCurrentCloudDeviceReady(cloudStatus);
+};
+
+const buildSuggestedSpaceFolderName = (spaceName: string): string => {
+  const normalized = spaceName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized || 'contextgo-space';
+};
+
+const shouldEnsureCurrentCloudDevice = (cloudStatus: CloudStatus | null): boolean => {
+  if (!cloudStatus?.authenticated || !cloudStatus.device || !cloudStatus.deviceTokenAvailable) {
+    return false;
+  }
+
+  if (cloudStatus.officialRemote?.needsAttention === true) {
+    return false;
+  }
+
+  return !isCurrentCloudDeviceReady(cloudStatus);
+};
 const getRemoteDeviceStatusKey = (
   device: CloudRemoteDevice,
   cloudStatus: CloudStatus | null,
@@ -363,6 +411,37 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         providerRef: targetSpace.providerRef,
       });
       if (isMobileShellWebView()) {
+        if (vaultOpenIntent.readiness === 'needs-bind-in-obsidian' && isAndroidMobileShell()) {
+          const setupResult = await requestAndroidObsidianVaultSetup({
+            spaceId: targetSpace.id,
+            spaceName: targetSpace.name,
+            suggestedFolderName: buildSuggestedSpaceFolderName(targetSpace.name),
+          });
+
+          if (setupResult.status === 'prepared-directory') {
+            if (vaultOpenIntent.target) {
+              await openExternalUrl(vaultOpenIntent.target);
+            }
+            Message.success(t('guid.vault.androidSetupPrepared'));
+            return;
+          }
+
+          if (setupResult.status === 'cancelled') {
+            Message.warning(t('guid.vault.androidSetupCancelled'));
+            return;
+          }
+
+          if (setupResult.status === 'error') {
+            throw new Error(setupResult.message || t('guid.vault.openFailed'));
+          }
+
+          if (vaultOpenIntent.target) {
+            await openExternalUrl(vaultOpenIntent.target);
+          }
+          Message.warning(t('guid.vault.mobileSetupRequired'));
+          return;
+        }
+
         if (vaultOpenIntent.target) {
           await openExternalUrl(vaultOpenIntent.target);
         }

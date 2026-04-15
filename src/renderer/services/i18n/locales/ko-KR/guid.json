@@ -53,6 +53,8 @@
     "affordance": "Vault 열기",
     "mobileAffordance": "Obsidian에서 열기",
     "mobileSetupAffordance": "Obsidian에서 설정하기",
+    "androidSetupPrepared": "Android 기기용 로컬 Vault 폴더를 준비했습니다. 이어서 Obsidian에서 바인딩을 완료하세요.",
+    "androidSetupCancelled": "Android Vault 설정이 취소되었습니다.",
     "statusReady": "Obsidian 또는 Finder에서 열기",
     "openSuccess": "Space Vault를 열었습니다.",
     "openFailed": "Space Vault를 열지 못했습니다.",

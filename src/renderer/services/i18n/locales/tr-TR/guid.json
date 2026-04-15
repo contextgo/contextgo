@@ -53,6 +53,8 @@
     "affordance": "Vault Aç",
     "mobileAffordance": "Obsidian'da Aç",
     "mobileSetupAffordance": "Obsidian'da Kur",
+    "androidSetupPrepared": "Android için yerel Vault klasörü hazırlandı. Bağlamayı Obsidian içinde tamamlayın.",
+    "androidSetupCancelled": "Android Vault kurulumu iptal edildi.",
     "statusReady": "Obsidian veya Finder’da aç",
     "openSuccess": "Space vault açıldı.",
     "openFailed": "Space vault açılamadı.",

@@ -53,6 +53,8 @@
     "affordance": "Open Vault",
     "mobileAffordance": "Open in Obsidian",
     "mobileSetupAffordance": "Set Up in Obsidian",
+    "androidSetupPrepared": "Android vault folder prepared. Finish binding it in Obsidian.",
+    "androidSetupCancelled": "Android vault setup was cancelled.",
     "statusReady": "Open in Obsidian or Finder",
     "openSuccess": "Space vault opened.",
     "openFailed": "Failed to open the space vault.",

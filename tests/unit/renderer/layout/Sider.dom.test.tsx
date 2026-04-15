@@ -6,6 +6,7 @@ import type { AuthUser } from '@/renderer/hooks/context/AuthContext';
 import type { LayoutContextValue } from '@/renderer/hooks/context/LayoutContext';
 
 let isMobileShellWebViewMock = false;
+let isAndroidMobileShellMock = false;
 
 type MockSpace = {
   id: string;
@@ -55,6 +56,12 @@ const hoisted = vi.hoisted(() => {
       fallback: 'none',
       target: '/tmp/vault',
       obsidianInstalled: true,
+    }),
+    requestAndroidObsidianVaultSetupMock: vi.fn().mockResolvedValue({
+      status: 'prepared-directory',
+      spaceId: 'space-2',
+      vaultName: 'team-space',
+      spaceDirectoryUri: 'content://space/team-space',
     }),
     openExternalUrlMock: vi.fn().mockResolvedValue(undefined),
     messageSuccessMock: vi.fn(),
@@ -247,6 +254,8 @@ vi.mock('@renderer/utils/platform', () => ({
   isElectronDesktop: () => true,
   isMacOS: () => true,
   isMobileShellWebView: () => isMobileShellWebViewMock,
+  isAndroidMobileShell: () => isAndroidMobileShellMock,
+  requestAndroidObsidianVaultSetup: (...args: unknown[]) => hoisted.requestAndroidObsidianVaultSetupMock(...args),
   openExternalUrl: (...args: unknown[]) => hoisted.openExternalUrlMock(...args),
 }));
 
@@ -456,6 +465,7 @@ describe('Sider', () => {
     hoisted.openExternalUrlMock.mockClear();
     hoisted.navigateMock.mockReset();
     isMobileShellWebViewMock = false;
+    isAndroidMobileShellMock = false;
     hoisted.remoteAccessRef.current = null;
     hoisted.authUserRef.current = {
       id: 'user-1',
@@ -1138,6 +1148,34 @@ describe('Sider', () => {
     await waitFor(() => {
       expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith('obsidian://open?choose-vault');
       expect(hoisted.messageWarningMock).toHaveBeenCalledWith('guid.vault.mobileSetupRequired');
+    });
+    expect(hoisted.openVaultInvokeMock).not.toHaveBeenCalled();
+  });
+
+  it('requests Android vault setup before opening the Obsidian chooser when running in the Android shell', async () => {
+    isMobileShellWebViewMock = true;
+    isAndroidMobileShellMock = true;
+    hoisted.selectedSpaceStateRef.current = {
+      ...hoisted.selectedSpaceStateRef.current!,
+      selectedSpace: {
+        id: 'space-2',
+        name: 'Team Space',
+      },
+    };
+
+    renderSider('/guid');
+
+    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));
+
+    await waitFor(() => {
+      expect(hoisted.requestAndroidObsidianVaultSetupMock).toHaveBeenCalledWith({
+        spaceId: 'space-2',
+        spaceName: 'Team Space',
+        suggestedFolderName: 'team-space',
+      });
+      expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith('obsidian://open?choose-vault');
+      expect(hoisted.messageSuccessMock).toHaveBeenCalledWith('guid.vault.androidSetupPrepared');
     });
     expect(hoisted.openVaultInvokeMock).not.toHaveBeenCalled();
   });

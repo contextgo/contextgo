@@ -53,6 +53,8 @@
     "affordance": "打開 Vault",
     "mobileAffordance": "在 Obsidian 中打開",
     "mobileSetupAffordance": "在 Obsidian 中完成綁定",
+    "androidSetupPrepared": "已為 Android 裝置準備本地 Vault 目錄，請繼續在 Obsidian 中完成綁定。",
+    "androidSetupCancelled": "已取消 Android Vault 目錄準備。",
     "statusReady": "在 Obsidian 或 Finder 中打開",
     "openSuccess": "已打開空間 Vault。",
     "openFailed": "打開空間 Vault 失敗。",

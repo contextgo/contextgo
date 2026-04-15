@@ -15,15 +15,17 @@ import android.webkit.WebViewClient
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
+import androidx.documentfile.provider.DocumentFile
 import io.contextgo.mobileshell.databinding.ActivityMainBinding
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.Locale
 import org.json.JSONObject
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
   private lateinit var binding: ActivityMainBinding
   private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
+  private var pendingObsidianVaultSetupRequest: PendingObsidianVaultSetupRequest? = null
   private var startupOverlayActive = false
   private var startupNavigationFinished = false
   private var startupReadyReceived = false
@@ -39,6 +41,11 @@ class MainActivity : AppCompatActivity() {
       val uris = WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
       callback.onReceiveValue(uris)
       fileChooserCallback = null
+    }
+
+  private val obsidianVaultSetupLauncher =
+    registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+      handleObsidianVaultSetupResult(result.resultCode, result.data)
     }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -443,12 +450,153 @@ class MainActivity : AppCompatActivity() {
     binding.errorText.isVisible = true
   }
 
+  private fun handleObsidianVaultSetupResult(resultCode: Int, data: Intent?) {
+    val request = pendingObsidianVaultSetupRequest ?: return
+    pendingObsidianVaultSetupRequest = null
+
+    if (resultCode != RESULT_OK) {
+      dispatchObsidianVaultSetupResult(
+        JSONObject()
+          .put("status", "cancelled")
+          .put("spaceId", request.spaceId)
+      )
+      return
+    }
+
+    val treeUri = data?.data
+    if (treeUri == null) {
+      dispatchObsidianVaultSetupResult(
+        JSONObject()
+          .put("status", "error")
+          .put("spaceId", request.spaceId)
+          .put("message", "Android did not return a directory tree URI.")
+      )
+      return
+    }
+
+    val permissionFlags =
+      (data.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION))
+        .takeIf { it != 0 }
+        ?: (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+
+    try {
+      contentResolver.takePersistableUriPermission(treeUri, permissionFlags)
+      val rootDirectory = DocumentFile.fromTreeUri(this, treeUri)
+        ?: error("Selected Android directory tree is unavailable.")
+      val contextGoRoot =
+        rootDirectory.findDirectory(CONTEXTGO_VAULTS_DIRECTORY_NAME)
+          ?: rootDirectory.createDirectory(CONTEXTGO_VAULTS_DIRECTORY_NAME)
+          ?: error("Failed to create ContextGo root directory inside the selected tree.")
+      val spaceDirectory =
+        contextGoRoot.findDirectory(request.suggestedFolderName)
+          ?: contextGoRoot.createDirectory(request.suggestedFolderName)
+          ?: error("Failed to create the Space vault directory inside the selected tree.")
+
+      val payload =
+        JSONObject()
+          .put("status", "prepared-directory")
+          .put("spaceId", request.spaceId)
+          .put("spaceName", request.spaceName)
+          .put("vaultName", request.suggestedFolderName)
+          .put("rootTreeUri", treeUri.toString())
+          .put("spaceDirectoryUri", spaceDirectory.uri.toString())
+
+      preferences.edit().putString(obsidianVaultSetupKey(request.spaceId), payload.toString()).apply()
+      dispatchObsidianVaultSetupResult(payload)
+    } catch (error: Exception) {
+      dispatchObsidianVaultSetupResult(
+        JSONObject()
+          .put("status", "error")
+          .put("spaceId", request.spaceId)
+          .put("message", error.message ?: "Android vault setup failed.")
+      )
+    }
+  }
+
+  private fun dispatchObsidianVaultSetupResult(payload: JSONObject) {
+    val escapedPayload = JSONObject.quote(payload.toString())
+    binding.webView.evaluateJavascript(
+      """
+      (function() {
+        window.dispatchEvent(new CustomEvent('$ANDROID_OBSIDIAN_VAULT_SETUP_EVENT', {
+          detail: JSON.parse($escapedPayload)
+        }));
+      })();
+      """.trimIndent(),
+      null
+    )
+  }
+
+  private fun readObsidianVaultSetupState(spaceId: String): String {
+    val stored = preferences.getString(obsidianVaultSetupKey(spaceId), null)
+    if (!stored.isNullOrBlank()) {
+      return stored
+    }
+
+    return JSONObject()
+      .put("status", "unprepared")
+      .put("spaceId", spaceId)
+      .toString()
+  }
+
   private inner class StartupBridge {
     @JavascriptInterface
     fun notifyReady() {
       runOnUiThread {
         startupReadyReceived = true
         dismissStartupOverlayIfReady()
+      }
+    }
+
+    @JavascriptInterface
+    fun getObsidianVaultSetupState(spaceId: String): String {
+      return readObsidianVaultSetupState(spaceId)
+    }
+
+    @JavascriptInterface
+    fun requestObsidianVaultSetup(requestJson: String) {
+      val request =
+        try {
+          val payload = JSONObject(requestJson)
+          PendingObsidianVaultSetupRequest(
+            spaceId = payload.optString("spaceId").ifBlank { return },
+            spaceName = payload.optString("spaceName").ifBlank { "Space" },
+            suggestedFolderName = payload.optString("suggestedFolderName").ifBlank { "contextgo-space" },
+          )
+        } catch (_: Exception) {
+          null
+        }
+
+      if (request == null) {
+        dispatchObsidianVaultSetupResult(
+          JSONObject()
+            .put("status", "error")
+            .put("spaceId", "")
+            .put("message", "Invalid Android vault setup request payload.")
+        )
+        return
+      }
+
+      pendingObsidianVaultSetupRequest = request
+      runOnUiThread {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+          addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+          addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+          addFlags(Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+        }
+
+        try {
+          obsidianVaultSetupLauncher.launch(intent)
+        } catch (_: ActivityNotFoundException) {
+          pendingObsidianVaultSetupRequest = null
+          dispatchObsidianVaultSetupResult(
+            JSONObject()
+              .put("status", "error")
+              .put("spaceId", request.spaceId)
+              .put("message", getString(R.string.no_directory_picker))
+          )
+        }
       }
     }
   }
@@ -459,6 +607,8 @@ class MainActivity : AppCompatActivity() {
     const val PREFERENCES_NAME = "contextgo_mobile_shell"
     const val TARGET_URL_KEY = "target_url"
     const val STARTUP_BRIDGE_NAME = "ContextGoMobileShell"
+    const val CONTEXTGO_VAULTS_DIRECTORY_NAME = "ContextGo"
+    const val ANDROID_OBSIDIAN_VAULT_SETUP_EVENT = "contextgo:android-obsidian-vault-setup-result"
     const val STARTUP_OVERLAY_FALLBACK_DELAY_MS = 500L
     const val STARTUP_READY_OBSERVER_SCRIPT =
       """
@@ -496,6 +646,20 @@ class MainActivity : AppCompatActivity() {
       })();
       """
   }
+
+  private data class PendingObsidianVaultSetupRequest(
+    val spaceId: String,
+    val spaceName: String,
+    val suggestedFolderName: String,
+  )
+
+  private fun obsidianVaultSetupKey(spaceId: String): String {
+    return "obsidian_vault_setup_$spaceId"
+  }
+}
+
+private fun DocumentFile.findDirectory(name: String): DocumentFile? {
+  return listFiles().firstOrNull { it.isDirectory && it.name == name }
 }
 
 private data class ShellLoginPayload(

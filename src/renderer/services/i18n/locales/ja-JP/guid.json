@@ -53,6 +53,8 @@
     "affordance": "Vault を開く",
     "mobileAffordance": "Obsidian で開く",
     "mobileSetupAffordance": "Obsidian でセットアップする",
+    "androidSetupPrepared": "Android 上の Vault フォルダーを準備しました。続けて Obsidian でバインドを完了してください。",
+    "androidSetupCancelled": "Android の Vault セットアップをキャンセルしました。",
     "statusReady": "Obsidian または Finder で開く",
     "openSuccess": "Space Vault を開きました。",
     "openFailed": "Space Vault を開けませんでした。",
