@@ -18,8 +18,7 @@ const configStorageGet = vi.fn();
 const translations: Record<string, string> = {
   'common.refresh': 'Refresh',
   'settings.cloud.title': 'ContextGo Account',
-  'settings.cloud.description':
-    'Sign in once with GitHub or Google so ContextGo can link this host to your account.',
+  'settings.cloud.description': 'Sign in once with GitHub or Google so ContextGo can link this host to your account.',
   'settings.cloud.loading': 'Checking cloud account status...',
   'settings.cloud.loginWithGithub': 'Continue with GitHub',
   'settings.cloud.loginWithGoogle': 'Continue with Google',
@@ -38,7 +37,7 @@ const translations: Record<string, string> = {
   'settings.cloud.notAvailable': 'Not available',
   'settings.cloud.infermeshAccess': 'InferMesh website',
   'settings.cloud.infermeshAccessDesc':
-    'ContextGo only needs the OAuth login and device binding. If you still need to register or complete account setup, continue on the InferMesh website.',
+    'ContextGo only needs the OAuth login and host linking. If you still need to register or complete account setup, continue on the InferMesh website.',
   'settings.cloud.openInfermesh': 'Open InferMesh',
   'settings.cloud.signOut': 'Sign out',
   'settings.webui': 'WebUI',
@@ -53,9 +52,9 @@ const translations: Record<string, string> = {
     'Cloud session is active. ContextGo is still linking this host runtime to Official Remote.',
   'settings.webui.officialRemoteRuntimeHint':
     'Official Remote prepares the host runtime path automatically. You do not need to enable Local & Self-Hosted Access below.',
-  'settings.webui.openOfficialRemote': 'Open Official Remote',
-  'settings.webui.officialRemoteSignedOut': 'Official Remote is not connected yet.',
-  'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this device.',
+  'settings.webui.openOfficialRemote': 'Open Official Host List',
+  'settings.webui.officialRemoteSignedOut': 'The official host list is not connected yet.',
+  'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this host runtime.',
 };
 
 const unauthenticatedStatus: CloudStatus = {

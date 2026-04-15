@@ -594,8 +594,8 @@
   "webui.openOfficialRemote": "Host Listesini Aç",
   "webui.remoteDevicesNav": "Uzak Hostlar",
   "webui.switchDevice": "Host Değiştir",
-  "webui.officialRemoteSignedOut": "Resmi cihaz listesi henüz bağlı değil.",
-  "webui.officialRemoteHint": "Burada bir kez giriş yapmanız yeterli. ContextGo bu Host Runtime'ı otomatik bağlar ve barındırılan cihaz listesinde gösterir.",
+  "webui.officialRemoteSignedOut": "Resmi host listesi henüz bağlı değil.",
+  "webui.officialRemoteHint": "Burada bir kez giriş yapmanız yeterli. ContextGo bu Host Runtime'ı otomatik bağlar ve barındırılan host listesinde gösterir.",
   "webui.officialRemoteRuntimeHint": "Official Remote Host Runtime yolunu otomatik olarak hazırlar; aşağıda Local & Self-Hosted Access'i ayrıca açmanız gerekmez.",
   "webui.featureChannelsTitle": "Messaging Control",
   "webui.featureChannelsDesc": "Telegram, Slack, Discord, Lark, DingTalk ve WeChat'i bağlayarak IM uygulamalarından ContextGo ile etkileşime geçin.",
@@ -1532,7 +1532,7 @@
     "deviceName": "Uzak host",
     "notAvailable": "Mevcut degil",
     "infermeshAccess": "InferMesh web sitesi",
-    "infermeshAccessDesc": "ContextGo tarafinda yalnizca OAuth girisi ve cihaz baglama gerekir. Kayit gibi ek hesap adimlari gerekiyorsa InferMesh web sitesinde devam edin.",
+    "infermeshAccessDesc": "ContextGo tarafinda yalnizca OAuth girisi ve host baglama gerekir. Kayit gibi ek hesap adimlari gerekiyorsa InferMesh web sitesinde devam edin.",
     "openInfermesh": "Model Merkezi"
   },
   "commands": {
@@ -1703,7 +1703,7 @@
   "webui.officialRemoteStatusShort.signedOut": "Bağlı değil",
   "webui.officialRemoteStatusShort.ready": "Hazır",
   "webui.officialRemoteStatusShort.relogin": "Tekrar giriş yap",
-  "webui.officialRemoteStatusShort.linking": "Cihaz bağlanıyor",
+  "webui.officialRemoteStatusShort.linking": "Host bağlanıyor",
   "webui.officialRemoteStatusShort.preparing": "Hazırlanıyor",
   "webui.officialRemoteStatusShort.connecting": "Bağlanıyor",
   "webui.officialRemoteStatusShort.unavailable": "Kullanılamıyor",

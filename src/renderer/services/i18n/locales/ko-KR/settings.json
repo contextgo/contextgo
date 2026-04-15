@@ -594,8 +594,8 @@
   "webui.openOfficialRemote": "호스트 목록 열기",
   "webui.remoteDevicesNav": "원격 호스트",
   "webui.switchDevice": "호스트 전환",
-  "webui.officialRemoteSignedOut": "공식 기기 목록이 아직 연결되지 않았습니다.",
-  "webui.officialRemoteHint": "여기서 한 번만 로그인하면 됩니다. ContextGo가 이 Host Runtime을 자동으로 연결해 호스팅된 기기 목록에 표시합니다.",
+  "webui.officialRemoteSignedOut": "공식 호스트 목록이 아직 연결되지 않았습니다.",
+  "webui.officialRemoteHint": "여기서 한 번만 로그인하면 됩니다. ContextGo가 이 Host Runtime을 자동으로 연결해 호스팅된 호스트 목록에 표시합니다.",
   "webui.officialRemoteRuntimeHint": "Official Remote가 Host Runtime 경로를 자동으로 준비하므로 아래에서 로컬 / 셀프호스트 접근을 따로 켤 필요가 없습니다.",
   "webui.featureChannelsTitle": "Messaging Control",
   "webui.featureChannelsDesc": "Telegram, Slack, Discord, Lark, DingTalk, WeChat을 연결해 IM 앱에서 ContextGo와 상호작용하세요.",
@@ -1534,7 +1534,7 @@
     "deviceName": "원격 호스트",
     "notAvailable": "없음",
     "infermeshAccess": "InferMesh 웹사이트",
-    "infermeshAccessDesc": "ContextGo 쪽에서는 OAuth 로그인과 기기 연결만 필요합니다. 가입 등 추가 계정 절차가 필요하면 InferMesh 웹사이트에서 이어서 진행하세요.",
+    "infermeshAccessDesc": "ContextGo 쪽에서는 OAuth 로그인과 호스트 연결만 필요합니다. 가입 등 추가 계정 절차가 필요하면 InferMesh 웹사이트에서 이어서 진행하세요.",
     "openInfermesh": "모델 센터"
   },
   "commands": {
@@ -1705,7 +1705,7 @@
   "webui.officialRemoteStatusShort.signedOut": "연결 안 됨",
   "webui.officialRemoteStatusShort.ready": "준비됨",
   "webui.officialRemoteStatusShort.relogin": "다시 로그인",
-  "webui.officialRemoteStatusShort.linking": "기기 연결 중",
+  "webui.officialRemoteStatusShort.linking": "호스트 연결 중",
   "webui.officialRemoteStatusShort.preparing": "준비 중",
   "webui.officialRemoteStatusShort.connecting": "연결 중",
   "webui.officialRemoteStatusShort.unavailable": "사용 불가",

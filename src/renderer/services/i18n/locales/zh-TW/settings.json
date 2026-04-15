@@ -594,8 +594,8 @@
   "webui.openOfficialRemote": "開啟主機列表",
   "webui.remoteDevicesNav": "遠端主機",
   "webui.switchDevice": "切換主機",
-  "webui.officialRemoteSignedOut": "官方裝置列表尚未連線。",
-  "webui.officialRemoteHint": "在這裡登入一次即可。ContextGo 會自動綁定目前 Host Runtime，讓它出現在代管裝置列表中。",
+  "webui.officialRemoteSignedOut": "官方主機列表尚未連線。",
+  "webui.officialRemoteHint": "在這裡登入一次即可。ContextGo 會自動綁定目前 Host Runtime，讓它出現在代管主機列表中。",
   "webui.officialRemoteRuntimeHint": "Official Remote 會自動準備 Host Runtime 路徑，你不需要在下方額外開啟本機 / 自託管存取。",
   "webui.featureChannelsTitle": "Messaging Control",
   "webui.featureChannelsDesc": "連接 Telegram、Slack、Discord、Lark、釘釘、微信，在即時通訊軟體中與 ContextGo 互動。",
@@ -1534,7 +1534,7 @@
     "deviceName": "遠端主機",
     "notAvailable": "暫無",
     "infermeshAccess": "InferMesh 官網",
-    "infermeshAccessDesc": "ContextGo 這裡只需要 OAuth 登入和裝置綁定。如果你還需要註冊或補完帳號流程，再去 InferMesh 官網繼續。",
+    "infermeshAccessDesc": "ContextGo 這裡只需要 OAuth 登入和主機綁定。如果你還需要註冊或補完帳號流程，再去 InferMesh 官網繼續。",
     "openInfermesh": "模型中心"
   },
   "commands": {
@@ -1705,7 +1705,7 @@
   "webui.officialRemoteStatusShort.signedOut": "未連線",
   "webui.officialRemoteStatusShort.ready": "已就緒",
   "webui.officialRemoteStatusShort.relogin": "需重新登入",
-  "webui.officialRemoteStatusShort.linking": "綁定中",
+  "webui.officialRemoteStatusShort.linking": "主機綁定中",
   "webui.officialRemoteStatusShort.preparing": "準備中",
   "webui.officialRemoteStatusShort.connecting": "連線中",
   "webui.officialRemoteStatusShort.unavailable": "暫不可用",

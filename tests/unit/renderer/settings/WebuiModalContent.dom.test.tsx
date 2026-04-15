@@ -18,14 +18,14 @@ const translations: Record<string, string> = {
   'common.confirm': 'Confirm',
   'common.copy': 'Copy',
   'settings.cloud.loading': 'Checking cloud account status...',
-  'settings.webui.officialRemoteSignedOut': 'Official Remote is not connected yet.',
+  'settings.webui.officialRemoteSignedOut': 'The official host list is not connected yet.',
   'settings.webui.officialRemoteDeviceReady': 'This host runtime is linked and ready through Official Remote.',
   'settings.webui.officialRemotePreparing': 'ContextGo is preparing this host runtime for Official Remote.',
   'settings.webui.officialRemoteConnecting': 'ContextGo is reconnecting this host runtime to Official Remote.',
   'settings.webui.officialRemoteNeedsRelogin':
     'Official Remote needs a fresh cloud login before this host runtime can reconnect.',
   'settings.webui.officialRemoteUnavailable': 'This host runtime is not ready through Official Remote yet.',
-  'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this device.',
+  'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this host runtime.',
   'settings.webui.officialRemoteRuntimeHint':
     'Official Remote prepares the host runtime path automatically. You do not need to enable Local & Self-Hosted Access below.',
   'settings.webui.editUsernameTooltip': 'Edit username',

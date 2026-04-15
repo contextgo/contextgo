@@ -595,8 +595,8 @@
   "webui.openOfficialRemote": "Open Host List",
   "webui.remoteDevicesNav": "Remote Hosts",
   "webui.switchDevice": "Switch Host",
-  "webui.officialRemoteSignedOut": "The official device list is not connected yet.",
-  "webui.officialRemoteHint": "Sign in once here. ContextGo will automatically link this host runtime so it appears in the hosted device list.",
+  "webui.officialRemoteSignedOut": "The official host list is not connected yet.",
+  "webui.officialRemoteHint": "Sign in once here. ContextGo will automatically link this host runtime so it appears in the hosted host list.",
   "webui.featureChannelsTitle": "Messaging Control",
   "webui.featureChannelsDesc": "Connect Telegram, Slack, Discord, Lark, DingTalk, and WeChat to interact with ContextGo from IM apps.",
   "webui.goToChannels": "Go to Channels",
@@ -1527,7 +1527,7 @@
     "deviceName": "Remote host",
     "notAvailable": "Not available",
     "infermeshAccess": "InferMesh website",
-    "infermeshAccessDesc": "ContextGo only needs the OAuth login and device binding. If you still need to register or complete account setup, continue on the InferMesh website.",
+    "infermeshAccessDesc": "ContextGo only needs the OAuth login and host linking. If you still need to register or complete account setup, continue on the InferMesh website.",
     "openInfermesh": "Model Center"
   },
   "commands": {
@@ -1617,7 +1617,7 @@
   "webui.officialRemoteStatusShort.signedOut": "Not connected",
   "webui.officialRemoteStatusShort.ready": "Ready",
   "webui.officialRemoteStatusShort.relogin": "Sign in again",
-  "webui.officialRemoteStatusShort.linking": "Linking device",
+  "webui.officialRemoteStatusShort.linking": "Linking host",
   "webui.officialRemoteStatusShort.preparing": "Preparing",
   "webui.officialRemoteStatusShort.connecting": "Connecting",
   "webui.officialRemoteStatusShort.unavailable": "Unavailable",

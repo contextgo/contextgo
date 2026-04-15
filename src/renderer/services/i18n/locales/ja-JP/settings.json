@@ -594,8 +594,8 @@
   "webui.openOfficialRemote": "ホスト一覧を開く",
   "webui.remoteDevicesNav": "リモートホスト",
   "webui.switchDevice": "ホストを切り替える",
-  "webui.officialRemoteSignedOut": "公式端末一覧はまだ接続されていません。",
-  "webui.officialRemoteHint": "ここで一度サインインすれば十分です。ContextGo がこの Host Runtime を自動でリンクし、ホストされた端末一覧に表示します。",
+  "webui.officialRemoteSignedOut": "公式ホスト一覧はまだ接続されていません。",
+  "webui.officialRemoteHint": "ここで一度サインインすれば十分です。ContextGo がこの Host Runtime を自動でリンクし、ホストされたホスト一覧に表示します。",
   "webui.officialRemoteRuntimeHint": "Official Remote は Host Runtime の経路を自動で準備するため、下でローカル / セルフホストアクセスを有効にする必要はありません。",
   "webui.featureChannelsTitle": "Messaging Control",
   "webui.featureChannelsDesc": "Telegram、Slack、Discord、Lark、DingTalk、WeChat を接続して、IM アプリから ContextGo とやり取りできます。",
@@ -1534,7 +1534,7 @@
     "deviceName": "リモートホスト",
     "notAvailable": "未設定",
     "infermeshAccess": "InferMesh 公式サイト",
-    "infermeshAccessDesc": "ContextGo 側で必要なのは OAuth サインインと端末紐付けだけです。登録など追加のアカウント手続きが必要なら、InferMesh 公式サイトで続けてください。",
+    "infermeshAccessDesc": "ContextGo 側で必要なのは OAuth サインインとホスト紐付けだけです。登録など追加のアカウント手続きが必要なら、InferMesh 公式サイトで続けてください。",
     "openInfermesh": "モデルセンター"
   },
   "commands": {
@@ -1705,7 +1705,7 @@
   "webui.officialRemoteStatusShort.signedOut": "未接続",
   "webui.officialRemoteStatusShort.ready": "準備完了",
   "webui.officialRemoteStatusShort.relogin": "再ログイン",
-  "webui.officialRemoteStatusShort.linking": "デバイス連携中",
+  "webui.officialRemoteStatusShort.linking": "ホスト連携中",
   "webui.officialRemoteStatusShort.preparing": "準備中",
   "webui.officialRemoteStatusShort.connecting": "接続中",
   "webui.officialRemoteStatusShort.unavailable": "利用不可",

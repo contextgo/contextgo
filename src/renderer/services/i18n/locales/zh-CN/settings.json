@@ -595,8 +595,8 @@
   "webui.openOfficialRemote": "打开主机列表",
   "webui.remoteDevicesNav": "远程主机",
   "webui.switchDevice": "切换主机",
-  "webui.officialRemoteSignedOut": "官方设备列表尚未连接。",
-  "webui.officialRemoteHint": "在这里登录一次即可。ContextGo 会自动绑定当前 Host Runtime，让它出现在托管设备列表中。",
+  "webui.officialRemoteSignedOut": "官方主机列表尚未连接。",
+  "webui.officialRemoteHint": "在这里登录一次即可。ContextGo 会自动绑定当前 Host Runtime，让它出现在托管主机列表中。",
   "webui.featureChannelsTitle": "Messaging Control",
   "webui.featureChannelsDesc": "连接 Telegram、Slack、Discord、Lark、钉钉、微信，在即时通讯软件中与 ContextGo 交互。",
   "webui.goToChannels": "前往 Channels",
@@ -1520,7 +1520,7 @@
     "deviceName": "远程主机",
     "notAvailable": "暂无",
     "infermeshAccess": "InferMesh 官网",
-    "infermeshAccessDesc": "ContextGo 这里只需要 OAuth 登录和设备绑定。如果你还需要注册或补完账号流程，再去 InferMesh 官网继续。",
+    "infermeshAccessDesc": "ContextGo 这里只需要 OAuth 登录和主机绑定。如果你还需要注册或补完账号流程，再去 InferMesh 官网继续。",
     "openInfermesh": "模型中心"
   },
   "commands": {
@@ -1618,7 +1618,7 @@
   "webui.officialRemoteStatusShort.signedOut": "未连接",
   "webui.officialRemoteStatusShort.ready": "已就绪",
   "webui.officialRemoteStatusShort.relogin": "需重登",
-  "webui.officialRemoteStatusShort.linking": "绑定中",
+  "webui.officialRemoteStatusShort.linking": "主机绑定中",
   "webui.officialRemoteStatusShort.preparing": "准备中",
   "webui.officialRemoteStatusShort.connecting": "连接中",
   "webui.officialRemoteStatusShort.unavailable": "暂不可用",
