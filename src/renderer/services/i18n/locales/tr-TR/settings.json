@@ -1650,6 +1650,7 @@
   "channels.publication.objectListTitle": "Published objects",
   "channels.publication.objectListDescription": "Burada yalnizca bu Agente zaten bagli olan yayin nesneleri gosterilir.",
   "channels.publication.objectQualityFallback": "Needs identification",
+  "channels.publication.objectRefreshBackfilled": "Backfilled",
   "channels.publication.emptyPublishedObjects": "Bu Agent henuz hicbir IM nesnesine yayinlanmadi",
   "channels.publication.emptyObjects": "No IM objects discovered yet",
   "channels.publication.agentSummaryTitle": "Gecerli Agent",

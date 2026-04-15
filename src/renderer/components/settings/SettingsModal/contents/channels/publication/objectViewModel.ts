@@ -12,7 +12,9 @@ import type {
   IChannelActiveSessionEntry,
   IChannelAudienceEntry,
   IChannelBinding,
+  IChannelPublishObjectActiveSessionPointer,
   IChannelPublishObjectCatalogEntry,
+  IChannelPublishObjectRefreshState,
   PluginType,
 } from '@process/channels/types';
 
@@ -28,10 +30,13 @@ export type PublicationObjectViewModel = {
   parentKind?: ChannelObjectParentKind;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  refreshState?: IChannelPublishObjectRefreshState;
+  publishObjectCatalogEntryId?: string;
   audiences: IChannelAudienceEntry[];
   bindings: IChannelBinding[];
   sessions: IChannelActiveSessionEntry[];
   primaryAudience?: IChannelAudienceEntry;
+  activeSessionPointer?: IChannelPublishObjectActiveSessionPointer;
   lastActivity?: number;
 };
 
@@ -45,11 +50,27 @@ type PublicationObjectSeed = {
   parentKind?: ChannelObjectParentKind;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  refreshState?: IChannelPublishObjectRefreshState;
+  publishObjectCatalogEntryId?: string;
+  activeSessionPointer?: IChannelPublishObjectActiveSessionPointer;
   lastActivity?: number;
   audience?: IChannelAudienceEntry;
   binding?: IChannelBinding;
   session?: IChannelActiveSessionEntry;
 };
+
+function getObjectQualityRank(quality?: ChannelPublishObjectDisplayQuality): number {
+  if (quality === 'resolved') {
+    return 3;
+  }
+  if (quality === 'inferred') {
+    return 2;
+  }
+  if (quality === 'fallback') {
+    return 1;
+  }
+  return 0;
+}
 
 function looksTechnicalScopeKey(value: string): boolean {
   return (
@@ -260,6 +281,8 @@ function resolveAudienceSeed(audience: IChannelAudienceEntry, platform: PluginTy
     parentKind: audience.parentObjectKind,
     objectSource: audience.objectSource,
     objectQuality: audience.objectQuality,
+    refreshState: audience.objectRefreshState,
+    publishObjectCatalogEntryId: audience.publishObjectCatalogEntryId,
     lastActivity: audience.lastActive,
     audience,
   };
@@ -281,6 +304,8 @@ function resolveSessionSeed(session: IChannelActiveSessionEntry, platform: Plugi
     parentKind: session.parentObjectKind,
     objectSource: session.objectSource,
     objectQuality: session.objectQuality,
+    refreshState: session.objectRefreshState,
+    publishObjectCatalogEntryId: session.publishObjectCatalogEntryId,
     lastActivity: session.lastActivity,
     session,
   };
@@ -312,6 +337,9 @@ function resolveBindingSeed(
     parentTitle: catalogEntry?.displayProfile.parentTitle,
     objectSource: catalogEntry?.displayProfile.source,
     objectQuality: catalogEntry?.displayProfile.quality ?? 'fallback',
+    refreshState: catalogEntry?.refreshState,
+    publishObjectCatalogEntryId: catalogEntry?.id,
+    activeSessionPointer: catalogEntry?.activeSessionPointer,
     binding,
   };
 }
@@ -329,16 +357,39 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
       parentKind: seed.parentKind,
       objectSource: seed.objectSource,
       objectQuality: seed.objectQuality,
+      refreshState: seed.refreshState,
+      publishObjectCatalogEntryId: seed.publishObjectCatalogEntryId,
       audiences: seed.audience ? [seed.audience] : [],
       bindings: seed.binding ? [seed.binding] : [],
       sessions: seed.session ? [seed.session] : [],
       primaryAudience: seed.audience,
+      activeSessionPointer: seed.activeSessionPointer,
       lastActivity: seed.lastActivity,
     });
     return;
   }
 
   if (!existing.subtitle && seed.subtitle) {
+    existing.subtitle = seed.subtitle;
+  }
+  if (
+    seed.title &&
+    seed.title !== existing.title &&
+    (getObjectQualityRank(seed.objectQuality) > getObjectQualityRank(existing.objectQuality) ||
+      (seed.publishObjectCatalogEntryId &&
+        seed.publishObjectCatalogEntryId === existing.publishObjectCatalogEntryId &&
+        getObjectQualityRank(seed.objectQuality) >= getObjectQualityRank(existing.objectQuality)))
+  ) {
+    existing.title = seed.title;
+  }
+  if (
+    seed.subtitle &&
+    seed.subtitle !== existing.subtitle &&
+    (getObjectQualityRank(seed.objectQuality) > getObjectQualityRank(existing.objectQuality) ||
+      (seed.publishObjectCatalogEntryId &&
+        seed.publishObjectCatalogEntryId === existing.publishObjectCatalogEntryId &&
+        getObjectQualityRank(seed.objectQuality) >= getObjectQualityRank(existing.objectQuality)))
+  ) {
     existing.subtitle = seed.subtitle;
   }
   if (!existing.parentTitle && seed.parentTitle) {
@@ -353,8 +404,45 @@ function upsertObject(map: Map<string, PublicationObjectViewModel>, seed: Public
   if (!existing.objectSource && seed.objectSource) {
     existing.objectSource = seed.objectSource;
   }
-  if (!existing.objectQuality && seed.objectQuality) {
+  if (
+    seed.objectSource &&
+    seed.objectSource !== existing.objectSource &&
+    (getObjectQualityRank(seed.objectQuality) > getObjectQualityRank(existing.objectQuality) ||
+      (seed.publishObjectCatalogEntryId &&
+        seed.publishObjectCatalogEntryId === existing.publishObjectCatalogEntryId &&
+        getObjectQualityRank(seed.objectQuality) >= getObjectQualityRank(existing.objectQuality)))
+  ) {
+    existing.objectSource = seed.objectSource;
+  }
+  if (
+    seed.objectQuality &&
+    (!existing.objectQuality ||
+      getObjectQualityRank(seed.objectQuality) > getObjectQualityRank(existing.objectQuality) ||
+      (seed.publishObjectCatalogEntryId &&
+        seed.publishObjectCatalogEntryId === existing.publishObjectCatalogEntryId &&
+        getObjectQualityRank(seed.objectQuality) >= getObjectQualityRank(existing.objectQuality)))
+  ) {
     existing.objectQuality = seed.objectQuality;
+  }
+  if (
+    seed.refreshState &&
+    (!existing.refreshState ||
+      seed.refreshState.updatedAt >= existing.refreshState.updatedAt ||
+      (seed.publishObjectCatalogEntryId &&
+        seed.publishObjectCatalogEntryId === existing.publishObjectCatalogEntryId &&
+        seed.refreshState.updatedAt >= existing.refreshState.updatedAt))
+  ) {
+    existing.refreshState = seed.refreshState;
+  }
+  if (!existing.publishObjectCatalogEntryId && seed.publishObjectCatalogEntryId) {
+    existing.publishObjectCatalogEntryId = seed.publishObjectCatalogEntryId;
+  }
+  if (
+    seed.activeSessionPointer &&
+    (!existing.activeSessionPointer ||
+      seed.activeSessionPointer.lastActivity > existing.activeSessionPointer.lastActivity)
+  ) {
+    existing.activeSessionPointer = seed.activeSessionPointer;
   }
   if (seed.lastActivity && (!existing.lastActivity || seed.lastActivity > existing.lastActivity)) {
     existing.lastActivity = seed.lastActivity;
@@ -386,9 +474,10 @@ export function buildPublicationObjects(params: {
   });
 
   params.bindings.forEach((binding) => {
+    const catalogEntry = params.resolveBindingCatalogEntry?.(binding);
     const audience = params.resolveBindingAudience(binding);
     if (!audience) {
-      const bindingSeed = resolveBindingSeed(binding, params.platform, params.resolveBindingCatalogEntry?.(binding));
+      const bindingSeed = resolveBindingSeed(binding, params.platform, catalogEntry);
       if (bindingSeed) {
         upsertObject(objectMap, bindingSeed);
       }
@@ -397,6 +486,14 @@ export function buildPublicationObjects(params: {
 
     upsertObject(objectMap, {
       ...resolveAudienceSeed(audience, params.platform),
+      title: catalogEntry?.displayProfile.title ?? audience.objectTitle ?? audience.title,
+      subtitle: catalogEntry?.displayProfile.subtitle ?? audience.objectSubtitle ?? audience.subtitle,
+      parentTitle: catalogEntry?.displayProfile.parentTitle ?? audience.parentObjectTitle,
+      objectSource: catalogEntry?.displayProfile.source ?? audience.objectSource,
+      objectQuality: catalogEntry?.displayProfile.quality ?? audience.objectQuality,
+      refreshState: catalogEntry?.refreshState ?? audience.objectRefreshState,
+      publishObjectCatalogEntryId: audience.publishObjectCatalogEntryId ?? catalogEntry?.id,
+      activeSessionPointer: catalogEntry?.activeSessionPointer,
       binding,
     });
   });

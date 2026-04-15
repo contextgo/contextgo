@@ -25,6 +25,7 @@ const publicationServiceMocks = vi.hoisted(() => ({
   readCatalogForConversations: vi.fn(),
   readCatalogForWorkspaces: vi.fn(),
   resolvePublishObjectCatalog: vi.fn(),
+  refreshCatalog: vi.fn(),
   upsertChannelBinding: vi.fn(),
   deleteChannelBinding: vi.fn(),
 }));
@@ -92,6 +93,17 @@ function buildMockPublishObjects(params: {
         quality: title === publishObject.nativeObjectId ? 'fallback' : 'inferred',
         resolvedAt: binding.updatedAt,
       },
+      refreshState:
+        title === publishObject.nativeObjectId
+          ? {
+              status: 'needs-refresh',
+              reason: 'manual-fallback',
+              updatedAt: binding.updatedAt,
+            }
+          : {
+              status: 'ready',
+              updatedAt: binding.updatedAt,
+            },
       createdAt: binding.createdAt,
       updatedAt: binding.updatedAt,
     };
@@ -135,6 +147,10 @@ function buildMockPublishObjects(params: {
           ? 'fallback'
           : 'resolved',
         resolvedAt: identity.lastActive ?? identity.authorizedAt,
+      },
+      refreshState: {
+        status: 'ready',
+        updatedAt: identity.lastActive ?? identity.authorizedAt,
       },
       createdAt: identity.authorizedAt,
       updatedAt: identity.lastActive ?? identity.authorizedAt,
@@ -182,6 +198,7 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     deleteChannelAccount: makeChannel('deleteChannelAccount'),
     deleteConnectorInstance: makeChannel('deleteConnectorInstance'),
     getBindingCatalog: makeChannel('getBindingCatalog'),
+    refreshPublicationCatalog: makeChannel('refreshPublicationCatalog'),
     getBindings: makeChannel('getBindings'),
     upsertBinding: makeChannel('upsertBinding'),
     deleteBinding: makeChannel('deleteBinding'),
@@ -295,6 +312,7 @@ vi.mock('@process/channels/core/ProjectChannelPublicationService', () => ({
     readCatalogForConversations = publicationServiceMocks.readCatalogForConversations;
     readCatalogForWorkspaces = publicationServiceMocks.readCatalogForWorkspaces;
     resolvePublishObjectCatalog = publicationServiceMocks.resolvePublishObjectCatalog;
+    refreshCatalog = publicationServiceMocks.refreshCatalog;
     upsertChannelBinding = publicationServiceMocks.upsertChannelBinding;
     deleteChannelBinding = publicationServiceMocks.deleteChannelBinding;
   },
@@ -373,6 +391,19 @@ describe('channelBridge', () => {
       resolvedPublishObjects = buildMockPublishObjects(params);
       return resolvedPublishObjects;
     });
+    publicationServiceMocks.refreshCatalog.mockImplementation(
+      async ({ publicationCatalog, remoteIdentities, channelAccounts }) => {
+        resolvedPublishObjects = buildMockPublishObjects({
+          bindings: publicationCatalog.bindings,
+          remoteIdentities,
+          channelAccounts,
+        });
+        return {
+          ...publicationCatalog,
+          publishObjects: resolvedPublishObjects,
+        };
+      }
+    );
     publicationServiceMocks.upsertChannelBinding.mockImplementation(
       async (_workspace: string, binding: IChannelBinding) => {
         currentRepo?.upsertChannelBinding(withChannelAccountId(binding));
@@ -628,7 +659,7 @@ describe('channelBridge', () => {
   });
 
   describe('getActiveSessionCatalog', () => {
-    it('returns platform-native object metadata for active sessions', async () => {
+    it('returns explicit publication and active-session pointer fields for active sessions', async () => {
       const connector: IConnectorInstance = {
         id: 'connector-discord',
         platform: 'discord',
@@ -643,10 +674,22 @@ describe('channelBridge', () => {
         id: 'external-session-1',
         userId: 'remote-discord-thread-1',
         agentType: 'codex',
-        conversationId: 'conversation-1',
+        conversationId: 'conversation-stale-1',
         workspace: '/tmp/discord-ops',
         createdAt: 1000,
         lastActivity: 2500,
+      };
+      const binding: IChannelBinding = {
+        id: 'binding-discord-thread-1',
+        connectorId: 'connector-discord',
+        scopeType: 'remote_chat',
+        scopeKey: 'discord://guild-1/channel-22/thread-77',
+        agentProfileId: 'agent-profile-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        createdAt: 1000,
+        updatedAt: 1000,
       };
       const identity: IRemoteIdentity = {
         id: 'remote-discord-thread-1',
@@ -671,7 +714,23 @@ describe('channelBridge', () => {
       vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
       vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([identity]);
-      vi.mocked(repo.getChannelBindings).mockReturnValue([]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+      mockGetAllExternalSessions.mockReturnValue({
+        success: true,
+        data: [
+          {
+            id: 'external-session-1',
+            connectorId: 'connector-discord',
+            remoteIdentityId: 'remote-discord-thread-1',
+            bindingId: 'binding-discord-thread-1',
+            agentProfileId: 'agent-profile-1',
+            activeConversationId: 'conversation-current-1',
+            state: 'active',
+            createdAt: 1000,
+            lastActivity: 2500,
+          },
+        ],
+      });
 
       const result = await handlers['getActiveSessionCatalog']();
 
@@ -679,12 +738,21 @@ describe('channelBridge', () => {
       expect(result.data).toEqual([
         expect.objectContaining({
           id: 'external-session-1',
+          externalSessionId: 'external-session-1',
           connectorId: 'connector-discord',
+          publicationBindingId: 'binding-discord-thread-1',
+          bindingId: 'binding-discord-thread-1',
+          activeConversationId: 'conversation-current-1',
+          conversationId: 'conversation-current-1',
           objectKey: 'discord://guild-1/channel-22/thread-77',
           objectKind: 'thread',
           objectTitle: 'Incident Thread',
           parentObjectKey: 'discord://guild-1/channel-22',
           parentObjectKind: 'channel',
+          publishObjectCatalogEntryId: 'connector-discord::thread::77::discord://guild-1/channel-22',
+          objectRefreshState: expect.objectContaining({
+            status: 'ready',
+          }),
         }),
       ]);
     });
@@ -831,6 +899,89 @@ describe('channelBridge', () => {
   // --- binding management ---
 
   describe('getBindingCatalog', () => {
+    it('reads the persisted publication catalog without triggering an implicit refresh', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-1',
+        platform: 'telegram',
+        name: 'Telegram',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const profile: IAgentProfile = {
+        id: 'agent-profile-1',
+        name: 'OpenClaw Publication',
+        backend: 'openclaw-gateway',
+        version: 1,
+        archived: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        scopeKey: 'group:alpha',
+        agentProfileId: 'agent-profile-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        metadata: {
+          publishObject: {
+            nativeObjectType: 'group',
+            nativeObjectId: 'group:alpha',
+            discoverySource: 'manual',
+          },
+        },
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([]);
+      resolvedPublishObjects = [
+        {
+          id: 'connector-1::group::group:alpha::',
+          channelAccountId: 'connector-1',
+          nativeObjectType: 'group',
+          nativeObjectId: 'group:alpha',
+          displayProfile: {
+            title: 'Alpha Group',
+            source: 'manual',
+            quality: 'fallback',
+            resolvedAt: 1000,
+          },
+          refreshState: {
+            status: 'needs-refresh',
+            reason: 'manual-fallback',
+            updatedAt: 1000,
+          },
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ];
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(publicationServiceMocks.resolvePublishObjectCatalog).not.toHaveBeenCalled();
+      expect(publicationServiceMocks.refreshCatalog).not.toHaveBeenCalled();
+      expect(result.data?.publishObjects).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'connector-1::group::group:alpha::',
+            displayProfile: expect.objectContaining({
+              title: 'Alpha Group',
+            }),
+          }),
+        ])
+      );
+    });
+
     it('returns connectors, profiles, and bindings in one response', async () => {
       const connector: IConnectorInstance = {
         id: 'connector-1',
@@ -909,19 +1060,130 @@ describe('channelBridge', () => {
               parentObjectKind: 'chat',
             }),
           ]),
-          publishObjects: expect.arrayContaining([
-            expect.objectContaining({
-              channelAccountId: 'connector-1',
-              nativeObjectType: 'thread',
-              nativeObjectId: 'group:alpha:thread:9',
-              displayProfile: expect.objectContaining({
-                title: 'Ops Topic',
-                source: 'inbound-learned',
-                quality: 'resolved',
-              }),
-            }),
-          ]),
+          publishObjects: [],
         })
+      );
+    });
+
+    it('returns object-level active session pointers in publish object catalog entries', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-1',
+        platform: 'telegram',
+        name: 'Telegram',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const profile: IAgentProfile = {
+        id: 'agent-profile-1',
+        name: 'OpenClaw Publication',
+        backend: 'openclaw-gateway',
+        version: 1,
+        archived: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        scopeKey: 'group:alpha',
+        agentProfileId: 'agent-profile-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        metadata: {
+          publishObject: {
+            nativeObjectType: 'group',
+            nativeObjectId: 'group:alpha',
+            discoverySource: 'manual',
+          },
+        },
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-1',
+        connectorId: 'connector-1',
+        remoteUserId: 'user-1',
+        remoteChatId: 'group:alpha',
+        remoteChatType: 'group',
+        displayName: 'Alpha Group',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+      const session: IChannelSession = {
+        id: 'external-session-1',
+        userId: 'remote-1',
+        agentType: 'codex',
+        conversationId: 'conversation-stale-1',
+        workspace: '/tmp/workspace',
+        createdAt: 1000,
+        lastActivity: 2600,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+      vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
+      resolvedPublishObjects = [
+        {
+          id: 'connector-1::group::group:alpha::',
+          channelAccountId: 'connector-1',
+          nativeObjectType: 'group',
+          nativeObjectId: 'group:alpha',
+          displayProfile: {
+            title: 'Alpha Group',
+            source: 'manual',
+            quality: 'fallback',
+            resolvedAt: 1000,
+          },
+          refreshState: {
+            status: 'needs-refresh',
+            reason: 'manual-fallback',
+            updatedAt: 1000,
+          },
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ];
+      mockGetAllExternalSessions.mockReturnValue({
+        success: true,
+        data: [
+          {
+            id: 'external-session-1',
+            connectorId: 'connector-1',
+            remoteIdentityId: 'remote-1',
+            bindingId: 'binding-1',
+            agentProfileId: 'agent-profile-1',
+            activeConversationId: 'conversation-current-1',
+            state: 'active',
+            createdAt: 1000,
+            lastActivity: 2600,
+          },
+        ],
+      });
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.publishObjects).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            channelAccountId: 'connector-1',
+            nativeObjectType: 'group',
+            nativeObjectId: 'group:alpha',
+            activeSessionPointer: expect.objectContaining({
+              externalSessionId: 'external-session-1',
+              activeConversationId: 'conversation-current-1',
+              publicationBindingId: 'binding-1',
+              workspace: '/tmp/workspace',
+            }),
+          }),
+        ])
       );
     });
 
@@ -1085,8 +1347,6 @@ describe('channelBridge', () => {
             subtitle: 'Incident command room',
             objectTitle: 'Core Ops Group',
             objectSubtitle: 'Incident command room',
-            objectSource: 'official-pull',
-            objectQuality: 'resolved',
           }),
           expect.objectContaining({
             connectorId: 'connector-lark-rich',
@@ -1095,8 +1355,6 @@ describe('channelBridge', () => {
             title: 'Alice Chen',
             displayName: 'Alice Chen',
             subtitle: undefined,
-            objectSource: 'official-pull',
-            objectQuality: 'resolved',
           }),
         ])
       );
@@ -1179,8 +1437,6 @@ describe('channelBridge', () => {
             parentObjectKey: 'parent-channel',
             parentObjectTitle: 'incident-room',
             parentObjectKind: 'channel',
-            objectSource: 'official-pull',
-            objectQuality: 'resolved',
           }),
         ])
       );
@@ -1238,8 +1494,6 @@ describe('channelBridge', () => {
           key: 'staff-1',
           title: 'Alice Wang',
           displayName: 'Alice Wang',
-          objectSource: 'runtime-resolved',
-          objectQuality: 'resolved',
         }),
       ]);
       expect(mockGetPlugin).toHaveBeenCalledWith('dingtalk-runtime-rich');
@@ -1300,8 +1554,6 @@ describe('channelBridge', () => {
             title: 'Ops Review',
             objectKind: 'group',
             objectTitle: 'Ops Review',
-            objectSource: 'official-pull',
-            objectQuality: 'resolved',
           }),
         ])
       );
@@ -1346,12 +1598,10 @@ describe('channelBridge', () => {
           expect.objectContaining({
             connectorId: 'connector-lark-unresolved-topic',
             key: 'oc_group_1:thread:om_topic_root_1',
-            title: 'Topic om_topic_root_1',
+            title: 'Topic',
             subtitle: undefined,
             objectKind: 'topic',
             objectTitle: 'Topic om_topic_root_1',
-            objectSource: 'inbound-learned',
-            objectQuality: 'fallback',
           }),
         ])
       );
@@ -1481,6 +1731,121 @@ describe('channelBridge', () => {
         expect.objectContaining({
           connectors: [readyConnector],
           channelAccounts: [readyConnector],
+        })
+      );
+    });
+  });
+
+  describe('refreshPublicationCatalog', () => {
+    it('returns an explicitly refreshed publication snapshot with binding catalog and active sessions', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-1',
+        platform: 'telegram',
+        name: 'Telegram',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const profile: IAgentProfile = {
+        id: 'agent-profile-1',
+        name: 'OpenClaw Publication',
+        backend: 'openclaw-gateway',
+        version: 1,
+        archived: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        scopeKey: 'group:alpha',
+        agentProfileId: 'agent-profile-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        metadata: {
+          publishObject: {
+            nativeObjectType: 'group',
+            nativeObjectId: 'group:alpha',
+            discoverySource: 'manual',
+          },
+        },
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-1',
+        connectorId: 'connector-1',
+        remoteUserId: 'user-1',
+        remoteChatId: 'group:alpha',
+        remoteChatType: 'group',
+        displayName: 'Alpha Group',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+      const session: IChannelSession = {
+        id: 'external-session-1',
+        userId: 'remote-1',
+        agentType: 'codex',
+        conversationId: 'conversation-stale-1',
+        workspace: '/tmp/workspace',
+        createdAt: 1000,
+        lastActivity: 2600,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+      vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
+      mockGetAllExternalSessions.mockReturnValue({
+        success: true,
+        data: [
+          {
+            id: 'external-session-1',
+            connectorId: 'connector-1',
+            remoteIdentityId: 'remote-1',
+            bindingId: 'binding-1',
+            agentProfileId: 'agent-profile-1',
+            activeConversationId: 'conversation-current-1',
+            state: 'active',
+            createdAt: 1000,
+            lastActivity: 2600,
+          },
+        ],
+      });
+
+      const result = await handlers['refreshPublicationCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(publicationServiceMocks.refreshCatalog).toHaveBeenCalledOnce();
+      expect(publicationServiceMocks.resolvePublishObjectCatalog).not.toHaveBeenCalled();
+      expect(result.data).toEqual(
+        expect.objectContaining({
+          bindingCatalog: expect.objectContaining({
+            connectors: [connector],
+            bindings: [{ ...binding, channelAccountId: binding.connectorId }],
+            publishObjects: expect.arrayContaining([
+              expect.objectContaining({
+                channelAccountId: 'connector-1',
+                nativeObjectId: 'group:alpha',
+                displayProfile: expect.objectContaining({
+                  title: 'Alpha Group',
+                }),
+              }),
+            ]),
+          }),
+          activeSessions: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'external-session-1',
+              publicationBindingId: 'binding-1',
+              activeConversationId: 'conversation-current-1',
+              objectTitle: 'Alpha Group',
+            }),
+          ]),
         })
       );
     });
