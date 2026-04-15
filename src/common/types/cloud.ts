@@ -69,6 +69,29 @@ export type OfficialRemoteStatus = {
   needsAttention?: boolean;
 };
 
+export type HostRuntimePlatform = 'macos' | 'windows' | 'linux';
+
+export type HostRuntimeMode = 'gui-host' | 'headless-host';
+
+export type HostRuntimeExposure = 'loopback' | 'external';
+
+export type HostRuntimeClientSurface = 'desktop-client' | 'mobile-client' | 'browser-client';
+
+export type HostRuntimeStatus = {
+  authority: 'host-runtime';
+  defaultRemoteAccess: 'official-remote';
+  exposure: HostRuntimeExposure;
+  lifecycle: 'stopped' | 'starting' | 'running' | 'stopping' | 'degraded';
+  mode: HostRuntimeMode;
+  platform: HostRuntimePlatform;
+  running: boolean;
+  supportedClients: HostRuntimeClientSurface[];
+  officialRemoteDesired: boolean;
+  officialRemoteReady: boolean;
+  localUrl?: string;
+  networkUrl?: string;
+};
+
 export type CloudStatus = {
   officialRemoteReady?: boolean;
   authenticated: boolean;
@@ -77,6 +100,7 @@ export type CloudStatus = {
   device: CloudDevice | null;
   deviceTokenAvailable: boolean;
   officialRemote: OfficialRemoteStatus;
+  hostRuntime: HostRuntimeStatus;
   providers: CloudAuthProviderId[];
   authBaseUrl: string;
   apiBaseUrl: string;

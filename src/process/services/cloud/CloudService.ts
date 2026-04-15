@@ -21,6 +21,7 @@ import type {
   CloudRemoteDeviceSelection,
   CloudRemoteDevicesPayload,
   CloudStatus,
+  HostRuntimePlatform,
   CloudUser,
 } from '@/common/types/cloud';
 import { ProcessConfig } from '@process/utils/initStorage';
@@ -76,6 +77,29 @@ type DesktopLoginResultWaiter = {
 type DesktopLoopbackLoginResultWaiter = DesktopLoginResultWaiter & {
   callbackUrl: string;
 };
+
+const HOST_RUNTIME_SUPPORTED_CLIENTS = ['desktop-client', 'mobile-client', 'browser-client'] as const;
+
+function resolveHostRuntimePlatform(devicePlatform?: string | null): HostRuntimePlatform {
+  if (devicePlatform === 'macos') {
+    return 'macos';
+  }
+  if (devicePlatform === 'windows') {
+    return 'windows';
+  }
+  if (devicePlatform === 'linux') {
+    return 'linux';
+  }
+
+  switch (process.platform) {
+    case 'darwin':
+      return 'macos';
+    case 'win32':
+      return 'windows';
+    default:
+      return 'linux';
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -406,6 +430,7 @@ export class CloudService {
     const officialRemote = this.officialRemoteTunnelService.getState();
     const officialRemoteReady =
       Boolean(deviceToken) && officialRemote.running === true && officialRemote.browserEntryReady === true;
+    const runtimeStatus = getHostBrowserEntryService().getRuntimeStatus();
 
     const nextStatus: CloudStatus = {
       authenticated: Boolean(sessionUser),
@@ -415,6 +440,20 @@ export class CloudService {
       deviceTokenAvailable: Boolean(deviceToken),
       officialRemote,
       officialRemoteReady,
+      hostRuntime: {
+        authority: 'host-runtime',
+        defaultRemoteAccess: 'official-remote',
+        exposure: runtimeStatus.allowRemote ? 'external' : 'loopback',
+        lifecycle: runtimeStatus.lifecycle,
+        mode: 'gui-host',
+        platform: resolveHostRuntimePlatform(effectiveDevice?.platform ?? null),
+        running: runtimeStatus.running,
+        supportedClients: [...HOST_RUNTIME_SUPPORTED_CLIENTS],
+        officialRemoteDesired: officialRemote.desired === true,
+        officialRemoteReady,
+        localUrl: runtimeStatus.localUrl,
+        networkUrl: runtimeStatus.networkUrl,
+      },
       providers: CLOUD_AUTH_PROVIDERS,
       authBaseUrl: CLOUD_AUTH_BASE_URL,
       apiBaseUrl: CLOUD_API_BASE_URL,
