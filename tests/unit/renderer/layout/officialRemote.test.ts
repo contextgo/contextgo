@@ -3,6 +3,8 @@ import {
   buildOfficialDeviceListUrl,
   buildOfficialRemoteDevicesRoute,
   buildOfficialDeviceUrl,
+  getCurrentHostRuntimeStatusKey,
+  isCurrentHostRuntimeReady,
   OFFICIAL_REMOTE_DEVICES_ROUTE,
   OFFICIAL_REMOTE_VIEW_LIST,
   OFFICIAL_REMOTE_VIEW_QUERY_KEY,
@@ -60,9 +62,12 @@ describe('officialRemote utils', () => {
 
   it('resolves nested hosted remote navigation so the outer desktop can take over device switching', () => {
     expect(
-      resolveHostedOfficialRemoteIntent('https://remote.example.com/device/device-123#/remote/devices?deviceId=device-456', {
-        displayedDeviceId: 'device-123',
-      })
+      resolveHostedOfficialRemoteIntent(
+        'https://remote.example.com/device/device-123#/remote/devices?deviceId=device-456',
+        {
+          displayedDeviceId: 'device-123',
+        }
+      )
     ).toEqual({
       kind: 'device-switch',
       deviceId: 'device-456',
@@ -78,9 +83,12 @@ describe('officialRemote utils', () => {
     });
 
     expect(
-      resolveHostedOfficialRemoteIntent('https://remote.example.com/device/device-123#/remote/devices?deviceId=device-123', {
-        displayedDeviceId: 'device-123',
-      })
+      resolveHostedOfficialRemoteIntent(
+        'https://remote.example.com/device/device-123#/remote/devices?deviceId=device-123',
+        {
+          displayedDeviceId: 'device-123',
+        }
+      )
     ).toEqual({
       kind: 'self-open',
       deviceId: 'device-123',
@@ -213,5 +221,117 @@ describe('officialRemote utils', () => {
         preferOfficialRemoteShell: false,
       })
     ).toBe('/guid');
+  });
+
+  it('derives current-device readiness from hostRuntime even when legacy officialRemote flags lag', () => {
+    expect(
+      isCurrentHostRuntimeReady({
+        apiBaseUrl: 'https://api.contextgo.test',
+        authBaseUrl: 'https://remote.contextgo.test',
+        authenticated: true,
+        browserSessionExpired: false,
+        device: null,
+        deviceTokenAvailable: true,
+        officialRemoteReady: false,
+        officialRemote: {
+          desired: false,
+          running: false,
+          browserEntryReady: false,
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'running',
+          mode: 'gui-host',
+          platform: 'macos',
+          running: true,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: true,
+          localUrl: 'http://localhost:25809',
+        },
+        providers: ['github', 'google'],
+        user: null,
+      })
+    ).toBe(true);
+
+    expect(
+      getCurrentHostRuntimeStatusKey({
+        apiBaseUrl: 'https://api.contextgo.test',
+        authBaseUrl: 'https://remote.contextgo.test',
+        authenticated: true,
+        browserSessionExpired: false,
+        device: null,
+        deviceTokenAvailable: true,
+        officialRemoteReady: false,
+        officialRemote: {
+          desired: false,
+          running: false,
+          browserEntryReady: false,
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'running',
+          mode: 'gui-host',
+          platform: 'macos',
+          running: true,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: true,
+          localUrl: 'http://localhost:25809',
+        },
+        providers: ['github', 'google'],
+        user: null,
+      })
+    ).toBe('settings.webui.officialRemoteStatusShort.ready');
+  });
+
+  it('maps a desired but not-yet-running hostRuntime to the connecting state', () => {
+    expect(
+      getCurrentHostRuntimeStatusKey({
+        apiBaseUrl: 'https://api.contextgo.test',
+        authBaseUrl: 'https://remote.contextgo.test',
+        authenticated: true,
+        browserSessionExpired: false,
+        device: {
+          id: 'device-1',
+          userId: 'user-1',
+          deviceName: 'Local Mac',
+          platform: 'macos',
+          status: 'active',
+          createdAt: '2026-04-01T00:00:00Z',
+          updatedAt: '2026-04-01T00:00:00Z',
+        },
+        deviceTokenAvailable: true,
+        officialRemoteReady: false,
+        officialRemote: {
+          desired: false,
+          running: false,
+          browserEntryReady: false,
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'stopped',
+          mode: 'gui-host',
+          platform: 'macos',
+          running: false,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: false,
+        },
+        providers: ['github', 'google'],
+        user: {
+          id: 'user-1',
+          email: 'dev@example.com',
+          username: 'dev',
+          displayName: 'Dev',
+        },
+      })
+    ).toBe('settings.webui.officialRemoteStatusShort.connecting');
   });
 });

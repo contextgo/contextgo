@@ -34,9 +34,15 @@ vi.mock('@/renderer/components/settings/SettingsModal/settingsViewContext', () =
   useSettingsViewMode: () => 'modal',
 }));
 
-vi.mock('@/renderer/utils/officialRemote', () => ({
-  dispatchOfficialRemoteSwitcherEvent: vi.fn(),
-}));
+vi.mock('@/renderer/utils/officialRemote', async () => {
+  const actual = await vi.importActual<typeof import('@/renderer/utils/officialRemote')>(
+    '@/renderer/utils/officialRemote'
+  );
+  return {
+    ...actual,
+    dispatchOfficialRemoteSwitcherEvent: vi.fn(),
+  };
+});
 
 vi.mock('@/renderer/utils/platform', async () => {
   const actual = await vi.importActual<typeof import('@/renderer/utils/platform')>('@/renderer/utils/platform');

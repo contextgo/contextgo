@@ -93,8 +93,9 @@ vi.mock('@/common', () => ({
       getStatus: { invoke: (...args: unknown[]) => hoisted.cloudGetStatusInvokeMock(...args) },
       ensureOfficialRemoteReady: {
         invoke: (...args: unknown[]) =>
-          (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: (...args: unknown[]) => unknown })
-            .__ensureOfficialRemoteReadyInvokeMock?.(...args),
+          (
+            globalThis as { __ensureOfficialRemoteReadyInvokeMock?: (...args: unknown[]) => unknown }
+          ).__ensureOfficialRemoteReadyInvokeMock?.(...args),
       },
       listRemoteDevices: { invoke: (...args: unknown[]) => hoisted.cloudListRemoteDevicesInvokeMock(...args) },
       statusChanged: { on: (...args: unknown[]) => hoisted.cloudStatusChangedOnMock(...args) },
@@ -418,8 +419,9 @@ describe('Sider', () => {
     vi.clearAllMocks();
     hoisted.cloudGetStatusInvokeMock.mockResolvedValue({ success: false });
     hoisted.cloudListRemoteDevicesInvokeMock.mockResolvedValue({ success: false });
-    (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: ReturnType<typeof vi.fn> }).__ensureOfficialRemoteReadyInvokeMock =
-      vi.fn().mockResolvedValue({ success: false });
+    (
+      globalThis as { __ensureOfficialRemoteReadyInvokeMock?: ReturnType<typeof vi.fn> }
+    ).__ensureOfficialRemoteReadyInvokeMock = vi.fn().mockResolvedValue({ success: false });
     hoisted.ensureDefaultSpaceInvokeMock.mockResolvedValue({ id: 'space-1', name: 'My Space' });
     hoisted.openVaultInvokeMock.mockResolvedValue({
       opened: true,
@@ -515,11 +517,24 @@ describe('Sider', () => {
           updatedAt: '2026-04-01T00:00:00Z',
         },
         deviceTokenAvailable: true,
-        officialRemoteReady: true,
+        officialRemoteReady: false,
         officialRemote: {
-          desired: true,
+          desired: false,
+          running: false,
+          browserEntryReady: false,
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'running',
+          mode: 'gui-host',
+          platform: 'macos',
           running: true,
-          browserEntryReady: true,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: true,
+          localUrl: 'http://localhost:25809',
         },
         providers: ['github', 'google'],
         authBaseUrl: 'https://remote.contextgo.test',
@@ -589,9 +604,21 @@ describe('Sider', () => {
         deviceTokenAvailable: true,
         officialRemoteReady: false,
         officialRemote: {
-          desired: true,
+          desired: false,
           running: false,
           browserEntryReady: false,
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'stopped',
+          mode: 'gui-host',
+          platform: 'macos',
+          running: false,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: false,
         },
         providers: ['github', 'google'],
         authBaseUrl: 'https://remote.contextgo.test',
@@ -631,19 +658,33 @@ describe('Sider', () => {
           updatedAt: '2026-04-01T00:00:00Z',
         },
         deviceTokenAvailable: true,
-        officialRemoteReady: true,
+        officialRemoteReady: false,
         officialRemote: {
-          desired: true,
+          desired: false,
+          running: false,
+          browserEntryReady: false,
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'running',
+          mode: 'gui-host',
+          platform: 'macos',
           running: true,
-          browserEntryReady: true,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: true,
+          localUrl: 'http://localhost:25809',
         },
         providers: ['github', 'google'],
         authBaseUrl: 'https://remote.contextgo.test',
         apiBaseUrl: 'https://api.contextgo.test',
       },
     });
-    (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: typeof ensureOfficialRemoteReadyInvokeMock }).__ensureOfficialRemoteReadyInvokeMock =
-      ensureOfficialRemoteReadyInvokeMock;
+    (
+      globalThis as { __ensureOfficialRemoteReadyInvokeMock?: typeof ensureOfficialRemoteReadyInvokeMock }
+    ).__ensureOfficialRemoteReadyInvokeMock = ensureOfficialRemoteReadyInvokeMock;
 
     renderSider('/guid');
 
@@ -681,9 +722,21 @@ describe('Sider', () => {
         deviceTokenAvailable: true,
         officialRemoteReady: false,
         officialRemote: {
-          desired: true,
+          desired: false,
           running: false,
           browserEntryReady: false,
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'stopped',
+          mode: 'gui-host',
+          platform: 'macos',
+          running: false,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: false,
         },
         providers: ['github', 'google'],
         authBaseUrl: 'https://remote.contextgo.test',
@@ -692,8 +745,9 @@ describe('Sider', () => {
     });
     hoisted.cloudListRemoteDevicesInvokeMock.mockImplementation(() => new Promise(() => undefined));
     const ensureOfficialRemoteReadyInvokeMock = vi.fn().mockImplementation(() => new Promise(() => undefined));
-    (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: typeof ensureOfficialRemoteReadyInvokeMock }).__ensureOfficialRemoteReadyInvokeMock =
-      ensureOfficialRemoteReadyInvokeMock;
+    (
+      globalThis as { __ensureOfficialRemoteReadyInvokeMock?: typeof ensureOfficialRemoteReadyInvokeMock }
+    ).__ensureOfficialRemoteReadyInvokeMock = ensureOfficialRemoteReadyInvokeMock;
 
     renderSider('/guid');
 

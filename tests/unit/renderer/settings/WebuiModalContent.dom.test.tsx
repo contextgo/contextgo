@@ -19,6 +19,12 @@ const translations: Record<string, string> = {
   'common.copy': 'Copy',
   'settings.cloud.loading': 'Checking cloud account status...',
   'settings.webui.officialRemoteSignedOut': 'Official Remote is not connected yet.',
+  'settings.webui.officialRemoteDeviceReady': 'This device is linked and ready for Official Remote.',
+  'settings.webui.officialRemotePreparing': 'ContextGo is preparing this desktop for Official Remote.',
+  'settings.webui.officialRemoteConnecting': 'ContextGo is reconnecting this desktop to Official Remote.',
+  'settings.webui.officialRemoteNeedsRelogin':
+    'Official Remote needs a fresh cloud login before this desktop can reconnect.',
+  'settings.webui.officialRemoteUnavailable': 'Official Remote is not ready on this desktop yet.',
   'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this device.',
   'settings.webui.officialRemoteRuntimeHint':
     'Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.',
@@ -56,9 +62,15 @@ vi.mock('react-i18next', () => ({
 
 const openExternalUrlMock = vi.fn();
 
-vi.mock('@/renderer/utils/officialRemote', () => ({
-  dispatchOfficialRemoteSwitcherEvent: (...args: unknown[]) => dispatchOfficialRemoteSwitcherEventMock(...args),
-}));
+vi.mock('@/renderer/utils/officialRemote', async () => {
+  const actual = await vi.importActual<typeof import('@/renderer/utils/officialRemote')>(
+    '@/renderer/utils/officialRemote'
+  );
+  return {
+    ...actual,
+    dispatchOfficialRemoteSwitcherEvent: (...args: unknown[]) => dispatchOfficialRemoteSwitcherEventMock(...args),
+  };
+});
 
 vi.mock('@/renderer/utils/platform', async () => {
   const actual = await vi.importActual<typeof import('@/renderer/utils/platform')>('@/renderer/utils/platform');
@@ -283,6 +295,18 @@ describe('WebuiModalContent', () => {
           desired: false,
           running: false,
         },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'stopped',
+          mode: 'gui-host',
+          platform: 'macos',
+          running: false,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: false,
+          officialRemoteReady: false,
+        },
         providers: ['github', 'google'],
         authBaseUrl: 'https://auth.contextgo.io',
         apiBaseUrl: 'https://api.contextgo.io',
@@ -341,10 +365,23 @@ describe('WebuiModalContent', () => {
         deviceTokenAvailable: true,
         officialRemoteReady: false,
         officialRemote: {
-          desired: true,
+          desired: false,
           running: false,
           browserEntryReady: false,
           transport: 'cloud-relay',
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'running',
+          mode: 'gui-host',
+          platform: 'macos',
+          running: true,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: true,
+          localUrl: 'http://localhost:25809',
         },
         providers: ['github', 'google'],
         authBaseUrl: 'https://auth.contextgo.io',
@@ -404,10 +441,23 @@ describe('WebuiModalContent', () => {
         },
         deviceTokenAvailable: true,
         officialRemote: {
-          desired: true,
-          running: true,
-          browserEntryReady: true,
+          desired: false,
+          running: false,
+          browserEntryReady: false,
           transport: 'cloud-relay',
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'running',
+          mode: 'gui-host',
+          platform: 'macos',
+          running: true,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: true,
+          localUrl: 'http://localhost:25809',
         },
         providers: ['github', 'google'],
         authBaseUrl: 'https://auth.contextgo.io',
@@ -420,6 +470,7 @@ describe('WebuiModalContent', () => {
 
     render(<WebuiModalContent />);
 
+    expect(await screen.findByText('This device is linked and ready for Official Remote.')).toBeInTheDocument();
     expect(
       await screen.findByText(
         'Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.'
@@ -463,10 +514,23 @@ describe('WebuiModalContent', () => {
         },
         deviceTokenAvailable: true,
         officialRemote: {
-          desired: true,
-          running: true,
-          browserEntryReady: true,
+          desired: false,
+          running: false,
+          browserEntryReady: false,
           transport: 'cloud-relay',
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'running',
+          mode: 'gui-host',
+          platform: 'macos',
+          running: true,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: true,
+          localUrl: 'http://localhost:25809',
         },
         providers: ['github', 'google'],
         authBaseUrl: 'https://auth.contextgo.io',

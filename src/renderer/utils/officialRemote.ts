@@ -1,5 +1,6 @@
 import { CONTEXTGO_AUTH_BASE_URL } from '@/common/config/constants';
 import { isContextGoHostname } from '@/common/utils';
+import type { CloudStatus } from '@/common/types/cloud';
 
 export const OFFICIAL_REMOTE_DEVICES_ROUTE = '/remote/devices';
 export const OFFICIAL_REMOTE_WEBVIEW_PARTITION = 'persist:contextgo-cloud-auth';
@@ -127,6 +128,91 @@ export const shouldPreferOfficialRemoteShell = (params: {
     return isContextGoHostname(new URL(params.currentHref).hostname);
   } catch {
     return false;
+  }
+};
+
+const isLegacyOfficialRemoteReady = (cloudStatus: CloudStatus | null): boolean => {
+  const officialRemoteStatus = cloudStatus?.officialRemote;
+  return Boolean(
+    cloudStatus?.officialRemoteReady === true ||
+    (officialRemoteStatus?.running === true && officialRemoteStatus.browserEntryReady === true)
+  );
+};
+
+const isHostRuntimeDesired = (cloudStatus: CloudStatus | null): boolean => {
+  if (typeof cloudStatus?.hostRuntime?.officialRemoteDesired === 'boolean') {
+    return cloudStatus.hostRuntime.officialRemoteDesired;
+  }
+
+  return cloudStatus?.officialRemote?.desired === true;
+};
+
+export const isCurrentHostRuntimeReady = (cloudStatus: CloudStatus | null): boolean => {
+  if (!cloudStatus?.authenticated) {
+    return false;
+  }
+
+  if (typeof cloudStatus.hostRuntime?.officialRemoteReady === 'boolean') {
+    return cloudStatus.hostRuntime.officialRemoteReady;
+  }
+
+  return isLegacyOfficialRemoteReady(cloudStatus);
+};
+
+export const shouldEnsureCurrentHostRuntime = (cloudStatus: CloudStatus | null): boolean => {
+  if (!cloudStatus?.authenticated || !cloudStatus.device || !cloudStatus.deviceTokenAvailable) {
+    return false;
+  }
+
+  if (cloudStatus.officialRemote?.needsAttention === true) {
+    return false;
+  }
+
+  return !isCurrentHostRuntimeReady(cloudStatus);
+};
+
+export const getCurrentHostRuntimeStatusKey = (cloudStatus: CloudStatus | null): string => {
+  if (!cloudStatus?.authenticated) {
+    return 'settings.webui.officialRemoteStatusShort.signedOut';
+  }
+
+  if (isCurrentHostRuntimeReady(cloudStatus)) {
+    return 'settings.webui.officialRemoteStatusShort.ready';
+  }
+
+  if (cloudStatus.officialRemote?.needsAttention === true) {
+    return 'settings.webui.officialRemoteStatusShort.relogin';
+  }
+
+  if (!cloudStatus.deviceTokenAvailable) {
+    return 'settings.webui.officialRemoteStatusShort.linking';
+  }
+
+  if (isHostRuntimeDesired(cloudStatus)) {
+    return cloudStatus.hostRuntime?.running === true
+      ? 'settings.webui.officialRemoteStatusShort.preparing'
+      : 'settings.webui.officialRemoteStatusShort.connecting';
+  }
+
+  return 'settings.webui.officialRemoteStatusShort.unavailable';
+};
+
+export const getCurrentHostRuntimeDetailStatusKey = (cloudStatus: CloudStatus | null): string => {
+  switch (getCurrentHostRuntimeStatusKey(cloudStatus)) {
+    case 'settings.webui.officialRemoteStatusShort.ready':
+      return 'settings.webui.officialRemoteDeviceReady';
+    case 'settings.webui.officialRemoteStatusShort.relogin':
+      return 'settings.webui.officialRemoteNeedsRelogin';
+    case 'settings.webui.officialRemoteStatusShort.linking':
+      return 'settings.webui.officialRemoteDevicePending';
+    case 'settings.webui.officialRemoteStatusShort.preparing':
+      return 'settings.webui.officialRemotePreparing';
+    case 'settings.webui.officialRemoteStatusShort.connecting':
+      return 'settings.webui.officialRemoteConnecting';
+    case 'settings.webui.officialRemoteStatusShort.signedOut':
+      return 'settings.webui.officialRemoteSignedOut';
+    default:
+      return 'settings.webui.officialRemoteUnavailable';
   }
 };
 

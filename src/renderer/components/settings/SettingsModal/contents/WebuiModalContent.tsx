@@ -10,7 +10,10 @@ import type { CloudAuthProviderId, CloudStatus } from '@/common/types/cloud';
 import { getPublicDocsUrl, PUBLIC_DOC_SLUGS } from '@/common/update/publicUrls';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { SettingsSubModal } from '@/renderer/components/settings';
-import { dispatchOfficialRemoteSwitcherEvent } from '@/renderer/utils/officialRemote';
+import {
+  dispatchOfficialRemoteSwitcherEvent,
+  getCurrentHostRuntimeDetailStatusKey,
+} from '@/renderer/utils/officialRemote';
 import { openExternalUrl } from '@/renderer/utils/platform';
 import { Button, Form, Input, Message, Switch, Tooltip } from '@arco-design/web-react';
 import { CheckOne, Copy, Earth, EditTwo, LinkCloud, Refresh } from '@icon-park/react';
@@ -592,34 +595,7 @@ const WebuiModalContent: React.FC = () => {
   };
   const displayPassword = getDisplayPassword();
   const displayUsername = status?.adminUsername || 'admin';
-  const officialRemoteStatus = cloudStatus?.officialRemote;
-  const officialRemoteRelayRunning = officialRemoteStatus?.running === true;
-  const officialRemoteBrowserEntryReady = officialRemoteStatus?.browserEntryReady === true;
-  const officialRemoteReady =
-    cloudStatus?.officialRemoteReady === true || (officialRemoteRelayRunning && officialRemoteBrowserEntryReady);
-  const officialRemoteNeedsLink = Boolean(cloudStatus?.user) && !cloudStatus?.deviceTokenAvailable;
-  const officialRemoteNeedsRelogin = officialRemoteStatus?.needsAttention === true;
-  const officialRemoteSetupInProgress =
-    Boolean(cloudStatus?.user) &&
-    cloudStatus?.deviceTokenAvailable &&
-    officialRemoteRelayRunning &&
-    !officialRemoteBrowserEntryReady;
-  const officialRemoteRelayConnecting =
-    Boolean(cloudStatus?.user) &&
-    cloudStatus?.deviceTokenAvailable &&
-    officialRemoteStatus?.desired === true &&
-    !officialRemoteRelayRunning;
-  const officialRemoteStatusText = officialRemoteReady
-    ? t('settings.webui.officialRemoteDeviceReady')
-    : officialRemoteNeedsRelogin
-      ? t('settings.webui.officialRemoteNeedsRelogin')
-      : officialRemoteNeedsLink
-        ? t('settings.webui.officialRemoteDevicePending')
-        : officialRemoteSetupInProgress
-          ? t('settings.webui.officialRemotePreparing')
-          : officialRemoteRelayConnecting
-            ? t('settings.webui.officialRemoteConnecting')
-            : t('settings.webui.officialRemoteUnavailable');
+  const officialRemoteStatusText = t(getCurrentHostRuntimeDetailStatusKey(cloudStatus));
 
   const handleCloudLogin = useCallback(
     async (provider: CloudAuthProviderId) => {
