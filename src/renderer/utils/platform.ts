@@ -42,8 +42,8 @@ export const isLinux = (): boolean => {
 };
 
 /**
- * Check if running inside the iOS mobile shell WKWebView.
- * 检测是否运行在 iOS mobile shell 的 WKWebView 中
+ * Check if running inside a mobile shell WebView on iOS, Android, or HarmonyOS.
+ * 检测是否运行在 iOS、Android 或 HarmonyOS 的 mobile shell WebView 中
  */
 export const isMobileShellWebView = (): boolean => {
   return typeof navigator !== 'undefined' && /ContextGoMobileShell/i.test(navigator.userAgent);

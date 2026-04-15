@@ -5,8 +5,8 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.webkit.JavascriptInterface
 import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -16,7 +16,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import io.contextgo.mobileshell.databinding.ActivityMainBinding
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Locale
+import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
   private lateinit var binding: ActivityMainBinding
@@ -131,6 +134,16 @@ class MainActivity : AppCompatActivity() {
         val target = request.url ?: return false
         val scheme = target.scheme?.lowercase(Locale.US).orEmpty()
 
+        if (recoverIfNeeded(target)) {
+          return true
+        }
+
+        if (shouldRouteThroughSystemBrowser(target)) {
+          return runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, target))
+          }.isSuccess
+        }
+
         if (scheme == "http" || scheme == "https") {
           return false
         }
@@ -223,9 +236,23 @@ class MainActivity : AppCompatActivity() {
 
   private fun openIntentTarget(intent: Intent?): Boolean {
     val rawTarget = intent?.dataString ?: return false
-    val resolvedTarget = ShellTargetResolver.resolve(rawTarget) ?: return false
-    openTarget(resolvedTarget)
+    val payload = ShellTargetResolver.resolvePayload(rawTarget) ?: return false
+    handleIntentPayload(payload)
     return true
+  }
+
+  private fun handleIntentPayload(payload: ShellLoginPayload) {
+    if (payload.shouldRecoverNatively) {
+      recoverFromLoginError(payload.errorCode)
+      return
+    }
+
+    if (payload.loginCode != null) {
+      completeLoginAndOpen(payload)
+      return
+    }
+
+    openTarget(payload.targetUrl)
   }
 
   private fun openTarget(targetUrl: String, persist: Boolean = true) {
@@ -294,6 +321,123 @@ class MainActivity : AppCompatActivity() {
     }
   }
 
+  private fun shouldRouteThroughSystemBrowser(target: Uri): Boolean {
+    val host = target.host?.lowercase(Locale.US) ?: return false
+    if (host != OFFICIAL_REMOTE_HOST) {
+      return false
+    }
+
+    return target.path?.lowercase(Locale.US)?.startsWith("/api/auth/oauth/") == true
+  }
+
+  private fun recoverIfNeeded(target: Uri): Boolean {
+    val errorCode = loginRecoveryErrorCode(target) ?: return false
+    recoverFromLoginError(errorCode)
+    return true
+  }
+
+  private fun loginRecoveryErrorCode(target: Uri): String? {
+    val host = target.host?.lowercase(Locale.US) ?: return null
+    if (host != OFFICIAL_REMOTE_HOST) {
+      return null
+    }
+
+    val path = target.path?.lowercase(Locale.US) ?: return null
+    if (path != "/login") {
+      return null
+    }
+
+    return target.getQueryParameter("oauthError")?.trim()?.takeIf { it.isNotEmpty() }
+      ?: target.getQueryParameter("error")?.trim()?.takeIf { it.isNotEmpty() }
+  }
+
+  private fun recoverFromLoginError(errorCode: String?) {
+    showConnectionSettings()
+    showError(
+      if (errorCode.isNullOrBlank()) {
+        getString(R.string.login_callback_failed)
+      } else {
+        getString(R.string.login_failed, errorCode)
+      }
+    )
+  }
+
+  private fun completeLoginAndOpen(payload: ShellLoginPayload) {
+    showStartupOverlay(payload.targetUrl)
+    showWebUi()
+    Thread {
+      val succeeded = runCatching {
+        consumeLoginCode(payload.loginCode ?: error("Missing login code"), payload.targetUrl)
+      }.isSuccess
+
+      runOnUiThread {
+        if (!succeeded) {
+          recoverFromLoginError("callback_failed")
+          return@runOnUiThread
+        }
+
+        openTarget(payload.targetUrl)
+      }
+    }.start()
+  }
+
+  private fun consumeLoginCode(code: String, targetUrl: String) {
+    val consumeEndpoint = buildConsumeEndpoint(targetUrl) ?: error("Invalid consume endpoint")
+    val connection = (consumeEndpoint.openConnection() as HttpURLConnection).apply {
+      requestMethod = "POST"
+      doOutput = true
+      instanceFollowRedirects = false
+      setRequestProperty("Accept", "application/json")
+      setRequestProperty("Content-Type", "application/json")
+      setRequestProperty("User-Agent", binding.webView.settings.userAgentString)
+    }
+
+    val requestBody = JSONObject()
+      .put("code", code)
+      .toString()
+      .toByteArray(Charsets.UTF_8)
+    connection.outputStream.use { output ->
+      output.write(requestBody)
+    }
+
+    val responseCode = connection.responseCode
+    if (responseCode !in 200..299) {
+      connection.disconnect()
+      error("Desktop login consume failed with status $responseCode")
+    }
+
+    val cookieManager = CookieManager.getInstance()
+    val cookieOrigin = buildCookieOrigin(targetUrl) ?: error("Invalid cookie origin")
+    connection.headerFields.forEach { (headerName, headerValues) ->
+      if (!headerName.equals("Set-Cookie", ignoreCase = true)) {
+        return@forEach
+      }
+
+      headerValues.orEmpty().forEach { cookieValue ->
+        cookieManager.setCookie(cookieOrigin, cookieValue)
+      }
+    }
+    cookieManager.flush()
+    connection.inputStream.use { it.readBytes() }
+    connection.disconnect()
+  }
+
+  private fun buildConsumeEndpoint(targetUrl: String): URL? {
+    val target = Uri.parse(targetUrl)
+    val scheme = target.scheme ?: return null
+    val host = target.host ?: return null
+    val portSegment = if (target.port != -1) ":${target.port}" else ""
+    return URL("$scheme://$host$portSegment/api/auth/desktop/consume")
+  }
+
+  private fun buildCookieOrigin(targetUrl: String): String? {
+    val target = Uri.parse(targetUrl)
+    val scheme = target.scheme ?: return null
+    val host = target.host ?: return null
+    val portSegment = if (target.port != -1) ":${target.port}" else ""
+    return "$scheme://$host$portSegment"
+  }
+
   private fun showError(message: String) {
     binding.errorText.text = message
     binding.errorText.isVisible = true
@@ -311,6 +455,7 @@ class MainActivity : AppCompatActivity() {
 
   private companion object {
     const val OFFICIAL_REMOTE_URL = "https://remote.contextgo.io/remote/devices"
+    const val OFFICIAL_REMOTE_HOST = "remote.contextgo.io"
     const val PREFERENCES_NAME = "contextgo_mobile_shell"
     const val TARGET_URL_KEY = "target_url"
     const val STARTUP_BRIDGE_NAME = "ContextGoMobileShell"
@@ -353,11 +498,25 @@ class MainActivity : AppCompatActivity() {
   }
 }
 
+private data class ShellLoginPayload(
+  val targetUrl: String,
+  val loginCode: String?,
+  val errorCode: String?
+) {
+  val shouldRecoverNatively: Boolean
+    get() = !errorCode.isNullOrBlank() && loginCode.isNullOrBlank()
+}
+
 private object ShellTargetResolver {
   private const val OFFICIAL_REMOTE_HOST = "remote.contextgo.io"
   private const val REMOTE_SHELL_SCHEME = "contextgo-remote"
+  private const val OFFICIAL_REMOTE_URL = "https://remote.contextgo.io/remote/devices"
 
   fun resolve(rawInput: String): String? {
+    return resolvePayload(rawInput)?.targetUrl
+  }
+
+  fun resolvePayload(rawInput: String): ShellLoginPayload? {
     val trimmed = rawInput.trim()
     if (trimmed.isEmpty()) {
       return null
@@ -367,10 +526,31 @@ private object ShellTargetResolver {
     val parsed = Uri.parse(normalized)
     val scheme = parsed.scheme?.lowercase(Locale.US)
     if (scheme == REMOTE_SHELL_SCHEME) {
-      val wrappedTarget = parsed.getQueryParameter("target") ?: return null
-      return resolve(wrappedTarget)
+      val loginCode = parsed.getQueryParameter("code")?.trim()?.takeIf { it.isNotEmpty() }
+      val explicitError = parsed.getQueryParameter("error")?.trim()?.takeIf { it.isNotEmpty() }
+      val wrappedTarget = parsed.getQueryParameter("target") ?: OFFICIAL_REMOTE_URL
+      val loginFallbackError = loginFallbackErrorCode(wrappedTarget, loginCode != null)
+      val resolvedTarget = if (loginFallbackError == null) {
+        resolveOfficialTarget(wrappedTarget)
+      } else {
+        OFFICIAL_REMOTE_URL
+      } ?: return null
+
+      return ShellLoginPayload(
+        targetUrl = resolvedTarget,
+        loginCode = loginCode,
+        errorCode = explicitError ?: loginFallbackError
+      )
     }
 
+    val targetUrl = resolveOfficialTarget(trimmed) ?: return null
+    return ShellLoginPayload(targetUrl = targetUrl, loginCode = null, errorCode = null)
+  }
+
+  private fun resolveOfficialTarget(rawInput: String): String? {
+    val normalized = if (rawInput.contains("://")) rawInput else "http://$rawInput"
+    val parsed = Uri.parse(normalized)
+    val scheme = parsed.scheme?.lowercase(Locale.US)
     if ((scheme != "http" && scheme != "https") || parsed.host.isNullOrBlank()) {
       return null
     }
@@ -389,5 +569,26 @@ private object ShellTargetResolver {
     }
 
     return parsed.toString()
+  }
+
+  private fun loginFallbackErrorCode(rawTarget: String, hasLoginCode: Boolean): String? {
+    if (hasLoginCode) {
+      return null
+    }
+
+    val resolvedTarget = resolveOfficialTarget(rawTarget) ?: return null
+    val parsed = Uri.parse(resolvedTarget)
+    if (parsed.host?.lowercase(Locale.US) != OFFICIAL_REMOTE_HOST) {
+      return null
+    }
+
+    val path = parsed.encodedPath.orEmpty()
+    if (path != "/remote/devices") {
+      return null
+    }
+
+    return Uri.parse(rawTarget).getQueryParameter("oauthError")?.trim()?.takeIf { it.isNotEmpty() }
+      ?: Uri.parse(rawTarget).getQueryParameter("error")?.trim()?.takeIf { it.isNotEmpty() }
+      ?: "login_required"
   }
 }
