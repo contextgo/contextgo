@@ -52,6 +52,7 @@ export type AssistantWorkspaceScheduleItem = {
 
 export type AssistantWorkspaceModel = {
   assistant: AssistantListItem;
+  packageAssistantId?: string;
   packageDescriptor?: BundledAgentPackageDescriptor;
   packageManifest?: AgentPackageManifest;
   agentsDocument: AssistantPackageDocument | null;

@@ -209,6 +209,14 @@ type BuildAssistantWorkspaceModelArgs = {
 const hasAgentsEntryDocument = (packageManifest?: AgentPackageManifest): boolean =>
   packageManifest?.entryDocument.file === 'AGENTS.md';
 
+const resolvePackageAssistantId = (assistant: AssistantListItem): string => {
+  if (typeof assistant.linkedPackagePresetId === 'string' && assistant.linkedPackagePresetId.trim()) {
+    return assistant.linkedPackagePresetId.trim();
+  }
+
+  return assistant.id;
+};
+
 export const buildAssistantWorkspaceModel = ({
   assistant,
   availableSkills,
@@ -217,15 +225,16 @@ export const buildAssistantWorkspaceModel = ({
   selectedSkills,
   selectedHooks,
 }: BuildAssistantWorkspaceModelArgs): AssistantWorkspaceModel => {
-  const packageDescriptor = findBundledAgentPackageDescriptorByAssistantId(assistant.id);
+  const packageAssistantId = resolvePackageAssistantId(assistant);
+  const packageDescriptor = findBundledAgentPackageDescriptorByAssistantId(packageAssistantId);
   const packageManifest = packageDescriptor?.manifest;
   const agentsDocument: AssistantPackageDocument | null = null;
   const docs: AssistantPackageDocument[] = [];
   const docsTree: AssistantPackageDocTreeNode[] = [];
-  const commands = buildCommandItems(assistant.id);
-  const schedules = buildScheduleItems(assistant.id);
+  const commands = buildCommandItems(packageAssistantId);
+  const schedules = buildScheduleItems(packageAssistantId);
   const relevantSkills = buildRelevantSkills({
-    assistantId: assistant.id,
+    assistantId: packageAssistantId,
     availableSkills,
     pendingSkills,
     selectedSkills,
@@ -237,11 +246,11 @@ export const buildAssistantWorkspaceModel = ({
   const isEditable = !assistant.isBuiltin && !isExtensionAssistant(assistant);
   const availableTabs = new Set<AgentDetailTabId>();
 
-  if (isEditable || relevantSkills.length > 0 || Boolean(getBundledAgentPackagePayload(assistant.id, 'skills'))) {
+  if (isEditable || relevantSkills.length > 0 || Boolean(getBundledAgentPackagePayload(packageAssistantId, 'skills'))) {
     availableTabs.add('skills');
   }
 
-  if (isEditable || relevantHooks.length > 0 || Boolean(getBundledAgentPackagePayload(assistant.id, 'hooks'))) {
+  if (isEditable || relevantHooks.length > 0 || Boolean(getBundledAgentPackagePayload(packageAssistantId, 'hooks'))) {
     availableTabs.add('hooks');
   }
 
@@ -275,11 +284,15 @@ export const buildAssistantWorkspaceModel = ({
       switch (tabId) {
         case 'skills':
           return (
-            relevantSkills.length > 0 || isEditable || Boolean(getBundledAgentPackagePayload(assistant.id, 'skills'))
+            relevantSkills.length > 0 ||
+            isEditable ||
+            Boolean(getBundledAgentPackagePayload(packageAssistantId, 'skills'))
           );
         case 'hooks':
           return (
-            relevantHooks.length > 0 || isEditable || Boolean(getBundledAgentPackagePayload(assistant.id, 'hooks'))
+            relevantHooks.length > 0 ||
+            isEditable ||
+            Boolean(getBundledAgentPackagePayload(packageAssistantId, 'hooks'))
           );
         case 'schedules':
           return schedules.length > 0 || isEditable;
@@ -298,6 +311,7 @@ export const buildAssistantWorkspaceModel = ({
 
   return {
     assistant,
+    packageAssistantId,
     packageDescriptor,
     packageManifest,
     agentsDocument,

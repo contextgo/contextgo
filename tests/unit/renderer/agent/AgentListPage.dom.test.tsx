@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -31,11 +31,7 @@ vi.mock('@arco-design/web-react', () => ({
     useMessage: () => [{ success: vi.fn(), error: vi.fn(), warning: vi.fn() }, <div key='message-context' />],
   },
   Avatar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-  Button: ({
-    children,
-    onClick,
-    className,
-  }: React.PropsWithChildren<{ onClick?: () => void; className?: string }>) => (
+  Button: ({ children, onClick, className }: React.PropsWithChildren<{ onClick?: () => void; className?: string }>) => (
     <button type='button' onClick={onClick} className={className}>
       {children}
     </button>
@@ -66,6 +62,44 @@ vi.mock('@arco-design/web-react', () => ({
     }
   ),
   Tag: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
+  Input: Object.assign(
+    ({
+      value,
+      onChange,
+      placeholder,
+    }: {
+      value?: string;
+      onChange?: (value: string) => void;
+      placeholder?: string;
+    }) => <input value={value} placeholder={placeholder} onChange={(event) => onChange?.(event.target.value)} />,
+    {
+      TextArea: ({
+        value,
+        onChange,
+        placeholder,
+      }: {
+        value?: string;
+        onChange?: (value: string) => void;
+        placeholder?: string;
+      }) => <textarea value={value} placeholder={placeholder} onChange={(event) => onChange?.(event.target.value)} />,
+    }
+  ),
+  Select: Object.assign(
+    ({
+      value,
+      onChange,
+      children,
+    }: React.PropsWithChildren<{ value?: string; onChange?: (value: string) => void }>) => (
+      <select value={value} onChange={(event) => onChange?.(event.target.value)}>
+        {children}
+      </select>
+    ),
+    {
+      Option: ({ children, value }: React.PropsWithChildren<{ value: string }>) => (
+        <option value={value}>{children}</option>
+      ),
+    }
+  ),
 }));
 
 vi.mock('@/renderer/hooks/assistant', () => ({
@@ -158,10 +192,6 @@ vi.mock('@/renderer/pages/settings/AgentSettings/AssistantManagement/AssistantLi
   ),
 }));
 
-vi.mock('@/renderer/pages/settings/AgentSettings/Workspace/detail/AgentBasicsPanel', () => ({
-  default: ({ mode }: { mode: 'create' | 'edit' }) => <div>{mode === 'create' ? 'Create Agent' : 'Agent Basics'}</div>,
-}));
-
 import Workspace from '@/renderer/pages/settings/AgentSettings/Workspace';
 
 const LocationProbe = () => {
@@ -209,7 +239,9 @@ describe('Agent workspace list route', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Create Assistant' }));
     expect(handleCreateMock).toHaveBeenCalledWith({ openEditor: false });
-    expect(await screen.findByTestId('location')).toHaveTextContent('/agents/new');
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/agents/new');
+    });
   });
 
   it('styles the create action with the workspace primary action class', () => {

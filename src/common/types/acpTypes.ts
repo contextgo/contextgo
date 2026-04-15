@@ -168,6 +168,12 @@ export interface AcpBackendConfig {
   avatar?: string;
 
   /**
+   * Optional bundled-package hint used by custom assistants to inherit
+   * package-backed docs, commands, schedules, and packaged guidance surfaces.
+   */
+  linkedPackagePresetId?: string;
+
+  /**
    * 用于 `which` 命令检测的 CLI 命令名
    * 仅当二进制文件名与 id 不同时需要
    *
