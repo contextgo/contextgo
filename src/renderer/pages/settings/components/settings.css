@@ -44,12 +44,131 @@
   height: 100%;
 }
 
+.settings-page-runtime-config-shell {
+  position: fixed;
+  top: calc(var(--titlebar-height) + 20px);
+  right: 20px;
+  bottom: 20px;
+  z-index: 45;
+  width: min(clamp(420px, 34vw, 620px), calc(100vw - 40px));
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.settings-page-runtime-config-panel {
+  height: 100%;
+  min-height: 420px;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--text-primary) 7%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.settings-runtime-config-dock {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+}
+
+.settings-runtime-config-dock__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 18px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
+}
+
+.settings-runtime-config-dock__title-block {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-runtime-config-dock__title {
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.settings-runtime-config-dock__subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.settings-runtime-config-dock__body {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+}
+
+.settings-runtime-config-dock__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-1) 88%, var(--fill-1) 12%);
+}
+
+.settings-runtime-config-dock__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-runtime-config-dock__path {
+  display: block;
+  word-break: break-all;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.settings-runtime-config-dock__editor {
+  min-height: 0;
+  flex: 1;
+}
+
+.settings-runtime-config-dock__editor > * {
+  height: 100%;
+}
+
+.settings-runtime-config-dock__footer {
+  padding: 10px 18px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  background: color-mix(in srgb, var(--bg-1) 92%, var(--fill-1) 8%);
+}
+
+.settings-runtime-config-dock__footer-text {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 @media (max-width: 1023px) {
   .settings-page-preview-shell {
     top: calc(var(--titlebar-height) + 12px);
     right: 16px;
     bottom: 16px;
     width: min(420px, calc(100vw - 32px));
+  }
+
+  .settings-page-runtime-config-shell {
+    top: calc(var(--titlebar-height) + 12px);
+    right: 16px;
+    bottom: 16px;
+    width: min(480px, calc(100vw - 32px));
   }
 }
 

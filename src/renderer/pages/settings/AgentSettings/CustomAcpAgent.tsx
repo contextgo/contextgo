@@ -10,7 +10,7 @@ import {
   type ManagedRuntimeInstallEvent,
 } from '@/common/types/acpTypes';
 import type { ExternalSessionProvider, ExternalSessionSummary } from '@/common/types/externalSessions';
-import { useFilePreviewOpener } from '@/renderer/hooks/file/useFilePreviewOpener';
+import RuntimeConfigDock from '@/renderer/pages/settings/components/RuntimeConfigDock';
 import { PRODUCT_VISIBLE_RUNTIME_BACKENDS } from '@/renderer/utils/model/availableAgents';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 
@@ -66,6 +66,12 @@ type RuntimeCard = {
   health: RuntimeHealthState;
   sessionCount: number | null;
   isMissing: boolean;
+};
+
+type RuntimeConfigDockState = {
+  backend: ManagedRuntimeBackend;
+  runtimeName: string;
+  entries: ManagedRuntimeConfigEntry[];
 };
 
 const hasRuntimeAuthIssue = (message?: string): boolean => {
@@ -248,7 +254,6 @@ const getInstallStageLabel = (
 const CustomAcpAgent: React.FC = () => {
   const { t } = useTranslation();
   const [message, messageContext] = Message.useMessage({ maxCount: 8 });
-  const { openFilePreview } = useFilePreviewOpener();
 
   const [availableAgents, setAvailableAgents] = useState<AvailableRuntimeAgent[]>([]);
   const [externalSessions, setExternalSessions] = useState<ExternalSessionSummary[]>([]);
@@ -259,6 +264,7 @@ const CustomAcpAgent: React.FC = () => {
   const [configActionState, setConfigActionState] = useState<Partial<Record<ManagedRuntimeBackend, 'open' | 'reveal'>>>(
     {}
   );
+  const [runtimeConfigDock, setRuntimeConfigDock] = useState<RuntimeConfigDockState | null>(null);
   const loadingRef = useRef(false);
   const requestSeqRef = useRef(0);
 
@@ -468,12 +474,11 @@ const CustomAcpAgent: React.FC = () => {
           );
         }
 
-        for (const configPath of configPaths) {
-          const opened = await openFilePreview({ path: configPath });
-          if (!opened) {
-            await shell.openFile.invoke(configPath);
-          }
-        }
+        setRuntimeConfigDock({
+          backend,
+          runtimeName: ACP_BACKENDS_ALL[backend].name,
+          entries: configLocation?.entries ?? [],
+        });
       } catch (error) {
         console.error('[RuntimeSettings] Failed to open runtime config:', error);
         message.error(
@@ -491,7 +496,7 @@ const CustomAcpAgent: React.FC = () => {
         });
       }
     },
-    [getRuntimeConfigLocation, message, openFilePreview, t]
+    [getRuntimeConfigLocation, message, t]
   );
 
   const handleRevealConfigPath = useCallback(
@@ -860,6 +865,13 @@ const CustomAcpAgent: React.FC = () => {
   return (
     <div className='space-y-16px'>
       {messageContext}
+      {runtimeConfigDock ? (
+        <RuntimeConfigDock
+          runtimeName={runtimeConfigDock.runtimeName}
+          entries={runtimeConfigDock.entries}
+          onClose={() => setRuntimeConfigDock(null)}
+        />
+      ) : null}
 
       <div className='space-y-18px rounded-24px border border-border-2 bg-[color:color-mix(in_srgb,var(--color-bg-1)_90%,transparent)] px-16px py-18px shadow-[0_18px_44px_rgba(15,23,42,0.05)] md:px-[28px]'>
         <div className='flex items-start justify-between gap-16px flex-wrap'>

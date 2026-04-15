@@ -1,7 +1,7 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getAvailableAgentsInvokeMock = vi.fn();
 const listExternalSessionsInvokeMock = vi.fn();
@@ -11,6 +11,8 @@ const getManagedRuntimeConfigLocationInvokeMock = vi.fn();
 const refreshDetectedAgentsInvokeMock = vi.fn().mockResolvedValue({ success: true });
 const openExternalInvokeMock = vi.fn().mockResolvedValue(undefined);
 const openFileInvokeMock = vi.fn().mockResolvedValue(undefined);
+const readFileInvokeMock = vi.fn();
+const writeFileInvokeMock = vi.fn().mockResolvedValue(true);
 const revealPathInvokeMock = vi
   .fn()
   .mockResolvedValue({ resolvedPath: '/Users/tester/.codex/config.toml', exists: true });
@@ -51,6 +53,10 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     openFile: { invoke: (...args: unknown[]) => openFileInvokeMock(...args) },
     revealPath: { invoke: (...args: unknown[]) => revealPathInvokeMock(...args) },
   },
+  fs: {
+    readFile: { invoke: (...args: unknown[]) => readFileInvokeMock(...args) },
+    writeFile: { invoke: (...args: unknown[]) => writeFileInvokeMock(...args) },
+  },
 }));
 
 vi.mock('@/renderer/hooks/file/useFilePreviewOpener', () => ({
@@ -73,6 +79,16 @@ vi.mock('swr', () => ({
 
 vi.mock('@/renderer/pages/settings/components/SettingsPageWrapper', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div data-testid='settings-page-wrapper'>{children}</div>,
+}));
+
+vi.mock('@/renderer/pages/conversation/Preview/components/editors/TextEditor', () => ({
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+  }) => <textarea aria-label='Runtime config editor' value={value} onChange={(event) => onChange(event.target.value)} />,
 }));
 
 vi.mock('@/renderer/components/settings/SettingsModal/contents/channels/ChannelModalContent', () => ({
@@ -113,9 +129,12 @@ vi.mock('@/renderer/utils/model/agentLogo', () => ({
 }));
 
 vi.mock('@icon-park/react', () => ({
+  Close: () => <span data-testid='icon-close' />,
   Delete: () => <span data-testid='icon-delete' />,
   EditTwo: () => <span data-testid='icon-edit' />,
   Plus: () => <span data-testid='icon-plus' />,
+  Refresh: () => <span data-testid='icon-refresh' />,
+  Save: () => <span data-testid='icon-save' />,
 }));
 
 vi.mock('@arco-design/web-react', () => ({
@@ -164,9 +183,59 @@ vi.mock('@arco-design/web-react', () => ({
   },
   Space: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   Tag: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
+  Tabs: Object.assign(
+    ({
+      activeTab,
+      onChange,
+      children,
+    }: {
+      activeTab?: string;
+      onChange?: (key: string) => void;
+      children?: React.ReactNode;
+    }) => {
+      const items = React.Children.toArray(children) as Array<
+        React.ReactElement<{ title?: React.ReactNode; key?: string }>
+      >;
+      return (
+        <div>
+          <div role='tablist'>
+            {items.map((item, index) => {
+              const key = String(item.key ?? index).replace(/^\.\$/, '');
+              return (
+                <button
+                  key={key}
+                  type='button'
+                  role='tab'
+                  aria-selected={activeTab === key}
+                  onClick={() => onChange?.(key)}
+                >
+                  {item.props.title ?? key}
+                </button>
+              );
+            })}
+          </div>
+          {items.find((item, index) => String(item.key ?? index).replace(/^\.\$/, '') === activeTab) ?? null}
+        </div>
+      );
+    },
+    {
+      TabPane: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+    }
+  ),
+  Typography: {
+    Paragraph: ({ children }: { children?: React.ReactNode }) => <p>{children}</p>,
+    Text: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
+  },
+  Divider: () => <hr />,
+  Spin: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }));
 
 import AgentEntrySettings from '@/renderer/pages/settings/AgentSettings/AgentEntrySettings';
+
+const flushPromises = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
+};
 
 const renderRuntimeSettings = () =>
   render(
@@ -178,6 +247,12 @@ const renderRuntimeSettings = () =>
   );
 
 describe('Runtime Settings page', () => {
+  afterEach(async () => {
+    await act(async () => {
+      await flushPromises();
+    });
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     managedRuntimeInstallEventListener = null;
@@ -226,6 +301,21 @@ describe('Runtime Settings page', () => {
           },
         ],
       },
+    });
+    readFileInvokeMock.mockImplementation(async ({ path }: { path: string }) => {
+      if (path === '/Users/tester/.codex/config.toml') {
+        return 'model = "gpt-5.4"';
+      }
+      if (path === '/Users/tester/.codex/auth.json') {
+        return '{"api_key":"secret"}';
+      }
+      if (path === '/Users/tester/.config/opencode/opencode.json') {
+        return '{"model":"opencode"}';
+      }
+      if (path === '/Users/tester/.local/share/opencode/auth.json') {
+        return '{"token":"abc"}';
+      }
+      return '';
     });
     configStorageGetMock.mockImplementation(async (key: string) => {
       if (key === 'acp.customAgents') return [];
@@ -305,34 +395,28 @@ describe('Runtime Settings page', () => {
     expect(within(opencodeCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
   });
 
-  it('opens the official docs for the selected runtime', async () => {
+  it('opens the runtime config in an in-app dock instead of the system file opener', async () => {
     renderRuntimeSettings();
 
     await screen.findByText('Runtime Management');
-    fireEvent.click(within(screen.getByTestId('runtime-card-opencode')).getByRole('button', { name: 'Official page' }));
-
-    await waitFor(() => {
-      expect(openExternalInvokeMock).toHaveBeenCalledWith('https://opencode.ai');
+    await act(async () => {
+      fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Open config' }));
+      await flushPromises();
     });
-  });
+    expect(getManagedRuntimeConfigLocationInvokeMock).toHaveBeenCalledWith({ backend: 'codex' });
+    expect(readFileInvokeMock).toHaveBeenCalledWith({ path: '/Users/tester/.codex/config.toml' });
+    expect(readFileInvokeMock).toHaveBeenCalledWith({ path: '/Users/tester/.codex/auth.json' });
 
-  it('opens the runtime config in the shared preview panel', async () => {
-    renderRuntimeSettings();
-
-    await screen.findByText('Runtime Management');
-    fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Open config' }));
-
-    await waitFor(() => {
-      expect(getManagedRuntimeConfigLocationInvokeMock).toHaveBeenCalledWith({ backend: 'codex' });
-      expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.codex/config.toml' });
-      expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.codex/auth.json' });
-    });
-
-    expect(openFilePreviewMock).toHaveBeenCalledTimes(2);
+    const dock = screen.getByTestId('runtime-config-dock');
+    expect(dock).toBeInTheDocument();
+    expect(within(dock).getByRole('tab', { name: 'config.toml' })).toBeInTheDocument();
+    expect(within(dock).getByRole('tab', { name: 'auth.json' })).toBeInTheDocument();
+    expect(within(dock).getByRole('textbox', { name: 'Runtime config editor' })).toHaveValue('model = "gpt-5.4"');
     expect(openFileInvokeMock).not.toHaveBeenCalled();
+    expect(openFilePreviewMock).not.toHaveBeenCalled();
   });
 
-  it('opens every config source for opencode in the shared preview panel', async () => {
+  it('switches between multiple config sources inside the runtime config dock', async () => {
     getManagedRuntimeConfigLocationInvokeMock.mockResolvedValueOnce({
       success: true,
       data: {
@@ -355,38 +439,40 @@ describe('Runtime Settings page', () => {
     renderRuntimeSettings();
 
     await screen.findByText('Runtime Management');
-    fireEvent.click(within(screen.getByTestId('runtime-card-opencode')).getByRole('button', { name: 'Open config' }));
-
-    await waitFor(() => {
-      expect(getManagedRuntimeConfigLocationInvokeMock).toHaveBeenCalledWith({ backend: 'opencode' });
-      expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.config/opencode/opencode.json' });
-      expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.local/share/opencode/auth.json' });
+    await act(async () => {
+      fireEvent.click(within(screen.getByTestId('runtime-card-opencode')).getByRole('button', { name: 'Open config' }));
+      await flushPromises();
     });
+
+    const dock = await screen.findByTestId('runtime-config-dock');
+    await within(dock).findByRole('tab', { name: 'opencode.json' });
+    expect(within(dock).getByRole('textbox', { name: 'Runtime config editor' })).toHaveValue('{"model":"opencode"}');
+
+    fireEvent.click(within(dock).getByRole('tab', { name: 'auth.json' }));
+    await flushPromises();
+    expect(within(dock).getByRole('textbox', { name: 'Runtime config editor' })).toHaveValue('{"token":"abc"}');
+    expect(openFileInvokeMock).not.toHaveBeenCalled();
   });
 
-  it('falls back to the system opener when config preview cannot be mounted', async () => {
-    openFilePreviewMock.mockResolvedValue(false);
+  it('saves edited config content from the dock back to disk', async () => {
     renderRuntimeSettings();
 
     await screen.findByText('Runtime Management');
-    fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Open config' }));
-
-    await waitFor(() => {
-      expect(openFileInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex/config.toml');
-      expect(openFileInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex/auth.json');
+    await act(async () => {
+      fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Open config' }));
+      await flushPromises();
     });
 
-    expect(openFileInvokeMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('reveals the runtime config path in the system file manager', async () => {
-    renderRuntimeSettings();
-
-    await screen.findByText('Runtime Management');
-    fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Reveal' }));
-
-    await waitFor(() => {
-      expect(revealPathInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex');
+    const dock = await screen.findByTestId('runtime-config-dock');
+    await within(dock).findByRole('tab', { name: 'config.toml' });
+    expect(within(dock).getByRole('textbox', { name: 'Runtime config editor' })).toHaveValue('model = "gpt-5.4"');
+    await act(async () => {
+      fireEvent.click(within(dock).getByRole('button', { name: 'Save config' }));
+      await flushPromises();
+    });
+    expect(writeFileInvokeMock).toHaveBeenCalledWith({
+      path: '/Users/tester/.codex/config.toml',
+      data: 'model = "gpt-5.4"',
     });
   });
 
@@ -403,33 +489,45 @@ describe('Runtime Settings page', () => {
     renderRuntimeSettings();
 
     await screen.findByText('Runtime Management');
-    fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Open config' }));
-
-    await waitFor(() => {
-      expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.codex/config.toml' });
+    await act(async () => {
+      fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Open config' }));
+      await flushPromises();
     });
+
+    expect(readFileInvokeMock).toHaveBeenCalledWith({ path: '/Users/tester/.codex/config.toml' });
+  });
+
+  it('reveals the runtime config path in the system file manager', async () => {
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+    await act(async () => {
+      fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Reveal' }));
+      await flushPromises();
+    });
+    expect(revealPathInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex');
   });
 
   it('runs a health check for the selected runtime card', async () => {
     renderRuntimeSettings();
 
     await screen.findByText('Runtime Management');
-    fireEvent.click(screen.getAllByRole('button', { name: 'Check availability' })[0]);
-
-    await waitFor(() => {
-      expect(checkAgentHealthInvokeMock).toHaveBeenCalledWith({ backend: 'codex' });
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: 'Check availability' })[0]);
+      await flushPromises();
     });
+    expect(checkAgentHealthInvokeMock).toHaveBeenCalledWith({ backend: 'codex' });
   });
 
   it('runs managed install for a missing runtime', async () => {
     renderRuntimeSettings();
 
     await screen.findByText('Runtime Management');
-    fireEvent.click(screen.getAllByRole('button', { name: 'Install locally' })[0]);
-
-    await waitFor(() => {
-      expect(installManagedRuntimeInvokeMock).toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: 'Install locally' })[0]);
+      await flushPromises();
     });
+    expect(installManagedRuntimeInvokeMock).toHaveBeenCalled();
   });
 
   it('renders install progress logs from managed runtime events', async () => {

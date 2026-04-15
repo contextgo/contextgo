@@ -1137,7 +1137,25 @@
     "missingSectionTitle": "尚未安裝",
     "missingSectionDescription": "這些執行環境目前尚未在本機準備好；如果支援託管安裝，可以直接在這裡一鍵安裝。",
     "emptyMissing": "所有內建執行環境都已偵測到或已手動設定。",
-    "pathUnavailable": "目前還沒有可用路徑。"
+    "pathUnavailable": "目前還沒有可用路徑。",
+    "configDock": {
+      "ariaLabel": "執行環境設定編輯器",
+      "subtitle": "直接在 ContextGo 內編輯執行環境設定檔。",
+      "reload": "重新載入",
+      "save": "儲存設定",
+      "unsaved": "有尚未儲存的修改",
+      "footerHint": "儲存只會套用到目前啟用的設定檔。",
+      "missingHint": "這個檔案目前還不存在，儲存後會建立。",
+      "loadFailed": "載入這個設定檔失敗。",
+      "reloadFailed": "重新載入這個設定檔失敗。",
+      "saveFailed": "儲存這個設定檔失敗。",
+      "saveSuccess": "設定已儲存。",
+      "kind": {
+        "config": "設定",
+        "auth": "驗證",
+        "other": "其他"
+      }
+    }
   },
   "command": "指令",
   "args": "參數",

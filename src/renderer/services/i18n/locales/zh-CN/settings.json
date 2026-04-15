@@ -1125,7 +1125,25 @@
     "missingSectionTitle": "尚未安装",
     "missingSectionDescription": "这些运行时当前还没有在本机准备好；如果支持托管安装，可以直接在这里一键安装。",
     "emptyMissing": "所有内置运行时都已经检测到或已手动配置。",
-    "pathUnavailable": "当前还没有可用路径。"
+    "pathUnavailable": "当前还没有可用路径。",
+    "configDock": {
+      "ariaLabel": "运行环境配置编辑器",
+      "subtitle": "直接在 ContextGo 内编辑运行环境配置文件。",
+      "reload": "重新载入",
+      "save": "保存配置",
+      "unsaved": "有未保存修改",
+      "footerHint": "保存只会应用到当前激活的配置文件。",
+      "missingHint": "这个文件当前还不存在，保存后会创建。",
+      "loadFailed": "加载这个配置文件失败。",
+      "reloadFailed": "重新载入这个配置文件失败。",
+      "saveFailed": "保存这个配置文件失败。",
+      "saveSuccess": "配置已保存。",
+      "kind": {
+        "config": "配置",
+        "auth": "认证",
+        "other": "其他"
+      }
+    }
   },
   "command": "命令",
   "args": "参数",
