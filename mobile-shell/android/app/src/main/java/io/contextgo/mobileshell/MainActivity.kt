@@ -24,6 +24,7 @@ class MainActivity : AppCompatActivity() {
   private var startupOverlayActive = false
   private var startupNavigationFinished = false
   private var startupReadyReceived = false
+  private var startupOverlayToken = 0
 
   private val preferences by lazy(LazyThreadSafetyMode.NONE) {
     getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
@@ -155,9 +156,10 @@ class MainActivity : AppCompatActivity() {
         startupNavigationFinished = true
         injectStartupReadyObserver()
         dismissStartupOverlayIfReady()
+        val overlayToken = startupOverlayToken
         binding.startupOverlay.postDelayed(
           {
-            if (startupOverlayActive) {
+            if (startupOverlayActive && startupOverlayToken == overlayToken) {
               hideStartupOverlay()
             }
           },
@@ -256,6 +258,7 @@ class MainActivity : AppCompatActivity() {
   }
 
   private fun showStartupOverlay(targetUrl: String) {
+    startupOverlayToken += 1
     startupOverlayActive = true
     startupNavigationFinished = false
     startupReadyReceived = false
