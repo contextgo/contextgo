@@ -253,7 +253,8 @@ describe('CloudService host browser entry ownership', () => {
       reason: 'official-remote',
     });
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
-    expect(status.officialRemoteReady).toBe(true);
+    expect(status).not.toHaveProperty('officialRemoteReady');
+    expect(status.hostRuntime.officialRemoteReady).toBe(true);
   });
 
   it('releases the Official Remote demand through HostBrowserEntryService on logout', async () => {
@@ -296,7 +297,6 @@ describe('CloudService host browser entry ownership', () => {
           id: 'device-1',
         },
         deviceTokenAvailable: true,
-        officialRemoteReady: false,
         officialRemote: {
           desired: false,
           needsAttention: false,
@@ -328,7 +328,6 @@ describe('CloudService host browser entry ownership', () => {
         id: 'device-1',
       },
       deviceTokenAvailable: true,
-      officialRemoteReady: false,
       officialRemote: {
         desired: false,
         needsAttention: false,

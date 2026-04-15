@@ -93,8 +93,6 @@ export type HostRuntimeStatus = {
 };
 
 export type CloudStatus = {
-  /** @deprecated Use `hostRuntime.officialRemoteReady` instead. */
-  officialRemoteReady?: boolean;
   authenticated: boolean;
   browserSessionExpired: boolean;
   user: CloudUser | null;

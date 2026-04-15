@@ -6,7 +6,7 @@
 
 **Architecture:** Keep the runtime behavior unchanged, but lift the architecture model into shared status types. `CloudService.getStatus()` should derive a `hostRuntime` snapshot from `HostBrowserEntryService` runtime state plus Official Remote state, while renderer consumers remain source-compatible and can adopt the new field incrementally.
 
-Compatibility note: any temporary top-level `CloudStatus.officialRemoteReady` field is legacy-only and should not be used in new renderer fixtures or new documentation examples. New consumers should read `hostRuntime.officialRemoteReady`.
+Compatibility note: `CloudStatus` examples should use `hostRuntime.officialRemoteReady` as the single readiness field.
 
 **Tech Stack:** TypeScript, Electron main process services, shared IPC types, Vitest.
 

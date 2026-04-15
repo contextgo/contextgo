@@ -900,7 +900,8 @@ describe('CloudService desktop loopback login', () => {
 
     expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalledTimes(1);
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
-    expect(status.officialRemoteReady).toBe(true);
+    expect(status).not.toHaveProperty('officialRemoteReady');
+    expect(status.hostRuntime.officialRemoteReady).toBe(true);
   });
 
   it('releases the official remote desktop runtime on logout', async () => {

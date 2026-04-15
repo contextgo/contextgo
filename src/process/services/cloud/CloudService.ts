@@ -443,7 +443,6 @@ export class CloudService {
       device: effectiveDevice,
       deviceTokenAvailable: Boolean(deviceToken),
       officialRemote,
-      officialRemoteReady,
       hostRuntime: {
         authority: 'host-runtime',
         defaultRemoteAccess: 'official-remote',
