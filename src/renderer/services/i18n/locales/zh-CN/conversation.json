@@ -119,6 +119,8 @@
     "workspaceHint": "协作组和所有参与者会话将共享这个工作目录；留空时会自动创建默认临时目录。",
     "selectWorkspace": "选择目录",
     "selectWorkspaceFailed": "选择工作目录失败",
+    "fixedFlowLabel": "协作流程",
+    "fixedFlowHint": "每次协作都会走同一套轻编排流程：先各自独立响应，再结合彼此观点补充或修正，最后由系统给出一份组级总结。",
     "collaborationLabel": "协作模式",
     "collaborationDiscussion": "通用讨论",
     "collaborationHarness": "规划 / 生成 / 评估",
@@ -145,7 +147,7 @@
     "participantsLabel": "参与者",
     "harnessAgentsLabel": "Harness 助手",
     "minimumParticipants": "请至少选择两个参与者",
-    "minimumParticipantsHint": "至少选择 2 个参与者后才能创建讨论组。",
+    "minimumParticipantsHint": "至少选择 2 个参与者后才能创建一次协作组运行。",
     "harnessParticipantsHint": "协作流水线模式要求恰好 3 个参与者，顺序依次为规划者 -> 生成者 -> 评估者。",
     "harnessRoleHint": "流水线槽位 #{{roleIndex}}",
     "harnessUsesDebate": "协作流水线模式固定使用双轮辩论流程。",
@@ -169,6 +171,18 @@
       "flow": "流程",
       "latestStep": "最近步骤",
       "repository": "仓库"
+    },
+    "overview": {
+      "title": "协作组概览",
+      "latestSpeaker": "最近发言者",
+      "latestRoundSummary": "最近一轮摘要",
+      "finalSynthesis": "最终总结",
+      "pending": "协作组还没有产出摘要。",
+      "status": {
+        "idle": "待运行",
+        "running": "运行中",
+        "finished": "已完成"
+      }
     },
     "noDescription": "暂无描述",
     "sendPlaceholder": "给协作组分配任务...",

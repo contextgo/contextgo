@@ -277,6 +277,7 @@ export type DiscussionMessageGroupMeta = BaseMessageGroupMeta & {
   kind?: 'discussion';
   mode: DiscussionGroupMode;
   round: number;
+  summaryKind?: 'round' | 'final';
 };
 
 export type WorkflowMessageGroupMeta = BaseMessageGroupMeta & {

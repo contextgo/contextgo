@@ -5,59 +5,33 @@
  */
 
 import { ipcBridge } from '@/common';
-import {
-  DEFAULT_WORKFLOW_GROUP_TEMPLATE,
-  formatWorkflowRoleLabel,
-  getWorkflowGroupTemplateDefinition,
-  isBuiltInWorkflowRole,
-  listWorkflowGroupTemplateDefinitions,
-  type WorkflowTemplateRole,
-} from '@/common/config/group';
-import type {
-  DiscussionGroupMode,
-  TChatConversation,
-  WorkflowGroupReviewMode,
-  WorkflowGroupTemplate,
-} from '@/common/config/storage';
+import type { TChatConversation } from '@/common/config/storage';
 import { useAssistantList } from '@/renderer/hooks/assistant';
-import {
-  buildDiscussionGroupParams,
-  buildWorkflowGroupParams,
-  type GroupParticipantInput,
-  type WorkflowGroupParticipantInput,
-} from '@/renderer/pages/conversation/utils/createConversationParams';
 import { ContextGoModal } from '@/renderer/components/base';
-import { renderWorkflowTemplateConfigFields } from '@/renderer/pages/conversation/platforms/group/workflow/workflowUiRegistry';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
 import type { AssistantListItem } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 import {
   isEmoji,
   resolveAvatarImageSrc,
 } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/assistantUtils';
+import {
+  buildDiscussionGroupParams,
+  type GroupParticipantInput,
+} from '@/renderer/pages/conversation/utils/createConversationParams';
 import type { AvailableAgent } from '@/renderer/utils/model/agentTypes';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
-import { Button, Checkbox, Input, Message, Radio, Select, Typography } from '@arco-design/web-react';
+import { Button, Checkbox, Input, Message, Typography } from '@arco-design/web-react';
 import { FolderOpen, Robot } from '@icon-park/react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  orderHarnessSelectableParticipants,
-  resolveHarnessDefaultSelectionKeys,
-} from './createDiscussionGroupModalHelpers';
 import GroupModalSection, {
   GROUP_MODAL_CONTENT_STYLE,
   GROUP_MODAL_FIELD_CLASS_NAME,
   GROUP_MODAL_FOOTER_BUTTON_CLASS_NAME,
-  GROUP_MODAL_INNER_PANEL_CLASS_NAME,
-  GROUP_MODAL_INLINE_CONTROL_ROW_CLASS_NAME,
   GROUP_MODAL_PARTICIPANT_CARD_CLASS_NAME,
-  GROUP_MODAL_PARTICIPANT_CARD_DISABLED_CLASS_NAME,
-  GROUP_MODAL_PARTICIPANT_LIST_STYLE,
-  GROUP_MODAL_PARTICIPANT_META_CLASS_NAME,
   GROUP_MODAL_PARTICIPANT_CARD_SELECTED_CLASS_NAME,
-  GROUP_MODAL_SEGMENTED_GROUP_CLASS_NAME,
+  GROUP_MODAL_PARTICIPANT_LIST_STYLE,
   GROUP_MODAL_STYLE,
-  GROUP_MODAL_SELECT_CLASS_NAME,
 } from './GroupModalShared';
 
 const resolveAssistantDisplayName = (assistant: AssistantListItem, localeKey: string): string => {
@@ -78,18 +52,6 @@ type ParticipantSection = {
   items: ParticipantOption[];
 };
 
-type GroupCreationKind = 'workflow' | 'discussion';
-type WorkflowRole = WorkflowTemplateRole;
-type WorkflowTemplateFieldValues = {
-  maxIterations: number;
-  scoreTarget: number;
-  artifactPath: string;
-  reviewMode: WorkflowGroupReviewMode;
-};
-
-const DEFAULT_MODE: DiscussionGroupMode = 'broadcast';
-const DEFAULT_GROUP_KIND: GroupCreationKind = 'workflow';
-
 const buildSelectionKey = (participantType: ParticipantOption['type'], participantKey: string) => {
   return `${participantType}:${participantKey}`;
 };
@@ -99,53 +61,6 @@ const buildCliParticipantDescription = (agent: AvailableAgent): string => {
     return `${agent.backend} · ${agent.cliPath}`;
   }
   return agent.backend;
-};
-
-const buildWorkflowTemplateFieldValues = (template: WorkflowGroupTemplate): WorkflowTemplateFieldValues => {
-  const definition = getWorkflowGroupTemplateDefinition(template);
-  return {
-    maxIterations: definition.defaults.maxIterations,
-    scoreTarget: definition.defaults.scoreTarget,
-    artifactPath: definition.defaults.artifactPath,
-    reviewMode: definition.defaults.reviewMode,
-  };
-};
-
-const resolveWorkflowRoleLabel = (role: WorkflowRole, t: ReturnType<typeof useTranslation>['t']): string => {
-  return isBuiltInWorkflowRole(role) ? t(`conversation.group.role.${role}`) : formatWorkflowRoleLabel(role);
-};
-
-const normalizeWorkflowRoles = (
-  selectionKeys: string[],
-  previousRoles: Partial<Record<string, WorkflowRole>>,
-  roleOrder: WorkflowRole[]
-): Partial<Record<string, WorkflowRole>> => {
-  const nextRoles: Partial<Record<string, WorkflowRole>> = {};
-  const assignedRoles = new Set<WorkflowRole>();
-
-  for (const key of selectionKeys) {
-    const role = previousRoles[key];
-    if (role && !assignedRoles.has(role)) {
-      nextRoles[key] = role;
-      assignedRoles.add(role);
-    }
-  }
-
-  for (const key of selectionKeys) {
-    if (nextRoles[key]) {
-      continue;
-    }
-
-    const availableRole = roleOrder.find((role) => !assignedRoles.has(role));
-    if (!availableRole) {
-      break;
-    }
-
-    nextRoles[key] = availableRole;
-    assignedRoles.add(availableRole);
-  }
-
-  return nextRoles;
 };
 
 const ParticipantAvatar: React.FC<{ participant: ParticipantOption }> = ({ participant }) => {
@@ -183,49 +98,31 @@ const CreateGroupModal: React.FC<{
 }> = ({ visible, workspace, spaceId, cliAgents, presetAssistants, onCancel, onCreated }) => {
   const { t, i18n } = useTranslation();
   const { assistants, localeKey } = useAssistantList();
-  const workflowTemplates = useMemo(() => listWorkflowGroupTemplateDefinitions(), []);
   const [groupName, setGroupName] = useState('');
   const [selectedWorkspace, setSelectedWorkspace] = useState('');
-  const [groupKind, setGroupKind] = useState<GroupCreationKind>(DEFAULT_GROUP_KIND);
-  const [mode, setMode] = useState<DiscussionGroupMode>(DEFAULT_MODE);
-  const [workflowTemplate, setWorkflowTemplate] = useState<WorkflowGroupTemplate>(DEFAULT_WORKFLOW_GROUP_TEMPLATE);
   const [selectedParticipantKeys, setSelectedParticipantKeys] = useState<string[]>([]);
-  const [workflowRolesByParticipantKey, setWorkflowRolesByParticipantKey] = useState<
-    Partial<Record<string, WorkflowRole>>
-  >({});
-  const [workflowFieldValues, setWorkflowFieldValues] = useState<WorkflowTemplateFieldValues>(() =>
-    buildWorkflowTemplateFieldValues(DEFAULT_WORKFLOW_GROUP_TEMPLATE)
-  );
   const [submitting, setSubmitting] = useState(false);
   const hasInitializedForOpenRef = useRef(false);
-
-  const workflowTemplateDefinition = useMemo(
-    () => getWorkflowGroupTemplateDefinition(workflowTemplate),
-    [workflowTemplate]
-  );
-  const workflowRoleOrder = workflowTemplateDefinition.roleOrder;
 
   const presetAssistantMap = useMemo(() => {
     return new Map(assistants.map((assistant) => [assistant.id, assistant]));
   }, [assistants]);
 
   const presetParticipantOptions = useMemo<ParticipantOption[]>(() => {
-    return orderHarnessSelectableParticipants(
-      presetAssistants.map((assistant) => {
-        const assistantId = assistant.customAgentId || assistant.name;
-        const metadata = presetAssistantMap.get(assistantId);
-        const participantKey = assistantId;
-        return {
-          type: 'preset-assistant',
-          selectionKey: buildSelectionKey('preset-assistant', participantKey),
-          participantKey,
-          name: metadata ? resolveAssistantDisplayName(metadata, localeKey) : assistant.name,
-          avatar: metadata?.avatar || assistant.avatar,
-          description: metadata ? resolveAssistantDescription(metadata, localeKey) : '',
-          presetAgentType: metadata?.presetAgentType || assistant.presetAgentType,
-        };
-      })
-    );
+    return presetAssistants.map((assistant) => {
+      const assistantId = assistant.customAgentId || assistant.name;
+      const metadata = presetAssistantMap.get(assistantId);
+      const participantKey = assistantId;
+      return {
+        type: 'preset-assistant',
+        selectionKey: buildSelectionKey('preset-assistant', participantKey),
+        participantKey,
+        name: metadata ? resolveAssistantDisplayName(metadata, localeKey) : assistant.name,
+        avatar: metadata?.avatar || assistant.avatar,
+        description: metadata ? resolveAssistantDescription(metadata, localeKey) : '',
+        presetAgentType: metadata?.presetAgentType || assistant.presetAgentType,
+      };
+    });
   }, [localeKey, presetAssistantMap, presetAssistants]);
 
   const cliParticipantOptions = useMemo<ParticipantOption[]>(() => {
@@ -271,61 +168,11 @@ const CreateGroupModal: React.FC<{
       return;
     }
 
-    const defaultTemplateDefinition = getWorkflowGroupTemplateDefinition(DEFAULT_WORKFLOW_GROUP_TEMPLATE);
-    const defaultSelectionKeys = resolveHarnessDefaultSelectionKeys(
-      availableParticipants,
-      defaultTemplateDefinition.requiredParticipantCount
-    );
-
     setGroupName(t('conversation.group.defaultName'));
     setSelectedWorkspace(workspace || '');
-    setGroupKind(DEFAULT_GROUP_KIND);
-    setMode(DEFAULT_MODE);
-    setWorkflowTemplate(DEFAULT_WORKFLOW_GROUP_TEMPLATE);
-    setWorkflowFieldValues(buildWorkflowTemplateFieldValues(DEFAULT_WORKFLOW_GROUP_TEMPLATE));
-    setSelectedParticipantKeys(defaultSelectionKeys);
-    setWorkflowRolesByParticipantKey(
-      normalizeWorkflowRoles(defaultSelectionKeys, {}, defaultTemplateDefinition.roleOrder)
-    );
+    setSelectedParticipantKeys(availableParticipants.slice(0, 2).map((participant) => participant.selectionKey));
     hasInitializedForOpenRef.current = true;
   }, [availableParticipants, t, visible, workspace]);
-
-  const updateSelectedParticipants = (selectionKeys: string[]) => {
-    setSelectedParticipantKeys(selectionKeys);
-    setWorkflowRolesByParticipantKey((previousRoles) =>
-      normalizeWorkflowRoles(selectionKeys, previousRoles, workflowRoleOrder)
-    );
-  };
-
-  const handleGroupKindChange = (value: GroupCreationKind) => {
-    setGroupKind(value);
-    if (value === 'workflow') {
-      const trimmedSelectionKeys = selectedParticipantKeys.slice(
-        0,
-        workflowTemplateDefinition.requiredParticipantCount
-      );
-      updateSelectedParticipants(trimmedSelectionKeys);
-    }
-  };
-
-  const handleWorkflowTemplateChange = (value: WorkflowGroupTemplate) => {
-    const nextTemplateDefinition = getWorkflowGroupTemplateDefinition(value);
-    const trimmedSelectionKeys = selectedParticipantKeys.slice(0, nextTemplateDefinition.requiredParticipantCount);
-
-    setWorkflowTemplate(value);
-    setWorkflowFieldValues(buildWorkflowTemplateFieldValues(value));
-    setSelectedParticipantKeys(trimmedSelectionKeys);
-    setWorkflowRolesByParticipantKey(
-      normalizeWorkflowRoles(trimmedSelectionKeys, {}, nextTemplateDefinition.roleOrder)
-    );
-  };
-
-  const handleWorkflowFieldValueChange = (key: keyof WorkflowTemplateFieldValues, value: string | number) => {
-    setWorkflowFieldValues((previousValues) => ({
-      ...previousValues,
-      [key]: value,
-    }));
-  };
 
   const handleSelectWorkspace = async () => {
     try {
@@ -349,51 +196,6 @@ const CreateGroupModal: React.FC<{
       selectedParticipantKeys.includes(participant.selectionKey)
     );
 
-    if (groupKind === 'workflow') {
-      if (selectedParticipants.length !== workflowTemplateDefinition.requiredParticipantCount) {
-        Message.warning(t('conversation.group.workflow.exactParticipants'));
-        return;
-      }
-
-      const workflowParticipants = selectedParticipants.map((participant) => ({
-        ...participant,
-        role: workflowRolesByParticipantKey[participant.selectionKey],
-      }));
-      const assignedRoles = workflowParticipants.map((participant) => participant.role).filter(Boolean);
-      if (
-        assignedRoles.length !== workflowRoleOrder.length ||
-        new Set(assignedRoles).size !== workflowRoleOrder.length
-      ) {
-        Message.warning(t('conversation.group.workflow.assignRoles'));
-        return;
-      }
-
-      setSubmitting(true);
-      try {
-        const params = await buildWorkflowGroupParams({
-          name: groupName.trim() || t('conversation.group.defaultName'),
-          spaceId,
-          workspace: selectedWorkspace.trim() || undefined,
-          language: i18n.language,
-          template: workflowTemplate,
-          participants: workflowParticipants as WorkflowGroupParticipantInput[],
-          maxIterations: workflowFieldValues.maxIterations,
-          scoreTarget: workflowFieldValues.scoreTarget,
-          artifactPath: workflowFieldValues.artifactPath.trim() || undefined,
-          reviewMode: workflowFieldValues.reviewMode,
-        });
-
-        const conversation = await ipcBridge.conversation.create.invoke(params);
-        onCreated(conversation);
-      } catch (error) {
-        console.error('Failed to create workflow group:', error);
-        Message.error(t('conversation.group.createFailed'));
-      } finally {
-        setSubmitting(false);
-      }
-      return;
-    }
-
     if (selectedParticipants.length < 2) {
       Message.warning(t('conversation.group.minimumParticipants'));
       return;
@@ -406,7 +208,7 @@ const CreateGroupModal: React.FC<{
         spaceId,
         workspace: selectedWorkspace.trim() || undefined,
         language: i18n.language,
-        mode,
+        mode: 'debate',
         participants: selectedParticipants,
       });
 
@@ -484,62 +286,9 @@ const CreateGroupModal: React.FC<{
           <Typography.Text type='secondary'>{t('conversation.group.workspaceHint')}</Typography.Text>
         </GroupModalSection>
 
-        <GroupModalSection title={t('conversation.group.kindLabel')}>
-          <Radio.Group
-            value={groupKind}
-            onChange={(value) => handleGroupKindChange(value as GroupCreationKind)}
-            type='button'
-            className={GROUP_MODAL_SEGMENTED_GROUP_CLASS_NAME}
-          >
-            <Radio value='workflow'>{t('conversation.group.kindWorkflow')}</Radio>
-            <Radio value='discussion'>{t('conversation.group.kindDiscussion')}</Radio>
-          </Radio.Group>
-          <Typography.Text type='secondary'>{t(`conversation.group.kindHint.${groupKind}`)}</Typography.Text>
+        <GroupModalSection title={t('conversation.group.fixedFlowLabel')}>
+          <Typography.Text type='secondary'>{t('conversation.group.fixedFlowHint')}</Typography.Text>
         </GroupModalSection>
-
-        {groupKind === 'discussion' ? (
-          <GroupModalSection title={t('conversation.group.modeLabel')}>
-            <Radio.Group
-              value={mode}
-              onChange={(value) => setMode(value as DiscussionGroupMode)}
-              type='button'
-              className={GROUP_MODAL_SEGMENTED_GROUP_CLASS_NAME}
-            >
-              <Radio value='broadcast'>{t('conversation.group.modeBroadcast')}</Radio>
-              <Radio value='relay'>{t('conversation.group.modeRelay')}</Radio>
-              <Radio value='debate'>{t('conversation.group.modeDebate')}</Radio>
-            </Radio.Group>
-            <Typography.Text type='secondary'>{t(`conversation.group.modeHint.${mode}`)}</Typography.Text>
-          </GroupModalSection>
-        ) : (
-          <GroupModalSection title={t('conversation.group.workflow.templateLabel')}>
-            <div className='flex flex-col gap-8px'>
-              <Select
-                value={workflowTemplate}
-                onChange={(value) => handleWorkflowTemplateChange(value as WorkflowGroupTemplate)}
-                className={`${GROUP_MODAL_SELECT_CLASS_NAME} ${GROUP_MODAL_FIELD_CLASS_NAME}`}
-              >
-                {workflowTemplates.map((template) => (
-                  <Select.Option key={template.id} value={template.id}>
-                    {t(template.labelKey)}
-                  </Select.Option>
-                ))}
-              </Select>
-              <Typography.Text type='secondary'>{t(workflowTemplateDefinition.hintKey)}</Typography.Text>
-            </div>
-            <div className={GROUP_MODAL_INNER_PANEL_CLASS_NAME}>
-              <div className='flex flex-col gap-10px'>
-                {renderWorkflowTemplateConfigFields({
-                  template: workflowTemplate,
-                  templateDefinition: workflowTemplateDefinition,
-                  values: workflowFieldValues,
-                  onChange: handleWorkflowFieldValueChange,
-                  t,
-                })}
-              </div>
-            </div>
-          </GroupModalSection>
-        )}
 
         <GroupModalSection title={t('conversation.group.participantsLabel')}>
           <div className='flex flex-col gap-8px overflow-y-auto pr-4px' style={GROUP_MODAL_PARTICIPANT_LIST_STYLE}>
@@ -550,10 +299,6 @@ const CreateGroupModal: React.FC<{
                 </Typography.Text>
                 {section.items.map((participant) => {
                   const selected = selectedParticipantKeys.includes(participant.selectionKey);
-                  const disableSelection =
-                    groupKind === 'workflow' &&
-                    !selected &&
-                    selectedParticipantKeys.length >= workflowTemplateDefinition.requiredParticipantCount;
 
                   return (
                     <div
@@ -561,19 +306,17 @@ const CreateGroupModal: React.FC<{
                       className={[
                         GROUP_MODAL_PARTICIPANT_CARD_CLASS_NAME,
                         selected ? GROUP_MODAL_PARTICIPANT_CARD_SELECTED_CLASS_NAME : '',
-                        disableSelection ? GROUP_MODAL_PARTICIPANT_CARD_DISABLED_CLASS_NAME : '',
                       ].join(' ')}
                     >
                       <Checkbox
                         checked={selected}
-                        disabled={disableSelection}
                         onChange={(checked) => {
-                          updateSelectedParticipants(
+                          setSelectedParticipantKeys((previousKeys) =>
                             checked
-                              ? selectedParticipantKeys.includes(participant.selectionKey)
-                                ? selectedParticipantKeys
-                                : [...selectedParticipantKeys, participant.selectionKey]
-                              : selectedParticipantKeys.filter((key) => key !== participant.selectionKey)
+                              ? previousKeys.includes(participant.selectionKey)
+                                ? previousKeys
+                                : [...previousKeys, participant.selectionKey]
+                              : previousKeys.filter((key) => key !== participant.selectionKey)
                           );
                         }}
                       />
@@ -586,55 +329,6 @@ const CreateGroupModal: React.FC<{
                         >
                           {participant.description || t('conversation.group.noDescription')}
                         </Typography.Paragraph>
-                        {groupKind === 'workflow' && selected ? (
-                          <div className={GROUP_MODAL_PARTICIPANT_META_CLASS_NAME}>
-                            <div className={GROUP_MODAL_INLINE_CONTROL_ROW_CLASS_NAME}>
-                              <Typography.Text type='secondary' className='text-12px'>
-                                {t('conversation.group.workflow.roleLabel')}
-                              </Typography.Text>
-                              <Select
-                                size='small'
-                                value={workflowRolesByParticipantKey[participant.selectionKey]}
-                                style={{ width: 180 }}
-                                className={GROUP_MODAL_SELECT_CLASS_NAME}
-                                onChange={(value) => {
-                                  const nextRole = value as WorkflowRole;
-                                  setWorkflowRolesByParticipantKey((previousRoles) => {
-                                    const nextRoles: Partial<Record<string, WorkflowRole>> = {};
-                                    for (const [key, role] of Object.entries(previousRoles)) {
-                                      const assignedRole = role as WorkflowRole | undefined;
-                                      if (!assignedRole) {
-                                        continue;
-                                      }
-                                      if (assignedRole === nextRole && key !== participant.selectionKey) {
-                                        continue;
-                                      }
-                                      nextRoles[key] = assignedRole;
-                                    }
-                                    nextRoles[participant.selectionKey] = nextRole;
-                                    return normalizeWorkflowRoles(
-                                      selectedParticipantKeys,
-                                      nextRoles,
-                                      workflowRoleOrder
-                                    );
-                                  });
-                                }}
-                              >
-                                {workflowRoleOrder.map((role) => {
-                                  const isTakenByOtherParticipant = Object.entries(workflowRolesByParticipantKey).some(
-                                    ([key, assignedRole]) => key !== participant.selectionKey && assignedRole === role
-                                  );
-
-                                  return (
-                                    <Select.Option key={role} value={role} disabled={isTakenByOtherParticipant}>
-                                      {resolveWorkflowRoleLabel(role, t)}
-                                    </Select.Option>
-                                  );
-                                })}
-                              </Select>
-                            </div>
-                          </div>
-                        ) : null}
                       </div>
                     </div>
                   );
@@ -642,11 +336,7 @@ const CreateGroupModal: React.FC<{
               </div>
             ))}
           </div>
-          <Typography.Text type='secondary'>
-            {groupKind === 'workflow'
-              ? t('conversation.group.workflow.exactParticipantsHint')
-              : t('conversation.group.minimumParticipantsHint')}
-          </Typography.Text>
+          <Typography.Text type='secondary'>{t('conversation.group.minimumParticipantsHint')}</Typography.Text>
         </GroupModalSection>
       </div>
     </ContextGoModal>

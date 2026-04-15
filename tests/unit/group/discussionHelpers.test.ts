@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildDiscussionFinalSynthesisContent,
   buildDiscussionRoundPrompt,
+  buildDiscussionRoundSummaryContent,
   normalizeGroupCollaboration,
   normalizeDiscussionOrchestration,
 } from '@/process/bridge/services/group/discussion/discussionHelpers';
@@ -185,5 +187,48 @@ describe('buildDiscussionRoundPrompt', () => {
     expect(prompt).toContain('PASS/FAIL rubric');
     expect(prompt).toContain('Stay read-only');
     expect(prompt).toContain('failure conditions');
+  });
+});
+
+describe('discussion summaries', () => {
+  it('builds a compact round summary from participant outputs', () => {
+    const summary = buildDiscussionRoundSummaryContent({
+      round: 2,
+      summaries: [
+        {
+          participantId: 'a',
+          participantName: 'Planner',
+          content: 'Prefer a phased rollout with explicit rollback criteria.',
+        },
+      ],
+    });
+
+    expect(summary).toContain('## Round 2 Summary');
+    expect(summary).toContain('Planner');
+    expect(summary).toContain('Prefer a phased rollout');
+  });
+
+  it('builds a final synthesis from the latest participant views', () => {
+    const synthesis = buildDiscussionFinalSynthesisContent({
+      userInput: 'Choose the strongest rollout strategy.',
+      roundSummaries: [
+        {
+          participantId: 'a',
+          participantName: 'Planner',
+          content: 'Choose phased rollout.',
+        },
+        {
+          participantId: 'b',
+          participantName: 'Reviewer',
+          content: 'Keep tighter rollback thresholds.',
+        },
+      ],
+    });
+
+    expect(synthesis).toContain('## Group Synthesis');
+    expect(synthesis).toContain('Choose the strongest rollout strategy.');
+    expect(synthesis).toContain('Planner');
+    expect(synthesis).toContain('Reviewer');
+    expect(synthesis).toContain('Next Step');
   });
 });
