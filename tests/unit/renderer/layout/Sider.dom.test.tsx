@@ -256,6 +256,7 @@ vi.mock('@icon-park/react', () => {
       <span>{label}</span>;
 
   return {
+    CheckSmall: icon('check-small-icon'),
     Computer: icon('computer-icon'),
     ConnectionPoint: icon('connection-point-icon'),
     Down: icon('down-icon'),
@@ -589,6 +590,53 @@ describe('Sider', () => {
       expect(screen.getAllByText('Local Mac').length).toBeGreaterThan(0);
     });
     expect(screen.getByText('settings.webui.officialRemoteStatusShort.ready')).toBeInTheDocument();
+  });
+
+  it('renders compact platform indicators for the device switch menu item instead of the inline device name', async () => {
+    hoisted.cloudGetStatusInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        authenticated: true,
+        browserSessionExpired: false,
+        user: {
+          id: 'cloud-user-1',
+          email: 'dev@example.com',
+          username: 'dev-user',
+          displayName: 'Dev User',
+        },
+        device: {
+          id: 'device-local',
+          userId: 'cloud-user-1',
+          deviceName: 'Local Mac',
+          platform: 'macos',
+          status: 'active',
+          createdAt: '2026-04-01T00:00:00Z',
+          updatedAt: '2026-04-01T00:00:00Z',
+        },
+        deviceTokenAvailable: true,
+        officialRemoteReady: true,
+        officialRemote: {
+          desired: true,
+          running: true,
+          browserEntryReady: true,
+        },
+        providers: ['github', 'google'],
+        authBaseUrl: 'https://remote.contextgo.test',
+        apiBaseUrl: 'https://api.contextgo.test',
+      },
+    });
+
+    renderSider('/guid');
+
+    const menuItem = await screen.findByTestId('menu-item-device-switch');
+
+    expect(menuItem).not.toHaveTextContent('Local Mac');
+    expect(screen.getByAltText('macOS')).toBeInTheDocument();
+    expect(screen.getByTestId('device-switch-local-indicator')).toBeInTheDocument();
+    expect(screen.getByTestId('device-switch-indicators')).toHaveAttribute(
+      'title',
+      expect.stringContaining('Local Mac')
+    );
   });
 
   it('ensures current desktop official remote readiness before loading devices when needed', async () => {
