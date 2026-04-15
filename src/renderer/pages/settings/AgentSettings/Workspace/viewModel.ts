@@ -314,18 +314,14 @@ export const buildAssistantWorkspaceModel = ({
 };
 
 export const getVisibleAgentWorkspaceTabs = (model: AssistantWorkspaceModel): AgentDetailTabId[] => {
-  const availableTabs = new Set(
-    model.availableTabs.filter((tabId) => {
-      switch (tabId) {
-        case 'agents':
-          return Boolean(model.agentsDocument || hasAgentsEntryDocument(model.packageManifest));
-        case 'docs':
-          return model.docs.length > 0 || Boolean(model.packageManifest?.docsDirectory);
-        default:
-          return true;
-      }
-    })
-  );
-
-  return AGENT_DETAIL_TAB_PRIORITY.filter((tabId) => availableTabs.has(tabId));
+  return model.availableTabs.filter((tabId) => {
+    switch (tabId) {
+      case 'agents':
+        return Boolean(model.agentsDocument || hasAgentsEntryDocument(model.packageManifest));
+      case 'docs':
+        return model.docs.length > 0 || Boolean(model.packageManifest?.docsDirectory);
+      default:
+        return true;
+    }
+  });
 };

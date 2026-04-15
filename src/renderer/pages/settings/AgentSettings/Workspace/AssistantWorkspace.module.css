@@ -113,20 +113,6 @@
   margin-top: -4px;
 }
 
-.detailContentShell {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-  padding: 0 24px 24px;
-}
-
-.detailContentShell > * {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-}
-
 .detailHero {
   display: flex;
   align-items: flex-start;
@@ -478,9 +464,5 @@
   .detailHero,
   .pageHeader {
     flex-direction: column;
-  }
-
-  .detailContentShell {
-    padding: 0 16px 16px;
   }
 }

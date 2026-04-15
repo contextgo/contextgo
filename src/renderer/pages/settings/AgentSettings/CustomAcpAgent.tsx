@@ -92,7 +92,7 @@ const hasRuntimeAuthIssue = (message?: string): boolean => {
 };
 
 const MANAGED_RUNTIME_BACKENDS: readonly ManagedRuntimeBackend[] = PRODUCT_VISIBLE_RUNTIME_BACKENDS;
-const CONFIGURABLE_RUNTIME_BACKENDS = new Set<ManagedRuntimeBackend>(['gemini', 'claude', 'codex', 'opencode']);
+const CONFIGURABLE_RUNTIME_BACKENDS = new Set<ManagedRuntimeBackend>(['gemini', 'claude', 'codex']);
 
 const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   gemini: {

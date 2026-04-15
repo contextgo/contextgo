@@ -288,8 +288,6 @@ describe('Runtime Settings page', () => {
     const opencodeCard = screen.getByTestId('runtime-card-opencode');
     expect(within(opencodeCard).queryByRole('button', { name: 'Check availability' })).not.toBeInTheDocument();
     expect(within(opencodeCard).getByRole('button', { name: 'Install locally' })).toBeInTheDocument();
-    expect(within(opencodeCard).getByRole('button', { name: 'Open config' })).toBeInTheDocument();
-    expect(within(opencodeCard).getByRole('button', { name: 'Reveal' })).toBeInTheDocument();
     expect(within(opencodeCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
     expect(within(opencodeCard).queryByText('No path is being used yet.')).not.toBeInTheDocument();
   });
@@ -330,38 +328,6 @@ describe('Runtime Settings page', () => {
 
     expect(openFilePreviewMock).toHaveBeenCalledTimes(2);
     expect(openFileInvokeMock).not.toHaveBeenCalled();
-  });
-
-  it('opens every config source for opencode in the shared preview panel', async () => {
-    getManagedRuntimeConfigLocationInvokeMock.mockResolvedValueOnce({
-      success: true,
-      data: {
-        backend: 'opencode',
-        entries: [
-          {
-            kind: 'config',
-            path: '/Users/tester/.config/opencode/opencode.json',
-            exists: true,
-          },
-          {
-            kind: 'auth',
-            path: '/Users/tester/.local/share/opencode/auth.json',
-            exists: true,
-          },
-        ],
-      },
-    });
-
-    renderRuntimeSettings();
-
-    await screen.findByText('Runtime Management');
-    fireEvent.click(within(screen.getByTestId('runtime-card-opencode')).getByRole('button', { name: 'Open config' }));
-
-    await waitFor(() => {
-      expect(getManagedRuntimeConfigLocationInvokeMock).toHaveBeenCalledWith({ backend: 'opencode' });
-      expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.config/opencode/opencode.json' });
-      expect(openFilePreviewMock).toHaveBeenCalledWith({ path: '/Users/tester/.local/share/opencode/auth.json' });
-    });
   });
 
   it('falls back to the system opener when config preview cannot be mounted', async () => {

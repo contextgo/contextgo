@@ -548,33 +548,6 @@
   line-height: 1.25;
 }
 
-.sider-user-menu__status-icons {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.sider-user-menu__status-icon {
-  width: 14px;
-  height: 14px;
-  display: block;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.sider-user-menu__status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  background: color-mix(in srgb, rgb(var(--primary-6)) 14%, var(--bg-1) 86%);
-  color: rgb(var(--primary-6));
-  border: 1px solid color-mix(in srgb, rgb(var(--primary-6)) 28%, transparent);
-  flex-shrink: 0;
-}
-
 .sider-user-menu__item--active .sider-user-menu__row-text,
 .sider-user-menu__item--active .sider-user-menu__row-value {
   color: rgb(var(--primary-6));

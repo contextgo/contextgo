@@ -127,9 +127,7 @@ const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
         </Tabs>
       </div>
 
-      <div className={styles.detailContentShell} data-testid='agent-detail-content-shell'>
-        {renderTabContent()}
-      </div>
+      {renderTabContent()}
     </div>
   );
 };

@@ -285,31 +285,14 @@ describe('AgentDetailPage tabs', () => {
     const { container } = renderDetailPage({ path: '/agents/builtin-superpowers/skills' });
 
     expect(screen.getByRole('tablist')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'AGENTS.md' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Skills' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Hooks' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Commands' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'AGENTS.md' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Docs' })).toBeInTheDocument();
-    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      'AGENTS.md',
-      'Skills',
-      'Hooks',
-      'Commands',
-      'Docs',
-    ]);
     expect(screen.getAllByText('using-superpowers').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Bootstraps mandatory skill usage.').length).toBeGreaterThan(0);
     expect(container.firstElementChild?.className).toContain('surfaceFill');
-  });
-
-  it('wraps tab content inside a shared detail content shell', () => {
-    renderDetailPage({
-      path: '/agents/builtin-superpowers/agents',
-      tabId: 'agents',
-    });
-
-    expect(screen.getByTestId('agent-detail-content-shell')).toBeInTheDocument();
-    expect(screen.getByText('Superpowers Harness Package')).toBeInTheDocument();
   });
 
   it('keeps the skill index compact and renders the SKILL.md body in the detail pane', async () => {

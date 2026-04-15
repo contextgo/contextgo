@@ -56,8 +56,8 @@ describe('buildAssistantWorkspaceModel', () => {
       selectedHooks: ['repo-context-bootstrap'],
     });
 
-    expect(model.availableTabs).toEqual(['agents', 'skills', 'hooks', 'commands', 'docs']);
-    expect(model.defaultTab).toBe('agents');
+    expect(model.availableTabs).toEqual(['skills', 'hooks', 'commands', 'agents', 'docs']);
+    expect(model.defaultTab).toBe('skills');
     expect(model.packageManifest?.entryDocument.file).toBe('AGENTS.md');
     expect(model.agentsDocument).toBeNull();
     expect(model.docs).toEqual([]);
@@ -120,7 +120,7 @@ describe('buildAssistantWorkspaceModel', () => {
       selectedHooks: [],
     });
 
-    expect(model.availableTabs).toEqual(['agents', 'skills', 'docs']);
+    expect(model.availableTabs).toEqual(['skills', 'agents', 'docs']);
     expect(model.packageManifest?.entryDocument.file).toBe('AGENTS.md');
     expect(model.agentsDocument).toBeNull();
     expect(model.docs).toEqual([]);

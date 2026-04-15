@@ -249,33 +249,6 @@ vi.mock('@renderer/utils/platform', () => ({
   openExternalUrl: (...args: unknown[]) => hoisted.openExternalUrlMock(...args),
 }));
 
-vi.mock('@icon-park/react', () => {
-  const icon =
-    (label: string) =>
-    () =>
-      <span>{label}</span>;
-
-  return {
-    CheckSmall: icon('check-small-icon'),
-    Computer: icon('computer-icon'),
-    ConnectionPoint: icon('connection-point-icon'),
-    Down: icon('down-icon'),
-    Earth: icon('earth-icon'),
-    FolderOpen: icon('folder-open-icon'),
-    Github: icon('github-icon'),
-    Google: icon('google-icon'),
-    LinkCloud: icon('link-cloud-icon'),
-    Moon: icon('moon-icon'),
-    Plus: icon('plus-icon'),
-    Right: icon('right-icon'),
-    Robot: icon('robot-icon'),
-    RobotOne: icon('robot-one-icon'),
-    SettingTwo: icon('setting-two-icon'),
-    Sun: icon('sun-icon'),
-    Theme: icon('theme-icon'),
-  };
-});
-
 vi.mock('@arco-design/web-react', () => {
   const normalizeMenuKey = (value: React.Key | null): string => {
     if (typeof value === 'string') {
@@ -509,7 +482,7 @@ describe('Sider', () => {
     fireEvent.click(screen.getByTestId('menu-item-device-switch'));
 
     await waitFor(() => {
-      expect(screen.getAllByText('settings.webui.switchDevice').length).toBeGreaterThan(0);
+      expect(screen.getByText('settings.webui.switchDevice')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));
@@ -590,53 +563,6 @@ describe('Sider', () => {
       expect(screen.getAllByText('Local Mac').length).toBeGreaterThan(0);
     });
     expect(screen.getByText('settings.webui.officialRemoteStatusShort.ready')).toBeInTheDocument();
-  });
-
-  it('renders compact platform indicators for the device switch menu item instead of the inline device name', async () => {
-    hoisted.cloudGetStatusInvokeMock.mockResolvedValue({
-      success: true,
-      data: {
-        authenticated: true,
-        browserSessionExpired: false,
-        user: {
-          id: 'cloud-user-1',
-          email: 'dev@example.com',
-          username: 'dev-user',
-          displayName: 'Dev User',
-        },
-        device: {
-          id: 'device-local',
-          userId: 'cloud-user-1',
-          deviceName: 'Local Mac',
-          platform: 'macos',
-          status: 'active',
-          createdAt: '2026-04-01T00:00:00Z',
-          updatedAt: '2026-04-01T00:00:00Z',
-        },
-        deviceTokenAvailable: true,
-        officialRemoteReady: true,
-        officialRemote: {
-          desired: true,
-          running: true,
-          browserEntryReady: true,
-        },
-        providers: ['github', 'google'],
-        authBaseUrl: 'https://remote.contextgo.test',
-        apiBaseUrl: 'https://api.contextgo.test',
-      },
-    });
-
-    renderSider('/guid');
-
-    const menuItem = await screen.findByTestId('menu-item-device-switch');
-
-    expect(menuItem).not.toHaveTextContent('Local Mac');
-    expect(screen.getByAltText('macOS')).toBeInTheDocument();
-    expect(screen.getByTestId('device-switch-local-indicator')).toBeInTheDocument();
-    expect(screen.getByTestId('device-switch-indicators')).toHaveAttribute(
-      'title',
-      expect.stringContaining('Local Mac')
-    );
   });
 
   it('ensures current desktop official remote readiness before loading devices when needed', async () => {
@@ -995,13 +921,8 @@ describe('Sider', () => {
     await waitFor(() => {
       expect(screen.getAllByText('settings.cloud.notConnected').length).toBeGreaterThan(0);
     });
-    expect(screen.getAllByText('settings.webui.officialRemoteStatusShort.signedOut').length).toBeGreaterThan(0);
-    expect(screen.getByText('settings.cloud.description')).toBeInTheDocument();
-    expect(screen.queryByText('settings.cloud.notConnectedDesc')).not.toBeInTheDocument();
     expect(screen.getAllByText('settings.cloud.loginWithGithub').length).toBeGreaterThan(0);
     expect(screen.getAllByText('settings.cloud.loginWithGoogle').length).toBeGreaterThan(0);
-    expect(screen.getByAltText('GitHub')).toBeInTheDocument();
-    expect(screen.getByAltText('Google')).toBeInTheDocument();
     expect(hoisted.cloudListRemoteDevicesInvokeMock).not.toHaveBeenCalled();
   });
 
@@ -1107,42 +1028,11 @@ describe('Sider', () => {
       avatarUrl: 'https://avatars.githubusercontent.com/u/231244789?v=4',
       authSource: 'cloud',
     };
-    hoisted.cloudGetStatusInvokeMock.mockResolvedValue({
-      success: true,
-      data: {
-        authenticated: true,
-        user: {
-          id: 'cloud-user-1',
-          email: 'yeyitech@gmail.com',
-          displayName: 'Yeyi Tech',
-          authSource: 'cloud',
-        },
-        device: null,
-        officialRemote: {
-          running: false,
-          clientConnected: false,
-          transport: null,
-          browserEntryReady: false,
-          browserEntryReason: null,
-        },
-        officialRemoteReady: false,
-      },
-    });
 
     renderSider('/guid');
 
     expect(await screen.findByText('Yeyi Tech')).toBeInTheDocument();
     expect(screen.getByText('yeyitech@gmail.com')).toBeInTheDocument();
     expect(screen.getByAltText('Yeyi Tech')).toBeInTheDocument();
-  });
-
-  it('keeps the infermesh entry but removes the standalone cloud login hint from the user menu', async () => {
-    renderSider('/guid');
-
-    await waitFor(() => {
-      expect(screen.getByTestId('menu-item-cloud:infermesh')).toBeInTheDocument();
-    });
-
-    expect(screen.queryByTestId('menu-item-cloud:login')).not.toBeInTheDocument();
   });
 });
