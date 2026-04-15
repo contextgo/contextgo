@@ -5,7 +5,6 @@
  */
 
 import { app } from 'electron';
-import { webui } from '@/common/adapter/ipcBridge';
 import { cleanupWebAdapter } from '@process/webserver/adapter';
 import { startWebServerWithInstance, type WebServerInstance } from '@process/webserver';
 
@@ -34,6 +33,14 @@ export type HostBrowserEntryDemandState = {
   allowRemote: boolean;
   preferredPort: number | null;
   allowPortFallback: boolean;
+};
+
+export type HostBrowserEntryStatusChangedEvent = {
+  lifecycle?: HostBrowserEntryLifecycle;
+  running: boolean;
+  port?: number;
+  localUrl?: string;
+  networkUrl?: string;
 };
 
 const OFFICIAL_REMOTE_PORT_FALLBACK_ATTEMPTS = 10;
@@ -84,6 +91,7 @@ export class HostBrowserEntryService {
   private startupPromise: Promise<WebServerInstance> | null = null;
   private readonly demandRequests = new Map<HostBrowserEntryDemand, HostBrowserEntryRequest>();
   private lifecycle: HostBrowserEntryLifecycle = 'stopped';
+  private statusChangedEmitter: ((status: HostBrowserEntryStatusChangedEvent) => void) | null = null;
 
   public getCurrentInstance(): WebServerInstance | null {
     return this.currentInstance;
@@ -91,6 +99,10 @@ export class HostBrowserEntryService {
 
   public setCurrentInstanceForLegacy(instance: WebServerInstance | null): void {
     this.currentInstance = instance;
+  }
+
+  public setStatusChangedEmitter(emitter: ((status: HostBrowserEntryStatusChangedEvent) => void) | null): void {
+    this.statusChangedEmitter = emitter;
   }
 
   public getLocalBaseUrl(): string | null {
@@ -281,7 +293,7 @@ export class HostBrowserEntryService {
 
   private emitRuntimeStatus(instance?: WebServerInstance | null): void {
     const runtimeInstance = instance ?? this.currentInstance;
-    webui.statusChanged.emit({
+    this.statusChangedEmitter?.({
       lifecycle: this.lifecycle,
       running: runtimeInstance !== null,
       port: runtimeInstance?.port,

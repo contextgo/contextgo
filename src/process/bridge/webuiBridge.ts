@@ -5,7 +5,6 @@
  */
 
 import { webui } from '@/common/adapter/ipcBridge';
-import { SERVER_CONFIG } from '@process/webserver/config/constants';
 import { WebuiService } from './services/WebuiService';
 import { generateQRLoginUrlDirect, verifyQRTokenDirect } from './webuiQR';
 import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
@@ -34,6 +33,10 @@ export function getWebServerInstance(): WebServerInstance | null {
  * Initialize WebUI IPC bridge
  */
 export function initWebuiBridge(): void {
+  getHostBrowserEntryService().setStatusChangedEmitter((status) => {
+    webui.statusChanged.emit(status);
+  });
+
   // 获取 WebUI 状态 / Get WebUI status
   webui.getStatus.provider(async () => {
     return WebuiService.handleAsync(async () => {
@@ -52,64 +55,21 @@ export function initWebuiBridge(): void {
 
   // 启动 WebUI / Start WebUI
   webui.start.provider(async ({ port: requestedPort, allowRemote }) => {
-    try {
-      const port = requestedPort ?? SERVER_CONFIG.DEFAULT_PORT;
-      const remote = allowRemote ?? false;
-      const instance = await getHostBrowserEntryService().ensureForDemand('local-client', {
-        preferredPort: port,
-        allowRemote: remote,
-        reason: 'webui.start',
+    return WebuiService.handleAsync(async () => {
+      const data = await WebuiService.startLocalAccess({
+        port: requestedPort,
+        allowRemote,
       });
-      await WebuiService.updateLocalAccessPreferences({
-        enabled: true,
-        allowRemote: remote,
-        port: instance.port,
-      });
-
-      // 获取服务器信息 / Get server info
-      const status = await WebuiService.getStatus();
-      const localUrl = `http://localhost:${instance.port}`;
-      const lanIP = WebuiService.getLanIP();
-      const networkUrl = remote && lanIP ? `http://${lanIP}:${instance.port}` : undefined;
-      const initialPassword = status.initialPassword;
-
-      return {
-        success: true,
-        data: {
-          port: instance.port,
-          localUrl,
-          networkUrl,
-          lanIP: lanIP ?? undefined,
-          initialPassword,
-        },
-      };
-    } catch (error) {
-      console.error('[WebUI Bridge] Start error:', error);
-      return {
-        success: false,
-        msg: error instanceof Error ? error.message : 'Failed to start WebUI',
-      };
-    }
+      return { success: true, data };
+    }, 'Start WebUI');
   });
 
   // 停止 WebUI / Stop WebUI
   webui.stop.provider(async () => {
-    try {
-      const currentInstance = getHostBrowserEntryService().getCurrentInstance();
-      await WebuiService.updateLocalAccessPreferences({
-        enabled: false,
-        port: currentInstance?.port ?? SERVER_CONFIG.DEFAULT_PORT,
-      });
-      await getHostBrowserEntryService().releaseDemand('local-client', 'Server shutting down');
-
+    return WebuiService.handleAsync(async () => {
+      await WebuiService.stopLocalAccess();
       return { success: true };
-    } catch (error) {
-      console.error('[WebUI Bridge] Stop error:', error);
-      return {
-        success: false,
-        msg: error instanceof Error ? error.message : 'Failed to stop WebUI',
-      };
-    }
+    }, 'Stop WebUI');
   });
 
   // 修改密码（不需要当前密码）/ Change password (no current password required)

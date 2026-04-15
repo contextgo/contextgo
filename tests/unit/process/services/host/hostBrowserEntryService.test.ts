@@ -267,6 +267,45 @@ describe('HostBrowserEntryService', () => {
     });
   });
 
+  it('emits lifecycle updates through a registered status listener', async () => {
+    startWebServerWithInstanceMock.mockResolvedValue({
+      server: {
+        close: (callback) => callback?.(),
+      },
+      wss: {
+        clients: new Set(),
+      },
+      port: 43123,
+      allowRemote: false,
+    });
+
+    const onStatusChanged = vi.fn();
+    const { HostBrowserEntryService } = await import('@process/services/host/HostBrowserEntryService');
+    const service = new HostBrowserEntryService();
+    service.setStatusChangedEmitter(onStatusChanged);
+
+    await service.ensureForDemand('local-client', {
+      preferredPort: 25809,
+      allowRemote: false,
+      reason: 'local-client',
+    });
+
+    expect(onStatusChanged).toHaveBeenCalledWith({
+      lifecycle: 'starting',
+      localUrl: undefined,
+      networkUrl: undefined,
+      port: undefined,
+      running: false,
+    });
+    expect(onStatusChanged).toHaveBeenCalledWith({
+      lifecycle: 'running',
+      localUrl: 'http://localhost:43123',
+      networkUrl: undefined,
+      port: 43123,
+      running: true,
+    });
+  });
+
   it('returns null base URL when no runtime is active', async () => {
     const { HostBrowserEntryService } = await import('@process/services/host/HostBrowserEntryService');
     const service = new HostBrowserEntryService();
