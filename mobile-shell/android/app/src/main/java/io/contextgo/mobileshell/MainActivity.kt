@@ -5,8 +5,9 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.webkit.CookieManager
+import android.provider.Settings
 import android.webkit.JavascriptInterface
+import android.webkit.CookieManager
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -500,6 +501,11 @@ class MainActivity : AppCompatActivity() {
           .put("vaultName", request.suggestedFolderName)
           .put("rootTreeUri", treeUri.toString())
           .put("spaceDirectoryUri", spaceDirectory.uri.toString())
+          .put("vaultBindingId", request.vaultBindingId)
+          .put("replicaId", buildAndroidReplicaId())
+          .put("landingNotePath", request.landingNotePath)
+
+      ensureObsidianVaultBootstrap(spaceDirectory, request)
 
       preferences.edit().putString(obsidianVaultSetupKey(request.spaceId), payload.toString()).apply()
       dispatchObsidianVaultSetupResult(payload)
@@ -539,6 +545,34 @@ class MainActivity : AppCompatActivity() {
       .toString()
   }
 
+  private fun ensureObsidianVaultBootstrap(
+    spaceDirectory: DocumentFile,
+    request: PendingObsidianVaultSetupRequest,
+  ) {
+    val obsidianDir =
+      spaceDirectory.findDirectory(".obsidian")
+        ?: spaceDirectory.createDirectory(".obsidian")
+        ?: error("Failed to create .obsidian directory in the Android vault.")
+    obsidianDir.findDirectory("plugins") ?: obsidianDir.createDirectory("plugins")
+
+    if (spaceDirectory.findFile(request.landingNotePath) == null) {
+      val landingNote =
+        spaceDirectory.createFile("text/markdown", request.landingNotePath)
+          ?: error("Failed to create Android landing note inside the prepared vault.")
+      contentResolver.openOutputStream(landingNote.uri)?.use { output ->
+        output.write("# ${request.spaceName}\n".toByteArray())
+      } ?: error("Failed to open Android landing note for writing.")
+    }
+  }
+
+  private fun buildAndroidReplicaId(): String {
+    val androidId =
+      Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+        ?.takeIf { it.isNotBlank() }
+        ?: "unknown"
+    return "android_$androidId"
+  }
+
   private inner class StartupBridge {
     @JavascriptInterface
     fun notifyReady() {
@@ -562,6 +596,8 @@ class MainActivity : AppCompatActivity() {
             spaceId = payload.optString("spaceId").ifBlank { return },
             spaceName = payload.optString("spaceName").ifBlank { "Space" },
             suggestedFolderName = payload.optString("suggestedFolderName").ifBlank { "contextgo-space" },
+            vaultBindingId = payload.optString("vaultBindingId").ifBlank { "vault_default" },
+            landingNotePath = payload.optString("landingNotePath").ifBlank { "Home.md" },
           )
         } catch (_: Exception) {
           null
@@ -651,6 +687,8 @@ class MainActivity : AppCompatActivity() {
     val spaceId: String,
     val spaceName: String,
     val suggestedFolderName: String,
+    val vaultBindingId: String,
+    val landingNotePath: String,
   )
 
   private fun obsidianVaultSetupKey(spaceId: String): String {

@@ -61,8 +61,13 @@ const hoisted = vi.hoisted(() => {
       status: 'prepared-directory',
       spaceId: 'space-2',
       vaultName: 'team-space',
+      rootTreeUri: 'content://root/contextgo',
       spaceDirectoryUri: 'content://space/team-space',
+      vaultBindingId: 'vault_space-2',
+      replicaId: 'android_replica_1',
+      landingNotePath: 'Home.md',
     }),
+    getAndroidObsidianVaultSetupStateMock: vi.fn().mockReturnValue(null),
     openExternalUrlMock: vi.fn().mockResolvedValue(undefined),
     messageSuccessMock: vi.fn(),
     messageErrorMock: vi.fn(),
@@ -255,6 +260,7 @@ vi.mock('@renderer/utils/platform', () => ({
   isMacOS: () => true,
   isMobileShellWebView: () => isMobileShellWebViewMock,
   isAndroidMobileShell: () => isAndroidMobileShellMock,
+  getAndroidObsidianVaultSetupState: (...args: unknown[]) => hoisted.getAndroidObsidianVaultSetupStateMock(...args),
   requestAndroidObsidianVaultSetup: (...args: unknown[]) => hoisted.requestAndroidObsidianVaultSetupMock(...args),
   openExternalUrl: (...args: unknown[]) => hoisted.openExternalUrlMock(...args),
 }));
@@ -464,6 +470,8 @@ describe('Sider', () => {
     });
     hoisted.openExternalUrlMock.mockClear();
     hoisted.navigateMock.mockReset();
+    hoisted.getAndroidObsidianVaultSetupStateMock.mockReset();
+    hoisted.getAndroidObsidianVaultSetupStateMock.mockReturnValue(null);
     isMobileShellWebViewMock = false;
     isAndroidMobileShellMock = false;
     hoisted.remoteAccessRef.current = null;
@@ -1173,11 +1181,49 @@ describe('Sider', () => {
         spaceId: 'space-2',
         spaceName: 'Team Space',
         suggestedFolderName: 'team-space',
+        vaultBindingId: 'vault_space-2',
+        landingNotePath: 'Home.md',
       });
       expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith('obsidian://open?choose-vault');
       expect(hoisted.messageSuccessMock).toHaveBeenCalledWith('guid.vault.androidSetupPrepared');
     });
     expect(hoisted.openVaultInvokeMock).not.toHaveBeenCalled();
+  });
+
+  it('shows Android prepared-directory readiness and skips directory picking on later opens', async () => {
+    isMobileShellWebViewMock = true;
+    isAndroidMobileShellMock = true;
+    hoisted.getAndroidObsidianVaultSetupStateMock.mockReturnValue({
+      status: 'prepared-directory',
+      spaceId: 'space-2',
+      vaultName: 'team-space',
+      rootTreeUri: 'content://root/contextgo',
+      spaceDirectoryUri: 'content://space/team-space',
+      vaultBindingId: 'vault_space-2',
+      replicaId: 'android_replica_1',
+      landingNotePath: 'Home.md',
+    });
+    hoisted.selectedSpaceStateRef.current = {
+      ...hoisted.selectedSpaceStateRef.current!,
+      selectedSpace: {
+        id: 'space-2',
+        name: 'Team Space',
+      },
+    };
+
+    renderSider('/guid');
+
+    expect(screen.getAllByText('guid.vault.androidStatusPrepared').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    expect(screen.getByText('guid.vault.mobileSetupAffordance')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));
+
+    await waitFor(() => {
+      expect(hoisted.requestAndroidObsidianVaultSetupMock).not.toHaveBeenCalled();
+      expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith('obsidian://open?choose-vault');
+      expect(hoisted.messageSuccessMock).toHaveBeenCalledWith('guid.vault.androidSetupPrepared');
+    });
   });
 
   it('opens the Obsidian download page when the vault falls back to folder opening', async () => {

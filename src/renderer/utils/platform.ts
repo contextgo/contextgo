@@ -62,7 +62,11 @@ export type AndroidObsidianVaultSetupState =
       status: 'prepared-directory';
       spaceId: string;
       vaultName: string;
+      rootTreeUri: string;
       spaceDirectoryUri: string;
+      vaultBindingId: string;
+      replicaId: string;
+      landingNotePath: string;
     };
 
 export type AndroidObsidianVaultSetupResult =
@@ -103,6 +107,8 @@ export const requestAndroidObsidianVaultSetup = async (input: {
   spaceId: string;
   spaceName: string;
   suggestedFolderName: string;
+  vaultBindingId: string;
+  landingNotePath: string;
 }): Promise<AndroidObsidianVaultSetupResult> => {
   const bridge = getAndroidMobileShellBridge();
   if (!bridge?.requestObsidianVaultSetup) {

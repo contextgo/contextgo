@@ -87,7 +87,7 @@ Long-term, File Provider remains the stronger platform-native direction.
 
 ## Current PR Scope
 
-This PR intentionally keeps the change small and product-safe:
+This PR intentionally keeps the change incremental and product-safe:
 
 - move Obsidian URI generation into shared helpers
 - stop mobile shell from falling back to host-side `space.open-vault` IPC when no mobile-local vault target is available
@@ -95,31 +95,41 @@ This PR intentionally keeps the change small and product-safe:
   - `Open in Obsidian`
   - `Set Up in Obsidian`
 - treat missing mobile vault binding as a chooser/setup path, not as a host-open fallback
+- add an Android shell bridge that can:
+  - request a directory tree
+  - persist the selected tree handle
+  - create a `ContextGo/<space-folder>` directory
+  - initialize the minimal local vault bootstrap structure
+  - return a replica-shaped local readiness payload back to the WebUI
 
 This does **not** implement:
 
-- Android directory-binding persistence
 - iOS Files-based binding persistence
 - cloud-backed mobile replica readiness synchronization
 - File Provider
+- full connector/cloud sync execution on mobile
 
 ## Files Touched In This Direction
 
 - `src/common/utils/obsidianVaultOpen.ts`
+- `src/renderer/utils/platform.ts`
 - `src/process/services/space/SpaceServiceImpl.ts`
 - `src/renderer/components/layout/Sider.tsx`
 - `src/renderer/services/i18n/locales/*/guid.json`
+- `mobile-shell/android/app/src/main/java/io/contextgo/mobileshell/MainActivity.kt`
+- `mobile-shell/android/app/src/main/res/values/strings.xml`
+- `mobile-shell/android/app/build.gradle.kts`
 
 ## Acceptance For This PR
 
 - mobile shell uses mobile-specific Obsidian open intent derivation
 - mobile shell no longer falls through to host-side vault open when no mobile-local vault binding is present
 - the UI exposes product wording that matches the intended future model
+- Android shell can return a persisted local setup state for a Space and prepare a minimal local vault directory
 - the issue research is preserved in-repo for future Android / iOS implementation work
 
 ## Follow-ups
 
-- implement Android local directory binding and persisted vault handle storage
 - implement iOS Files-based one-time binding flow
 - add first-class `Space mobile vault readiness` data to cloud / device / replica surfaces
 - evaluate iOS File Provider for long-term "real local vault" ergonomics

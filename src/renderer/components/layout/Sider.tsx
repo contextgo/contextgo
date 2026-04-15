@@ -52,6 +52,7 @@ import { useConversationTabs } from '@renderer/pages/conversation/hooks/Conversa
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
 import {
+  getAndroidObsidianVaultSetupState,
   isAndroidMobileShell,
   isElectronDesktop,
   isMacOS,
@@ -156,7 +157,6 @@ const isOpenableRemoteDevice = (device: CloudRemoteDevice): boolean => {
   );
 };
 
-<<<<<<< HEAD
 const isCurrentCloudDeviceReady = (cloudStatus: CloudStatus | null): boolean => {
   return Boolean(
     cloudStatus?.authenticated &&
@@ -409,6 +409,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       const vaultOpenIntent = buildObsidianVaultOpenIntent({
         isMobileShell: isMobileShellWebView(),
         providerRef: targetSpace.providerRef,
+        androidSetupState:
+          isAndroidMobileShell() && targetSpace.id ? getAndroidObsidianVaultSetupState(targetSpace.id) : null,
       });
       if (isMobileShellWebView()) {
         if (vaultOpenIntent.readiness === 'needs-bind-in-obsidian' && isAndroidMobileShell()) {
@@ -416,6 +418,8 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
             spaceId: targetSpace.id,
             spaceName: targetSpace.name,
             suggestedFolderName: buildSuggestedSpaceFolderName(targetSpace.name),
+            vaultBindingId: `vault_${targetSpace.id}`,
+            landingNotePath: 'Home.md',
           });
 
           if (setupResult.status === 'prepared-directory') {
@@ -444,6 +448,10 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
 
         if (vaultOpenIntent.target) {
           await openExternalUrl(vaultOpenIntent.target);
+        }
+        if (vaultOpenIntent.readiness === 'prepared-directory') {
+          Message.success(t('guid.vault.androidSetupPrepared'));
+          return;
         }
         if (vaultOpenIntent.readiness === 'needs-bind-in-obsidian') {
           Message.warning(t('guid.vault.mobileSetupRequired'));
@@ -965,12 +973,17 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     },
   };
   const selectedSpaceName = selectedSpace?.name || (spacesLoading ? t('guid.space.loading') : t('guid.space.empty'));
+  const androidVaultSetupState =
+    isAndroidMobileShell() && selectedSpace?.id ? getAndroidObsidianVaultSetupState(selectedSpace.id) : null;
   const vaultOpenIntent = buildObsidianVaultOpenIntent({
     isMobileShell: isMobileShellWebView(),
     providerRef: selectedSpace?.providerRef,
+    androidSetupState: androidVaultSetupState,
   });
   const selectedSpaceMeta = spacesLoading
     ? t('guid.space.loading')
+    : vaultOpenIntent.readinessKey
+      ? t(vaultOpenIntent.readinessKey)
     : selectedSpace
       ? t('guid.space.selectorTitle')
       : t('guid.space.empty');

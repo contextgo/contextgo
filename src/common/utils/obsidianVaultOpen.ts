@@ -3,7 +3,8 @@ import type { SpaceProviderRef, SpaceVaultProviderRef } from '@/common/config/st
 
 export type ObsidianVaultOpenIntent = {
   actionKey: 'guid.vault.affordance' | 'guid.vault.mobileAffordance' | 'guid.vault.mobileSetupAffordance';
-  readiness: 'ready' | 'needs-bind-in-obsidian';
+  readiness: 'ready' | 'prepared-directory' | 'needs-bind-in-obsidian';
+  readinessKey: string | null;
   target: string | null;
 };
 
@@ -28,11 +29,20 @@ export function buildObsidianPathUri(providerRef: SpaceVaultProviderRef): string
 export function buildObsidianVaultOpenIntent(input: {
   isMobileShell: boolean;
   providerRef?: SpaceProviderRef | null;
+  androidSetupState?:
+    | {
+        status: 'prepared-directory';
+      }
+    | {
+        status: 'unprepared';
+      }
+    | null;
 }): ObsidianVaultOpenIntent {
   if (!input.isMobileShell) {
     return {
       actionKey: 'guid.vault.affordance',
       readiness: 'ready',
+      readinessKey: null,
       target: null,
     };
   }
@@ -41,13 +51,24 @@ export function buildObsidianVaultOpenIntent(input: {
     return {
       actionKey: 'guid.vault.mobileAffordance',
       readiness: 'ready',
+      readinessKey: 'guid.vault.mobileStatusReady',
       target: buildObsidianVaultUri(input.providerRef),
+    };
+  }
+
+  if (input.androidSetupState?.status === 'prepared-directory') {
+    return {
+      actionKey: 'guid.vault.mobileSetupAffordance',
+      readiness: 'prepared-directory',
+      readinessKey: 'guid.vault.androidStatusPrepared',
+      target: buildObsidianChooseVaultUri(),
     };
   }
 
   return {
     actionKey: 'guid.vault.mobileSetupAffordance',
     readiness: 'needs-bind-in-obsidian',
+    readinessKey: 'guid.vault.mobileStatusNeedsSetup',
     target: buildObsidianChooseVaultUri(),
   };
 }
