@@ -91,6 +91,10 @@ const ROUTE_PRELOADERS: Array<{ match: (routePath: string) => boolean; loaders: 
     loaders: [() => import('@renderer/pages/RemoteDevicesPage')],
   },
   {
+    match: (routePath) => routePath === '/conversation/:id' || routePath.startsWith('/conversation/'),
+    loaders: [() => import('@renderer/pages/conversation')],
+  },
+  {
     match: (routePath) => routePath === '/hooks' || routePath === '/settings/hooks',
     loaders: [
       () => import('@renderer/pages/settings/AgentSettings/HooksManagement'),
@@ -106,7 +110,8 @@ const ROUTE_PRELOADERS: Array<{ match: (routePath: string) => boolean; loaders: 
     loaders: [() => import('@renderer/pages/settings/SkillsHubSettings')],
   },
   {
-    match: (routePath) => routePath === '/agents' || routePath.startsWith('/agents/') || routePath.startsWith('/settings/agent'),
+    match: (routePath) =>
+      routePath === '/agents' || routePath.startsWith('/agents/') || routePath.startsWith('/settings/agent'),
     loaders: [() => import('@renderer/pages/agents')],
   },
   {
@@ -182,9 +187,11 @@ export function preloadRoutePath(routePath: string): void {
 
 export function warmCriticalRendererRoutes(): void {
   const warm = () => {
-    ['/guid', '/settings/system', '/connectors', '/settings/hooks'].forEach((routePath) => {
-      preloadRoutePath(routePath);
-    });
+    ['/guid', '/remote/devices', '/conversation/:id', '/settings/system', '/connectors', '/settings/hooks'].forEach(
+      (routePath) => {
+        preloadRoutePath(routePath);
+      }
+    );
   };
 
   if (typeof window === 'undefined') {

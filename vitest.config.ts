@@ -9,6 +9,7 @@ const aliases = {
   '@mcp/models/': path.resolve(__dirname, './src/common/models') + '/',
   '@mcp/types/': path.resolve(__dirname, './src/common') + '/',
   '@mcp/': path.resolve(__dirname, './src/common') + '/',
+  'uno.css': path.resolve(__dirname, './tests/mocks/empty.css'),
 };
 
 export default defineConfig({

@@ -875,12 +875,16 @@ private struct ShellBrowserView: View {
   }
 
   private var launchOverlayMessage: String {
+    guard webViewStore.launchOverlayPhase == .connecting else {
+      return ""
+    }
+
     let normalizedPath = targetURL.path.lowercased()
     if normalizedPath == "/remote/devices" {
       return String(localized: "browser.loading.devices")
     }
 
-    return ""
+    return String(localized: "browser.loading.desktop")
   }
 
   private var edgeBackGestureStrip: some View {

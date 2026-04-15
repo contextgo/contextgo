@@ -362,12 +362,8 @@ const PanelRoute: React.FC = () => {
   }, [status]);
 
   React.useEffect(() => {
-    if (status !== 'authenticated') {
-      return;
-    }
-
     warmCriticalRendererRoutes();
-  }, [status]);
+  }, []);
 
   return (
     <HashRouter>
