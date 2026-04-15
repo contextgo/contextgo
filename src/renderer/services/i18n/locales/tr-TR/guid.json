@@ -51,10 +51,13 @@
     "title": "Space Vault Aç",
     "description": "Seçili alan için ContextGo tarafından yönetilen Obsidian vaultunu aç.",
     "affordance": "Vault Aç",
+    "mobileAffordance": "Obsidian'da Aç",
+    "mobileSetupAffordance": "Obsidian'da Kur",
     "statusReady": "Obsidian veya Finder’da aç",
     "openSuccess": "Space vault açıldı.",
     "openFailed": "Space vault açılamadı.",
-    "obsidianMissing": "Obsidian algılanmadı. Vault klasoru ve indirme sayfası sizin için açıldı."
+    "obsidianMissing": "Obsidian algılanmadı. Vault klasoru ve indirme sayfası sizin için açıldı.",
+    "mobileSetupRequired": "Önce bu cihazdaki Obsidian içinde bu Space için yerel bağlamayı tamamlayın."
   },
   "space": {
     "loading": "Space'ler yükleniyor...",

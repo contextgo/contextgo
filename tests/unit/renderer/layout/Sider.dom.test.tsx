@@ -1103,12 +1103,41 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByRole('button', { name: 'guid.vault.affordance' }));
+    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+
+    expect(screen.getByText('guid.vault.mobileAffordance')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));
 
     await waitFor(() => {
       expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith(
         'obsidian://open?vault=Team%20Space&file=Space%20Home.md'
       );
+    });
+    expect(hoisted.openVaultInvokeMock).not.toHaveBeenCalled();
+  });
+
+  it('opens the Obsidian vault chooser instead of host IPC when mobile shell lacks a bound vault provider', async () => {
+    isMobileShellWebViewMock = true;
+    hoisted.selectedSpaceStateRef.current = {
+      ...hoisted.selectedSpaceStateRef.current!,
+      selectedSpace: {
+        id: 'space-2',
+        name: 'Team Space',
+      },
+    };
+
+    renderSider('/guid');
+
+    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+
+    expect(screen.getByText('guid.vault.mobileSetupAffordance')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));
+
+    await waitFor(() => {
+      expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith('obsidian://open?choose-vault');
+      expect(hoisted.messageWarningMock).toHaveBeenCalledWith('guid.vault.mobileSetupRequired');
     });
     expect(hoisted.openVaultInvokeMock).not.toHaveBeenCalled();
   });

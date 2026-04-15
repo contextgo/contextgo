@@ -12,9 +12,9 @@ import type {
   SpaceVaultProviderRef,
   TSpace,
 } from '@/common/config/storage';
+import { buildObsidianPathUri, buildObsidianVaultUri } from '@/common/utils/obsidianVaultOpen';
 import { uuid } from '@/common/utils';
 import { execFile } from 'node:child_process';
-import path from 'node:path';
 import type { ISpaceRepository } from '@process/services/database/space/ISpaceRepository';
 import type { ISpaceService } from './ISpaceService';
 import { ensureSpaceVaultBinding, isSpaceVaultProviderRef } from './vaultBinding';
@@ -46,25 +46,6 @@ function createDefaultPermissionsPolicy(): SpacePermissionsPolicy {
   };
 }
 
-const resolveObsidianOpenPath = (providerRef: SpaceVaultProviderRef): string => {
-  if (!providerRef.landingNotePath) {
-    return providerRef.vaultPath;
-  }
-
-  const normalizedLandingNotePath = providerRef.landingNotePath.replace(/^[/\\]+/, '');
-  return path.join(providerRef.vaultPath, normalizedLandingNotePath);
-};
-
-const encodeObsidianPathUri = (providerRef: SpaceVaultProviderRef): string => {
-  return `obsidian://open?path=${encodeURIComponent(resolveObsidianOpenPath(providerRef))}`;
-};
-
-const encodeObsidianVaultUri = (providerRef: SpaceVaultProviderRef): string => {
-  const encodedVaultName = encodeURIComponent(providerRef.vaultName);
-  const encodedFile = providerRef.landingNotePath ? `&file=${encodeURIComponent(providerRef.landingNotePath)}` : '';
-  return `obsidian://open?vault=${encodedVaultName}${encodedFile}`;
-};
-
 const runOpen = async (args: string[]): Promise<boolean> => {
   return new Promise<boolean>((resolve) => {
     const [command, ...commandArgs] =
@@ -81,11 +62,11 @@ const runOpen = async (args: string[]): Promise<boolean> => {
 };
 
 const openObsidianPathUri = async (providerRef: SpaceVaultProviderRef): Promise<boolean> => {
-  return runOpen([encodeObsidianPathUri(providerRef)]);
+  return runOpen([buildObsidianPathUri(providerRef)]);
 };
 
 const openObsidianUri = async (providerRef: SpaceVaultProviderRef): Promise<boolean> => {
-  return runOpen([encodeObsidianVaultUri(providerRef)]);
+  return runOpen([buildObsidianVaultUri(providerRef)]);
 };
 
 const openObsidianAppVault = async (providerRef: SpaceVaultProviderRef): Promise<boolean> => {
@@ -209,7 +190,7 @@ export class SpaceServiceImpl implements ISpaceService {
       return {
         opened: true,
         fallback: 'none',
-        target: encodeObsidianVaultUri(providerRef),
+        target: buildObsidianVaultUri(providerRef),
         obsidianInstalled: true,
       };
     }
@@ -219,7 +200,7 @@ export class SpaceServiceImpl implements ISpaceService {
       return {
         opened: true,
         fallback: 'obsidian-uri',
-        target: encodeObsidianPathUri(providerRef),
+        target: buildObsidianPathUri(providerRef),
         obsidianInstalled: true,
       };
     }

@@ -5,7 +5,8 @@ import type {
   CloudRemoteDevicesPayload,
   CloudStatus,
 } from '@/common/types/cloud';
-import type { SpaceProviderRef, SpaceVaultProviderRef } from '@/common/config/storage';
+import type { SpaceProviderRef } from '@/common/config/storage';
+import { buildObsidianVaultOpenIntent } from '@/common/utils/obsidianVaultOpen';
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { changeLanguage } from '@/renderer/services/i18n';
 import type { Theme } from '@/renderer/hooks/system/useTheme';
@@ -138,16 +139,6 @@ const resolveDevicePlatformVisual = (platform?: string): DevicePlatformVisual | 
   }
 
   return null;
-};
-
-const isObsidianVaultProviderRef = (providerRef?: SpaceProviderRef): providerRef is SpaceVaultProviderRef => {
-  return providerRef != null && 'kind' in providerRef && providerRef.kind === 'obsidian-vault';
-};
-
-const buildObsidianVaultUri = (providerRef: SpaceVaultProviderRef): string => {
-  const encodedVaultName = encodeURIComponent(providerRef.vaultName);
-  const encodedFile = providerRef.landingNotePath ? `&file=${encodeURIComponent(providerRef.landingNotePath)}` : '';
-  return `obsidian://open?vault=${encodedVaultName}${encodedFile}`;
 };
 
 const isOpenableRemoteDevice = (device: CloudRemoteDevice): boolean => {
@@ -367,8 +358,17 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         await selectSpace(targetSpace.id);
       }
 
-      if (isMobileShellWebView() && isObsidianVaultProviderRef(targetSpace.providerRef)) {
-        await openExternalUrl(buildObsidianVaultUri(targetSpace.providerRef));
+      const vaultOpenIntent = buildObsidianVaultOpenIntent({
+        isMobileShell: isMobileShellWebView(),
+        providerRef: targetSpace.providerRef,
+      });
+      if (isMobileShellWebView()) {
+        if (vaultOpenIntent.target) {
+          await openExternalUrl(vaultOpenIntent.target);
+        }
+        if (vaultOpenIntent.readiness === 'needs-bind-in-obsidian') {
+          Message.warning(t('guid.vault.mobileSetupRequired'));
+        }
         return;
       }
 
@@ -886,6 +886,10 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     },
   };
   const selectedSpaceName = selectedSpace?.name || (spacesLoading ? t('guid.space.loading') : t('guid.space.empty'));
+  const vaultOpenIntent = buildObsidianVaultOpenIntent({
+    isMobileShell: isMobileShellWebView(),
+    providerRef: selectedSpace?.providerRef,
+  });
   const selectedSpaceMeta = spacesLoading
     ? t('guid.space.loading')
     : selectedSpace
@@ -895,6 +899,12 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     <Menu
       className='sider-user-menu'
       onClickMenuItem={(key) => {
+        if (key === 'space:open-vault') {
+          setSpaceMenuVisible(false);
+          void handleOpenSpaceVault();
+          return;
+        }
+
         if (key === 'space:create') {
           setSpaceMenuVisible(false);
           handleOpenCreateSpaceModal();
@@ -907,6 +917,16 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         }
       }}
     >
+      <Menu.Item key='space:open-vault'>
+        <div className='sider-user-menu__row'>
+          <span className='sider-user-menu__icon'>
+            <FolderOpen theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />
+          </span>
+          <span className='sider-user-menu__row-text'>
+            {openingSpaceVault ? t('common.processing') : t(vaultOpenIntent.actionKey)}
+          </span>
+        </div>
+      </Menu.Item>
       <Menu.Item key='space:create'>
         <div className='sider-user-menu__row'>
           <span className='sider-user-menu__icon'>

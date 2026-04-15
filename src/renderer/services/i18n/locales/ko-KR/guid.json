@@ -51,10 +51,13 @@
     "title": "Space Vault 열기",
     "description": "현재 선택한 Space에 연결된 ContextGo 관리 Obsidian Vault를 엽니다.",
     "affordance": "Vault 열기",
+    "mobileAffordance": "Obsidian에서 열기",
+    "mobileSetupAffordance": "Obsidian에서 설정하기",
     "statusReady": "Obsidian 또는 Finder에서 열기",
     "openSuccess": "Space Vault를 열었습니다.",
     "openFailed": "Space Vault를 열지 못했습니다.",
-    "obsidianMissing": "Obsidian이 감지되지 않아 Vault 폴더와 다운로드 페이지를 함께 열었습니다."
+    "obsidianMissing": "Obsidian이 감지되지 않아 Vault 폴더와 다운로드 페이지를 함께 열었습니다.",
+    "mobileSetupRequired": "먼저 현재 기기의 Obsidian에서 이 Space의 로컬 바인딩을 완료하세요."
   },
   "space": {
     "loading": "Space를 불러오는 중...",
