@@ -120,6 +120,27 @@ const QUALITY_PRIORITY: Record<IChannelPublishObjectCatalogEntry['displayProfile
   fallback: 1,
 };
 
+function getPublishObjectRefreshState(
+  publishObject: Pick<IChannelPublishObjectCatalogEntry, 'displayProfile' | 'updatedAt'>,
+  previousState?: IChannelPublishObjectCatalogEntry['refreshState'],
+  becameReadableAt?: number
+): IChannelPublishObjectCatalogEntry['refreshState'] {
+  if (publishObject.displayProfile.quality === 'fallback') {
+    return {
+      status: 'needs-refresh',
+      reason: publishObject.displayProfile.source === 'manual' ? 'manual-fallback' : 'technical-fallback',
+      updatedAt: publishObject.updatedAt,
+      backfilledAt: previousState?.backfilledAt,
+    };
+  }
+
+  return {
+    status: 'ready',
+    updatedAt: publishObject.updatedAt,
+    backfilledAt: becameReadableAt ?? previousState?.backfilledAt,
+  };
+}
+
 function normalizeStringArray(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) {
     return undefined;
@@ -166,6 +187,19 @@ function normalizePublishObjects(
         quality: normalizeDisplayQuality(publishObject.displayProfile.quality),
         resolvedAt: publishObject.displayProfile.resolvedAt,
       },
+      refreshState:
+        publishObject.refreshState && typeof publishObject.refreshState === 'object'
+          ? {
+              status: publishObject.refreshState.status === 'needs-refresh' ? 'needs-refresh' : 'ready',
+              reason:
+                publishObject.refreshState.reason === 'manual-fallback' ||
+                publishObject.refreshState.reason === 'technical-fallback'
+                  ? publishObject.refreshState.reason
+                  : undefined,
+              updatedAt: publishObject.refreshState.updatedAt,
+              backfilledAt: publishObject.refreshState.backfilledAt,
+            }
+          : undefined,
       aliases: normalizeStringArray(publishObject.aliases),
       rawFacts:
         publishObject.rawFacts && typeof publishObject.rawFacts === 'object' && !Array.isArray(publishObject.rawFacts)
@@ -175,6 +209,7 @@ function normalizePublishObjects(
       updatedAt: publishObject.updatedAt,
     };
     normalizedEntry.id = getChannelPublishObjectCatalogEntryIdentity(normalizedEntry);
+    normalizedEntry.refreshState = getPublishObjectRefreshState(normalizedEntry, normalizedEntry.refreshState);
 
     const existing = merged.get(normalizedEntry.id);
     if (!existing) {
@@ -194,6 +229,10 @@ function normalizePublishObjects(
         ? normalizedEntry
         : existing;
     const secondary = preferred === normalizedEntry ? existing : normalizedEntry;
+    const becameReadableAt =
+      secondary.displayProfile.quality === 'fallback' && preferred.displayProfile.quality !== 'fallback'
+        ? Math.max(existing.updatedAt, normalizedEntry.updatedAt)
+        : undefined;
 
     merged.set(preferred.id, {
       ...preferred,
@@ -202,6 +241,11 @@ function normalizePublishObjects(
         subtitle: preferred.displayProfile.subtitle ?? secondary.displayProfile.subtitle,
         parentTitle: preferred.displayProfile.parentTitle ?? secondary.displayProfile.parentTitle,
       },
+      refreshState: getPublishObjectRefreshState(
+        preferred,
+        preferred.refreshState ?? secondary.refreshState,
+        becameReadableAt
+      ),
       aliases: normalizeStringArray([...(preferred.aliases ?? []), ...(secondary.aliases ?? [])]),
       rawFacts: {
         ...secondary.rawFacts,
@@ -467,6 +511,33 @@ export class ProjectChannelPublicationService {
     conversations: readonly Pick<TChatConversation, 'extra'>[]
   ): Promise<ProjectChannelPublicationCatalog> {
     return this.readCatalogForWorkspaces(this.listConversationWorkspaces(conversations));
+  }
+
+  async refreshCatalog(params: {
+    publicationCatalog: ProjectChannelPublicationCatalog;
+    remoteIdentities: readonly IRemoteIdentity[];
+    channelAccounts: readonly IConnectorInstance[];
+  }): Promise<ProjectChannelPublicationCatalog> {
+    if (params.publicationCatalog.workspaces.length === 0) {
+      return {
+        ...params.publicationCatalog,
+        publishObjects: normalizePublishObjects(params.publicationCatalog.publishObjects),
+      };
+    }
+
+    await Promise.all(
+      params.publicationCatalog.workspaces.map((workspace) =>
+        this.resolvePublishObjectCatalog(workspace, {
+          bindings: params.publicationCatalog.bindings.filter(
+            (binding) => params.publicationCatalog.bindingWorkspaceById[binding.id] === workspace
+          ),
+          remoteIdentities: params.remoteIdentities,
+          channelAccounts: params.channelAccounts,
+        })
+      )
+    );
+
+    return this.readCatalogForWorkspaces(params.publicationCatalog.workspaces);
   }
 
   async resolvePublishObjectCatalog(

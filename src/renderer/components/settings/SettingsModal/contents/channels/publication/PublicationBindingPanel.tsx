@@ -13,15 +13,20 @@ import {
   type IChannelAudienceEntry,
   type IChannelBinding,
   type IChannelBindingCatalog,
+  type IChannelPublicationCatalogRefreshResult,
 } from '@process/channels/types';
 import { Button, Empty, Input, Message, Select, Spin, Tag, Tooltip } from '@arco-design/web-react';
-import { Delete, Edit, Plus, Undo } from '@icon-park/react';
+import { Delete, Edit, Plus, Refresh, Undo } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import styles from '../ChannelModalContent.module.css';
-import { buildAgentPublicationObjects, buildPublishObjectOptionLabel } from './agentPublicationViewModel';
+import {
+  buildAgentPublicationObjects,
+  buildPublishObjectOptionLabel,
+  type AgentPublicationObjectEntry,
+} from './agentPublicationViewModel';
 import { getPublicationObjectKindLabel } from './objectViewModel';
 import { buildBindingPayload, splitBindingsByLifetime, type DurableBindingScopeType } from './viewModel';
 
@@ -54,6 +59,15 @@ const EMPTY_CATALOG: IChannelBindingCatalog = {
   bindings: [],
   audiences: [],
 };
+
+function applyPublicationCatalogRefresh(
+  snapshot: IChannelPublicationCatalogRefreshResult,
+  setCatalog: React.Dispatch<React.SetStateAction<IChannelBindingCatalog>>,
+  setActiveSessions: React.Dispatch<React.SetStateAction<IChannelActiveSessionEntry[]>>
+): void {
+  setCatalog(snapshot.bindingCatalog);
+  setActiveSessions(snapshot.activeSessions);
+}
 
 function createPublicationEditorState(): PublicationEditorState {
   return {
@@ -187,6 +201,10 @@ function formatOptionalRelativeTime(timestamp: number | undefined, locale: strin
   return typeof timestamp === 'number' ? formatRelativeTime(timestamp, locale) : null;
 }
 
+function getSessionConversationPointer(session: IChannelActiveSessionEntry): string | undefined {
+  return session.activeConversationId ?? session.conversationId;
+}
+
 function getManualScopePlaceholder(scopeType: DurableBindingScopeType, t: TranslationFn): string {
   if (scopeType === 'remote_user') {
     return t('settings.channels.publication.scopeKeyRemoteUserPlaceholder');
@@ -208,6 +226,23 @@ function getBindingAudience(
   }
 
   return audienceMap.get(binding.scopeKey);
+}
+
+function getObjectRefreshBadgeLabel(entry: AgentPublicationObjectEntry, t: TranslationFn): string | null {
+  const refreshState = entry.object.refreshState;
+  if (refreshState?.status === 'needs-refresh') {
+    return t('settings.channels.publication.objectQualityFallback');
+  }
+
+  if (refreshState?.status === 'ready' && refreshState.backfilledAt) {
+    return t('settings.channels.publication.objectRefreshBackfilled');
+  }
+
+  if (!refreshState && entry.object.objectQuality === 'fallback') {
+    return t('settings.channels.publication.objectQualityFallback');
+  }
+
+  return null;
 }
 
 const PublicationBindingPanel: React.FC = () => {
@@ -234,23 +269,15 @@ const PublicationBindingPanel: React.FC = () => {
     [catalog.channelAccounts, catalog.connectors]
   );
 
-  const loadCatalog = useCallback(async () => {
+  const loadPublicationSnapshot = useCallback(async () => {
     setLoading(true);
     try {
-      const [catalogResult, sessionResult] = await Promise.all([
-        channel.getBindingCatalog.invoke({}),
-        channel.getActiveSessionCatalog.invoke(),
-      ]);
-
-      if (!catalogResult.success || !catalogResult.data) {
-        throw new Error(catalogResult.msg || t('settings.channels.publication.loadFailed'));
-      }
-      if (!sessionResult.success || !sessionResult.data) {
-        throw new Error(sessionResult.msg || t('settings.channels.publication.loadFailed'));
+      const result = await channel.refreshPublicationCatalog.invoke(undefined);
+      if (!result.success || !result.data) {
+        throw new Error(result.msg || t('settings.channels.publication.loadFailed'));
       }
 
-      setCatalog(catalogResult.data);
-      setActiveSessions(sessionResult.data);
+      applyPublicationCatalogRefresh(result.data, setCatalog, setActiveSessions);
     } catch (error) {
       Message.error(error instanceof Error ? error.message : t('settings.channels.publication.loadFailed'));
     } finally {
@@ -259,8 +286,8 @@ const PublicationBindingPanel: React.FC = () => {
   }, [t]);
 
   useEffect(() => {
-    void loadCatalog();
-  }, [loadCatalog]);
+    void loadPublicationSnapshot();
+  }, [loadPublicationSnapshot]);
 
   const profileMap = useMemo(
     () => new Map(catalog.agentProfiles.map((profile) => [profile.id, profile] as const)),
@@ -435,14 +462,14 @@ const PublicationBindingPanel: React.FC = () => {
           throw new Error(result.msg || t('settings.channels.publication.deleteFailed'));
         }
         Message.success(t('settings.channels.publication.deleted'));
-        await loadCatalog();
+        await loadPublicationSnapshot();
       } catch (error) {
         Message.error(error instanceof Error ? error.message : t('settings.channels.publication.deleteFailed'));
       } finally {
         setDeletingBindingId('');
       }
     },
-    [loadCatalog, t]
+    [loadPublicationSnapshot, t]
   );
 
   const handleSaveBinding = useCallback(async () => {
@@ -493,11 +520,11 @@ const PublicationBindingPanel: React.FC = () => {
 
       Message.success(t('settings.channels.publication.durableSaved'));
       resetEditor();
-      await loadCatalog();
+      await loadPublicationSnapshot();
     } finally {
       setSaving(false);
     }
-  }, [audienceMap, catalog.bindings, editor, loadCatalog, resetEditor, selectedAgentProfileId, t]);
+  }, [audienceMap, catalog.bindings, editor, loadPublicationSnapshot, resetEditor, selectedAgentProfileId, t]);
 
   const showCatalogLoading = loading && catalogChannelAccounts.length === 0;
   const hasChannelAccounts = catalogChannelAccounts.length > 0;
@@ -639,11 +666,20 @@ const PublicationBindingPanel: React.FC = () => {
                   {t('settings.channels.publication.objectListDescription')}
                 </div>
               </div>
-              {!editor.open ? (
-                <Button type='primary' icon={<Plus theme='outline' size='16' />} onClick={openAddEditor}>
-                  {t('settings.channels.publication.addObjectButton')}
+              <div className='flex flex-wrap items-center gap-8px'>
+                <Button
+                  icon={<Refresh theme='outline' size='16' />}
+                  onClick={() => void loadPublicationSnapshot()}
+                  loading={loading}
+                >
+                  {t('common.refresh')}
                 </Button>
-              ) : null}
+                {!editor.open ? (
+                  <Button type='primary' icon={<Plus theme='outline' size='16' />} onClick={openAddEditor}>
+                    {t('settings.channels.publication.addObjectButton')}
+                  </Button>
+                ) : null}
+              </div>
             </div>
 
             {publishedObjects.length > 0 ? (
@@ -655,7 +691,11 @@ const PublicationBindingPanel: React.FC = () => {
                     entry.object.kind,
                     t
                   );
+                  const objectRefreshBadgeLabel = getObjectRefreshBadgeLabel(entry, t);
                   const lastActiveLabel = formatOptionalRelativeTime(entry.currentSession?.lastActivity, i18n.language);
+                  const relatedSessions = entry.object.sessions.toSorted(
+                    (left, right) => right.lastActivity - left.lastActivity
+                  );
 
                   return (
                     <div key={entry.key} className={styles.bindingCard}>
@@ -665,10 +705,8 @@ const PublicationBindingPanel: React.FC = () => {
                             <div className='flex flex-wrap items-center gap-6px'>
                               <Tag className={styles.pillTag}>{objectKindLabel}</Tag>
                               <Tag className={styles.metricTag}>{t('settings.channels.publication.durableTag')}</Tag>
-                              {entry.object.objectQuality === 'fallback' ? (
-                                <Tag className={styles.statusTag}>
-                                  {t('settings.channels.publication.objectQualityFallback')}
-                                </Tag>
+                              {objectRefreshBadgeLabel ? (
+                                <Tag className={styles.statusTag}>{objectRefreshBadgeLabel}</Tag>
                               ) : null}
                               {!primaryBinding?.enabled ? (
                                 <Tag className={styles.statusTag}>{t('settings.channels.publication.disabled')}</Tag>
@@ -711,6 +749,65 @@ const PublicationBindingPanel: React.FC = () => {
                                   <span className='ml-6px text-t-primary'>{lastActiveLabel}</span>
                                 </div>
                               ) : null}
+                            </div>
+                            <div className='space-y-6px border border-[var(--color-border-2)] rd-12px p-10px bg-[var(--color-fill-1)]/40'>
+                              <div className='space-y-2px'>
+                                <div className='text-12px font-600 text-t-primary'>
+                                  {t('settings.channels.publication.objectSessionsTitle')}
+                                </div>
+                                <div className='text-12px text-t-secondary leading-relaxed'>
+                                  {t('settings.channels.publication.objectSessionsDescription')}
+                                </div>
+                              </div>
+                              {relatedSessions.length > 0 ? (
+                                <div className='space-y-6px'>
+                                  {relatedSessions.map((session) => {
+                                    const sessionLastActiveLabel = formatOptionalRelativeTime(
+                                      session.lastActivity,
+                                      i18n.language
+                                    );
+
+                                    return (
+                                      <div key={session.id} className={styles.bindingConversationRow}>
+                                        <div className={styles.bindingConversationMeta}>
+                                          <div
+                                            className={styles.bindingConversationLabel}
+                                            title={
+                                              getSessionConversationPointer(session) ??
+                                              session.externalSessionId ??
+                                              session.id
+                                            }
+                                          >
+                                            {getSessionConversationPointer(session) ??
+                                              session.externalSessionId ??
+                                              session.id}
+                                          </div>
+                                          <div
+                                            className={styles.bindingConversationValue}
+                                            title={session.workspace ?? session.audienceTitle}
+                                          >
+                                            {session.workspace ?? session.audienceTitle}
+                                          </div>
+                                          <div className='text-12px text-t-secondary leading-relaxed'>
+                                            {sessionLastActiveLabel
+                                              ? `${t('settings.channels.publication.sessionLastActiveLabel')}: ${sessionLastActiveLabel}`
+                                              : t('settings.channels.publication.currentSessionActive')}
+                                          </div>
+                                        </div>
+                                        {entry.currentSession?.id === session.id ? (
+                                          <Tag className={styles.metricTag}>
+                                            {t('settings.channels.publication.currentSessionActive')}
+                                          </Tag>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className='text-12px text-t-secondary leading-relaxed'>
+                                  {t('settings.channels.publication.objectSessionsEmpty')}
+                                </div>
+                              )}
                             </div>
                           </div>
                           {primaryBinding ? (

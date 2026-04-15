@@ -1652,6 +1652,7 @@
   "channels.publication.objectListTitle": "已發佈對象",
   "channels.publication.objectListDescription": "這裡只顯示已經綁定到這個 Agent 的發佈對象。",
   "channels.publication.objectQualityFallback": "待識別",
+  "channels.publication.objectRefreshBackfilled": "已回填",
   "channels.publication.emptyPublishedObjects": "這個 Agent 還沒有發佈到任何 IM 對象",
   "channels.publication.emptyObjects": "還沒有發現任何 IM 對象",
   "channels.publication.agentSummaryTitle": "目前 Agent",

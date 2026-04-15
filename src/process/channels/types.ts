@@ -303,6 +303,25 @@ export type IChannelPublishObjectDisplayProfile = {
   resolvedAt: number;
 };
 
+export type ChannelPublishObjectRefreshStatus = 'ready' | 'needs-refresh';
+export type ChannelPublishObjectRefreshReason = 'manual-fallback' | 'technical-fallback';
+
+export type IChannelPublishObjectRefreshState = {
+  status: ChannelPublishObjectRefreshStatus;
+  reason?: ChannelPublishObjectRefreshReason;
+  updatedAt: number;
+  backfilledAt?: number;
+};
+
+export type IChannelPublishObjectActiveSessionPointer = {
+  externalSessionId: string;
+  activeConversationId?: string;
+  publicationBindingId?: string;
+  workspace?: string;
+  agentType: ChannelAgentType;
+  lastActivity: number;
+};
+
 export type IChannelPublishObjectCatalogEntry = {
   id: string;
   channelAccountId: string;
@@ -310,6 +329,9 @@ export type IChannelPublishObjectCatalogEntry = {
   nativeObjectId: string;
   parentNativeObjectId?: string;
   displayProfile: IChannelPublishObjectDisplayProfile;
+  refreshState?: IChannelPublishObjectRefreshState;
+  /** Runtime-projected pointer to the active Project Session for this publish object. */
+  activeSessionPointer?: IChannelPublishObjectActiveSessionPointer;
   aliases?: string[];
   rawFacts?: Record<string, unknown>;
   createdAt: number;
@@ -340,8 +362,10 @@ export interface IChannelAudienceEntry {
   parentObjectKey?: string;
   parentObjectTitle?: string;
   parentObjectKind?: ChannelObjectParentKind;
+  publishObjectCatalogEntryId?: string;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  objectRefreshState?: IChannelPublishObjectRefreshState;
   title: string;
   subtitle?: string;
   lastActive?: number;
@@ -355,6 +379,11 @@ export type IChannelBindingCatalog = {
   bindings: IChannelBinding[];
   audiences: IChannelAudienceEntry[];
   publishObjects?: IChannelPublishObjectCatalogEntry[];
+};
+
+export type IChannelPublicationCatalogRefreshResult = {
+  bindingCatalog: IChannelBindingCatalog;
+  activeSessions: IChannelActiveSessionEntry[];
 };
 
 export type IChannelBindingTarget = {
@@ -805,6 +834,8 @@ export interface IChannelSession {
 
 export type IChannelActiveSessionEntry = {
   id: string;
+  /** Stable external-session identity for this publication relationship. */
+  externalSessionId?: string;
   connectorId?: string;
   /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
@@ -824,13 +855,21 @@ export type IChannelActiveSessionEntry = {
   parentObjectKey?: string;
   parentObjectTitle?: string;
   parentObjectKind?: ChannelObjectParentKind;
+  publishObjectCatalogEntryId?: string;
   objectSource?: ChannelPublishObjectCatalogSource;
   objectQuality?: ChannelPublishObjectDisplayQuality;
+  objectRefreshState?: IChannelPublishObjectRefreshState;
+  /** Explicit active Project Session pointer for this external session. */
+  activeConversationId?: string;
+  /** @deprecated Use activeConversationId. */
   conversationId?: string;
   workspace?: string;
   agentType: ChannelAgentType;
   createdAt: number;
   lastActivity: number;
+  /** Explicit durable Publication binding that currently owns this external session. */
+  publicationBindingId?: string;
+  /** @deprecated Use publicationBindingId. */
   bindingId?: string;
   bindingTemporary?: boolean;
   bindingSource?: string;
