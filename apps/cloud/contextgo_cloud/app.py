@@ -76,6 +76,7 @@ from .oidc import (
     verify_pkce,
 )
 from .oauth import OAuthProfile, build_authorization_url, exchange_code_for_profile, get_enabled_providers, is_provider_enabled
+from .obsidian_sync import ObsidianSyncStore
 from .remote import RemoteHttpRelayResponse, RemoteRelayHub
 
 ProviderId = Literal["github", "google"]
@@ -97,6 +98,33 @@ class SyncChangePayload(BaseModel):
 
 class SyncPushRequest(BaseModel):
     changes: list[SyncChangePayload]
+
+
+class ObsidianReplicaRegisterRequest(BaseModel):
+    spaceId: str = Field(min_length=1, max_length=128)
+    deviceId: str = Field(min_length=1, max_length=128)
+    platform: str = Field(min_length=1, max_length=64)
+    vaultFingerprint: str = Field(min_length=1, max_length=256)
+
+
+class ObsidianBatchEntryPayload(BaseModel):
+    path: str = Field(min_length=1, max_length=2048)
+    fileClass: str = Field(min_length=1, max_length=64)
+    contentHash: str = Field(min_length=1, max_length=256)
+    body: Optional[str] = None
+
+
+class ObsidianBatchPushRequest(BaseModel):
+    vaultBindingId: str = Field(min_length=1, max_length=256)
+    replicaId: str = Field(min_length=1, max_length=256)
+    baseCursor: int = Field(ge=0)
+    entries: list[ObsidianBatchEntryPayload]
+
+
+class ObsidianBatchPullRequest(BaseModel):
+    vaultBindingId: str = Field(min_length=1, max_length=256)
+    replicaId: str = Field(min_length=1, max_length=256)
+    afterCursor: int = Field(default=0, ge=0)
 
 
 class DesktopLoginConsumeRequest(BaseModel):
@@ -694,6 +722,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="ContextGo Cloud Auth Service", lifespan=lifespan)
 remote_relay_hub = RemoteRelayHub()
+obsidian_sync_store = ObsidianSyncStore()
 
 allowed_origins = [
     "https://contextgo.io",
@@ -3506,6 +3535,87 @@ async def api_sync_pull(
         limit=limit,
     )
     return JSONResponse({"success": True, **result})
+
+
+@app.post("/api/obsidian-sync/replicas/register")
+async def api_obsidian_sync_register_replica(
+    request: Request, payload: ObsidianReplicaRegisterRequest
+) -> JSONResponse:
+    _user, device = require_current_device(request)
+    result = obsidian_sync_store.register_replica(
+        space_id=payload.spaceId,
+        device_id=payload.deviceId or device.id,
+        platform=payload.platform,
+        vault_fingerprint=payload.vaultFingerprint,
+    )
+    return JSONResponse(
+        {
+            "success": True,
+            "vaultBindingId": result["vault_binding_id"],
+            "replicaId": result["replica_id"],
+            "checkpoint": {
+                "appliedCursor": result["checkpoint"]["applied_cursor"],
+            },
+        }
+    )
+
+
+@app.post("/api/obsidian-sync/batches/push")
+async def api_obsidian_sync_push_batch(request: Request, payload: ObsidianBatchPushRequest) -> JSONResponse:
+    require_current_device(request)
+    result = obsidian_sync_store.push_batch(
+        vault_binding_id=payload.vaultBindingId,
+        replica_id=payload.replicaId,
+        base_cursor=payload.baseCursor,
+        entries=[
+            {
+                "path": entry.path,
+                "file_class": entry.fileClass,
+                "content_hash": entry.contentHash,
+                "body": entry.body,
+            }
+            for entry in payload.entries
+        ],
+    )
+    return JSONResponse(
+        {
+            "success": True,
+            "assignedCursor": result["assigned_cursor"],
+        }
+    )
+
+
+@app.post("/api/obsidian-sync/batches/pull")
+async def api_obsidian_sync_pull_batches(request: Request, payload: ObsidianBatchPullRequest) -> JSONResponse:
+    require_current_device(request)
+    result = obsidian_sync_store.pull_batches(
+        vault_binding_id=payload.vaultBindingId,
+        replica_id=payload.replicaId,
+        after_cursor=payload.afterCursor,
+    )
+    return JSONResponse(
+        {
+            "success": True,
+            "batches": [
+                {
+                    "vaultBindingId": batch["vault_binding_id"],
+                    "replicaId": batch["replica_id"],
+                    "baseCursor": batch["base_cursor"],
+                    "assignedCursor": batch["assigned_cursor"],
+                    "entries": [
+                        {
+                            "path": entry["path"],
+                            "fileClass": entry["file_class"],
+                            "contentHash": entry["content_hash"],
+                            "body": entry.get("body"),
+                        }
+                        for entry in batch["entries"]
+                    ],
+                }
+                for batch in result["batches"]
+            ],
+        }
+    )
 
 
 @app.api_route("/{relay_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"], response_model=None)
