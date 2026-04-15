@@ -7,7 +7,6 @@
 import { ipcBridge } from '@/common';
 import type { IProvider } from '@/common/config/storage';
 import { ConfigStorage } from '@/common/config/storage';
-import { DEFAULT_CODEX_MODELS } from '@/common/types/codex/codexModels';
 import { getAgentModes } from '@/renderer/utils/model/agentModes';
 import { filterAvailableAgentsForUi } from '@/renderer/utils/model/availableAgents';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -80,6 +79,8 @@ type UseGuidAgentSelectionOptions = {
   localeKey: string;
   locationState?: GuidLocationState | null;
 };
+
+const PROBE_MODEL_INFO_BACKENDS = new Set<AcpBackend>(['claude', 'codex', 'opencode']);
 
 /**
  * Guid page selection state keeps runtime and preset assistant independent.
@@ -333,19 +334,22 @@ export const useGuidAgentSelection = ({
   }, []);
 
   useEffect(() => {
-    if (selectedAgentKey !== 'codex') return;
-    if (probedModelBackendsRef.current.has('codex')) return;
+    const backend = selectedAgentInfo?.backend ?? getBackendFromAgentKey(selectedAgentKey);
+    if (backend === 'custom' || backend === 'gemini') return;
+    if (!PROBE_MODEL_INFO_BACKENDS.has(backend)) return;
+    if (acpCachedModels[backend]?.availableModels?.length) return;
+    if (probedModelBackendsRef.current.has(backend)) return;
 
     let cancelled = false;
-    probedModelBackendsRef.current.add('codex');
+    probedModelBackendsRef.current.add(backend);
 
     ipcBridge.acpConversation.probeModelInfo
-      .invoke({ backend: 'codex' })
+      .invoke({ backend })
       .then(async (result) => {
         if (cancelled) return;
         const modelInfo = result.success ? result.data?.modelInfo : null;
         if (!modelInfo?.availableModels?.length) {
-          probedModelBackendsRef.current.delete('codex');
+          probedModelBackendsRef.current.delete(backend);
           return;
         }
 
@@ -354,12 +358,12 @@ export const useGuidAgentSelection = ({
 
         const nextCachedModels = {
           ...cached,
-          codex: modelInfo,
+          [backend]: modelInfo,
         };
 
         setAcpCachedModels((prev) => ({
           ...prev,
-          codex: modelInfo,
+          [backend]: modelInfo,
         }));
 
         await ConfigStorage.set('acp.cachedModels', nextCachedModels).catch((error) => {
@@ -367,14 +371,14 @@ export const useGuidAgentSelection = ({
         });
       })
       .catch((error) => {
-        probedModelBackendsRef.current.delete('codex');
-        console.warn('[Guid][codex] Failed to probe model info:', error);
+        probedModelBackendsRef.current.delete(backend);
+        console.warn(`[Guid][${backend}] Failed to probe model info:`, error);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [selectedAgentKey]);
+  }, [acpCachedModels, selectedAgentInfo, selectedAgentKey]);
 
   const currentEffectiveAgentInfo = useMemo(() => {
     const runtimeBackend = selectedAgentInfo?.backend ?? getBackendFromAgentKey(selectedAgentKey);
@@ -503,22 +507,7 @@ export const useGuidAgentSelection = ({
       return null;
     }
 
-    const cached = acpCachedModels[backend];
-    if (cached) {
-      return cached;
-    }
-
-    if (backend === 'codex' && DEFAULT_CODEX_MODELS.length > 0) {
-      return {
-        source: 'models' as const,
-        currentModelId: DEFAULT_CODEX_MODELS[0].id,
-        currentModelLabel: DEFAULT_CODEX_MODELS[0].label,
-        availableModels: DEFAULT_CODEX_MODELS.map((model) => ({ id: model.id, label: model.label })),
-        canSwitch: true,
-      } satisfies AcpModelInfo;
-    }
-
-    return null;
+    return acpCachedModels[backend] ?? null;
   }, [acpCachedModels, selectedAgentInfo, selectedAgentKey]);
 
   useEffect(() => {

@@ -188,6 +188,8 @@ async function resolveRuntimeDisplayPath(cliPath?: string): Promise<string | und
 }
 
 function resolveManagedRuntimeConfigEntries(backend: AcpBackend): ManagedRuntimeConfigEntry[] {
+  const homeDir = os.homedir();
+
   switch (backend) {
     case 'gemini':
       return [{ kind: 'config', path: USER_SETTINGS_PATH, exists: fs.existsSync(USER_SETTINGS_PATH) }];
@@ -212,6 +214,22 @@ function resolveManagedRuntimeConfigEntries(backend: AcpBackend): ManagedRuntime
           exists: fs.existsSync(getCodexAuthPath()),
         },
       ];
+    case 'opencode': {
+      const configPath = path.join(homeDir, '.config', 'opencode', 'opencode.json');
+      const authPath = path.join(homeDir, '.local', 'share', 'opencode', 'auth.json');
+      return [
+        {
+          kind: 'config',
+          path: configPath,
+          exists: fs.existsSync(configPath),
+        },
+        {
+          kind: 'auth',
+          path: authPath,
+          exists: fs.existsSync(authPath),
+        },
+      ];
+    }
     default:
       return [];
   }
