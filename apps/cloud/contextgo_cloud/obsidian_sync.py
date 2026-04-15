@@ -73,3 +73,27 @@ class ObsidianSyncStore:
             self.replicas[replica_id]["last_pull_cursor"] = pending[-1]["assigned_cursor"]
             self.replicas[replica_id]["applied_cursor"] = pending[-1]["assigned_cursor"]
         return {"batches": pending}
+
+    def get_binding_status(self, *, space_id: str) -> dict[str, Any] | None:
+        vault_binding_id = f"vault_{space_id}"
+        binding = self.bindings.get(vault_binding_id)
+        if not binding:
+            return None
+
+        replicas = [
+            {
+                "replicaId": replica["replica_id"],
+                "platform": replica["platform"],
+                "healthStatus": "ok",
+                "lastSyncedAt": None,
+            }
+            for replica in self.replicas.values()
+            if replica["vault_binding_id"] == vault_binding_id
+        ]
+
+        return {
+            "vaultBindingId": vault_binding_id,
+            "spaceId": space_id,
+            "riskLevel": "normal",
+            "replicas": replicas,
+        }

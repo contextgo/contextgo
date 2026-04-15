@@ -3618,6 +3618,18 @@ async def api_obsidian_sync_pull_batches(request: Request, payload: ObsidianBatc
     )
 
 
+@app.get("/api/obsidian-sync/spaces/{space_id}")
+async def api_obsidian_sync_space_status(space_id: str, request: Request) -> JSONResponse:
+    require_current_device(request)
+    binding = obsidian_sync_store.get_binding_status(space_id=space_id)
+    return JSONResponse(
+        {
+            "success": True,
+            "binding": binding,
+        }
+    )
+
+
 @app.api_route("/{relay_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"], response_model=None)
 async def remote_device_runtime_relay(relay_path: str, request: Request) -> Response:
     if not is_remote_request(request) or is_remote_control_plane_path(request.url.path):

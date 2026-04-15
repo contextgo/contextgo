@@ -137,3 +137,38 @@ class ObsidianSyncApiTestCase(unittest.TestCase):
         self.assertTrue(payload["success"])
         self.assertEqual(len(payload["batches"]), 1)
         self.assertEqual(payload["batches"][0]["assignedCursor"], 1)
+
+    def test_space_status_returns_binding_with_replicas(self) -> None:
+        desktop = self._register_device(device_name="Studio", platform="macos")
+        mobile = self._register_device(device_name="iPhone", platform="ios")
+        desktop_headers = {"Authorization": f"Bearer {desktop['token']}"}
+        mobile_headers = {"Authorization": f"Bearer {mobile['token']}"}
+
+        self.client.post(
+            "/api/obsidian-sync/replicas/register",
+            headers=desktop_headers,
+            json={
+                "spaceId": "space_1",
+                "deviceId": desktop["device"]["id"],
+                "platform": "desktop",
+                "vaultFingerprint": "vault_hash_1",
+            },
+        )
+        self.client.post(
+            "/api/obsidian-sync/replicas/register",
+            headers=mobile_headers,
+            json={
+                "spaceId": "space_1",
+                "deviceId": mobile["device"]["id"],
+                "platform": "mobile",
+                "vaultFingerprint": "vault_hash_1",
+            },
+        )
+
+        response = self.client.get("/api/obsidian-sync/spaces/space_1", headers=desktop_headers)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["binding"]["vaultBindingId"], "vault_space_1")
+        self.assertEqual(len(payload["binding"]["replicas"]), 2)

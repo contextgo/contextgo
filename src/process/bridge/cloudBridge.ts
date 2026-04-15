@@ -69,6 +69,20 @@ export function initCloudBridge(): void {
     }
   });
 
+  ipcBridge.cloud.getObsidianSyncStatus.provider(async ({ spaceId }) => {
+    try {
+      return {
+        success: true,
+        data: await cloudService.getObsidianSyncStatus(spaceId),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
   ipcBridge.cloud.openInfermesh.provider(async () => {
     try {
       return {

@@ -57,6 +57,20 @@ export type CloudRemoteDevicesPayload = {
   selection: CloudRemoteDeviceSelection;
 };
 
+export type CloudObsidianReplica = {
+  replicaId: string;
+  platform: 'desktop' | 'mobile';
+  healthStatus: 'ok' | 'warn' | 'error';
+  lastSyncedAt?: string | null;
+};
+
+export type CloudObsidianVaultBinding = {
+  vaultBindingId: string;
+  spaceId: string;
+  riskLevel?: 'normal' | 'external-sync-risk' | 'high-drift';
+  replicas: CloudObsidianReplica[];
+};
+
 export type OfficialRemoteStatus = {
   desired: boolean;
   running: boolean;
