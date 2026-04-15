@@ -53,6 +53,29 @@ const PUBLICATION_INTENT_QUERY_KEYS: Array<keyof PublicationIntent> = [
   'agentName',
 ];
 
+function resolveConversationInitialModelId(conversation: TChatConversation): string | undefined {
+  const legacyModelId =
+    'model' in conversation &&
+    conversation.model &&
+    typeof conversation.model === 'object' &&
+    'useModel' in conversation.model &&
+    typeof conversation.model.useModel === 'string'
+      ? conversation.model.useModel
+      : undefined;
+
+  if (conversation.type === 'acp') {
+    const persistedModelId = (conversation.extra as { currentModelId?: string } | undefined)?.currentModelId;
+    return persistedModelId || legacyModelId;
+  }
+
+  if (conversation.type === 'codex') {
+    const persistedModelId = (conversation.extra as { codexModel?: string } | undefined)?.codexModel;
+    return persistedModelId || legacyModelId;
+  }
+
+  return undefined;
+}
+
 function buildPublicationIntent(conversation: TChatConversation): PublicationIntent | null {
   if (conversation.type === 'group') {
     return null;
@@ -431,18 +454,17 @@ const ChatConversation: React.FC<{
           key={`${conversation.id}:${extra.backend || 'acp'}`}
           conversationId={conversation.id}
           backend={extra.backend}
-          initialModelId={extra.currentModelId}
+          initialModelId={resolveConversationInitialModelId(conversation)}
         />
       );
     }
     if (conversation.type === 'codex') {
-      const extra = conversation.extra as { codexModel?: string };
       return (
         <AcpModelSelector
           key={`${conversation.id}:codex`}
           conversationId={conversation.id}
           backend='codex'
-          initialModelId={extra.codexModel}
+          initialModelId={resolveConversationInitialModelId(conversation)}
         />
       );
     }
