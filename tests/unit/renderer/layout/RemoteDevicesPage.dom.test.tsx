@@ -67,13 +67,13 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
       if (key === 'settings.webui.officialRemoteTitle') {
-        return 'Official Device List';
+        return 'Official Host List';
       }
       if (key === 'settings.webui.remoteDevicesNav') {
-        return 'Remote Devices';
+        return 'Remote Hosts';
       }
       if (key === 'settings.cloud.deviceName') {
-        return 'Device';
+        return 'Host';
       }
       return String(options?.defaultValue ?? key);
     },
@@ -185,7 +185,7 @@ describe('RemoteDevicesPage', () => {
     });
 
     expect(screen.getByTestId('webview-host')).toHaveAttribute('data-navbar', 'false');
-    expect(screen.queryByText('Official Device List')).not.toBeInTheDocument();
+    expect(screen.queryByText('Official Host List')).not.toBeInTheDocument();
     expect(remoteAccessSetTarget).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: 'remote-device',
@@ -234,7 +234,7 @@ describe('RemoteDevicesPage', () => {
       );
     });
 
-    expect(screen.getByText('Official Device List')).toBeInTheDocument();
+    expect(screen.getByText('Official Host List')).toBeInTheDocument();
     expect(screen.getByTestId('webview-host')).toHaveAttribute('data-navbar', 'true');
     expect(remoteAccessSetTarget).toHaveBeenCalledWith(
       expect.objectContaining({

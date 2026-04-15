@@ -455,7 +455,7 @@ describe('Sider', () => {
     const { container } = renderSider('/skills-hub');
 
     expect(await screen.findByText('conversation.entry.create')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Remote Devices' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remote Hosts' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Hooks' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'settings.skillsHub.title' })).not.toBeInTheDocument();
     expect(container.querySelector('.sider-main-section--desktop-chrome-offset')).toBeTruthy();
