@@ -101,6 +101,10 @@ function resolveHostRuntimePlatform(devicePlatform?: string | null): HostRuntime
   }
 }
 
+const isHostRuntimeOfficialRemoteReady = (status: Pick<CloudStatus, 'hostRuntime'>): boolean => {
+  return status.hostRuntime.officialRemoteReady === true;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -1070,7 +1074,7 @@ export class CloudService {
     return Boolean(
       status.authenticated &&
       !status.browserSessionExpired &&
-      !status.officialRemoteReady &&
+      !isHostRuntimeOfficialRemoteReady(status) &&
       !status.officialRemote?.needsAttention
     );
   }
@@ -1129,7 +1133,7 @@ export class CloudService {
     let lastStatus = await this.getStatus();
 
     while (Date.now() < deadline) {
-      if (lastStatus.officialRemoteReady) {
+      if (isHostRuntimeOfficialRemoteReady(lastStatus)) {
         return lastStatus;
       }
 

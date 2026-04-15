@@ -131,14 +131,6 @@ export const shouldPreferOfficialRemoteShell = (params: {
   }
 };
 
-const isLegacyOfficialRemoteReady = (cloudStatus: CloudStatus | null): boolean => {
-  const officialRemoteStatus = cloudStatus?.officialRemote;
-  return Boolean(
-    cloudStatus?.officialRemoteReady === true ||
-    (officialRemoteStatus?.running === true && officialRemoteStatus.browserEntryReady === true)
-  );
-};
-
 const isHostRuntimeDesired = (cloudStatus: CloudStatus | null): boolean => {
   if (typeof cloudStatus?.hostRuntime?.officialRemoteDesired === 'boolean') {
     return cloudStatus.hostRuntime.officialRemoteDesired;
@@ -152,11 +144,12 @@ export const isCurrentHostRuntimeReady = (cloudStatus: CloudStatus | null): bool
     return false;
   }
 
-  if (typeof cloudStatus.hostRuntime?.officialRemoteReady === 'boolean') {
-    return cloudStatus.hostRuntime.officialRemoteReady;
+  if (cloudStatus.hostRuntime?.officialRemoteReady === true) {
+    return true;
   }
 
-  return isLegacyOfficialRemoteReady(cloudStatus);
+  const officialRemoteStatus = cloudStatus.officialRemote;
+  return officialRemoteStatus?.running === true && officialRemoteStatus.browserEntryReady === true;
 };
 
 export const shouldEnsureCurrentHostRuntime = (cloudStatus: CloudStatus | null): boolean => {

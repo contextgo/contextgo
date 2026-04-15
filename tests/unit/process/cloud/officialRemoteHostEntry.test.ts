@@ -279,6 +279,92 @@ describe('CloudService host browser entry ownership', () => {
       'Official Remote runtime released after cloud logout'
     );
   });
+
+  it('derives auto-ensure decisions from hostRuntime readiness instead of the legacy top-level field', async () => {
+    const { CloudService } = await import('@/process/services/cloud/CloudService');
+    const service = CloudService.getInstance();
+
+    const shouldAutoEnsureOfficialRemote = (
+      service as unknown as { shouldAutoEnsureOfficialRemote: (status: unknown) => boolean }
+    ).shouldAutoEnsureOfficialRemote.bind(service);
+
+    expect(
+      shouldAutoEnsureOfficialRemote({
+        authenticated: true,
+        browserSessionExpired: false,
+        device: {
+          id: 'device-1',
+        },
+        deviceTokenAvailable: true,
+        officialRemoteReady: false,
+        officialRemote: {
+          desired: false,
+          needsAttention: false,
+          running: false,
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'running',
+          mode: 'gui-host',
+          officialRemoteDesired: true,
+          officialRemoteReady: true,
+          platform: 'macos',
+          running: true,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+        },
+      })
+    ).toBe(false);
+  });
+
+  it('stops waiting once hostRuntime is ready even if the legacy top-level field still lags', async () => {
+    const { CloudService } = await import('@/process/services/cloud/CloudService');
+    const service = CloudService.getInstance();
+    const readyStatus = {
+      authenticated: true,
+      browserSessionExpired: false,
+      device: {
+        id: 'device-1',
+      },
+      deviceTokenAvailable: true,
+      officialRemoteReady: false,
+      officialRemote: {
+        desired: false,
+        needsAttention: false,
+        running: false,
+      },
+      hostRuntime: {
+        authority: 'host-runtime',
+        defaultRemoteAccess: 'official-remote',
+        exposure: 'loopback',
+        lifecycle: 'running',
+        mode: 'gui-host',
+        officialRemoteDesired: true,
+        officialRemoteReady: true,
+        platform: 'macos',
+        running: true,
+        supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+      },
+    };
+    const getStatusSpy = vi.spyOn(service, 'getStatus').mockResolvedValue(readyStatus as never);
+    const waitForOfficialRemoteReady = (
+      service as unknown as { waitForOfficialRemoteReady: () => Promise<unknown> }
+    ).waitForOfficialRemoteReady.bind(service);
+
+    let resolved = false;
+    const waitPromise = waitForOfficialRemoteReady().then(() => {
+      resolved = true;
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(resolved).toBe(true);
+    expect(getStatusSpy).toHaveBeenCalledTimes(1);
+
+    await waitPromise;
+  });
 });
 
 describe('OfficialRemoteTunnelService host runtime readiness', () => {
