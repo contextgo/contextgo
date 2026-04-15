@@ -50,6 +50,7 @@ describe('WebuiService.getStatus', () => {
     getRuntimeStatusMock.mockReturnValue({
       allowRemote: true,
       demandSources: ['local-client', 'official-remote'],
+      lifecycle: 'running',
       localUrl: 'http://localhost:43123',
       networkUrl: 'http://192.168.1.8:43123',
       port: 43123,
@@ -79,6 +80,7 @@ describe('WebuiService.getStatus', () => {
     expect(status).toMatchObject({
       adminUsername: 'admin',
       allowRemote: true,
+      lifecycle: 'running',
       localAccessAllowRemote: true,
       localAccessEnabled: true,
       localUrl: 'http://localhost:43123',
@@ -100,6 +102,7 @@ describe('WebuiService.getStatus', () => {
     getRuntimeStatusMock.mockReturnValue({
       allowRemote: false,
       demandSources: ['official-remote'],
+      lifecycle: 'degraded',
       localUrl: 'http://localhost:43123',
       networkUrl: undefined,
       port: 43123,
@@ -127,6 +130,7 @@ describe('WebuiService.getStatus', () => {
     const status = await WebuiService.getStatus();
 
     expect(status).toMatchObject({
+      lifecycle: 'degraded',
       localAccessAllowRemote: false,
       localAccessEnabled: false,
       running: true,

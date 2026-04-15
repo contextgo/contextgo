@@ -136,6 +136,7 @@ export class WebuiService {
     const networkUrl = runtimeStatus.networkUrl ?? (allowRemote && lanIP ? `http://${lanIP}:${port}` : undefined);
 
     return {
+      lifecycle: runtimeStatus.lifecycle,
       running,
       port,
       allowRemote,

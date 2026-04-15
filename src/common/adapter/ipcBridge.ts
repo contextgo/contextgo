@@ -988,6 +988,7 @@ export const task = {
 
 // WebUI 服务管理接口 / WebUI service management API
 export interface IWebUIStatus {
+  lifecycle?: 'stopped' | 'starting' | 'running' | 'stopping' | 'degraded';
   running: boolean;
   port: number;
   allowRemote: boolean;
@@ -1030,9 +1031,13 @@ export const webui = {
     'webui.verify-qr-token'
   ),
   // 状态变更事件 / Status changed event
-  statusChanged: bridge.buildEmitter<{ running: boolean; port?: number; localUrl?: string; networkUrl?: string }>(
-    'webui.status-changed'
-  ),
+  statusChanged: bridge.buildEmitter<{
+    lifecycle?: 'stopped' | 'starting' | 'running' | 'stopping' | 'degraded';
+    running: boolean;
+    port?: number;
+    localUrl?: string;
+    networkUrl?: string;
+  }>('webui.status-changed'),
   // 密码重置结果事件（绕过 provider 返回值问题）/ Password reset result event (workaround for provider return value issue)
   resetPasswordResult: bridge.buildEmitter<{ success: boolean; newPassword?: string; msg?: string }>(
     'webui.reset-password-result'

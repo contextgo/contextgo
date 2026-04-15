@@ -99,10 +99,78 @@ describe('HostBrowserEntryService', () => {
       preferredPort: 25809,
     });
     expect(service.getRuntimeStatus()).toMatchObject({
+      lifecycle: 'running',
       running: true,
       port: 43123,
       allowRemote: false,
       demandSources: ['local-client', 'official-remote'],
+    });
+  });
+
+  it('reports starting lifecycle while the browser entry is still booting', async () => {
+    let resolveStartup:
+      | ((instance: { server: MockServer; wss: MockWss; port: number; allowRemote: boolean }) => void)
+      | null = null;
+    startWebServerWithInstanceMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveStartup = resolve;
+        })
+    );
+
+    const { HostBrowserEntryService } = await import('@process/services/host/HostBrowserEntryService');
+    const service = new HostBrowserEntryService();
+
+    const startupPromise = service.ensureForDemand('local-client', {
+      preferredPort: 25809,
+      allowRemote: false,
+      reason: 'local-client',
+    });
+
+    expect(service.getRuntimeStatus()).toMatchObject({
+      lifecycle: 'starting',
+      running: false,
+      port: null,
+    });
+
+    await Promise.resolve();
+    resolveStartup?.({
+      allowRemote: false,
+      port: 43123,
+      server: {
+        close: (callback) => callback?.(),
+      },
+      wss: {
+        clients: new Set(),
+      },
+    });
+    await startupPromise;
+
+    expect(service.getRuntimeStatus()).toMatchObject({
+      lifecycle: 'running',
+      running: true,
+      port: 43123,
+    });
+  });
+
+  it('reports degraded lifecycle when startup fails with an active demand', async () => {
+    startWebServerWithInstanceMock.mockRejectedValueOnce(new Error('boom'));
+
+    const { HostBrowserEntryService } = await import('@process/services/host/HostBrowserEntryService');
+    const service = new HostBrowserEntryService();
+
+    await expect(
+      service.ensureForDemand('official-remote', {
+        preferredPort: 25809,
+        allowRemote: false,
+        reason: 'official-remote',
+      })
+    ).rejects.toThrow('boom');
+
+    expect(service.getRuntimeStatus()).toMatchObject({
+      lifecycle: 'degraded',
+      running: false,
+      port: null,
     });
   });
 
@@ -155,6 +223,50 @@ describe('HostBrowserEntryService', () => {
     expect(service.getLocalBaseUrl()).toBeNull();
   });
 
+  it('reports stopping lifecycle while shutting down the current runtime', async () => {
+    let resolveClose: (() => void) | null = null;
+    const server: MockServer = {
+      close: (callback) => {
+        resolveClose = () => callback?.();
+      },
+    };
+    const wss: MockWss = {
+      clients: new Set(),
+    };
+    startWebServerWithInstanceMock.mockResolvedValue({
+      server,
+      wss,
+      port: 43123,
+      allowRemote: false,
+    });
+
+    const { HostBrowserEntryService } = await import('@process/services/host/HostBrowserEntryService');
+    const service = new HostBrowserEntryService();
+
+    await service.ensureForDemand('local-client', {
+      preferredPort: 25809,
+      allowRemote: false,
+      reason: 'local-client',
+    });
+
+    const stopPromise = service.releaseDemand('local-client', 'local-client released');
+
+    expect(service.getRuntimeStatus()).toMatchObject({
+      lifecycle: 'stopping',
+      running: true,
+      port: 43123,
+    });
+
+    resolveClose?.();
+    await stopPromise;
+
+    expect(service.getRuntimeStatus()).toMatchObject({
+      lifecycle: 'stopped',
+      running: false,
+      port: null,
+    });
+  });
+
   it('returns null base URL when no runtime is active', async () => {
     const { HostBrowserEntryService } = await import('@process/services/host/HostBrowserEntryService');
     const service = new HostBrowserEntryService();
@@ -166,6 +278,7 @@ describe('HostBrowserEntryService', () => {
       preferredPort: null,
     });
     expect(service.getRuntimeStatus()).toMatchObject({
+      lifecycle: 'stopped',
       running: false,
       demandSources: [],
     });
