@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { TMessage } from '@/common/chat/chatLib';
+import type { IMessageText, TMessage } from '@/common/chat/chatLib';
 import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import { buildChatErrorResponse, chatActions } from '../actions/ChatActions';
 import { handlePairingShow, platformActions } from '../actions/PlatformActions';
@@ -38,11 +38,15 @@ import {
 import { stripHtml } from '../plugins/weixin/WeixinAdapter';
 import {
   getExternalSessionControlState,
+  type IAgentProfile,
+  type IChannelReplyPolicy,
   type IUnifiedIncomingMessage,
   type IUnifiedOutgoingMessage,
   type PluginType,
 } from '../types';
 import type { PluginManager } from './PluginManager';
+import fs from 'node:fs';
+import path from 'node:path';
 
 function usesActionButtons(platform: PluginType): boolean {
   return platform === 'slack' || platform === 'discord';
@@ -238,18 +242,25 @@ function getConfirmationOptions(type: string): Array<{ label: string; value: str
  * 注意：所有用户输入的内容都需要转义 HTML 特殊字符
  * Note: All user input content needs HTML special characters escaped
  */
-function getConfirmationPrompt(details: { type: string; title?: string; [key: string]: any }): string {
+function getConfirmationPrompt(details: { type: string; title?: string; [key: string]: unknown }): string {
   if (!details) return 'Please confirm the operation';
+
+  const fileName = typeof details.fileName === 'string' ? details.fileName : 'Unknown file';
+  const command = typeof details.command === 'string' ? details.command : 'Unknown command';
+  const toolDisplayName = typeof details.toolDisplayName === 'string' ? details.toolDisplayName : undefined;
+  const toolName = typeof details.toolName === 'string' ? details.toolName : undefined;
+  const serverName = typeof details.serverName === 'string' ? details.serverName : 'Unknown server';
+  const prompt = typeof details.prompt === 'string' ? details.prompt : '';
 
   switch (details.type) {
     case 'edit':
-      return `📝 <b>Edit File Confirmation</b>\nFile: <code>${escapeHtml(details.fileName || 'Unknown file')}</code>\n\nAllow editing this file?`;
+      return `📝 <b>Edit File Confirmation</b>\nFile: <code>${escapeHtml(fileName)}</code>\n\nAllow editing this file?`;
     case 'exec':
-      return `⚡ <b>Execute Command Confirmation</b>\nCommand: <code>${escapeHtml(details.command || 'Unknown command')}</code>\n\nAllow executing this command?`;
+      return `⚡ <b>Execute Command Confirmation</b>\nCommand: <code>${escapeHtml(command)}</code>\n\nAllow executing this command?`;
     case 'mcp':
-      return `🔧 <b>MCP Tool Confirmation</b>\nTool: <code>${escapeHtml(details.toolDisplayName || details.toolName || 'Unknown tool')}</code>\nServer: <code>${escapeHtml(details.serverName || 'Unknown server')}</code>\n\nAllow calling this tool?`;
+      return `🔧 <b>MCP Tool Confirmation</b>\nTool: <code>${escapeHtml(toolDisplayName || toolName || 'Unknown tool')}</code>\nServer: <code>${escapeHtml(serverName)}</code>\n\nAllow calling this tool?`;
     case 'info':
-      return `ℹ️ <b>Information Confirmation</b>\n${escapeHtml(details.prompt || '')}\n\nContinue?`;
+      return `ℹ️ <b>Information Confirmation</b>\n${escapeHtml(prompt)}\n\nContinue?`;
     default:
       return 'Please confirm the operation';
   }
@@ -372,6 +383,64 @@ function buildChannelDisplayMessage(text: string | undefined, files: string[]): 
   return normalizedText ? `${normalizedText}\n\n${markerBlock}` : markerBlock;
 }
 
+const FILE_REPLY_SUPPORTED_PLATFORMS = new Set<PluginType>(['weixin']);
+const FILE_WRITTEN_PATTERN = /^📝\s*(?:\*\*)?File written:(?:\*\*)?\s*`([^`]+)`/m;
+
+function resolveChannelReplyPolicy(agentProfile?: IAgentProfile): IChannelReplyPolicy {
+  return {
+    capabilities:
+      agentProfile?.channelReplyPolicy?.capabilities && agentProfile.channelReplyPolicy.capabilities.length > 0
+        ? agentProfile.channelReplyPolicy.capabilities
+        : ['text', 'file'],
+    fallbackMode: agentProfile?.channelReplyPolicy?.fallbackMode ?? 'text_path',
+  };
+}
+
+export function extractArtifactReplyCandidateFromMessage(
+  message: IMessageText
+): { filePath: string; fileName: string } | null {
+  const rawContent = message.content.content || '';
+  const match = FILE_WRITTEN_PATTERN.exec(rawContent);
+  const filePath = match?.[1]?.trim();
+  if (!filePath || !path.isAbsolute(filePath) || !fs.existsSync(filePath)) {
+    return null;
+  }
+
+  return {
+    filePath,
+    fileName: path.basename(filePath),
+  };
+}
+
+export function buildChannelArtifactReply(
+  message: TMessage,
+  platform: PluginType,
+  agentProfile?: IAgentProfile
+): IUnifiedOutgoingMessage | null {
+  if (message.type !== 'text') {
+    return null;
+  }
+
+  const policy = resolveChannelReplyPolicy(agentProfile);
+  if (!policy.capabilities?.includes('file') || !FILE_REPLY_SUPPORTED_PLATFORMS.has(platform)) {
+    return null;
+  }
+
+  const candidate = extractArtifactReplyCandidateFromMessage(message);
+  if (!candidate) {
+    return null;
+  }
+
+  const text = formatTextForPlatform(message.content.content || '', platform);
+  return {
+    type: 'file',
+    text: text.trim() ? text : undefined,
+    parseMode: 'HTML',
+    fileUrl: candidate.filePath,
+    fileName: candidate.fileName,
+  };
+}
+
 /**
  * 将 TMessage 转换为 IUnifiedOutgoingMessage
  * Convert TMessage to IUnifiedOutgoingMessage for platform
@@ -379,12 +448,19 @@ function buildChannelDisplayMessage(text: string | undefined, files: string[]): 
 function convertTMessageToOutgoing(
   message: TMessage,
   platform: PluginType,
+  agentProfile?: IAgentProfile,
   chatId?: string,
   conversationId?: string,
   isComplete = false
 ): IUnifiedOutgoingMessage {
   switch (message.type) {
     case 'text': {
+      if (isComplete) {
+        const artifactReply = buildChannelArtifactReply(message, platform, agentProfile);
+        if (artifactReply) {
+          return artifactReply;
+        }
+      }
       // 根据平台格式化文本
       // Format text based on platform
       const rawText = formatTextForPlatform(message.content.content || '', platform);
@@ -763,6 +839,7 @@ export class ActionExecutor {
       // 跟踪最后一条消息内容，用于流结束后添加操作按钮
       // Track last message content for adding action buttons after stream ends
       let lastMessageContent: IUnifiedOutgoingMessage | null = null;
+      let lastRawMessage: TMessage | null = null;
 
       // 执行消息编辑的函数
       // Function to perform message edit
@@ -790,10 +867,12 @@ export class ActionExecutor {
           const outgoingMessage = convertTMessageToOutgoing(
             message,
             context.platform as PluginType,
+            context.agentProfile,
             context.chatId,
             context.conversationId,
             false
           );
+          lastRawMessage = message;
 
           // Strip replyMarkup during streaming to prevent premature card finalization.
           // Tool confirmation cards set replyMarkup (e.g., for Confirming status),
@@ -904,14 +983,26 @@ export class ActionExecutor {
         // 使用最后一条消息的实际内容，添加操作按钮（根据平台）
         // Use actual content of last message, add action buttons (based on platform)
         const responseExtras = getResponseActionExtras(context.platform as PluginType, lastMessageContent?.text);
-        const finalMessage: IUnifiedOutgoingMessage = lastMessageContent
-          ? { ...lastMessageContent, ...responseExtras }
-          : {
-              type: 'text',
-              text: '✅ Done',
-              parseMode: 'HTML',
-              ...responseExtras,
-            };
+        const finalMessageBase =
+          lastRawMessage != null
+            ? convertTMessageToOutgoing(
+                lastRawMessage,
+                context.platform as PluginType,
+                context.agentProfile,
+                context.chatId,
+                context.conversationId,
+                true
+              )
+            : lastMessageContent;
+        const finalMessage: IUnifiedOutgoingMessage =
+          finalMessageBase?.type === 'text'
+            ? { ...finalMessageBase, ...responseExtras }
+            : finalMessageBase || {
+                type: 'text',
+                text: '✅ Done',
+                parseMode: 'HTML',
+                ...responseExtras,
+              };
         await context.editMessage(lastMsgId, finalMessage);
       } catch {
         // 忽略最终编辑错误

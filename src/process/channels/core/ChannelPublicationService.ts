@@ -133,6 +133,10 @@ export async function buildConversationPublicationProfile(
     toolPolicy: existing?.toolPolicy ?? {},
     memoryPolicy: existing?.memoryPolicy ?? {},
     delegationPolicy: existing?.delegationPolicy ?? {},
+    channelReplyPolicy: existing?.channelReplyPolicy ?? {
+      capabilities: ['text', 'file'],
+      fallbackMode: 'text_path',
+    },
     publishedFromConversationId: conversation.id,
     version: existing?.version ?? 1,
     archived: false,
