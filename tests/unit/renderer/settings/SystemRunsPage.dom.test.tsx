@@ -132,6 +132,7 @@ describe('SystemRunsPage', () => {
     expect(await screen.findByText('Compressing repeated session signals')).toBeInTheDocument();
     expect(screen.getByText('Governance: session_steward')).toBeInTheDocument();
     expect(screen.getByText('Source: hook')).toBeInTheDocument();
+    expect(screen.getByText('Artifact kind: session-context')).toBeInTheDocument();
     expect(screen.getByText('Artifact summary: Session working context refreshed.')).toBeInTheDocument();
     expect(
       screen.getByText('Artifacts: session_timeline · session_working_context · session_checkpoint')
