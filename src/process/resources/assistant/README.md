@@ -92,6 +92,10 @@ That compatibility is acceptable during migration, but all new built-in assistan
   - package root: `src/process/resources/assistant/engineering/everything-in-claude-code`
   - package-local payload: `skills/`, `commands/`, `hooks/`, `scripts/`
   - workspace automation: `.contextgo/commands.json`, `.contextgo/schedules.json`
+- `karpathy-coding-guard`
+  - package root: `src/process/resources/assistant/engineering/karpathy-coding-guard`
+  - package-local payload: `skills/`
+  - workspace scaffold: `workspace/` with assumptions, changes, and verification docs
 
 ## Governance Rule
 

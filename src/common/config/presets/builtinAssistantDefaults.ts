@@ -25,6 +25,7 @@ export const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set([
   'pm-workbench',
   'superpowers',
   'everything-in-claude-code',
+  'karpathy-coding-guard',
 ]);
 
 export const findBuiltinAssistantPreset = (assistantId: string) => {

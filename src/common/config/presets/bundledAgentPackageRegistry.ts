@@ -17,6 +17,7 @@ import officeAnalystManifestRaw from '@/process/resources/assistant/office/offic
 import financeAnalystManifestRaw from '@/process/resources/assistant/finance/finance-analyst/agent-package.json';
 import superpowersManifestRaw from '@/process/resources/assistant/engineering/superpowers/agent-package.json';
 import everythingClaudeCodeManifestRaw from '@/process/resources/assistant/engineering/everything-in-claude-code/agent-package.json';
+import karpathyCodingGuardManifestRaw from '@/process/resources/assistant/engineering/karpathy-coding-guard/agent-package.json';
 
 export type BundledAgentPackageDescriptor = {
   resourceDir: string;
@@ -72,6 +73,13 @@ export const BUNDLED_AGENT_PACKAGE_DESCRIPTORS: readonly BundledAgentPackageDesc
     manifest: parseBundledManifest(
       everythingClaudeCodeManifestRaw,
       'src/process/resources/assistant/engineering/everything-in-claude-code'
+    ),
+  },
+  {
+    resourceDir: 'src/process/resources/assistant/engineering/karpathy-coding-guard',
+    manifest: parseBundledManifest(
+      karpathyCodingGuardManifestRaw,
+      'src/process/resources/assistant/engineering/karpathy-coding-guard'
     ),
   },
 ] as const;
