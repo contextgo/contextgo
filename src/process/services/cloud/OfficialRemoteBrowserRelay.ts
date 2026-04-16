@@ -6,11 +6,8 @@
 
 import { Buffer } from 'node:buffer';
 import WebSocket, { type RawData } from 'ws';
-import { ProcessConfig } from '@process/utils/initStorage';
 import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
 
-const DESKTOP_WEBUI_PORT_KEY = 'webui.desktop.port';
-const LOCAL_WEBUI_HOST = '127.0.0.1';
 const VITE_DEV_PORT = 5173;
 const VITE_DEV_PROBE_PATH = '/@vite/client';
 const VITE_DEV_PROBE_TIMEOUT_MS = 1_000;
@@ -104,16 +101,9 @@ async function resolveLocalWebUiBaseUrl(): Promise<string | null> {
       return runtimeBaseUrl;
     }
   } catch {
-    // Ignore runtime lookup failures and fall back to persisted config.
+    // Ignore runtime lookup failures and treat the host browser entry as unavailable.
   }
-
-  const storedPort = await ProcessConfig.get(DESKTOP_WEBUI_PORT_KEY);
-  const port = typeof storedPort === 'number' && Number.isFinite(storedPort) && storedPort > 0 ? storedPort : null;
-  if (!port) {
-    return null;
-  }
-
-  return `http://${LOCAL_WEBUI_HOST}:${port}`;
+  return null;
 }
 
 function formatHostForUrl(hostname: string): string {

@@ -5,11 +5,11 @@
  */
 
 import { app } from 'electron';
-import { webui } from '@/common/adapter/ipcBridge';
 import { cleanupWebAdapter } from '@process/webserver/adapter';
 import { startWebServerWithInstance, type WebServerInstance } from '@process/webserver';
 
 export type HostBrowserEntryDemand = 'local-client' | 'official-remote';
+export type HostBrowserEntryLifecycle = 'stopped' | 'starting' | 'running' | 'stopping' | 'degraded';
 
 export type HostBrowserEntryRequest = {
   preferredPort: number;
@@ -19,12 +19,28 @@ export type HostBrowserEntryRequest = {
 };
 
 export type HostBrowserEntryRuntimeStatus = {
+  lifecycle: HostBrowserEntryLifecycle;
   running: boolean;
   port: number | null;
   allowRemote: boolean;
   localUrl?: string;
   networkUrl?: string;
   demandSources: HostBrowserEntryDemand[];
+};
+
+export type HostBrowserEntryDemandState = {
+  active: boolean;
+  allowRemote: boolean;
+  preferredPort: number | null;
+  allowPortFallback: boolean;
+};
+
+export type HostBrowserEntryStatusChangedEvent = {
+  lifecycle?: HostBrowserEntryLifecycle;
+  running: boolean;
+  port?: number;
+  localUrl?: string;
+  networkUrl?: string;
 };
 
 const OFFICIAL_REMOTE_PORT_FALLBACK_ATTEMPTS = 10;
@@ -74,6 +90,8 @@ export class HostBrowserEntryService {
   private currentInstance: WebServerInstance | null = null;
   private startupPromise: Promise<WebServerInstance> | null = null;
   private readonly demandRequests = new Map<HostBrowserEntryDemand, HostBrowserEntryRequest>();
+  private lifecycle: HostBrowserEntryLifecycle = 'stopped';
+  private statusChangedEmitter: ((status: HostBrowserEntryStatusChangedEvent) => void) | null = null;
 
   public getCurrentInstance(): WebServerInstance | null {
     return this.currentInstance;
@@ -81,6 +99,10 @@ export class HostBrowserEntryService {
 
   public setCurrentInstanceForLegacy(instance: WebServerInstance | null): void {
     this.currentInstance = instance;
+  }
+
+  public setStatusChangedEmitter(emitter: ((status: HostBrowserEntryStatusChangedEvent) => void) | null): void {
+    this.statusChangedEmitter = emitter;
   }
 
   public getLocalBaseUrl(): string | null {
@@ -92,6 +114,7 @@ export class HostBrowserEntryService {
 
   public getRuntimeStatus(): HostBrowserEntryRuntimeStatus {
     return {
+      lifecycle: this.lifecycle,
       running: this.currentInstance !== null,
       port: this.currentInstance?.port ?? null,
       allowRemote: this.currentInstance?.allowRemote ?? false,
@@ -103,19 +126,54 @@ export class HostBrowserEntryService {
     };
   }
 
+  public getDemandState(demand: HostBrowserEntryDemand): HostBrowserEntryDemandState {
+    const request = this.demandRequests.get(demand);
+    if (!request) {
+      return {
+        active: false,
+        allowRemote: false,
+        preferredPort: null,
+        allowPortFallback: false,
+      };
+    }
+
+    return {
+      active: true,
+      allowRemote: request.allowRemote,
+      preferredPort: request.preferredPort,
+      allowPortFallback: request.allowPortFallback === true,
+    };
+  }
+
   public async ensureForDemand(
     demand: HostBrowserEntryDemand,
     request: HostBrowserEntryRequest
   ): Promise<WebServerInstance> {
-    await app.whenReady();
     this.demandRequests.set(demand, request);
+    if (!this.currentInstance && !this.startupPromise) {
+      this.lifecycle = 'starting';
+      this.emitRuntimeStatus();
+    }
+    await app.whenReady();
     return this.reconcile(`ensure:${request.reason}`);
   }
 
   public async releaseDemand(demand: HostBrowserEntryDemand, reason: string): Promise<void> {
-    await app.whenReady();
     this.demandRequests.delete(demand);
     if (this.demandRequests.size > 0) {
+      return;
+    }
+    if (this.currentInstance) {
+      this.lifecycle = 'stopping';
+      this.emitRuntimeStatus(this.currentInstance);
+    } else if (!this.startupPromise) {
+      this.lifecycle = 'stopped';
+      this.emitRuntimeStatus();
+    }
+    await app.whenReady();
+    if (!this.currentInstance) {
+      this.lifecycle = 'stopped';
+      this.emitRuntimeStatus();
       return;
     }
     await this.stopCurrentInstance(reason);
@@ -156,6 +214,8 @@ export class HostBrowserEntryService {
       return this.startupPromise;
     }
 
+    this.lifecycle = 'starting';
+    this.emitRuntimeStatus();
     this.startupPromise = (async () => {
       const candidatePorts = allowPortFallback
         ? buildPortCandidates(preferredPort, OFFICIAL_REMOTE_PORT_FALLBACK_ATTEMPTS)
@@ -163,11 +223,18 @@ export class HostBrowserEntryService {
 
       const instance = await this.startOnCandidatePorts(candidatePorts, preferredPort, allowRemote, reason);
       this.currentInstance = instance;
+      this.lifecycle = 'running';
       this.emitRuntimeStatus(instance);
       return instance;
-    })().finally(() => {
-      this.startupPromise = null;
-    });
+    })()
+      .catch((error) => {
+        this.lifecycle = this.demandRequests.size > 0 ? 'degraded' : 'stopped';
+        this.emitRuntimeStatus();
+        throw error;
+      })
+      .finally(() => {
+        this.startupPromise = null;
+      });
 
     return this.startupPromise;
   }
@@ -205,6 +272,8 @@ export class HostBrowserEntryService {
       return;
     }
 
+    this.lifecycle = 'stopping';
+    this.emitRuntimeStatus(this.currentInstance);
     try {
       const { server, wss } = this.currentInstance;
       wss.clients.forEach((client) => client.close(1000, reason));
@@ -218,15 +287,18 @@ export class HostBrowserEntryService {
     }
 
     this.currentInstance = null;
-    webui.statusChanged.emit({ running: false });
+    this.lifecycle = 'stopped';
+    this.emitRuntimeStatus();
   }
 
-  private emitRuntimeStatus(instance: WebServerInstance): void {
-    webui.statusChanged.emit({
-      running: true,
-      port: instance.port,
-      localUrl: `http://localhost:${instance.port}`,
-      networkUrl: getNetworkUrl(instance.port, instance.allowRemote),
+  private emitRuntimeStatus(instance?: WebServerInstance | null): void {
+    const runtimeInstance = instance ?? this.currentInstance;
+    this.statusChangedEmitter?.({
+      lifecycle: this.lifecycle,
+      running: runtimeInstance !== null,
+      port: runtimeInstance?.port,
+      localUrl: runtimeInstance ? `http://localhost:${runtimeInstance.port}` : undefined,
+      networkUrl: runtimeInstance ? getNetworkUrl(runtimeInstance.port, runtimeInstance.allowRemote) : undefined,
     });
   }
 }

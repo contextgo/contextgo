@@ -211,48 +211,4 @@ describe('webuiConfig module', () => {
       expect(resolveRemoteAccess({}, false)).toBe(false);
     });
   });
-
-  describe('official remote runtime helpers', () => {
-    it('ensures official remote runtime without forcing local remote exposure', async () => {
-      const { ensureDesktopWebUIForOfficialRemote } = await import('@process/utils/webuiConfig');
-      const { startWebServerWithInstance } = await import('@process/webserver');
-      const { ProcessConfig } = await import('@process/utils/initStorage');
-      const { webui } = await import('@/common/adapter/ipcBridge');
-
-      await ensureDesktopWebUIForOfficialRemote();
-
-      expect(startWebServerWithInstance).toHaveBeenCalledWith(25809, false);
-      expect(ProcessConfig.set).toHaveBeenCalledWith('webui.desktop.port', 3000);
-      expect(webui.statusChanged.emit).toHaveBeenCalledWith({
-        running: true,
-        port: 3000,
-        localUrl: 'http://localhost:3000',
-        networkUrl: undefined,
-      });
-    });
-
-    it('retries on the next port when the preferred official remote port is already occupied', async () => {
-      const { ensureDesktopWebUIForOfficialRemote } = await import('@process/utils/webuiConfig');
-      const { startWebServerWithInstance } = await import('@process/webserver');
-      const { ProcessConfig } = await import('@process/utils/initStorage');
-      const { webui } = await import('@/common/adapter/ipcBridge');
-
-      vi.mocked(ProcessConfig.get).mockResolvedValueOnce(3000);
-      vi.mocked(startWebServerWithInstance)
-        .mockRejectedValueOnce(Object.assign(new Error('Port in use'), { code: 'EADDRINUSE' }))
-        .mockResolvedValueOnce({ port: 3001 } as { port: number });
-
-      await ensureDesktopWebUIForOfficialRemote();
-
-      expect(startWebServerWithInstance).toHaveBeenNthCalledWith(1, 3000, false);
-      expect(startWebServerWithInstance).toHaveBeenNthCalledWith(2, 3001, false);
-      expect(ProcessConfig.set).toHaveBeenCalledWith('webui.desktop.port', 3001);
-      expect(webui.statusChanged.emit).toHaveBeenCalledWith({
-        running: true,
-        port: 3001,
-        localUrl: 'http://localhost:3001',
-        networkUrl: undefined,
-      });
-    });
-  });
 });
