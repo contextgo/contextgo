@@ -75,6 +75,9 @@ const hostBrowserEntryServiceMock = {
   getRuntimeStatus: vi.fn(() => ({
     allowRemote: false,
     demandSources: ['official-remote'],
+    lifecycle: 'running',
+    localUrl: 'http://localhost:25809',
+    networkUrl: undefined,
     port: 25809,
     running: true,
   })),
@@ -597,6 +600,44 @@ describe('CloudService desktop loopback login', () => {
     expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalled();
   });
 
+  it('includes an explicit host runtime architecture snapshot in cloud status', async () => {
+    Object.assign(officialRemoteTunnelState, {
+      desired: true,
+      running: true,
+      browserEntryReady: true,
+      needsAttention: false,
+    });
+    processConfigState.set('cloud.user', fetchSessionUserResponse.user);
+    processConfigState.set('cloud.device', {
+      id: 'device-1',
+      userId: 'user-1',
+      deviceName: 'ContextGo on dev-host',
+      platform: 'macos',
+      status: 'active',
+      createdAt: '2026-04-01T00:00:00Z',
+      updatedAt: '2026-04-01T00:00:00Z',
+    });
+    processConfigState.set('cloud.deviceToken', 'ctxdev_token');
+
+    const cloudService = await importCloudService();
+    const status = await cloudService.getStatus();
+
+    expect(status).toMatchObject({
+      hostRuntime: {
+        authority: 'host-runtime',
+        defaultRemoteAccess: 'official-remote',
+        exposure: 'loopback',
+        lifecycle: 'running',
+        mode: 'gui-host',
+        officialRemoteDesired: true,
+        officialRemoteReady: true,
+        platform: 'macos',
+        running: true,
+        supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+      },
+    });
+  });
+
   it('opens browser login with loopback callback and consumes returned code', async () => {
     const cloudService = await importCloudService();
     let openedUrl = '';
@@ -859,7 +900,8 @@ describe('CloudService desktop loopback login', () => {
 
     expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalledTimes(1);
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
-    expect(status.officialRemoteReady).toBe(true);
+    expect(status).not.toHaveProperty('officialRemoteReady');
+    expect(status.hostRuntime.officialRemoteReady).toBe(true);
   });
 
   it('releases the official remote desktop runtime on logout', async () => {

@@ -18,8 +18,7 @@ const configStorageGet = vi.fn();
 const translations: Record<string, string> = {
   'common.refresh': 'Refresh',
   'settings.cloud.title': 'ContextGo Account',
-  'settings.cloud.description':
-    'Sign in once with GitHub or Google so ContextGo can bind this desktop device to your account.',
+  'settings.cloud.description': 'Sign in once with GitHub or Google so ContextGo can link this host to your account.',
   'settings.cloud.loading': 'Checking cloud account status...',
   'settings.cloud.loginWithGithub': 'Continue with GitHub',
   'settings.cloud.loginWithGoogle': 'Continue with Google',
@@ -28,17 +27,17 @@ const translations: Record<string, string> = {
   'settings.cloud.actionFailed': 'The cloud action could not be completed',
   'settings.cloud.notConnected': 'Not connected',
   'settings.cloud.notConnectedDesc':
-    'Use GitHub or Google sign-in to finish OAuth login and bind this desktop. If you need the full account flow, you can continue on the InferMesh website.',
+    'Use GitHub or Google sign-in to finish OAuth login and link this host. If you need the full account flow, you can continue on the InferMesh website.',
   'settings.cloud.sessionActive': 'Browser session active',
   'settings.cloud.sessionExpired': 'Browser session expired',
   'settings.cloud.sessionExpiredDesc': 'Session expired',
-  'settings.cloud.deviceLinked': 'Device linked',
-  'settings.cloud.deviceMissing': 'Device not linked',
-  'settings.cloud.deviceName': 'Device',
+  'settings.cloud.deviceLinked': 'Host linked',
+  'settings.cloud.deviceMissing': 'Host not linked',
+  'settings.cloud.deviceName': 'Host',
   'settings.cloud.notAvailable': 'Not available',
   'settings.cloud.infermeshAccess': 'InferMesh website',
   'settings.cloud.infermeshAccessDesc':
-    'ContextGo only needs the OAuth login and device binding. If you still need to register or complete account setup, continue on the InferMesh website.',
+    'ContextGo only needs the OAuth login and host linking. If you still need to register or complete account setup, continue on the InferMesh website.',
   'settings.cloud.openInfermesh': 'Open InferMesh',
   'settings.cloud.signOut': 'Sign out',
   'settings.webui': 'WebUI',
@@ -48,13 +47,14 @@ const translations: Record<string, string> = {
   'settings.webui.officialRemoteDesc': 'Official Remote description',
   'settings.webui.officialRemoteLoginRequired': 'Official Remote requires cloud login',
   'settings.webui.officialRemoteSignedIn': 'Signed in as {{name}}',
-  'settings.webui.officialRemoteDeviceReady': 'This device is linked and ready for Official Remote.',
-  'settings.webui.officialRemoteDevicePending': 'Cloud session is active, but this device is not fully linked yet.',
+  'settings.webui.officialRemoteDeviceReady': 'This host runtime is linked and ready through Official Remote.',
+  'settings.webui.officialRemoteDevicePending':
+    'Cloud session is active. ContextGo is still linking this host runtime to Official Remote.',
   'settings.webui.officialRemoteRuntimeHint':
-    'Official Remote prepares the desktop runtime automatically. You do not need to enable Local & Self-Hosted Access below.',
-  'settings.webui.openOfficialRemote': 'Open Official Remote',
-  'settings.webui.officialRemoteSignedOut': 'Official Remote is not connected yet.',
-  'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this device.',
+    'Official Remote prepares the host runtime path automatically. You do not need to enable Local & Self-Hosted Access below.',
+  'settings.webui.openOfficialRemote': 'Open Official Host List',
+  'settings.webui.officialRemoteSignedOut': 'The official host list is not connected yet.',
+  'settings.webui.officialRemoteHint': 'Sign in once here to enable hosted remote access for this host runtime.',
 };
 
 const unauthenticatedStatus: CloudStatus = {
@@ -66,6 +66,18 @@ const unauthenticatedStatus: CloudStatus = {
   officialRemote: {
     desired: false,
     running: false,
+  },
+  hostRuntime: {
+    authority: 'host-runtime',
+    defaultRemoteAccess: 'official-remote',
+    exposure: 'loopback',
+    lifecycle: 'stopped',
+    mode: 'gui-host',
+    platform: 'macos',
+    running: false,
+    supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+    officialRemoteDesired: false,
+    officialRemoteReady: false,
   },
   providers: ['github', 'google'],
   authBaseUrl: 'https://auth.contextgo.io',
@@ -96,6 +108,19 @@ const authenticatedStatus: CloudStatus = {
   officialRemote: {
     desired: true,
     running: true,
+  },
+  hostRuntime: {
+    authority: 'host-runtime',
+    defaultRemoteAccess: 'official-remote',
+    exposure: 'loopback',
+    lifecycle: 'running',
+    mode: 'gui-host',
+    platform: 'macos',
+    running: true,
+    supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+    officialRemoteDesired: true,
+    officialRemoteReady: true,
+    localUrl: 'http://localhost:25809',
   },
   providers: ['github', 'google'],
   authBaseUrl: 'https://auth.contextgo.io',
@@ -245,7 +270,7 @@ describe('CloudSyncSection', () => {
     render(<CloudSyncSection />);
 
     expect(await screen.findByText('ContextGo on mbp')).toBeInTheDocument();
-    expect(screen.getByText('Device linked')).toBeInTheDocument();
+    expect(screen.getByText('Host linked')).toBeInTheDocument();
     expect(screen.getByText('InferMesh website')).toBeInTheDocument();
   });
 
@@ -349,6 +374,14 @@ describe('CloudSyncSection', () => {
           running: false,
           message: 'Official Remote is not enabled on this desktop yet.',
         },
+        hostRuntime: {
+          ...authenticatedStatus.hostRuntime,
+          running: false,
+          lifecycle: 'stopped',
+          officialRemoteDesired: false,
+          officialRemoteReady: false,
+          localUrl: undefined,
+        },
       },
     });
 
@@ -358,7 +391,9 @@ describe('CloudSyncSection', () => {
     render(<WebuiModalContent />);
 
     expect(await screen.findByText('Signed in as {{name}}')).toBeInTheDocument();
-    expect(screen.getByText('Cloud session is active, but this device is not fully linked yet.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Cloud session is active. ContextGo is still linking this host runtime to Official Remote.')
+    ).toBeInTheDocument();
     expect(screen.queryByText('Official Remote is not enabled on this desktop yet.')).not.toBeInTheDocument();
   });
 });
