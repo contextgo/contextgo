@@ -21,6 +21,13 @@
 - `Session Steward` 的基础 job 元数据、split session vault artifacts、working-context 注入链已落地
 - `Project Curator`、`Space Curator` 与 runtime console 仍属于后续阶段
 
+## Phase 2 状态
+
+- `Project Curator` 的基础 artifact target 已进入实现
+- project docs curation 继续由 `project_promotion` / `project_capability_curation` 驱动
+- append-first 的 `AGENTS.md` / skill proposal artifacts 已开始写入 project `_context/proposals/`
+- direct source-file mutation 仍然不在当前范围内
+
 ## 产品定位
 
 ContextGo 是一个 desktop-first、local-first、multi-agent 的工作系统。

@@ -22,6 +22,13 @@
 - `Session Steward` 已开始通过 `working-context` 与 session checkpoints 写出 vault artifacts
 - `Project Curator`、`Space Curator` 的 skill 装配和控制台观察面仍待后续实现
 
+## Phase 2 状态
+
+- `Project Curator` job 已携带 `project_doc / project_rules / project_skill` artifact targets
+- `Project Curator` 已开始通过 project proposal formatter 产出 append-first proposal notes
+- timer/manual project capability curation trigger 文案已切到 docs + proposals 语义
+- `Space Curator` 的 skill 装配、connector digestion 与 runtime console 仍待后续实现
+
 ## 架构前提
 
 本文默认以下架构已经冻结：
