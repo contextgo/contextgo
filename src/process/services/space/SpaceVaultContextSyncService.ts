@@ -171,6 +171,22 @@ type SessionContextCheckpointInput = {
   body?: string;
 };
 
+type SessionTimelineEventInput = {
+  conversation: TChatConversation;
+  timestamp: string;
+  title: string;
+  body: string;
+};
+
+type SessionCheckpointWriteInput = {
+  conversation: TChatConversation;
+  timestamp: string;
+  kind: string;
+  title: string;
+  summary: string;
+  detail?: string;
+};
+
 type SessionWorkingSetWriteInput = {
   conversation: TChatConversation;
   timestamp: string;
@@ -242,6 +258,12 @@ type SessionTimelineEvent = {
   body: string;
 };
 
+type SessionCheckpointArtifact = {
+  title: string;
+  relativePath: string;
+  summary: string;
+};
+
 const nowIso = (timestamp = Date.now()): string => new Date(timestamp).toISOString();
 
 const toPosixRelativePath = (value: string): string => value.split(path.sep).join(path.posix.sep);
@@ -288,6 +310,7 @@ const getCapabilitySectionTitle = (kind: ProjectCapabilityRecord['kind']): strin
   return 'Schedules';
 };
 const getSessionWorkingSetTitle = (conversationTitle: string): string => `${conversationTitle} Working Set`;
+const getSessionWorkingContextTitle = (conversationTitle: string): string => `${conversationTitle} Working Context`;
 
 const getSessionNoteTitle = (conversationTitle: string, conversationId: string): string => {
   return `${conversationTitle.replace(/\s+Session$/i, '')} Session (${conversationId.slice(0, 8)})`;
@@ -328,6 +351,35 @@ const sanitizeSessionTitle = (value: string | undefined, fallback: string): stri
 
 const toCanvasFileReference = (_canvasRelativePath: string, targetRelativePath: string): string => {
   return toPosixRelativePath(targetRelativePath);
+};
+
+const getSessionContextRootRelativePath = (conversationId: string, projectFolderName?: string): string => {
+  const sanitizedConversationId = sanitizeVaultPathSegment(conversationId);
+  return projectFolderName
+    ? path.posix.join(getProjectSessionStateRelativeDir(projectFolderName), sanitizedConversationId)
+    : path.posix.join(PROJECT_SESSION_STATE_DIR_NAME, sanitizedConversationId);
+};
+
+const getSessionTimelineRelativePath = (conversationId: string, projectFolderName?: string): string => {
+  return path.posix.join(getSessionContextRootRelativePath(conversationId, projectFolderName), 'timeline.md');
+};
+
+const getSessionWorkingContextRelativePath = (conversationId: string, projectFolderName?: string): string => {
+  return path.posix.join(getSessionContextRootRelativePath(conversationId, projectFolderName), 'working-context.md');
+};
+
+const getSessionCheckpointRelativePath = (
+  conversationId: string,
+  projectFolderName: string | undefined,
+  timestamp: string,
+  kind: string
+): string => {
+  const safeTimestamp = timestamp.replace(/[:]/g, '-').replace(/\.\d{3}Z$/, 'Z');
+  return path.posix.join(
+    getSessionContextRootRelativePath(conversationId, projectFolderName),
+    'checkpoints',
+    `${safeTimestamp}-${sanitizeVaultPathSegment(kind)}.md`
+  );
 };
 
 const safeExcerpt = (value: string, limit = SESSION_EXCERPT_LIMIT): string => {
@@ -742,6 +794,21 @@ const buildSessionWorkingSetFrontmatter = (
 ): string => {
   return frontmatter({
     contextgoType: 'session-working-set',
+    conversationId: conversation.id,
+    spaceId: conversation.extra?.spaceId,
+    projectSlug: project?.slug,
+    workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
+    updatedAt,
+  });
+};
+
+const buildSessionWorkingContextFrontmatter = (
+  conversation: TChatConversation,
+  project: ProjectContext | undefined,
+  updatedAt: string
+): string => {
+  return frontmatter({
+    contextgoType: 'session-working-context',
     conversationId: conversation.id,
     spaceId: conversation.extra?.spaceId,
     projectSlug: project?.slug,
@@ -1340,6 +1407,73 @@ const buildSessionWorkingSetDocument = (input: {
     .join('\n');
 };
 
+const buildSessionWorkingContextDocument = (input: {
+  conversation: TChatConversation;
+  project: ProjectContext | undefined;
+  space: TSpace;
+  updatedAt: string;
+  currentTask?: string;
+  stableStrategies: readonly string[];
+  failureModes: readonly string[];
+  pendingConstraints: readonly string[];
+  signalKinds: readonly string[];
+  pressure: number;
+  sourceProfileKey?: string;
+}): string => {
+  const sessionTitle = sanitizeSessionTitle(input.conversation.name, input.conversation.id);
+  const paths = getConversationDocumentPaths(input.conversation.id, input.project?.folderName);
+
+  return [
+    buildSessionWorkingContextFrontmatter(input.conversation, input.project, input.updatedAt),
+    GENERATED_MARKER,
+    `# ${getSessionWorkingContextTitle(sessionTitle)}`,
+    '',
+    `- Session doc: ${toWikiLink(paths.sessionRelativePath, getSessionNoteTitle(sessionTitle, input.conversation.id))}`,
+    `- Space doc: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(input.space.name))}`,
+    `- Project doc: ${input.project ? toWikiLink(input.project.relativePath, getProjectNoteTitle(input.project.name)) : 'Unbound'}`,
+    `- Updated at: ${input.updatedAt}`,
+    input.sourceProfileKey ? `- Source profile: \`${input.sourceProfileKey}\`` : '',
+    '',
+    '## Current Task',
+    '',
+    input.currentTask || 'No active task distilled yet.',
+    '',
+    '## Stable Strategies',
+    '',
+    ...(input.stableStrategies.length > 0
+      ? input.stableStrategies.map((item) => `- ${item}`)
+      : ['- No durable strategy extracted yet.']),
+    '',
+    '## Failure Modes',
+    '',
+    ...(input.failureModes.length > 0
+      ? input.failureModes.map((item) => `- ${item}`)
+      : ['- No recurring failure pattern detected yet.']),
+    '',
+    '## Pending Constraints',
+    '',
+    ...(input.pendingConstraints.length > 0
+      ? input.pendingConstraints.map((item) => `- ${item}`)
+      : ['- No unresolved constraints tracked yet.']),
+    '',
+    '## Signals',
+    '',
+    ...(input.signalKinds.length > 0
+      ? input.signalKinds.map((kind) => `- ${kind}`)
+      : ['- No durable session signals yet.']),
+    '',
+    '## Compaction State',
+    '',
+    `- Pressure: ${input.pressure}`,
+    `- Stable strategies: ${input.stableStrategies.length}`,
+    `- Failure modes: ${input.failureModes.length}`,
+    `- Pending constraints: ${input.pendingConstraints.length}`,
+    '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+};
+
 const toWorkingSetMountedSection = (conversationId: string, content: string): ContextPackSection | undefined => {
   const body = stripGeneratedDocumentScaffolding(content);
   if (!body) {
@@ -1354,6 +1488,26 @@ const toWorkingSetMountedSection = (conversationId: string, content: string): Co
     priority: 96,
     tokenCount: Math.max(1, Math.ceil(summary.length / 4)),
   };
+};
+
+const toWorkingContextMountedSection = (conversationId: string, content: string): ContextPackSection | undefined => {
+  const body = stripGeneratedDocumentScaffolding(content);
+  if (!body) {
+    return undefined;
+  }
+
+  const summary = safeExcerpt(body, 2000);
+  return {
+    kind: 'profile',
+    id: `session-working-context:${conversationId}`,
+    summary,
+    priority: 96,
+    tokenCount: Math.max(1, Math.ceil(summary.length / 4)),
+  };
+};
+
+const formatTimelineHeading = (timestamp: string): string => {
+  return `[${timestamp.replace('T', ' ').replace('.000Z', '').replace('Z', '')}]`;
 };
 
 const extractProjectInsightsBody = (content: string | undefined): string => {
@@ -2038,6 +2192,20 @@ export class SpaceVaultContextSyncService {
     await this.syncSpaceOverview(target.space, target.vaultPath);
   }
 
+  async appendSessionTimelineEvent(input: SessionTimelineEventInput): Promise<void> {
+    const target = await this.resolveConversationTarget(input.conversation);
+    if (!target) {
+      return;
+    }
+
+    await this.ensureConversationContext({ conversation: input.conversation });
+    const relativePath = getSessionTimelineRelativePath(input.conversation.id, target.project?.folderName);
+    const absolutePath = path.join(target.vaultPath, relativePath);
+    const nextBlock = `${formatTimelineHeading(input.timestamp)}\n${input.title}: ${input.body}\n\n`;
+    await ensureDirectory(path.dirname(absolutePath));
+    await fs.appendFile(absolutePath, nextBlock, 'utf8');
+  }
+
   async readSessionWorkingSetSection(input: {
     conversation: TChatConversation;
   }): Promise<ContextPackSection | undefined> {
@@ -2049,6 +2217,19 @@ export class SpaceVaultContextSyncService {
     const paths = getConversationDocumentPaths(input.conversation.id, target.project?.folderName);
     const content = await readUtf8(path.join(target.vaultPath, toPosixRelativePath(paths.workingSetRelativePath)));
     return content ? toWorkingSetMountedSection(input.conversation.id, content) : undefined;
+  }
+
+  async readSessionWorkingContextSection(input: {
+    conversation: TChatConversation;
+  }): Promise<ContextPackSection | undefined> {
+    const target = await this.resolveConversationTarget(input.conversation);
+    if (!target) {
+      return undefined;
+    }
+
+    const relativePath = getSessionWorkingContextRelativePath(input.conversation.id, target.project?.folderName);
+    const content = await readUtf8(path.join(target.vaultPath, toPosixRelativePath(relativePath)));
+    return content ? toWorkingContextMountedSection(input.conversation.id, content) : undefined;
   }
 
   async writeSessionWorkingSet(input: SessionWorkingSetWriteInput): Promise<
@@ -2085,6 +2266,79 @@ export class SpaceVaultContextSyncService {
     return {
       relativePath,
       title: getSessionWorkingSetTitle(sanitizeSessionTitle(input.conversation.name, input.conversation.id)),
+    };
+  }
+
+  async writeSessionWorkingContext(input: SessionWorkingSetWriteInput): Promise<
+    | {
+        relativePath: string;
+        title: string;
+      }
+    | undefined
+  > {
+    const target = await this.resolveConversationTarget(input.conversation);
+    if (!target) {
+      return undefined;
+    }
+
+    await this.ensureBaseStructure(target.vaultPath);
+    const relativePath = getSessionWorkingContextRelativePath(input.conversation.id, target.project?.folderName);
+    const absolutePath = path.join(target.vaultPath, relativePath);
+    const nextDocument = buildSessionWorkingContextDocument({
+      conversation: input.conversation,
+      project: target.project,
+      space: target.space,
+      updatedAt: input.timestamp,
+      currentTask: input.currentTask,
+      stableStrategies: input.stableStrategies,
+      failureModes: input.failureModes,
+      pendingConstraints: input.pendingConstraints,
+      signalKinds: input.signalKinds,
+      pressure: input.pressure,
+      sourceProfileKey: input.sourceProfileKey,
+    });
+
+    await ensureFile(absolutePath, nextDocument);
+    return {
+      relativePath,
+      title: getSessionWorkingContextTitle(sanitizeSessionTitle(input.conversation.name, input.conversation.id)),
+    };
+  }
+
+  async appendSessionCheckpoint(input: SessionCheckpointWriteInput): Promise<SessionCheckpointArtifact | undefined> {
+    const target = await this.resolveConversationTarget(input.conversation);
+    if (!target) {
+      return undefined;
+    }
+
+    await this.ensureConversationContext({ conversation: input.conversation });
+    const relativePath = getSessionCheckpointRelativePath(
+      input.conversation.id,
+      target.project?.folderName,
+      input.timestamp,
+      input.kind
+    );
+    const absolutePath = path.join(target.vaultPath, relativePath);
+    const content = [
+      GENERATED_MARKER,
+      '',
+      `# ${input.title}`,
+      '',
+      `- Kind: \`${input.kind}\``,
+      `- Timestamp: ${input.timestamp}`,
+      '',
+      input.summary,
+      '',
+      input.detail ?? '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    await ensureFile(absolutePath, content);
+    return {
+      title: input.title,
+      relativePath,
+      summary: input.summary,
     };
   }
 
