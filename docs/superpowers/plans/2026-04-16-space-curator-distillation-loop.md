@@ -420,7 +420,9 @@ const bullets = [
 return this.vaultSyncService.writeConnectorDigest({
   spaceId: job.spaceId,
   summary: job.reason,
-  detail: [typeof job.payload.summary === 'string' ? job.payload.summary : undefined, ...bullets].filter(Boolean).join('\n'),
+  detail: [typeof job.payload.summary === 'string' ? job.payload.summary : undefined, ...bullets]
+    .filter(Boolean)
+    .join('\n'),
   timestamp: job.completedAt || new Date().toISOString(),
 });
 ```
@@ -454,7 +456,9 @@ git commit -m "feat(context): make space curator write richer artifacts"
 
 ```ts
 it('keeps the richer space curator trigger copy for timer and manual distillation jobs', () => {
-  const timerTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find((trigger) => trigger.id === 'timer.space-memory-distillation');
+  const timerTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find(
+    (trigger) => trigger.id === 'timer.space-memory-distillation'
+  );
   const manualTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find(
     (trigger) => trigger.id === 'manual.space-memory-distillation'
   );
@@ -477,11 +481,11 @@ Expected: FAIL because the current trigger copy still uses the older generic dis
 - [ ] **Step 3: Update the built-in trigger copy and add Phase 3 status notes to both specs**
 
 ```ts
-defaultReason: 'Manually distill shared space memory and profile signals from recent project activity.'
+defaultReason: 'Manually distill shared space memory and profile signals from recent project activity.';
 ```
 
 ```ts
-defaultReason: 'Periodically distill shared space memory and profile signals from recent project activity.'
+defaultReason: 'Periodically distill shared space memory and profile signals from recent project activity.';
 ```
 
 ```md
