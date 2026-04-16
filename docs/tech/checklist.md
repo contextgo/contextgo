@@ -135,7 +135,7 @@ Do not defer this. Identifier churn later causes avoidable migration problems.
 - [ ] Set `SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON`
 - [ ] Set `SELF_HOSTED_LINUX_RUNNER_LABELS_JSON`
 
-Do not leave `RELEASE_BUILD_PLATFORMS=all` unless corresponding runners actually exist. Otherwise tag-triggered release workflows will queue on unavailable labels.
+Do not leave `RELEASE_BUILD_PLATFORMS=all` unless corresponding runners actually exist. Otherwise manually triggered release workflows can still queue on unavailable labels.
 
 ## Can Wait Until Store Submission
 

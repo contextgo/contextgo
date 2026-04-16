@@ -18,52 +18,44 @@
   min-width: 0;
 }
 
-.settings-page-preview-shell {
+.settings-side-dock {
   position: fixed;
   top: calc(var(--titlebar-height) + 20px);
   right: 20px;
   bottom: 20px;
   z-index: 45;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.settings-side-dock--preview {
   width: min(clamp(360px, 32vw, 520px), calc(100vw - 40px));
-  min-width: 0;
-  pointer-events: auto;
 }
 
-.settings-page-preview-panel {
-  height: 100%;
-  min-height: 420px;
-  overflow: hidden;
-  border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
-  background: color-mix(in srgb, var(--bg-1) 94%, var(--fill-2) 6%);
-  box-shadow: 0 18px 42px color-mix(in srgb, var(--text-primary) 7%, transparent);
-  backdrop-filter: blur(10px);
-}
-
-.settings-page-preview-panel > * {
-  height: 100%;
-}
-
-.settings-page-runtime-config-shell {
-  position: fixed;
-  top: calc(var(--titlebar-height) + 20px);
-  right: 20px;
-  bottom: 20px;
-  z-index: 45;
+.settings-side-dock--runtime-config {
   width: min(clamp(420px, 34vw, 620px), calc(100vw - 40px));
-  min-width: 0;
-  pointer-events: auto;
 }
 
-.settings-page-runtime-config-panel {
+.settings-side-dock__panel {
   height: 100%;
   min-height: 420px;
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
-  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%);
   box-shadow: 0 18px 42px color-mix(in srgb, var(--text-primary) 7%, transparent);
   backdrop-filter: blur(10px);
+}
+
+.settings-side-dock--preview .settings-side-dock__panel {
+  background: color-mix(in srgb, var(--bg-1) 94%, var(--fill-2) 6%);
+}
+
+.settings-side-dock--runtime-config .settings-side-dock__panel {
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%);
+}
+
+.settings-side-dock__content {
+  height: 100%;
 }
 
 .settings-runtime-config-dock {
@@ -77,6 +69,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 16px;
   padding: 18px 18px 14px;
   border-bottom: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
@@ -85,7 +78,8 @@
 .settings-runtime-config-dock__title-block {
   display: flex;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 220px;
+  min-width: min(100%, 220px);
   flex-direction: column;
   gap: 6px;
 }
@@ -102,6 +96,18 @@
   color: var(--text-secondary);
   font-size: 13px;
   line-height: 20px;
+}
+
+.settings-runtime-config-dock__actions {
+  min-width: min(100%, 280px);
+  margin-left: auto;
+}
+
+.settings-runtime-config-dock__actions .arco-space {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .settings-runtime-config-dock__body {
@@ -157,18 +163,67 @@
 }
 
 @media (max-width: 1023px) {
-  .settings-page-preview-shell {
+  .settings-side-dock--preview {
     top: calc(var(--titlebar-height) + 12px);
     right: 16px;
     bottom: 16px;
     width: min(420px, calc(100vw - 32px));
   }
 
-  .settings-page-runtime-config-shell {
+  .settings-side-dock--runtime-config {
     top: calc(var(--titlebar-height) + 12px);
     right: 16px;
     bottom: 16px;
     width: min(480px, calc(100vw - 32px));
+  }
+}
+
+@media (max-width: 640px) {
+  .settings-runtime-config-dock__header {
+    gap: 12px;
+    padding: 16px 16px 12px;
+  }
+
+  .settings-runtime-config-dock__title-block {
+    gap: 4px;
+  }
+
+  .settings-runtime-config-dock__title {
+    font-size: 17px;
+    line-height: 24px;
+  }
+
+  .settings-runtime-config-dock__actions {
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+  }
+
+  .settings-runtime-config-dock__actions .arco-space {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .settings-runtime-config-dock__actions .arco-space-item {
+    min-width: 0;
+    margin-right: 0 !important;
+  }
+
+  .settings-runtime-config-dock__actions .arco-space-item > .arco-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .settings-runtime-config-dock__header {
+    padding: 14px 14px 12px;
+  }
+
+  .settings-runtime-config-dock__actions .arco-space {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

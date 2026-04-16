@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: pr-e2e-artifacts-${{ github.run_id }}
+  group: pr-e2e-artifacts-${{ github.workflow }}-${{ github.ref_name || github.run_id }}
   cancel-in-progress: true
 
 permissions:

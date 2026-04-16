@@ -101,11 +101,9 @@ function CodeBlock(props: CodeBlockProps) {
   }
 
   const isResultCard = codeVariant === 'result-card';
-  const containerClassName = className
-    ? [className, isResultCard ? '' : 'not-prose'].filter(Boolean).join(' ')
-    : isResultCard
-      ? undefined
-      : 'not-prose';
+  const wrapperClassName = ['markdown-code-block', isResultCard ? 'markdown-code-block--result-card' : '', className]
+    .filter(Boolean)
+    .join(' ');
 
   const isDiff = language === 'diff';
   const codeTheme = currentTheme === 'dark' ? vs2015 : vs;
@@ -164,67 +162,57 @@ function CodeBlock(props: CodeBlockProps) {
   };
 
   return (
-    <div className={containerClassName} style={{ width: '100%', minWidth: 0, maxWidth: '100%', ...codeStyle }}>
-      <div
-        className='w-full overflow-hidden rd-12px border border-arco-1 bg-fill-1'
-        style={{
-          boxShadow: isResultCard ? undefined : '0 4px 18px color-mix(in srgb, var(--color-text-1) 4%, transparent)',
-        }}
-      >
-        <div className='flex items-center justify-between gap-8px border-b border-arco-1 bg-fill-2 px-12px py-10px'>
-          <div className='min-w-0 flex items-center gap-8px flex-wrap'>
-            <span className='inline-flex h-22px items-center rd-999px bg-primary-light-1 px-8px text-11px font-600 uppercase text-primary'>
-              {t('preview.code')}
-            </span>
-            <span className='text-12px font-600 uppercase text-t-primary'>{getLanguageLabel(language)}</span>
-          </div>
-          <div className='shrink-0 flex items-center gap-2px'>
-            {!hiddenCodeCopyButton && (
-              <Tooltip content={t('common.copy')}>
-                <Button
-                  size='mini'
-                  type='text'
-                  icon={<Copy theme='outline' size='16' fill='currentColor' className='app-icon' />}
-                  onClick={handleCopy}
-                  aria-label={t('common.copy')}
-                  className='!text-t-secondary hover:!text-t-primary'
-                />
-              </Tooltip>
-            )}
-            {isCollapsible ? (
+    <div className={wrapperClassName} style={{ width: '100%', minWidth: 0, maxWidth: '100%', ...codeStyle }}>
+      <div className='markdown-code-block__header'>
+        <div className='markdown-code-block__meta'>
+          <span className='markdown-code-block__badge'>{t('preview.code')}</span>
+          <span className='markdown-code-block__language'>{getLanguageLabel(language)}</span>
+        </div>
+        <div className='markdown-code-block__actions'>
+          {!hiddenCodeCopyButton ? (
+            <Tooltip content={t('common.copy')}>
               <Button
-                size='mini'
                 type='text'
-                onClick={() => setFold(!fold)}
-                className='!px-8px !text-t-secondary hover:!text-t-primary'
-              >
-                {fold ? t('common.expandMore') : t('common.collapse')}
-              </Button>
-            ) : null}
+                size='mini'
+                onClick={handleCopy}
+                aria-label={t('common.copy')}
+                className='markdown-code-block__action markdown-code-block__copy'
+                icon={<Copy theme='outline' size='16' fill='currentColor' className='app-icon' />}
+              />
+            </Tooltip>
+          ) : null}
+          {isCollapsible ? (
+            <Button
+              type='text'
+              size='mini'
+              onClick={() => setFold(!fold)}
+              className='markdown-code-block__action markdown-code-block__toggle'
+              aria-label={fold ? t('common.expandMore') : t('common.collapse')}
+            >
+              {fold ? t('common.expandMore') : t('common.collapse')}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      {isCollapsible && fold ? (
+        <div className='markdown-code-block__body'>
+          <pre className='markdown-code-block__preview'>{previewContent}</pre>
+        </div>
+      ) : (
+        <div className='markdown-code-block__body'>
+          <div className='markdown-code-block__surface'>
+            {renderSyntaxHighlighter({
+              marginTop: '0',
+              margin: '0',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-primary)',
+              overflowX: 'auto',
+              maxWidth: '100%',
+            })}
           </div>
         </div>
-        {isCollapsible && fold ? (
-          <div className='px-12px py-12px'>
-            <pre className='m-0 overflow-hidden rd-8px bg-base px-12px py-10px font-mono text-12px leading-18px text-t-primary whitespace-pre-wrap break-words'>
-              {previewContent}
-            </pre>
-          </div>
-        ) : (
-          <div className='px-12px py-12px'>
-            <div className='overflow-hidden rd-8px bg-base'>
-              {renderSyntaxHighlighter({
-                marginTop: '0',
-                margin: '0',
-                border: 'none',
-                background: 'transparent',
-                color: 'var(--text-primary)',
-                overflowX: 'auto',
-                maxWidth: '100%',
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

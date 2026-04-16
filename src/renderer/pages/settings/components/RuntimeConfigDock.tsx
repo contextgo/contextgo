@@ -4,8 +4,8 @@ import TextEditor from '@/renderer/pages/conversation/Preview/components/editors
 import { Alert, Button, Message, Space, Tabs, Tag, Typography } from '@arco-design/web-react';
 import { Close, Refresh, Save } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import SettingsSideDock from './SettingsSideDock';
 
 type RuntimeConfigDockProps = {
   runtimeName: string;
@@ -49,6 +49,29 @@ const getKindLabelKey = (kind: ManagedRuntimeConfigEntryKind): string => {
     default:
       return 'settings.runtimeManager.configDock.kind.other';
   }
+};
+
+const looksLikeJson = (content: string): boolean => {
+  const trimmed = content.trim();
+  if (!trimmed || (trimmed[0] !== '{' && trimmed[0] !== '[')) {
+    return false;
+  }
+
+  try {
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const getEditorLanguage = (draft: RuntimeConfigDraft): string | undefined => {
+  const fileName = draft.fileName.trim().toLowerCase();
+  if (fileName.endsWith('.json')) {
+    return 'json';
+  }
+
+  return looksLikeJson(draft.content) ? 'json' : undefined;
 };
 
 const RuntimeConfigDock: React.FC<RuntimeConfigDockProps> = ({ runtimeName, entries, onClose }) => {
@@ -122,11 +145,14 @@ const RuntimeConfigDock: React.FC<RuntimeConfigDockProps> = ({ runtimeName, entr
 
   const isDirty = Boolean(activeDraft && activeDraft.content !== activeDraft.originalContent);
 
-  const updateActiveContent = useCallback((value: string) => {
-    setDrafts((current) =>
-      current.map((draft) => (draft.path === activePath ? { ...draft, content: value, status: 'ready' } : draft))
-    );
-  }, [activePath]);
+  const updateActiveContent = useCallback(
+    (value: string) => {
+      setDrafts((current) =>
+        current.map((draft) => (draft.path === activePath ? { ...draft, content: value, status: 'ready' } : draft))
+      );
+    },
+    [activePath]
+  );
 
   const handleSave = useCallback(async () => {
     if (!activeDraft) {
@@ -218,20 +244,16 @@ const RuntimeConfigDock: React.FC<RuntimeConfigDockProps> = ({ runtimeName, entr
     }
   }, [activeDraft, message, t]);
 
-  if (typeof document === 'undefined') {
-    return null;
-  }
-
-  return createPortal(
-    <aside
-      className='settings-page-runtime-config-shell'
-      data-testid='runtime-config-dock'
-      aria-label={t('settings.runtimeManager.configDock.ariaLabel', {
-        defaultValue: 'Runtime config editor',
-      })}
-    >
+  return (
+    <>
       {messageContext}
-      <div className='settings-page-runtime-config-panel'>
+      <SettingsSideDock
+        variant='runtime-config'
+        dataTestId='runtime-config-dock'
+        ariaLabel={t('settings.runtimeManager.configDock.ariaLabel', {
+          defaultValue: 'Runtime config editor',
+        })}
+      >
         <div className='settings-runtime-config-dock'>
           <div className='settings-runtime-config-dock__header'>
             <div className='settings-runtime-config-dock__title-block'>
@@ -243,28 +265,36 @@ const RuntimeConfigDock: React.FC<RuntimeConfigDockProps> = ({ runtimeName, entr
               </Typography.Paragraph>
             </div>
 
-            <Space>
-              <Button type='outline' shape='round' icon={<Refresh />} loading={reloading} onClick={() => void handleReload()}>
-                {t('settings.runtimeManager.configDock.reload', {
-                  defaultValue: 'Reload',
-                })}
-              </Button>
-              <Button type='outline' shape='round' loading={revealing} onClick={() => void handleReveal()}>
-                {t('settings.runtimeManager.revealPath', {
-                  defaultValue: 'Reveal',
-                })}
-              </Button>
-              <Button type='primary' shape='round' icon={<Save />} loading={saving} onClick={() => void handleSave()}>
-                {t('settings.runtimeManager.configDock.save', {
-                  defaultValue: 'Save config',
-                })}
-              </Button>
-              <Button type='outline' shape='round' icon={<Close />} onClick={onClose}>
-                {t('common.close', {
-                  defaultValue: 'Close',
-                })}
-              </Button>
-            </Space>
+            <div className='settings-runtime-config-dock__actions' data-testid='runtime-config-dock-actions'>
+              <Space wrap>
+                <Button
+                  type='outline'
+                  shape='round'
+                  icon={<Refresh />}
+                  loading={reloading}
+                  onClick={() => void handleReload()}
+                >
+                  {t('settings.runtimeManager.configDock.reload', {
+                    defaultValue: 'Reload',
+                  })}
+                </Button>
+                <Button type='outline' shape='round' loading={revealing} onClick={() => void handleReveal()}>
+                  {t('settings.runtimeManager.revealPath', {
+                    defaultValue: 'Reveal',
+                  })}
+                </Button>
+                <Button type='primary' shape='round' icon={<Save />} loading={saving} onClick={() => void handleSave()}>
+                  {t('settings.runtimeManager.configDock.save', {
+                    defaultValue: 'Save config',
+                  })}
+                </Button>
+                <Button type='outline' shape='round' icon={<Close />} onClick={onClose}>
+                  {t('common.close', {
+                    defaultValue: 'Close',
+                  })}
+                </Button>
+              </Space>
+            </div>
           </div>
 
           {activeDraft ? (
@@ -303,7 +333,11 @@ const RuntimeConfigDock: React.FC<RuntimeConfigDockProps> = ({ runtimeName, entr
                     </div>
 
                     <div className='settings-runtime-config-dock__editor'>
-                      <TextEditor value={draft.content} onChange={updateActiveContent} />
+                      <TextEditor
+                        value={draft.content}
+                        language={getEditorLanguage(draft)}
+                        onChange={updateActiveContent}
+                      />
                     </div>
                   </div>
                 </Tabs.TabPane>
@@ -321,9 +355,8 @@ const RuntimeConfigDock: React.FC<RuntimeConfigDockProps> = ({ runtimeName, entr
             </div>
           ) : null}
         </div>
-      </div>
-    </aside>,
-    document.body
+      </SettingsSideDock>
+    </>
   );
 };
 

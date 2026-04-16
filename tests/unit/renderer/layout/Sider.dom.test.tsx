@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -93,8 +93,9 @@ vi.mock('@/common', () => ({
       getStatus: { invoke: (...args: unknown[]) => hoisted.cloudGetStatusInvokeMock(...args) },
       ensureOfficialRemoteReady: {
         invoke: (...args: unknown[]) =>
-          (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: (...args: unknown[]) => unknown })
-            .__ensureOfficialRemoteReadyInvokeMock?.(...args),
+          (
+            globalThis as { __ensureOfficialRemoteReadyInvokeMock?: (...args: unknown[]) => unknown }
+          ).__ensureOfficialRemoteReadyInvokeMock?.(...args),
       },
       listRemoteDevices: { invoke: (...args: unknown[]) => hoisted.cloudListRemoteDevicesInvokeMock(...args) },
       statusChanged: { on: (...args: unknown[]) => hoisted.cloudStatusChangedOnMock(...args) },
@@ -250,10 +251,7 @@ vi.mock('@renderer/utils/platform', () => ({
 }));
 
 vi.mock('@icon-park/react', () => {
-  const icon =
-    (label: string) =>
-    () =>
-      <span>{label}</span>;
+  const icon = (label: string) => () => <span>{label}</span>;
 
   return {
     CheckSmall: icon('check-small-icon'),
@@ -445,8 +443,9 @@ describe('Sider', () => {
     vi.clearAllMocks();
     hoisted.cloudGetStatusInvokeMock.mockResolvedValue({ success: false });
     hoisted.cloudListRemoteDevicesInvokeMock.mockResolvedValue({ success: false });
-    (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: ReturnType<typeof vi.fn> }).__ensureOfficialRemoteReadyInvokeMock =
-      vi.fn().mockResolvedValue({ success: false });
+    (
+      globalThis as { __ensureOfficialRemoteReadyInvokeMock?: ReturnType<typeof vi.fn> }
+    ).__ensureOfficialRemoteReadyInvokeMock = vi.fn().mockResolvedValue({ success: false });
     hoisted.ensureDefaultSpaceInvokeMock.mockResolvedValue({ id: 'space-1', name: 'My Space' });
     hoisted.openVaultInvokeMock.mockResolvedValue({
       opened: true,
@@ -501,7 +500,7 @@ describe('Sider', () => {
     expect(container.querySelector('.sider-main-section--desktop-chrome-offset')).toBeTruthy();
   });
 
-  it('shows the selected space and opens that vault from the menu action', async () => {
+  it('shows the selected space and opens that vault from the hover action inside the card', async () => {
     renderSider('/guid');
 
     expect(screen.getAllByText('Team Space').length).toBeGreaterThan(0);
@@ -512,12 +511,45 @@ describe('Sider', () => {
       expect(screen.getAllByText('settings.webui.switchDevice').length).toBeGreaterThan(0);
     });
 
-    fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));
+    fireEvent.click(screen.getByRole('button', { name: 'guid.vault.affordance' }));
 
     await waitFor(() => {
       expect(hoisted.openVaultInvokeMock).toHaveBeenCalledWith({ id: 'space-2' });
     });
     expect(hoisted.ensureDefaultSpaceInvokeMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps a single space card while exposing an internal obsidian action target', async () => {
+    renderSider('/guid');
+
+    const selectorTrigger = screen.getByRole('button', { name: 'guid.space.selectorTitle' });
+    const openVaultButton = screen.getByRole('button', { name: 'guid.vault.affordance' });
+    expect(openVaultButton).toHaveAttribute('data-testid', 'space-card-vault-button');
+
+    fireEvent.click(openVaultButton);
+
+    await waitFor(() => {
+      expect(hoisted.openVaultInvokeMock).toHaveBeenCalledWith({ id: 'space-2' });
+    });
+
+    expect(hoisted.selectSpaceMock).not.toHaveBeenCalled();
+    expect(hoisted.createSpaceMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('menu-item-space:create'));
+    });
+
+    expect(screen.getByText('guid.space.createTitle')).toBeInTheDocument();
+    expect(selectorTrigger).toBeInTheDocument();
+  });
+
+  it('renders the create space action before the switchable space list in the space popup', async () => {
+    renderSider('/guid');
+
+    const menuItems = screen.getAllByTestId(/menu-item-space:/);
+    expect(menuItems[0]).toHaveAttribute('data-testid', 'menu-item-space:create');
+    expect(menuItems[1]).toHaveAttribute('data-testid', 'menu-item-space:space-1');
+    expect(menuItems[2]).toHaveAttribute('data-testid', 'menu-item-space:space-2');
   });
 
   it('prefers current desktop official remote readiness when rendering the current device status', async () => {
@@ -716,8 +748,9 @@ describe('Sider', () => {
         apiBaseUrl: 'https://api.contextgo.test',
       },
     });
-    (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: typeof ensureOfficialRemoteReadyInvokeMock }).__ensureOfficialRemoteReadyInvokeMock =
-      ensureOfficialRemoteReadyInvokeMock;
+    (
+      globalThis as { __ensureOfficialRemoteReadyInvokeMock?: typeof ensureOfficialRemoteReadyInvokeMock }
+    ).__ensureOfficialRemoteReadyInvokeMock = ensureOfficialRemoteReadyInvokeMock;
 
     renderSider('/guid');
 
@@ -766,8 +799,9 @@ describe('Sider', () => {
     });
     hoisted.cloudListRemoteDevicesInvokeMock.mockImplementation(() => new Promise(() => undefined));
     const ensureOfficialRemoteReadyInvokeMock = vi.fn().mockImplementation(() => new Promise(() => undefined));
-    (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: typeof ensureOfficialRemoteReadyInvokeMock }).__ensureOfficialRemoteReadyInvokeMock =
-      ensureOfficialRemoteReadyInvokeMock;
+    (
+      globalThis as { __ensureOfficialRemoteReadyInvokeMock?: typeof ensureOfficialRemoteReadyInvokeMock }
+    ).__ensureOfficialRemoteReadyInvokeMock = ensureOfficialRemoteReadyInvokeMock;
 
     renderSider('/guid');
 
@@ -1023,7 +1057,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));
+    fireEvent.click(screen.getByRole('button', { name: 'guid.vault.affordance' }));
 
     await waitFor(() => {
       expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith(
@@ -1043,7 +1077,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));
+    fireEvent.click(screen.getByRole('button', { name: 'guid.vault.affordance' }));
 
     await waitFor(() => {
       expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith('https://obsidian.md/download');
@@ -1051,7 +1085,7 @@ describe('Sider', () => {
     });
   });
 
-  it('falls back to the default space vault when the menu opens vault without a selection', async () => {
+  it('falls back to the default space vault when the dedicated space action opens without a selection', async () => {
     hoisted.selectedSpaceStateRef.current = {
       ...hoisted.selectedSpaceStateRef.current!,
       selectedSpace: null,
@@ -1059,7 +1093,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));
+    fireEvent.click(screen.getByRole('button', { name: 'guid.vault.affordance' }));
 
     await waitFor(() => {
       expect(hoisted.ensureDefaultSpaceInvokeMock).toHaveBeenCalledTimes(1);

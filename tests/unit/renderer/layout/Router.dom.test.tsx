@@ -3,6 +3,9 @@ import React from 'react';
 import { Outlet, useLocation, useParams } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const mockUseConversationTabs = vi.fn();
+const mockGetConversation = vi.fn();
+
 const mountStats = {
   mounts: 0,
   unmounts: 0,
@@ -14,11 +17,27 @@ vi.mock('@renderer/hooks/context/AuthContext', () => ({
   }),
 }));
 
+vi.mock('@renderer/hooks/context/ConversationHistoryContext', () => ({
+  ConversationHistoryProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock('@renderer/pages/conversation/hooks/ConversationTabsContext', () => ({
-  useConversationTabs: () => ({
-    openTabs: [],
-    activeTabId: null,
-  }),
+  useConversationTabs: () => mockUseConversationTabs(),
+}));
+
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    database: {
+      getUserConversations: {
+        invoke: vi.fn().mockResolvedValue([]),
+      },
+    },
+    conversation: {
+      get: {
+        invoke: (...args: unknown[]) => mockGetConversation(...args),
+      },
+    },
+  },
 }));
 
 vi.mock('@renderer/components/layout/AppLoader', () => ({
@@ -168,6 +187,12 @@ describe('Router route switching', () => {
   beforeEach(() => {
     mountStats.mounts = 0;
     mountStats.unmounts = 0;
+    mockUseConversationTabs.mockReturnValue({
+      openTabs: [],
+      activeTabId: null,
+      closeAllTabs: vi.fn(),
+    });
+    mockGetConversation.mockReset();
     window.history.replaceState({}, '', '/#/conversation/alpha');
   });
 
@@ -214,5 +239,39 @@ describe('Router route switching', () => {
 
     expect(await screen.findByTestId('agents-route')).toHaveTextContent('/agents/new');
     expect(screen.queryByTestId('agent-settings-route')).not.toBeInTheDocument();
+  });
+
+  it('falls back to guid without mounting the conversation route when the restored active tab is invalid', async () => {
+    let resolveConversation: ((value: null) => void) | null = null;
+    const closeAllTabs = vi.fn();
+
+    window.history.replaceState({}, '', '/#/');
+    mockUseConversationTabs.mockReturnValue({
+      openTabs: [{ id: 'missing-conversation', name: 'Missing', workspace: '', type: 'acp' }],
+      activeTabId: 'missing-conversation',
+      closeAllTabs,
+    });
+    mockGetConversation.mockImplementation(
+      () =>
+        new Promise<null>((resolve) => {
+          resolveConversation = resolve;
+        })
+    );
+
+    renderRouter();
+
+    expect(screen.getByTestId('app-loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('conversation-page')).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveConversation?.(null);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('guid')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('conversation-page')).not.toBeInTheDocument();
+    expect(closeAllTabs).toHaveBeenCalledTimes(1);
+    expect(mountStats.mounts).toBe(0);
   });
 });

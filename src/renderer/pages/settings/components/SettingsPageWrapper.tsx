@@ -1,13 +1,12 @@
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { Drawer } from '@arco-design/web-react';
-import { createPortal } from 'react-dom';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { SettingsViewModeProvider } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
 import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
-import { isElectronDesktop } from '@/renderer/utils/platform';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import SettingsSideDock from './SettingsSideDock';
 import SettingsSider from './SettingsSider';
 import './settings.css';
 import { SETTINGS_NAV_DRAWER_EVENT } from './settingsNavigation';
@@ -23,7 +22,6 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
   const isMobile = layout?.isMobile ?? false;
   const { pathname } = useLocation();
   const { t } = useTranslation();
-  const isDesktop = isElectronDesktop();
   const { isOpen: isPreviewOpen, activeTab } = usePreviewContext();
   const [mobileNavVisible, setMobileNavVisible] = useState(false);
 
@@ -62,21 +60,15 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
     contentClassName
   );
   const showPreviewDock = !isMobile && isPreviewOpen && Boolean(activeTab);
-  const previewDock =
-    showPreviewDock && typeof document !== 'undefined'
-      ? createPortal(
-          <aside
-            className='settings-page-preview-shell'
-            data-testid='settings-page-preview'
-            aria-label={t('preview.preview', { defaultValue: 'Preview' })}
-          >
-            <div className='settings-page-preview-panel'>
-              <PreviewPanel />
-            </div>
-          </aside>,
-          document.body
-        )
-      : null;
+  const previewDock = showPreviewDock ? (
+    <SettingsSideDock
+      variant='preview'
+      dataTestId='settings-page-preview'
+      ariaLabel={t('preview.preview', { defaultValue: 'Preview' })}
+    >
+      <PreviewPanel />
+    </SettingsSideDock>
+  ) : null;
 
   return (
     <SettingsViewModeProvider value='page'>

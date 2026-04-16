@@ -7,15 +7,6 @@ permissions:
   actions: write
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'apps/web/**'
-      - 'docs/**'
-      - '.github/workflows/deploy-site.yml'
-      - '.github/workflows/build-and-release.yml'
-      - '.github/workflows/_build-reusable.yml'
-      - 'scripts/install-ubuntu.sh'
   workflow_dispatch:
     inputs:
       build_android_shell:
@@ -33,6 +24,10 @@ on:
         required: false
         default: false
         type: boolean
+
+concurrency:
+  group: build-and-release-${{ github.ref_name || github.run_id }}
+  cancel-in-progress: false
 
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
@@ -184,7 +179,7 @@ jobs:
     name: Build Pipeline
     needs: prepare-matrix
     uses: ./.github/workflows/_build-reusable.yml
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     with:
       matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       control_runner: ${{ needs.prepare-matrix.outputs.control_runner }}
@@ -195,11 +190,8 @@ jobs:
     name: Build Android Shell
     needs: prepare-matrix
     if: >-
-      github.ref == 'refs/heads/main' &&
-      (
-        vars.RELEASE_BUILD_ANDROID_SHELL == 'true' ||
-        (github.event_name == 'workflow_dispatch' && inputs.build_android_shell)
-      )
+      github.event_name == 'workflow_dispatch' &&
+      inputs.build_android_shell
     runs-on: >-
       ${{
         fromJSON(
@@ -268,11 +260,8 @@ jobs:
     name: Build iOS Shell
     needs: prepare-matrix
     if: >-
-      github.ref == 'refs/heads/main' &&
-      (
-        vars.RELEASE_BUILD_IOS_SHELL == 'true' ||
-        (github.event_name == 'workflow_dispatch' && inputs.build_ios_shell)
-      )
+      github.event_name == 'workflow_dispatch' &&
+      inputs.build_ios_shell
     runs-on: >-
       ${{
         fromJSON(
@@ -373,11 +362,8 @@ jobs:
     name: Build HarmonyOS Shell
     needs: prepare-matrix
     if: >-
-      github.ref == 'refs/heads/main' &&
-      (
-        vars.RELEASE_BUILD_HARMONY_SHELL == 'true' ||
-        (github.event_name == 'workflow_dispatch' && inputs.build_harmony_shell)
-      )
+      github.event_name == 'workflow_dispatch' &&
+      inputs.build_harmony_shell
     runs-on: >-
       ${{
         fromJSON(
@@ -421,16 +407,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # 自动重试 workflow（当构建失败时）
+  # 治理策略：禁用自动重试，避免重型发布 workflow 在付费仓库里重复消耗分钟数
   auto-retry-workflow:
     name: Auto Retry on Build Failure
     runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
     needs: [prepare-matrix, build-pipeline]
-    # 关键：只在首次失败时触发，避免无限循环
-    if: |
-      failure() &&
-      github.run_attempt == 1 &&
-      (github.event_name == 'push' || github.event_name == 'schedule')
+    if: false
 
     steps:
       - name: Log retry information
@@ -480,7 +462,7 @@ jobs:
             exit 1
           fi
 
-  # main 分支自动创建稳定版本 tag
+  # 在 main 分支的手动发布流程中创建稳定版本 tag
   create-tag:
     name: Create Tag from Branch
     runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}

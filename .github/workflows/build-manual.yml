@@ -43,6 +43,10 @@ on:
         type: boolean
         default: false
 
+concurrency:
+  group: build-manual-${{ inputs.branch }}-${{ inputs.platform }}-${{ inputs.runner_mode }}-${{ inputs.runner_health_check }}
+  cancel-in-progress: true
+
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
 

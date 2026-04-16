@@ -8,20 +8,19 @@
 
 ### 1. `build-and-release.yml` - 主构建和发布流
 
-- **触发时机**: 推送到 `dev` 分支，或推送任意 tag（会排除 `-dev-` tag 的重复发布路径）
+- **触发时机**: 手动 `workflow_dispatch`
 - **功能**:
   - 代码质量检查 (ESLint, Prettier, TypeScript)
   - 多平台构建 (macOS Intel/Apple Silicon, Windows, Linux)
-  - 自动创建版本标签
-  - 创建 Draft Release (需要手动审批和发布)
+  - 在明确发版时执行正式桌面构建
+  - 创建发布产物与后续 release 资产
   - 支持通过仓库变量切换到 self-hosted runner
 - **流程**:
   1. 根据仓库变量生成构建矩阵和 runner 配置
   2. 代码质量检查
   3. 多平台并行构建
-  4. 自动创建基于 package.json 版本的标签
-  5. 等待环境审批
-  6. 创建 Draft Release (需要手动编辑和发布)
+  4. 执行发布相关资产整理
+  5. 等待后续发布操作
 
 ### 2. `build-manual.yml` - 手动构建流
 
@@ -46,6 +45,31 @@
   - `deploy_target=cloud`
   - `deploy_target=both`
 
+### 4. `pr-checks.yml` - 默认轻量 PR 检查
+
+- **触发时机**:
+  - PR 自动触发：仅轻量检查
+  - 手动 `workflow_dispatch`：可按需重跑，并可通过输入跳过 build test
+- **默认自动保留**:
+  - `Code Quality`
+  - Linux 侧轻量 `Unit Tests`
+  - `I18n Check`
+- **显式标签触发**:
+  - `ci:build-test`：启用 `Build Test` 与 `Release Script Test`
+  - `ci:coverage`：启用 `Coverage Test`
+
+这意味着：
+
+- 默认 PR 不会自动跑跨平台构建
+- 默认 PR 不会自动跑覆盖率
+- 需要更重 CI 时，由维护者显式打标签
+
+### 5. 其他重工作流治理
+
+- `pr-e2e-artifacts.yml`：手动触发
+- `gpt-review.yml` / `gpt-pr-assessment.yml` / `ai_pr_reviewer.yml`：手动触发
+- `bump-homebrew.yml`：手动触发
+
 ## 推荐的 GitHub Actions Variables 配置
 
 在仓库的 Settings → Secrets and variables → Actions → Variables 中配置：
@@ -64,7 +88,7 @@ SELF_HOSTED_LINUX_RUNNER_LABELS_JSON=["self-hosted","Linux","X64","contextgo-org
 
 - `BUILD_RUNNER_MODE` 可选 `hosted` 或 `self-hosted`
 - `RELEASE_BUILD_PLATFORMS` 可填 `all`，或逗号分隔的平台子集，例如 `macos-arm64,linux`
-- `PR_CHECKS_PLATFORM_SCOPE` 当前支持 `linux-only` 或 `all`
+- `PR_CHECKS_PLATFORM_SCOPE` 当前支持 `linux-only` 或 `all`，推荐默认保持 `linux-only`
 - `*_LABELS_JSON` 必须是 JSON 数组字符串
 - 如果 self-hosted runner 还没有覆盖所有平台，不要把 `RELEASE_BUILD_PLATFORMS` 设成 `all`
 
@@ -219,10 +243,10 @@ CONTEXTGO_OIDC_SIGNING_KEY_ID=contextgo-auth-1
    - 升级版本号
    - 创建 git tag
    - 推送到对应发布分支
-4. GitHub Actions 自动触发构建
-5. 在 Deployments 页面审批发布
-6. 编辑 Draft Release 内容
-7. 手动发布给用户
+4. 进入 GitHub Actions，手动运行 `Build and Release`
+5. 确认本次需要的发布平台与可选 mobile shell 输入
+6. 等待 workflow 完成后继续后续 release 操作
+7. 编辑并发布最终发布说明
 
 ### 手动构建
 
@@ -231,11 +255,12 @@ CONTEXTGO_OIDC_SIGNING_KEY_ID=contextgo-auth-1
 3. 如果已经切到 self-hosted，保持 `runner_mode=self-hosted`
 4. 如果只是临时验证公开仓库 / hosted runner 行为，再切成 `hosted`
 
-### 直接推送发布
+### 手动发布注意事项
 
-1. 手动修改 `package.json` 中的版本号
-2. 提交并推送到触发发布的分支或对应 tag
-3. GitHub Actions 将自动构建并创建 Draft Release
+1. 手动修改 `package.json` 中的版本号或使用发布脚本准备版本
+2. 提交并推送发布相关变更
+3. 不会自动启动正式发布构建
+4. 需要维护者手动运行 `Build and Release`
 
 ### 版本管理规范
 

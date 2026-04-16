@@ -8,12 +8,12 @@ on:
         required: true
         type: string
       skip_build_test:
-        description: 'Skip the build test job (saves ~45 min)'
+        description: 'Skip the label-gated build test job when running manually (saves ~45 min)'
         type: boolean
         required: false
         default: false
   pull_request:
-    types: [opened, synchronize, edited, closed]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled, closed]
     branches: [main, dev]
     paths-ignore:
       - '**/*.md'
@@ -70,7 +70,7 @@ jobs:
       build_test_matrix: ${{ steps.set-matrix.outputs.build_test_matrix }}
     env:
       RUNNER_MODE: ${{ vars.BUILD_RUNNER_MODE != '' && vars.BUILD_RUNNER_MODE || 'hosted' }}
-      PLATFORM_SCOPE: ${{ vars.PR_CHECKS_PLATFORM_SCOPE != '' && vars.PR_CHECKS_PLATFORM_SCOPE || 'all' }}
+      PLATFORM_SCOPE: ${{ vars.PR_CHECKS_PLATFORM_SCOPE != '' && vars.PR_CHECKS_PLATFORM_SCOPE || 'linux-only' }}
       CONTROL_RUNNER: >-
         ${{
           vars.BUILD_RUNNER_MODE == 'self-hosted' &&
@@ -183,7 +183,11 @@ jobs:
   code-quality:
     name: Code Quality
     needs: prepare-matrix
-    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'edited' && github.event.action != 'closed')
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.action == 'opened' ||
+      github.event.action == 'synchronize' ||
+      github.event.action == 'reopened'
     runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
     timeout-minutes: 10
     steps:
@@ -267,7 +271,11 @@ jobs:
   unit-tests:
     name: Unit Tests (${{ matrix.label }})
     needs: prepare-matrix
-    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'edited' && github.event.action != 'closed')
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.action == 'opened' ||
+      github.event.action == 'synchronize' ||
+      github.event.action == 'reopened'
     runs-on: ${{ fromJSON(matrix.runner) }}
     timeout-minutes: 10
     strategy:
@@ -326,7 +334,18 @@ jobs:
   coverage-tests:
     name: Coverage Test
     needs: prepare-matrix
-    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'edited' && github.event.action != 'closed')
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'pull_request' &&
+        (
+          github.event.action == 'opened' ||
+          github.event.action == 'synchronize' ||
+          github.event.action == 'reopened' ||
+          github.event.action == 'labeled'
+        ) &&
+        contains(github.event.pull_request.labels.*.name, 'ci:coverage')
+      )
     runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
     timeout-minutes: 10
     steps:
@@ -409,7 +428,11 @@ jobs:
   i18n-check:
     name: I18n Check
     needs: prepare-matrix
-    if: github.event_name == 'workflow_dispatch' || (github.event.action != 'edited' && github.event.action != 'closed')
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.action == 'opened' ||
+      github.event.action == 'synchronize' ||
+      github.event.action == 'reopened'
     runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
     timeout-minutes: 10
     steps:
@@ -461,7 +484,21 @@ jobs:
   build-test:
     name: Build Test (${{ matrix.platform }})
     needs: prepare-matrix
-    if: github.event.action != 'edited' && github.event.action != 'closed' && inputs.skip_build_test != true
+    if: >-
+      (
+        github.event_name == 'workflow_dispatch' &&
+        inputs.skip_build_test != true
+      ) ||
+      (
+        github.event_name == 'pull_request' &&
+        (
+          github.event.action == 'opened' ||
+          github.event.action == 'synchronize' ||
+          github.event.action == 'reopened' ||
+          github.event.action == 'labeled'
+        ) &&
+        contains(github.event.pull_request.labels.*.name, 'ci:build-test')
+      )
     runs-on: ${{ fromJSON(matrix.runner) }}
     timeout-minutes: 45
     strategy:
@@ -713,7 +750,18 @@ jobs:
   release-script-test:
     name: Release Script Test
     needs: prepare-matrix
-    if: github.event.action != 'edited' && github.event.action != 'closed'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'pull_request' &&
+        (
+          github.event.action == 'opened' ||
+          github.event.action == 'synchronize' ||
+          github.event.action == 'reopened' ||
+          github.event.action == 'labeled'
+        ) &&
+        contains(github.event.pull_request.labels.*.name, 'ci:build-test')
+      )
     runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
     timeout-minutes: 5
     steps:

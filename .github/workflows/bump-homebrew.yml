@@ -5,15 +5,16 @@ name: Verify Homebrew Cask
 # that the cask has been bumped to the latest ContextGo release.
 
 on:
-  # Daily check at 08:00 UTC
-  schedule:
-    - cron: '0 8 * * *'
   workflow_dispatch:
     inputs:
       version:
         description: 'Version to verify (e.g., 1.8.20). Leave empty to use latest release.'
         required: false
         type: string
+
+concurrency:
+  group: bump-homebrew-${{ github.ref_name || github.run_id }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

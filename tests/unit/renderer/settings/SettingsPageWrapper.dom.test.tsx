@@ -77,8 +77,8 @@ describe('SettingsPageWrapper', () => {
     expect(screen.getByTestId('preview-panel')).toBeInTheDocument();
 
     expect(container.querySelector('.settings-page-shell--with-preview')).toBeNull();
-    expect(container.querySelector('.settings-page-preview-shell')).toBeNull();
-    expect(document.body.querySelector('.settings-page-preview-shell')).not.toBeNull();
+    expect(container.querySelector('.settings-side-dock')).toBeNull();
+    expect(document.body.querySelector('.settings-side-dock--preview')).not.toBeNull();
   });
 
   it('does not mark system as active on the system runs route', async () => {

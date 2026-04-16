@@ -8,6 +8,7 @@ import { theme } from '@office-ai/platform';
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { addImportantToAll } from '@renderer/utils/theme/customCssProcessor';
+import codeBlockCss from './code-block.css?raw';
 
 /**
  * Create the base style element for Shadow DOM with CSS variables, theme styles, and optional custom CSS.
@@ -133,6 +134,8 @@ const createInitStyle = (currentTheme = 'light', cssVars?: Record<string, string
   }
 
   /* User Custom CSS (injected into Shadow DOM) */
+  ${codeBlockCss}
+
   ${customCss || ''}
   `;
   return style;

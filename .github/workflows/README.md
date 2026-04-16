@@ -2,6 +2,8 @@
 
 本项目使用 GPT 驱动的 GitHub Actions 工作流辅助 PR 审查。
 
+> 治理说明：GPT 相关工作流现在是**显式触发**路径，不再作为默认自动 PR 检查的一部分。默认自动 PR 检查只保留轻量 CI；AI 审查需要维护者手动运行对应 workflow。
+
 ## 架构概览
 
 ```
@@ -13,7 +15,7 @@
 └── workflows/
     ├── gpt-review.yml                # 代码质量审查
     ├── gpt-pr-assessment.yml         # PR 价值评估
-    └── pr-checks.yml                 # PR 检查入口（触发 gpt-review + gpt-pr-assessment）
+    └── pr-checks.yml                 # 默认轻量 PR 检查（不自动触发 GPT）
 ```
 
 ## 两个 GPT 工作流对比
@@ -22,7 +24,7 @@
 | ------------ | --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | **目的**     | 代码质量审查（bug、安全、性能）                                       | 维护者价值评估（合并优先级、风险）                                         |
 | **角色**     | 代码审查专家                                                          | 项目维护者 / 技术负责人                                                    |
-| **触发**     | PR 创建时自动触发（via pr-checks.yml）+ 手动触发（workflow_dispatch） | 外部贡献者 PR 自动触发（via pr-checks.yml）+ 手动触发（workflow_dispatch） |
+| **触发**     | 手动触发（`workflow_dispatch`）                                       | 手动触发（`workflow_dispatch`）                                            |
 | **额外数据** | 无                                                                    | 关联 Issue 内容                                                            |
 | **输出方式** | PR Review（createReview）                                             | Issue Comment（可更新，不重复创建）                                        |
 | **输出模板** | 按严重性分级的问题列表                                                | 7 维度结构化评估报告                                                       |
@@ -125,9 +127,7 @@
 
 ## 使用方式
 
-### GPT Review（自动 + 手动触发）
-
-**自动触发**：通过 `pr-checks.yml` 在 PR 首次提交时自动触发，无需手动操作。
+### GPT Review（手动触发）
 
 **手动触发**：
 
@@ -137,9 +137,7 @@
 4. 输入 PR number
 5. 等待执行完成，审查结果将以 PR Review 形式出现
 
-### GPT PR Assessment（自动 + 手动触发）
-
-**自动触发**：当非项目成员（即 `author_association` 既不是 `OWNER` 也不是 `MEMBER`）首次提交 PR 时，`pr-checks.yml` 会在代码质量检查通过后自动触发评估。
+### GPT PR Assessment（手动触发）
 
 **手动触发**：
 
@@ -150,6 +148,20 @@
 5. 等待执行完成，评估报告将作为评论出现在 PR 中
 
 重复对同一 PR 触发时，评论会被**更新**而非重复创建。
+
+## 默认 PR 检查治理
+
+`pr-checks.yml` 现在遵循“默认轻量，显式扩展”的策略：
+
+- 自动 PR 检查：`Code Quality`、Linux 侧轻量 `Unit Tests`、`I18n Check`
+- PR label `ci:build-test`：启用较重的 `Build Test` 和 `Release Script Test`
+- PR label `ci:coverage`：启用 `Coverage Test`
+
+这意味着：
+
+- 没有标签时，PR 不会自动消耗跨平台构建分钟数
+- AI 审查不会自动调用 OpenAI API
+- 只有维护者明确加标签或手动运行 workflow 时，重任务才会执行
 
 ## Secrets 配置
 
