@@ -1651,6 +1651,7 @@ import type {
   IChannelActiveSessionEntry,
   IAgentProfile,
   IChannelBindingCatalog,
+  IChannelPublicationSnapshot,
   IChannelBinding,
   IChannelPublicationCatalogRefreshResult,
   ChannelControlMode,
@@ -1737,6 +1738,10 @@ export const channel = {
   ),
 
   // Binding Management
+  refreshPublicationSnapshot: bridge.buildProvider<
+    IBridgeResponse<IChannelPublicationSnapshot>,
+    { channelAccountId?: string; connectorId?: string } | void
+  >('channel.refresh-publication-snapshot'),
   getBindingCatalog: bridge.buildProvider<
     IBridgeResponse<IChannelBindingCatalog>,
     { channelAccountId?: string; connectorId?: string }

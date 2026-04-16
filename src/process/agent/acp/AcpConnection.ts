@@ -28,13 +28,7 @@ import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
 import { getNpxCacheDir, getWindowsShellExecutionOptions, resolveNpxPath } from '@process/utils/shellEnv';
-import {
-  ACP_PERF_LOG,
-  connectClaude,
-  connectCodex,
-  prepareCleanEnv,
-  spawnGenericBackend,
-} from './acpConnectors';
+import { ACP_PERF_LOG, connectClaude, connectCodex, prepareCleanEnv, spawnGenericBackend } from './acpConnectors';
 import type { SpawnResult } from './acpConnectors';
 import { killChild, readTextFile, writeJsonRpcMessage, writeTextFile } from './utils';
 

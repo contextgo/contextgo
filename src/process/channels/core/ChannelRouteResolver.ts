@@ -946,10 +946,7 @@ export class ChannelRouteResolver {
     return profile;
   }
 
-  private assertMutationResult(
-    result: { success: boolean; error?: string },
-    fallbackMessage: string
-  ): void {
+  private assertMutationResult(result: { success: boolean; error?: string }, fallbackMessage: string): void {
     if (!result.success) {
       throw new Error(result.error || fallbackMessage);
     }

@@ -190,6 +190,7 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     revokeUser: makeChannel('revokeUser'),
     getActiveSessions: makeChannel('getActiveSessions'),
     getActiveSessionCatalog: makeChannel('getActiveSessionCatalog'),
+    refreshPublicationSnapshot: makeChannel('refreshPublicationSnapshot'),
     getChannelAccounts: makeChannel('getChannelAccounts'),
     createChannelAccount: makeChannel('createChannelAccount'),
     getConnectorInstances: makeChannel('getConnectorInstances'),
@@ -322,6 +323,8 @@ import { initChannelBridge } from '../../src/process/bridge/channelBridge';
 import type { IChannelRepository } from '../../src/process/services/database/IChannelRepository';
 import type {
   IAgentProfile,
+  IChannelActiveSessionEntry,
+  IChannelBindingCatalog,
   IRemoteIdentity,
   IChannelBinding,
   IChannelPluginConfig,
@@ -794,13 +797,15 @@ describe('channelBridge', () => {
       };
 
       mockGetPlugin.mockReturnValue({
-        getChatDisplayData: vi.fn(async () => ({
-          name: 'Core Ops Group',
-          description: 'Incident command room',
-          chatType: 'group',
-        })),
-        getUserDisplayData: vi.fn(async () => ({
-          name: 'Alice Chen',
+        getPublishObjectDiscoveryProvider: vi.fn(() => ({
+          getChatDisplayData: vi.fn(async () => ({
+            name: 'Core Ops Group',
+            description: 'Incident command room',
+            chatType: 'group',
+          })),
+          getUserDisplayData: vi.fn(async () => ({
+            name: 'Alice Chen',
+          })),
         })),
       });
 
@@ -827,6 +832,93 @@ describe('channelBridge', () => {
         }),
       ]);
       expect(mockGetPlugin).toHaveBeenCalledWith('lark-runtime-topic');
+    });
+
+    it('reads persisted publish objects without triggering refresh work', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-lark-read-session',
+        platform: 'lark',
+        name: 'Feishu Persisted',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const session: IChannelSession = {
+        id: 'external-session-read-1',
+        userId: 'remote-lark-read-1',
+        agentType: 'codex',
+        conversationId: 'conversation-read-1',
+        workspace: '/tmp/read-session',
+        createdAt: 1000,
+        lastActivity: 2600,
+      };
+      const identity: IRemoteIdentity = {
+        id: 'remote-lark-read-1',
+        connectorId: 'connector-lark-read-session',
+        remoteUserId: 'ou_read_1',
+        remoteChatId: 'oc_read_group_1',
+        platformChatId: 'oc_read_group_1',
+        remoteChatType: 'group',
+        peerScope: 'chat',
+        displayName: 'Fallback Group Name',
+        authorizedAt: 1000,
+        lastActive: 2600,
+      };
+      const persistedPublishObject = inferRemoteIdentityPublishObject(identity, connector.platform);
+
+      resolvedPublishObjects = [
+        {
+          id: getChannelPublishObjectCatalogEntryIdentity({
+            id: '',
+            channelAccountId: 'connector-lark-read-session',
+            nativeObjectType: persistedPublishObject.nativeObjectType,
+            nativeObjectId: persistedPublishObject.nativeObjectId,
+            parentNativeObjectId: persistedPublishObject.parentNativeObjectId,
+            displayProfile: {
+              title: 'Persisted Session Group',
+              subtitle: 'Persisted from prior refresh',
+              source: 'official-pull',
+              quality: 'resolved',
+              resolvedAt: 2600,
+            },
+            createdAt: 1000,
+            updatedAt: 2600,
+          }),
+          channelAccountId: 'connector-lark-read-session',
+          nativeObjectType: persistedPublishObject.nativeObjectType,
+          nativeObjectId: persistedPublishObject.nativeObjectId,
+          parentNativeObjectId: persistedPublishObject.parentNativeObjectId,
+          displayProfile: {
+            title: 'Persisted Session Group',
+            subtitle: 'Persisted from prior refresh',
+            source: 'official-pull',
+            quality: 'resolved',
+            resolvedAt: 2600,
+          },
+          createdAt: 1000,
+          updatedAt: 2600,
+        },
+      ];
+
+      vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([identity]);
+
+      const result = await handlers['getActiveSessionCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([
+        expect.objectContaining({
+          id: 'external-session-read-1',
+          connectorId: 'connector-lark-read-session',
+          objectTitle: 'Persisted Session Group',
+          objectSubtitle: 'Persisted from prior refresh',
+          objectSource: 'official-pull',
+        }),
+      ]);
+      expect(publicationServiceMocks.resolvePublishObjectCatalog).not.toHaveBeenCalled();
     });
   });
 
@@ -1317,18 +1409,20 @@ describe('channelBridge', () => {
       ];
 
       mockGetPlugin.mockReturnValue({
-        getChatDisplayData: vi.fn(async (chatId: string) => {
-          if (chatId === 'oc_group_1') {
-            return { name: 'Core Ops Group', description: 'Incident command room', chatType: 'group' };
-          }
-          return null;
-        }),
-        getUserDisplayData: vi.fn(async (userId: string) => {
-          if (userId === 'ou_user_dm_rich_1') {
-            return { name: 'Alice Chen' };
-          }
-          return null;
-        }),
+        getPublishObjectDiscoveryProvider: vi.fn(() => ({
+          getChatDisplayData: vi.fn(async (chatId: string) => {
+            if (chatId === 'oc_group_1') {
+              return { name: 'Core Ops Group', description: 'Incident command room', chatType: 'group' };
+            }
+            return null;
+          }),
+          getUserDisplayData: vi.fn(async (userId: string) => {
+            if (userId === 'ou_user_dm_rich_1') {
+              return { name: 'Alice Chen' };
+            }
+            return null;
+          }),
+        })),
       });
 
       vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
@@ -1394,27 +1488,29 @@ describe('channelBridge', () => {
       };
 
       mockGetPlugin.mockReturnValue({
-        getChatDisplayData: vi.fn(async (chatId: string) => {
-          if (chatId === 'thread-1') {
-            return {
-              name: 'Incident follow-up',
-              chatType: 'thread',
-              parentTitle: 'incident-room',
-              containerTitle: 'Ops Guild',
-              source: 'official-pull',
-            };
-          }
-          if (chatId === 'parent-channel') {
-            return {
-              name: 'incident-room',
-              chatType: 'channel',
-              containerTitle: 'Ops Guild',
-              source: 'official-pull',
-            };
-          }
-          return null;
-        }),
-        getUserDisplayData: vi.fn(async () => null),
+        getPublishObjectDiscoveryProvider: vi.fn(() => ({
+          getChatDisplayData: vi.fn(async (chatId: string) => {
+            if (chatId === 'thread-1') {
+              return {
+                name: 'Incident follow-up',
+                chatType: 'thread',
+                parentTitle: 'incident-room',
+                containerTitle: 'Ops Guild',
+                source: 'official-pull',
+              };
+            }
+            if (chatId === 'parent-channel') {
+              return {
+                name: 'incident-room',
+                chatType: 'channel',
+                containerTitle: 'Ops Guild',
+                source: 'official-pull',
+              };
+            }
+            return null;
+          }),
+          getUserDisplayData: vi.fn(async () => null),
+        })),
       });
 
       vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
@@ -1470,15 +1566,17 @@ describe('channelBridge', () => {
       };
 
       mockGetPlugin.mockReturnValue({
-        getUserDisplayData: vi.fn(async (userId: string) => {
-          if (userId === 'staff-1') {
-            return {
-              name: 'Alice Wang',
-              source: 'runtime-resolved',
-            };
-          }
-          return null;
-        }),
+        getPublishObjectDiscoveryProvider: vi.fn(() => ({
+          getUserDisplayData: vi.fn(async (userId: string) => {
+            if (userId === 'staff-1') {
+              return {
+                name: 'Alice Wang',
+                source: 'runtime-resolved',
+              };
+            }
+            return null;
+          }),
+        })),
       });
 
       vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
@@ -1526,17 +1624,19 @@ describe('channelBridge', () => {
       };
 
       mockGetPlugin.mockReturnValue({
-        getChatDisplayData: vi.fn(async (chatId: string) => {
-          if (chatId === 'group:cid-open-ops-1') {
-            return {
-              name: 'Ops Review',
-              chatType: 'group',
-              source: 'official-pull',
-            };
-          }
-          return null;
-        }),
-        getUserDisplayData: vi.fn(async () => null),
+        getPublishObjectDiscoveryProvider: vi.fn(() => ({
+          getChatDisplayData: vi.fn(async (chatId: string) => {
+            if (chatId === 'group:cid-open-ops-1') {
+              return {
+                name: 'Ops Review',
+                chatType: 'group',
+                source: 'official-pull',
+              };
+            }
+            return null;
+          }),
+          getUserDisplayData: vi.fn(async () => null),
+        })),
       });
 
       vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
@@ -1733,6 +1833,151 @@ describe('channelBridge', () => {
           channelAccounts: [readyConnector],
         })
       );
+    });
+
+    it('reads persisted publish objects without triggering refresh work', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-lark-read-catalog',
+        platform: 'lark',
+        name: 'Feishu Persisted Catalog',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+
+      resolvedPublishObjects = [
+        {
+          id: 'connector-lark-read-catalog::group::oc_catalog_group_1::',
+          channelAccountId: 'connector-lark-read-catalog',
+          nativeObjectType: 'group',
+          nativeObjectId: 'oc_catalog_group_1',
+          displayProfile: {
+            title: 'Persisted Catalog Group',
+            subtitle: 'Persisted publication object',
+            source: 'official-pull',
+            quality: 'resolved',
+            resolvedAt: 2400,
+          },
+          createdAt: 1000,
+          updatedAt: 2400,
+        },
+      ];
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([]);
+
+      const result = await handlers['getBindingCatalog']();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(
+        expect.objectContaining({
+          connectors: [connector],
+          channelAccounts: [connector],
+          publishObjects: [
+            expect.objectContaining({
+              channelAccountId: 'connector-lark-read-catalog',
+              nativeObjectId: 'oc_catalog_group_1',
+              displayProfile: expect.objectContaining({
+                title: 'Persisted Catalog Group',
+                source: 'official-pull',
+              }),
+            }),
+          ],
+        })
+      );
+      expect(publicationServiceMocks.resolvePublishObjectCatalog).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refreshPublicationSnapshot', () => {
+    it('returns one explicit snapshot payload for publication refresh', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-lark-refresh',
+        platform: 'lark',
+        name: 'Feishu',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        legacyPluginId: 'lark-runtime-refresh',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-lark-refresh-1',
+        connectorId: 'connector-lark-refresh',
+        channelAccountId: 'connector-lark-refresh',
+        remoteUserId: 'ou_refresh_1',
+        remoteChatId: 'oc_refresh_group_1',
+        platformChatId: 'oc_refresh_group_1',
+        remoteChatType: 'group',
+        peerScope: 'chat',
+        displayName: 'User 92ab11',
+        authorizedAt: 1000,
+        lastActive: 2400,
+      };
+      const session: IChannelSession = {
+        id: 'external-session-refresh-1',
+        userId: 'remote-lark-refresh-1',
+        agentType: 'codex',
+        conversationId: 'conversation-refresh-1',
+        workspace: '/tmp/workspaces/agent-profile-1',
+        createdAt: 1000,
+        lastActivity: 2400,
+      };
+
+      mockGetPlugin.mockReturnValue({
+        getPublishObjectDiscoveryProvider: vi.fn(() => ({
+          getChatDisplayData: vi.fn(async (chatId: string) => {
+            if (chatId === 'oc_refresh_group_1') {
+              return {
+                name: 'Refresh Group',
+                description: 'Explicit snapshot refresh',
+                chatType: 'group',
+                source: 'official-pull',
+              };
+            }
+            return null;
+          }),
+        })),
+      });
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+      vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
+
+      const result = (await handlers['refreshPublicationSnapshot']()) as {
+        success: boolean;
+        data?: {
+          catalog: IChannelBindingCatalog;
+          activeSessions: IChannelActiveSessionEntry[];
+          refreshedAt: number;
+        };
+      };
+
+      expect(result.success).toBe(true);
+      expect(result.data?.catalog.audiences).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            connectorId: 'connector-lark-refresh',
+            key: 'oc_refresh_group_1',
+            title: 'Refresh Group',
+            objectSource: 'official-pull',
+          }),
+        ])
+      );
+      expect(result.data?.activeSessions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'external-session-refresh-1',
+            connectorId: 'connector-lark-refresh',
+            objectTitle: 'Refresh Group',
+          }),
+        ])
+      );
+      expect(typeof result.data?.refreshedAt).toBe('number');
+      expect(publicationServiceMocks.resolvePublishObjectCatalog).toHaveBeenCalled();
     });
   });
 

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetBindingCatalogInvoke = vi.fn();
 const mockGetActiveSessionCatalogInvoke = vi.fn();
-const mockRefreshPublicationCatalogInvoke = vi.fn();
+const mockRefreshPublicationSnapshotInvoke = vi.fn();
 const mockUpsertBindingInvoke = vi.fn();
 const mockDeleteBindingInvoke = vi.fn();
 const messageError = vi.fn();
@@ -37,10 +37,6 @@ const translations: Record<string, string> = {
   'settings.channels.publication.objectParentLabel': 'Parent',
   'settings.channels.publication.sessionWorkspaceLabel': 'Project',
   'settings.channels.publication.sessionLastActiveLabel': 'Last active',
-  'settings.channels.publication.objectSessionsTitle': 'Related sessions',
-  'settings.channels.publication.objectSessionsDescription':
-    'Sessions already associated with this IM object through the selected channel account.',
-  'settings.channels.publication.objectSessionsEmpty': 'No sessions have been created for this object yet',
   'settings.channels.publication.addObjectButton': 'Add publish object',
   'settings.channels.publication.addObjectTitle': 'Add publish object',
   'settings.channels.publication.addObjectDescription':
@@ -63,7 +59,6 @@ const translations: Record<string, string> = {
   'settings.channels.publication.durableTag': 'Published',
   'settings.channels.publication.disabled': 'Disabled',
   'settings.channels.publication.objectQualityFallback': 'Needs identification',
-  'settings.channels.publication.objectRefreshBackfilled': 'Backfilled',
   'settings.channels.publication.connectorDefaultAudience': 'Channel account default entry',
   'settings.channels.publication.loadFailed': 'Failed to load publication bindings',
   'settings.channels.publication.objectKind.common.person': 'Person',
@@ -77,10 +72,10 @@ const translations: Record<string, string> = {
   'settings.channels.publication.objectKind.common.chat': 'Chat',
   'settings.channels.publication.objectKind.lark.topic': 'Topic',
   'settings.channels.publication.objectKind.slack.channel': 'Channel',
-  'common.refresh': 'Refresh',
   'common.edit': 'Edit',
   'common.delete': 'Delete',
   'common.cancel': 'Cancel',
+  'common.refresh': 'Refresh',
 };
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
@@ -91,8 +86,8 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     getActiveSessionCatalog: {
       invoke: (...args: unknown[]) => mockGetActiveSessionCatalogInvoke(...args),
     },
-    refreshPublicationCatalog: {
-      invoke: (...args: unknown[]) => mockRefreshPublicationCatalogInvoke(...args),
+    refreshPublicationSnapshot: {
+      invoke: (...args: unknown[]) => mockRefreshPublicationSnapshotInvoke(...args),
     },
     upsertBinding: {
       invoke: (...args: unknown[]) => mockUpsertBindingInvoke(...args),
@@ -313,32 +308,6 @@ const catalogResponse = {
         lastActive: 1500,
       },
     ],
-    publishObjects: [
-      {
-        id: 'connector-1::topic::feishu://topic/chat-topic/root-1::',
-        channelAccountId: 'connector-1',
-        nativeObjectType: 'topic',
-        nativeObjectId: 'feishu://topic/chat-topic/root-1',
-        displayProfile: {
-          title: 'Ops topic',
-          subtitle: 'Topic root 1',
-          parentTitle: 'Core Ops Group',
-          source: 'inbound-learned',
-          quality: 'fallback',
-          resolvedAt: 2000,
-        },
-        activeSessionPointer: {
-          externalSessionId: 'session-1',
-          activeConversationId: 'conversation-ops-1',
-          publicationBindingId: 'binding-topic-1',
-          workspace: '/tmp/workspace',
-          agentType: 'codex',
-          lastActivity: Date.now() - 5 * 60 * 1000,
-        },
-        createdAt: 1200,
-        updatedAt: 2000,
-      },
-    ],
   },
 };
 
@@ -369,6 +338,15 @@ const sessionCatalogResponse = {
   ],
 };
 
+const publicationSnapshotResponse = {
+  success: true,
+  data: {
+    catalog: catalogResponse.data,
+    activeSessions: sessionCatalogResponse.data,
+    refreshedAt: 2000,
+  },
+};
+
 function renderPanel(publicationIntent?: Record<string, unknown>, search = '') {
   const initialEntries: React.ComponentProps<typeof MemoryRouter>['initialEntries'] = [
     { pathname: '/', search, state: publicationIntent ? { publicationIntent } : undefined },
@@ -386,13 +364,7 @@ describe('PublicationBindingPanel', () => {
     vi.clearAllMocks();
     mockGetBindingCatalogInvoke.mockResolvedValue(catalogResponse);
     mockGetActiveSessionCatalogInvoke.mockResolvedValue(sessionCatalogResponse);
-    mockRefreshPublicationCatalogInvoke.mockResolvedValue({
-      success: true,
-      data: {
-        bindingCatalog: catalogResponse.data,
-        activeSessions: sessionCatalogResponse.data,
-      },
-    });
+    mockRefreshPublicationSnapshotInvoke.mockResolvedValue(publicationSnapshotResponse);
     mockUpsertBindingInvoke.mockResolvedValue({ success: true });
     mockDeleteBindingInvoke.mockResolvedValue({ success: true });
   });
@@ -402,167 +374,12 @@ describe('PublicationBindingPanel', () => {
 
     await screen.findByText('Ops Agent');
 
-    expect(mockRefreshPublicationCatalogInvoke).toHaveBeenCalledTimes(1);
-    expect(mockGetBindingCatalogInvoke).not.toHaveBeenCalled();
-    expect(mockGetActiveSessionCatalogInvoke).not.toHaveBeenCalled();
     expect(screen.getByText('Ops Agent')).toBeInTheDocument();
     expect(screen.getByText('Published objects')).toBeInTheDocument();
     expect(screen.getByText('Ops topic')).toBeInTheDocument();
     expect(screen.queryByText('Support room')).not.toBeInTheDocument();
     expect(screen.getByText(/Channel instance:\s*Feishu Ops/i)).toBeInTheDocument();
     expect(screen.getByText(/Current project session:\s*Active now/i)).toBeInTheDocument();
-    expect(screen.getByText('Related sessions')).toBeInTheDocument();
-    expect(
-      screen.getByText('Sessions already associated with this IM object through the selected channel account.')
-    ).toBeInTheDocument();
-    expect(screen.getByText('conversation-ops-1')).toBeInTheDocument();
-  });
-
-  it('shows an empty related-session state when a published object has no active session', async () => {
-    mockRefreshPublicationCatalogInvoke.mockResolvedValueOnce({
-      success: true,
-      data: {
-        bindingCatalog: catalogResponse.data,
-        activeSessions: [],
-      },
-    });
-
-    renderPanel();
-
-    await screen.findByText('Ops topic');
-
-    expect(screen.getByText(/Current project session:\s*No active session yet/i)).toBeInTheDocument();
-    expect(screen.getByText('Related sessions')).toBeInTheDocument();
-    expect(screen.getByText('No sessions have been created for this object yet')).toBeInTheDocument();
-  });
-
-  it('prefers activeConversationId when rendering the current project-session pointer', async () => {
-    mockRefreshPublicationCatalogInvoke.mockResolvedValueOnce({
-      success: true,
-      data: {
-        bindingCatalog: catalogResponse.data,
-        activeSessions: [
-          {
-            ...sessionCatalogResponse.data[0],
-            conversationId: undefined,
-            activeConversationId: 'conversation-pointer-1',
-            publicationBindingId: 'binding-topic-1',
-            externalSessionId: 'session-1',
-          },
-        ],
-      },
-    });
-
-    renderPanel();
-
-    await screen.findByText('Ops topic');
-
-    expect(screen.getByText('conversation-pointer-1')).toBeInTheDocument();
-  });
-
-  it('uses publish object activeSessionPointer instead of picking the newest related session', async () => {
-    mockRefreshPublicationCatalogInvoke.mockResolvedValueOnce({
-      success: true,
-      data: {
-        bindingCatalog: {
-          ...catalogResponse.data,
-          publishObjects: [
-            {
-              ...catalogResponse.data.publishObjects[0],
-              activeSessionPointer: {
-                externalSessionId: 'session-1',
-                activeConversationId: 'conversation-pointer-1',
-                publicationBindingId: 'binding-topic-1',
-                workspace: '/tmp/workspace',
-                agentType: 'codex',
-                lastActivity: Date.now() - 30 * 60 * 1000,
-              },
-            },
-          ],
-        },
-        activeSessions: [
-          {
-            ...sessionCatalogResponse.data[0],
-            externalSessionId: 'session-1',
-            activeConversationId: 'conversation-pointer-1',
-            publicationBindingId: 'binding-topic-1',
-            lastActivity: Date.now() - 30 * 60 * 1000,
-          },
-          {
-            ...sessionCatalogResponse.data[0],
-            id: 'session-2',
-            externalSessionId: 'session-2',
-            activeConversationId: 'conversation-newer-2',
-            conversationId: 'conversation-newer-2',
-            publicationBindingId: 'binding-topic-1',
-            lastActivity: Date.now() - 2 * 60 * 1000,
-          },
-        ],
-      },
-    });
-
-    renderPanel();
-
-    await screen.findByText('Ops topic');
-
-    const pointerRow = screen.getByText('conversation-pointer-1').closest('div')?.parentElement?.parentElement;
-    const newerRow = screen.getByText('conversation-newer-2').closest('div')?.parentElement?.parentElement;
-
-    expect(pointerRow?.textContent).toContain('Active now');
-    expect(newerRow?.textContent).not.toContain('Active now');
-  });
-
-  it('prefers bridge-projected publishObjectCatalogEntryId over rebuilding object identity from binding metadata', async () => {
-    mockRefreshPublicationCatalogInvoke.mockResolvedValueOnce({
-      success: true,
-      data: {
-        bindingCatalog: {
-          ...catalogResponse.data,
-          bindings: [
-            catalogResponse.data.bindings[0],
-            {
-              ...catalogResponse.data.bindings[1],
-              scopeKey: 'legacy-topic-scope',
-              metadata: {
-                ...catalogResponse.data.bindings[1].metadata,
-                publishObject: {
-                  nativeObjectType: 'chat',
-                  nativeObjectId: 'legacy-topic-scope',
-                  discoverySource: 'manual',
-                },
-              },
-            },
-          ],
-          audiences: [
-            {
-              ...catalogResponse.data.audiences[0],
-              key: 'legacy-topic-scope',
-              remoteChatId: 'legacy-topic-scope',
-              objectKey: 'legacy-topic-scope',
-              objectKind: 'chat',
-              objectTitle: 'Fallback Topic 1',
-              objectSubtitle: 'legacy scope object',
-              parentObjectKey: undefined,
-              parentObjectTitle: undefined,
-              parentObjectKind: undefined,
-              publishObjectCatalogEntryId: catalogResponse.data.publishObjects[0].id,
-              title: 'Fallback Topic 1',
-              subtitle: 'legacy scope object',
-            },
-            ...catalogResponse.data.audiences.slice(1),
-          ],
-        },
-        activeSessions: [],
-      },
-    });
-
-    renderPanel();
-
-    await screen.findByText('Ops topic');
-
-    expect(screen.queryByText('Fallback Topic 1')).not.toBeInTheDocument();
-    expect(screen.getByText('Ops topic')).toBeInTheDocument();
-    expect(screen.getByText('Topic root 1')).toBeInTheDocument();
   });
 
   it('shows an explicit fallback badge when a published object still relies on low-confidence identity', async () => {
@@ -571,87 +388,6 @@ describe('PublicationBindingPanel', () => {
     await screen.findByText('Ops topic');
 
     expect(screen.getByText('Needs identification')).toBeInTheDocument();
-  });
-
-  it('shows a backfilled badge when the object identity was repaired after initial fallback discovery', async () => {
-    mockRefreshPublicationCatalogInvoke.mockResolvedValueOnce({
-      success: true,
-      data: {
-        bindingCatalog: {
-          ...catalogResponse.data,
-          publishObjects: [
-            {
-              ...catalogResponse.data.publishObjects[0],
-              displayProfile: {
-                ...catalogResponse.data.publishObjects[0].displayProfile,
-                quality: 'resolved',
-              },
-              refreshState: {
-                status: 'ready',
-                updatedAt: Date.now() - 60 * 1000,
-                backfilledAt: Date.now() - 60 * 1000,
-              },
-            },
-          ],
-        },
-        activeSessions: sessionCatalogResponse.data,
-      },
-    });
-
-    renderPanel();
-
-    await screen.findByText('Ops topic');
-
-    expect(screen.getByText('Backfilled')).toBeInTheDocument();
-    expect(screen.queryByText('Needs identification')).not.toBeInTheDocument();
-  });
-
-  it('refreshes the published object list on demand and surfaces repaired identity state', async () => {
-    mockRefreshPublicationCatalogInvoke
-      .mockResolvedValueOnce({
-        success: true,
-        data: {
-          bindingCatalog: catalogResponse.data,
-          activeSessions: sessionCatalogResponse.data,
-        },
-      })
-      .mockResolvedValueOnce({
-        success: true,
-        data: {
-          bindingCatalog: {
-            ...catalogResponse.data,
-            publishObjects: [
-              {
-                ...catalogResponse.data.publishObjects[0],
-                displayProfile: {
-                  ...catalogResponse.data.publishObjects[0].displayProfile,
-                  quality: 'resolved',
-                },
-                refreshState: {
-                  status: 'ready',
-                  updatedAt: Date.now(),
-                  backfilledAt: Date.now(),
-                },
-              },
-            ],
-          },
-          activeSessions: sessionCatalogResponse.data,
-        },
-      });
-
-    renderPanel();
-
-    await screen.findByText('Ops topic');
-    expect(screen.getByText('Needs identification')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
-
-    await waitFor(() => {
-      expect(mockRefreshPublicationCatalogInvoke).toHaveBeenCalledTimes(2);
-    });
-
-    expect(screen.getByText('Backfilled')).toBeInTheDocument();
-    expect(screen.queryByText('Needs identification')).not.toBeInTheDocument();
   });
 
   it('preselects the agent from publication intent and starts with an empty published-object list', async () => {
@@ -721,24 +457,25 @@ describe('PublicationBindingPanel', () => {
   });
 
   it('deletes one published object from the selected agent', async () => {
-    mockRefreshPublicationCatalogInvoke
-      .mockResolvedValueOnce({
-        success: true,
-        data: {
-          bindingCatalog: catalogResponse.data,
-          activeSessions: sessionCatalogResponse.data,
-        },
-      })
-      .mockResolvedValueOnce({
-        success: true,
-        data: {
-          bindingCatalog: {
-            ...catalogResponse.data,
-            bindings: [catalogResponse.data.bindings[0]],
-          },
-          activeSessions: sessionCatalogResponse.data,
-        },
-      });
+    const catalogAfterDelete = {
+      ...catalogResponse,
+      data: {
+        ...catalogResponse.data,
+        bindings: [catalogResponse.data.bindings[0]],
+      },
+    };
+    const snapshotAfterDelete = {
+      success: true,
+      data: {
+        catalog: catalogAfterDelete.data,
+        activeSessions: sessionCatalogResponse.data,
+        refreshedAt: 3000,
+      },
+    };
+
+    mockRefreshPublicationSnapshotInvoke
+      .mockResolvedValueOnce(publicationSnapshotResponse)
+      .mockResolvedValueOnce(snapshotAfterDelete);
 
     renderPanel();
 
@@ -748,7 +485,7 @@ describe('PublicationBindingPanel', () => {
 
     await waitFor(() => {
       expect(mockDeleteBindingInvoke).toHaveBeenCalledWith({ bindingId: 'binding-topic-1' });
-      expect(mockRefreshPublicationCatalogInvoke).toHaveBeenCalledTimes(2);
+      expect(mockRefreshPublicationSnapshotInvoke).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -763,6 +500,22 @@ describe('PublicationBindingPanel', () => {
     expect(screen.getByText('Support triage')).toBeInTheDocument();
     await waitFor(() => {
       expect(screen.getAllByRole('combobox')[0]).toHaveValue('agent-profile-2');
+    });
+  });
+
+  it('refreshes the publication snapshot explicitly for initial load and manual refresh', async () => {
+    renderPanel();
+
+    await screen.findByText('Ops Agent');
+
+    expect(mockRefreshPublicationSnapshotInvoke).toHaveBeenCalledTimes(1);
+    expect(mockGetBindingCatalogInvoke).not.toHaveBeenCalled();
+    expect(mockGetActiveSessionCatalogInvoke).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
+
+    await waitFor(() => {
+      expect(mockRefreshPublicationSnapshotInvoke).toHaveBeenCalledTimes(2);
     });
   });
 });

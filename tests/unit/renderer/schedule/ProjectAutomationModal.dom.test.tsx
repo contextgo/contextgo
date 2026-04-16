@@ -12,23 +12,20 @@ const {
   readSkillContentInvokeMock,
   getSlashCommandsInvokeMock,
   translationMockState,
-} =
-  vi.hoisted(() => ({
-    managedCommandLibraryEditorState: {
-      current: null as
-        | null
-        | {
-            loadLibrary: () => Promise<unknown>;
-            saveLibrary: (nextLibrary: unknown[]) => Promise<void>;
-          },
+} = vi.hoisted(() => ({
+  managedCommandLibraryEditorState: {
+    current: null as null | {
+      loadLibrary: () => Promise<unknown>;
+      saveLibrary: (nextLibrary: unknown[]) => Promise<void>;
     },
-    readFileInvokeMock: vi.fn(),
-    readSkillContentInvokeMock: vi.fn(),
-    getSlashCommandsInvokeMock: vi.fn(async () => ({ success: true, data: { managedLibrary: [], commands: [] } })),
-    translationMockState: {
-      unstableIdentity: false,
-    },
-  }));
+  },
+  readFileInvokeMock: vi.fn(),
+  readSkillContentInvokeMock: vi.fn(),
+  getSlashCommandsInvokeMock: vi.fn(async () => ({ success: true, data: { managedLibrary: [], commands: [] } })),
+  translationMockState: {
+    unstableIdentity: false,
+  },
+}));
 const tMock = (key: string, options?: { defaultValue?: string; path?: string }) => options?.defaultValue ?? key;
 const messageApiMock = {
   success: vi.fn(),
@@ -37,7 +34,7 @@ const messageApiMock = {
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: translationMockState.unstableIdentity ? ((...args: Parameters<typeof tMock>) => tMock(...args)) : tMock,
+    t: translationMockState.unstableIdentity ? (...args: Parameters<typeof tMock>) => tMock(...args) : tMock,
   }),
 }));
 
@@ -91,10 +88,7 @@ vi.mock('@/renderer/hooks/agent/usePresetAssistantInfo', () => ({
 
 vi.mock('@/renderer/pages/settings/ToolsSettings/ManagedCommandLibraryEditor', () => ({
   __esModule: true,
-  default: (props: {
-    loadLibrary: () => Promise<unknown>;
-    saveLibrary: (nextLibrary: unknown[]) => Promise<void>;
-  }) => {
+  default: (props: { loadLibrary: () => Promise<unknown>; saveLibrary: (nextLibrary: unknown[]) => Promise<void> }) => {
     managedCommandLibraryEditorState.current = props;
     return <div data-testid='managed-command-library-editor' />;
   },
@@ -375,7 +369,11 @@ describe('ProjectAutomationModal', () => {
     } as TChatConversation;
 
     render(
-      <ProjectAutomationModal visible={true} conversation={conversationWithoutExplicitSkills} onClose={() => undefined} />
+      <ProjectAutomationModal
+        visible={true}
+        conversation={conversationWithoutExplicitSkills}
+        onClose={() => undefined}
+      />
     );
 
     await waitFor(() => {

@@ -13,7 +13,7 @@ import {
   type IChannelAudienceEntry,
   type IChannelBinding,
   type IChannelBindingCatalog,
-  type IChannelPublicationCatalogRefreshResult,
+  type IChannelPublicationSnapshot,
 } from '@process/channels/types';
 import { Button, Empty, Input, Message, Select, Spin, Tag, Tooltip } from '@arco-design/web-react';
 import { Delete, Edit, Plus, Refresh, Undo } from '@icon-park/react';
@@ -60,12 +60,12 @@ const EMPTY_CATALOG: IChannelBindingCatalog = {
   audiences: [],
 };
 
-function applyPublicationCatalogRefresh(
-  snapshot: IChannelPublicationCatalogRefreshResult,
+function applyPublicationSnapshot(
+  snapshot: IChannelPublicationSnapshot,
   setCatalog: React.Dispatch<React.SetStateAction<IChannelBindingCatalog>>,
   setActiveSessions: React.Dispatch<React.SetStateAction<IChannelActiveSessionEntry[]>>
 ): void {
-  setCatalog(snapshot.bindingCatalog);
+  setCatalog(snapshot.catalog);
   setActiveSessions(snapshot.activeSessions);
 }
 
@@ -272,12 +272,12 @@ const PublicationBindingPanel: React.FC = () => {
   const loadPublicationSnapshot = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await channel.refreshPublicationCatalog.invoke(undefined);
-      if (!result.success || !result.data) {
-        throw new Error(result.msg || t('settings.channels.publication.loadFailed'));
+      const snapshotResult = await channel.refreshPublicationSnapshot.invoke(undefined);
+      if (!snapshotResult.success || !snapshotResult.data) {
+        throw new Error(snapshotResult.msg || t('settings.channels.publication.loadFailed'));
       }
 
-      applyPublicationCatalogRefresh(result.data, setCatalog, setActiveSessions);
+      applyPublicationSnapshot(snapshotResult.data, setCatalog, setActiveSessions);
     } catch (error) {
       Message.error(error instanceof Error ? error.message : t('settings.channels.publication.loadFailed'));
     } finally {
@@ -668,9 +668,10 @@ const PublicationBindingPanel: React.FC = () => {
               </div>
               <div className='flex flex-wrap items-center gap-8px'>
                 <Button
+                  type='secondary'
                   icon={<Refresh theme='outline' size='16' />}
-                  onClick={() => void loadPublicationSnapshot()}
                   loading={loading}
+                  onClick={() => void loadPublicationSnapshot()}
                 >
                   {t('common.refresh')}
                 </Button>

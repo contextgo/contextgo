@@ -736,7 +736,9 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                               }`}
                               role={canPreview ? 'button' : undefined}
                               tabIndex={canPreview ? 0 : undefined}
-                              onClick={canPreview && matchedSkill ? () => void handleOpenSkillPreview(matchedSkill) : undefined}
+                              onClick={
+                                canPreview && matchedSkill ? () => void handleOpenSkillPreview(matchedSkill) : undefined
+                              }
                               onKeyDown={
                                 canPreview && matchedSkill
                                   ? (event) => {

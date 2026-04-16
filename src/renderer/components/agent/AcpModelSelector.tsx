@@ -83,8 +83,7 @@ const AcpModelSelector: React.FC<{
     let cancelled = false;
     setModelInfo(null);
     hasUserChangedModel.current = false;
-    ipcBridge.acpConversation
-      .getModelInfo
+    ipcBridge.acpConversation.getModelInfo
       .invoke({ conversationId })
       .then((result) => {
         if (cancelled) return;
@@ -203,8 +202,7 @@ const AcpModelSelector: React.FC<{
 
   const handleSelectModel = useCallback(
     (modelId: string) => {
-      ipcBridge.acpConversation
-        .setModel
+      ipcBridge.acpConversation.setModel
         .invoke({ conversationId, modelId })
         .then((result) => {
           if (!result.success) {
@@ -335,11 +333,7 @@ const AcpModelSelector: React.FC<{
   // State 1: No model info — show disabled "Use CLI model" button
   if (!effectiveModelInfo) {
     return (
-      <span
-        title={
-          t('conversation.welcome.useCliModel')
-        }
-      >
+      <span title={t('conversation.welcome.useCliModel')}>
         <Button className={headerButtonClassName} shape='round' size='small' style={{ cursor: 'default' }} disabled>
           {renderHeaderIcon(null, { status: 'unknown', color: 'bg-gray-400' })}
         </Button>

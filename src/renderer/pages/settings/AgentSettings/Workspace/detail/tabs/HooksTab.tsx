@@ -71,9 +71,7 @@ const HooksTab: React.FC<HooksTabProps> = ({ model }) => {
           <div className={styles.contentStack}>
             <div className={styles.contentCard}>
               <div className={styles.sectionTitle}>{item.label}</div>
-              <div className={styles.sectionText}>
-                {item.summary || noDescriptionLabel}
-              </div>
+              <div className={styles.sectionText}>{item.summary || noDescriptionLabel}</div>
               <div className={styles.chipRow}>
                 {hook?.category ? <Tag>{hook.category}</Tag> : null}
                 {hook?.executionType ? <Tag>{hook.executionType}</Tag> : null}
@@ -86,9 +84,7 @@ const HooksTab: React.FC<HooksTabProps> = ({ model }) => {
                     defaultValue: 'Execution',
                   })}
                 </div>
-                <div className={styles.metaValue}>
-                  {hook?.executionType || noDescriptionLabel}
-                </div>
+                <div className={styles.metaValue}>{hook?.executionType || noDescriptionLabel}</div>
               </div>
               <div className={styles.metaCard}>
                 <div className={styles.metaLabel}>

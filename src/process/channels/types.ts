@@ -386,6 +386,12 @@ export type IChannelPublicationCatalogRefreshResult = {
   activeSessions: IChannelActiveSessionEntry[];
 };
 
+export type IChannelPublicationSnapshot = {
+  catalog: IChannelBindingCatalog;
+  activeSessions: IChannelActiveSessionEntry[];
+  refreshedAt: number;
+};
+
 export type IChannelBindingTarget = {
   type: ChannelBindingTargetType;
   id: string;

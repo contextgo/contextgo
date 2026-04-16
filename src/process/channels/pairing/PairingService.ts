@@ -251,9 +251,7 @@ export class PairingService {
 
         const hasConnectorDefaultBinding = publicationCatalog.bindings.some(
           (binding) =>
-            binding.channelAccountId === connector.id &&
-            binding.scopeType === 'connector_default' &&
-            binding.enabled
+            binding.channelAccountId === connector.id && binding.scopeType === 'connector_default' && binding.enabled
         );
         if (hasConnectorDefaultBinding) {
           return true;

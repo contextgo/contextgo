@@ -6,6 +6,7 @@
 
 import type {
   IChannelPluginConfig,
+  IChannelPublishObjectCatalogEntry,
   IUnifiedIncomingMessage,
   IUnifiedOutgoingMessage,
   PluginType,
@@ -32,6 +33,32 @@ export type PluginConfirmContext = {
 };
 
 export type PluginConfirmHandler = (context: PluginConfirmContext) => Promise<void>;
+
+export type ChannelPublishObjectRuntimeDisplaySource = Extract<
+  IChannelPublishObjectCatalogEntry['displayProfile']['source'],
+  'official-pull' | 'runtime-resolved'
+>;
+
+export type ChannelPublishObjectChatDisplayData = {
+  name?: string;
+  description?: string;
+  chatType?: string;
+  parentTitle?: string;
+  containerId?: string;
+  containerType?: string;
+  containerTitle?: string;
+  source?: ChannelPublishObjectRuntimeDisplaySource;
+};
+
+export type ChannelPublishObjectUserDisplayData = {
+  name?: string;
+  source?: ChannelPublishObjectRuntimeDisplaySource;
+};
+
+export type ChannelPublishObjectDiscoveryProvider = {
+  getChatDisplayData?: (chatId: string) => Promise<ChannelPublishObjectChatDisplayData | null>;
+  getUserDisplayData?: (userId: string) => Promise<ChannelPublishObjectUserDisplayData | null>;
+};
 
 /**
  * BasePlugin - Abstract base class for all platform plugins
@@ -243,6 +270,14 @@ export abstract class BasePlugin {
    * May return null if not connected
    */
   abstract getBotInfo(): { username?: string; displayName?: string } | null;
+
+  /**
+   * Expose publish object discovery capability explicitly so bridge/catalog code
+   * does not need to duck-type arbitrary plugin methods.
+   */
+  getPublishObjectDiscoveryProvider(): ChannelPublishObjectDiscoveryProvider | null {
+    return null;
+  }
 
   // ==================== Static Methods ====================
 

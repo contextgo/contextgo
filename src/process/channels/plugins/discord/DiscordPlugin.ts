@@ -11,11 +11,11 @@ import type {
   BotInfo,
   IActionButton,
   IChannelPluginConfig,
+  IMessageAction,
   IUnifiedOutgoingMessage,
   PluginType,
-  IMessageAction,
 } from '../../types';
-import { BasePlugin } from '../BasePlugin';
+import { BasePlugin, type ChannelPublishObjectDiscoveryProvider } from '../BasePlugin';
 import {
   DISCORD_MESSAGE_LIMIT,
   splitDiscordMessage,
@@ -100,7 +100,7 @@ async function sendChunkedMessages(
   return sendChunkedMessages(channel, chunks, index + 1, sent.id);
 }
 
-export class DiscordPlugin extends BasePlugin {
+export class DiscordPlugin extends BasePlugin implements ChannelPublishObjectDiscoveryProvider {
   readonly type: PluginType = 'discord';
 
   private client: Client | null = null;
@@ -230,6 +230,10 @@ export class DiscordPlugin extends BasePlugin {
       username: this.botInfo.username,
       displayName: this.botInfo.displayName,
     };
+  }
+
+  override getPublishObjectDiscoveryProvider(): ChannelPublishObjectDiscoveryProvider {
+    return this;
   }
 
   private readDisplayCache<T>(

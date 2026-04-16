@@ -503,7 +503,9 @@ describe('Titlebar', () => {
       openTabs: [createTab('conv-dirty')],
     });
 
-    expect(await screen.findByText('这个运行中的时候输入框上方这个样式是否可以优化一下，看起来太技术风格了')).toBeInTheDocument();
+    expect(
+      await screen.findByText('这个运行中的时候输入框上方这个样式是否可以优化一下，看起来太技术风格了')
+    ).toBeInTheDocument();
 
     const brand = container.querySelector('.app-titlebar__brand') as HTMLDivElement | null;
     expect(brand?.getAttribute('title')).toBe('这个运行中的时候输入框上方这个样式是否可以优化一下，看起来太技术风格了');

@@ -306,9 +306,9 @@ export const useAssistantEditor = ({
                       name: result.pendingSkill.name,
                       defaultValue: `Failed to install "${result.pendingSkill.name}" from Skill Market`,
                     })
-                    : t('settings.skillsHub.importFailed', {
-                        defaultValue: 'Failed to import skill',
-                      })
+                  : t('settings.skillsHub.importFailed', {
+                      defaultValue: 'Failed to import skill',
+                    })
               );
               return null;
             }

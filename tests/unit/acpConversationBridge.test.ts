@@ -484,7 +484,6 @@ describe('acpConversationBridge', () => {
     });
   });
 
-
   it('merges configured runtime paths into available agents when PATH detection misses them', async () => {
     vi.mocked(acpDetector.getDetectedAgents).mockReturnValue([{ backend: 'gemini', name: 'Gemini' }] as any);
     hoisted.processConfigGetMock.mockImplementation(async (key: string) => {

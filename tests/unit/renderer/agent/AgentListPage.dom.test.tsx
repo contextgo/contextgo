@@ -31,11 +31,7 @@ vi.mock('@arco-design/web-react', () => ({
     useMessage: () => [{ success: vi.fn(), error: vi.fn(), warning: vi.fn() }, <div key='message-context' />],
   },
   Avatar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
-  Button: ({
-    children,
-    onClick,
-    className,
-  }: React.PropsWithChildren<{ onClick?: () => void; className?: string }>) => (
+  Button: ({ children, onClick, className }: React.PropsWithChildren<{ onClick?: () => void; className?: string }>) => (
     <button type='button' onClick={onClick} className={className}>
       {children}
     </button>

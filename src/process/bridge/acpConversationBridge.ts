@@ -8,11 +8,7 @@ import { acpDetector } from '@process/agent/acp/AcpDetector';
 import { AcpConnection } from '@process/agent/acp/AcpConnection';
 import { getClaudeSettingsPath } from '@process/agent/acp/utils';
 import { buildAcpModelInfo, summarizeAcpModelInfo } from '@process/agent/acp/modelInfo';
-import {
-  CodexConnection,
-  getCodexAuthPath,
-  getCodexConfigPath,
-} from '@process/agent/codex/connection/CodexConnection';
+import { CodexConnection, getCodexAuthPath, getCodexConfigPath } from '@process/agent/codex/connection/CodexConnection';
 import { USER_SETTINGS_PATH } from '@process/agent/gemini/cli/settings';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { refreshTrayMenu } from '@process/utils/tray';
@@ -61,7 +57,6 @@ const MANAGED_RUNTIME_INSTALL_COMMANDS: Record<(typeof MANAGED_RUNTIME_INSTALLAB
 const emitManagedRuntimeInstallEvent = (event: ManagedRuntimeInstallEvent): void => {
   ipcBridge.acpConversation.managedRuntimeInstallEvent.emit(event);
 };
-
 
 function getManagedRuntimeInstallCommand(backend: AcpBackend): string | null {
   if (!isManagedRuntimeInstallableBackend(backend)) {
@@ -274,9 +269,7 @@ async function getRuntimeAwareDetectedAgents(): Promise<RuntimeAwareDetectedAgen
 
   for (const [backend, config] of Object.entries(ACP_BACKENDS_ALL)) {
     const typedBackend = backend as AcpBackend;
-    if (
-      typedBackend === 'gemini' || typedBackend === 'custom'
-    ) {
+    if (typedBackend === 'gemini' || typedBackend === 'custom') {
       continue;
     }
 
