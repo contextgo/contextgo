@@ -15,6 +15,12 @@
 
 它**不**定义内部 skill bundle、具体 prompt 文本或 job payload schema 的最终实现细节。这些属于边界冻结之后的后续细化话题。
 
+## Phase 1 状态
+
+- Session Loop foundation 已进入实现
+- `Session Steward` 的基础 job 元数据、split session vault artifacts、working-context 注入链已落地
+- `Project Curator`、`Space Curator` 与 runtime console 仍属于后续阶段
+
 ## 产品定位
 
 ContextGo 是一个 desktop-first、local-first、multi-agent 的工作系统。

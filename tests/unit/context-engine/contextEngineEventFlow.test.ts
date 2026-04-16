@@ -424,7 +424,8 @@ describe('context engine event flow', () => {
     const vaultSyncService = {
       appendContextCheckpoint: vi.fn(async () => undefined),
       appendSessionCheckpoint: vi.fn(async () => ({
-        relativePath: 'Projects/workspace/_context/sessions/thread-1/checkpoints/2026-04-08T00-03-00Z-session-compaction.md',
+        relativePath:
+          'Projects/workspace/_context/sessions/thread-1/checkpoints/2026-04-08T00-03-00Z-session-compaction.md',
         title: 'Session checkpoint',
         summary: 'Current task: Ship the release safely.',
       })),

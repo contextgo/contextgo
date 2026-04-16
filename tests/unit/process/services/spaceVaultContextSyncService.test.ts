@@ -340,15 +340,7 @@ describe('SpaceVaultContextSyncService', () => {
       body: '用户发起 query: aaaa',
     });
 
-    const timelinePath = path.join(
-      vaultPath,
-      'Projects',
-      'workspace',
-      '_context',
-      'sessions',
-      'conv-1',
-      'timeline.md'
-    );
+    const timelinePath = path.join(vaultPath, 'Projects', 'workspace', '_context', 'sessions', 'conv-1', 'timeline.md');
     const timelineContent = await fs.readFile(timelinePath, 'utf8');
     expect(timelineContent).toContain('[2026-04-23 13:00:00]');
     expect(timelineContent).toContain('User query: 用户发起 query: aaaa');
