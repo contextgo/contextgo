@@ -12,25 +12,21 @@ import type { WebServerInstance } from '@process/webserver';
 
 export { generateQRLoginUrlDirect, verifyQRTokenDirect };
 
-/**
- * 设置 WebUI 服务器实例
- * Set WebUI server instance (called from webserver/index.ts)
- */
+/** Set host runtime local browser-entry instance (called from webserver/index.ts). */
 export function setWebServerInstance(instance: WebServerInstance | null): void {
   getHostRuntimeService().setCurrentInstanceForLegacy(instance);
 }
 
-/**
- * 获取 WebUI 服务器实例
- * Get WebUI server instance
- */
+/** Get host runtime local browser-entry instance. */
 export function getWebServerInstance(): WebServerInstance | null {
   return getHostRuntimeService().getCurrentInstance();
 }
 
 /**
- * 初始化 WebUI IPC 桥接
- * Initialize WebUI IPC bridge
+ * Initialize the compatibility `webui` IPC bridge.
+ *
+ * Host Runtime is the product/runtime owner. The `webui` namespace stays stable
+ * to avoid breaking existing renderer and browser clients.
  */
 export function initWebuiBridge(): void {
   getHostRuntimeService().setStatusChangedEmitter((status) => {

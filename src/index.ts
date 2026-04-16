@@ -30,10 +30,10 @@ import { onCloseToTrayChanged, onLanguageChanged } from './process/bridge/system
 import { setInitialLanguage } from '@process/services/i18n';
 import { getCloudService } from '@process/services/cloud/CloudService';
 import {
-  prepareHostBrowserEntryForWebUiMode,
-  prepareOfficialRemoteHostBrowserEntryAtStartup,
-  restoreDesktopHostBrowserEntryFromPreferences,
-} from '@process/services/host/hostBrowserEntryStartup';
+  prepareHostRuntimeForWebUiMode,
+  prepareOfficialRemoteHostRuntimeAtStartup,
+  restoreDesktopHostRuntimeFromPreferences,
+} from '@process/services/host/hostRuntimeStartup';
 import { workerTaskManager } from './process/task/workerTaskManagerSingleton';
 import { setupApplicationMenu } from './process/utils/appMenu';
 import { applyZoomToWindow } from './process/utils/zoom';
@@ -498,8 +498,8 @@ const handleAppReady = async (): Promise<void> => {
 
   if (!isWebUIMode && !isResetPasswordMode && !isE2ETestMode) {
     try {
-      await prepareOfficialRemoteHostBrowserEntryAtStartup().catch((error) => {
-        console.warn('[Cloud] Failed to eagerly prepare Official Remote host browser entry at app startup:', error);
+      await prepareOfficialRemoteHostRuntimeAtStartup().catch((error) => {
+        console.warn('[Cloud] Failed to eagerly prepare Official Remote host runtime at app startup:', error);
       });
     } catch (error) {
       console.warn('[Cloud] Failed to inspect stored Official Remote device binding at app startup:', error);
@@ -530,7 +530,7 @@ const handleAppReady = async (): Promise<void> => {
     }
     const resolvedPort = resolveWebUIPort(userConfigInfo.config, getSwitchValue);
     const allowRemote = resolveRemoteAccess(userConfigInfo.config, isRemoteMode);
-    await prepareHostBrowserEntryForWebUiMode({
+    await prepareHostRuntimeForWebUiMode({
       preferredPort: resolvedPort,
       allowRemote,
     });
@@ -599,8 +599,8 @@ const handleAppReady = async (): Promise<void> => {
 
     if (!isE2ETestMode) {
       // 窗口创建后异步恢复 WebUI，不阻塞 UI / Restore WebUI async after window creation, non-blocking
-      restoreDesktopHostBrowserEntryFromPreferences().catch((error) => {
-        console.error('[HostBrowserEntry] Failed to auto-restore local client demand:', error);
+      restoreDesktopHostRuntimeFromPreferences().catch((error) => {
+        console.error('[HostRuntime] Failed to auto-restore local host access demand:', error);
       });
     }
 

@@ -4,7 +4,7 @@ const restoreLocalClientAccessFromPreferencesMock = vi.fn(async () => undefined)
 const prepareOfficialRemoteAtStartupMock = vi.fn(async () => undefined);
 const prepareForWebUiModeMock = vi.fn(async () => undefined);
 
-describe('hostBrowserEntryStartup', () => {
+describe('hostRuntimeStartup', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -23,27 +23,25 @@ describe('hostBrowserEntryStartup', () => {
   });
 
   it('delegates official remote startup preparation to HostRuntimeService', async () => {
-    const { prepareOfficialRemoteHostBrowserEntryAtStartup } =
-      await import('@/process/services/host/hostBrowserEntryStartup');
+    const { prepareOfficialRemoteHostRuntimeAtStartup } = await import('@/process/services/host/hostRuntimeStartup');
 
-    await prepareOfficialRemoteHostBrowserEntryAtStartup();
+    await prepareOfficialRemoteHostRuntimeAtStartup();
 
     expect(prepareOfficialRemoteAtStartupMock).toHaveBeenCalledTimes(1);
   });
 
   it('delegates local-client restore to HostRuntimeService', async () => {
-    const { restoreDesktopHostBrowserEntryFromPreferences } =
-      await import('@/process/services/host/hostBrowserEntryStartup');
+    const { restoreDesktopHostRuntimeFromPreferences } = await import('@/process/services/host/hostRuntimeStartup');
 
-    await restoreDesktopHostBrowserEntryFromPreferences();
+    await restoreDesktopHostRuntimeFromPreferences();
 
     expect(restoreLocalClientAccessFromPreferencesMock).toHaveBeenCalledTimes(1);
   });
 
   it('delegates webui mode bootstrap to HostRuntimeService', async () => {
-    const { prepareHostBrowserEntryForWebUiMode } = await import('@/process/services/host/hostBrowserEntryStartup');
+    const { prepareHostRuntimeForWebUiMode } = await import('@/process/services/host/hostRuntimeStartup');
 
-    await prepareHostBrowserEntryForWebUiMode({
+    await prepareHostRuntimeForWebUiMode({
       allowRemote: true,
       preferredPort: 35811,
     });

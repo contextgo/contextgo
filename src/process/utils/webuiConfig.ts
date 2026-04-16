@@ -11,6 +11,7 @@ import { ProcessConfig } from './initStorage';
 import { SERVER_CONFIG } from '../webserver/config/constants';
 
 const WEBUI_CONFIG_FILE = 'webui.config.json';
+const HOST_RUNTIME_LOCAL_ACCESS_PORT_KEY = 'host.runtime.localAccess.port';
 const DESKTOP_WEBUI_PORT_KEY = 'webui.desktop.port';
 const DESKTOP_WEBUI_PRODUCTION_PORT = 25808;
 const DESKTOP_WEBUI_DEVELOPMENT_PORT = 25809;
@@ -93,6 +94,7 @@ export const resolveRemoteAccess = (config: WebUIUserConfig, isRemoteMode: boole
 };
 
 export const getPreferredDesktopWebUIPort = async (): Promise<number> => {
-  const portPref = await ProcessConfig.get(DESKTOP_WEBUI_PORT_KEY);
+  const portPref =
+    (await ProcessConfig.get(HOST_RUNTIME_LOCAL_ACCESS_PORT_KEY)) ?? (await ProcessConfig.get(DESKTOP_WEBUI_PORT_KEY));
   return resolvePreferredDesktopWebUIPort(portPref);
 };

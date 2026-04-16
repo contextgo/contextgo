@@ -182,9 +182,9 @@ describe('WebuiService local access ownership', () => {
       preferredPort: 43000,
       reason: 'webui.start',
     });
-    expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.enabled', true);
-    expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.allowRemote', true);
-    expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.port', 43123);
+    expect(processConfigSetMock).toHaveBeenCalledWith('host.runtime.localAccess.enabled', true);
+    expect(processConfigSetMock).toHaveBeenCalledWith('host.runtime.localAccess.allowRemote', true);
+    expect(processConfigSetMock).toHaveBeenCalledWith('host.runtime.localAccess.port', 43123);
     expect(result).toEqual({
       initialPassword: 'initial-password',
       lanIP: '192.168.1.8',
@@ -203,8 +203,8 @@ describe('WebuiService local access ownership', () => {
     const { WebuiService } = await import('@/process/bridge/services/WebuiService');
     await WebuiService.stopLocalAccess();
 
-    expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.enabled', false);
-    expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.port', 42111);
+    expect(processConfigSetMock).toHaveBeenCalledWith('host.runtime.localAccess.enabled', false);
+    expect(processConfigSetMock).toHaveBeenCalledWith('host.runtime.localAccess.port', 42111);
     expect(stopLocalClientAccessMock).toHaveBeenCalledWith('Server shutting down');
   });
 });
