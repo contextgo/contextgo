@@ -663,7 +663,9 @@ describe('SpaceVaultContextSyncService', () => {
     expect(proposalContent).toContain('# AGENTS append proposal');
     expect(proposalContent).toContain('- Target: `AGENTS.md`');
     expect(proposalContent).toContain('Observed in 3 session checkpoints.');
-    expect(proposalContent).toContain('Add a short rule telling agents to keep release diffs minimal and validation explicit.');
+    expect(proposalContent).toContain(
+      'Add a short rule telling agents to keep release diffs minimal and validation explicit.'
+    );
   });
 
   it('sanitizes imported session titles so graph nodes stay readable', async () => {

@@ -363,9 +363,7 @@ describe.skip('Runtime Settings config dock', () => {
 
     await screen.findByText('Runtime Management');
     await act(async () => {
-      fireEvent.click(
-        within(screen.getByTestId('runtime-card-opencode')).getByRole('button', { name: 'Open config' })
-      );
+      fireEvent.click(within(screen.getByTestId('runtime-card-opencode')).getByRole('button', { name: 'Open config' }));
       await flushPromises();
     });
 

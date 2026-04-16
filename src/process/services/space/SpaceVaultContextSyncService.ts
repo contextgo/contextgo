@@ -2560,13 +2560,7 @@ export class SpaceVaultContextSyncService {
     }
 
     const fileName = `${sanitizeVaultPathSegment(input.title)}.md`;
-    const relativePath = path.posix.join(
-      PROJECTS_DIR,
-      project.folderName,
-      PROJECT_CONTEXT_DIR,
-      'proposals',
-      fileName
-    );
+    const relativePath = path.posix.join(PROJECTS_DIR, project.folderName, PROJECT_CONTEXT_DIR, 'proposals', fileName);
     const absolutePath = path.join(providerRef.vaultPath, relativePath);
     const body = formatProjectCuratorProposal({
       title: input.title,
