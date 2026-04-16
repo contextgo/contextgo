@@ -86,6 +86,16 @@ vi.mock('@/renderer/pages/schedule/components/ProjectAutomationModal', () => ({
     ) : null,
 }));
 
+vi.mock('@/renderer/pages/conversation/ProjectSkillMarketModal', () => ({
+  __esModule: true,
+  default: ({ visible, workspacePath }: { visible: boolean; workspacePath: string; onClose: () => void }) =>
+    visible ? (
+      <div data-testid='project-skill-market-modal'>
+        <div>{workspacePath}</div>
+      </div>
+    ) : null,
+}));
+
 vi.mock('@/renderer/pages/conversation/components/ChatLayout', () => ({
   __esModule: true,
   default: ({
@@ -218,6 +228,7 @@ vi.mock('@icon-park/react', () => ({
   ConnectionPoint: () => <span data-testid='icon-connection-point' />,
   FolderOpen: () => <span data-testid='icon-folder-open' />,
   History: () => <span data-testid='icon-history' />,
+  Search: () => <span data-testid='icon-search' />,
   SettingTwo: () => <span data-testid='icon-setting-two' />,
 }));
 
@@ -451,6 +462,14 @@ describe('ChatConversation', () => {
     expect(screen.getByRole('button', { name: 'conversation.workspace.automation.action' })).toBeInTheDocument();
   });
 
+  it('renders the project skill market entry for workspace-backed conversations', () => {
+    const conversation = createConversation('acp', 'acp-skill-market-1');
+
+    render(<ChatConversation conversation={conversation} />);
+
+    expect(screen.getByRole('button', { name: 'conversation.workspace.skillMarket.action' })).toBeInTheDocument();
+  });
+
   it('opens the project automation modal from the header entry', async () => {
     const conversation = createConversation('acp', 'acp-automation-open');
 
@@ -460,6 +479,18 @@ describe('ChatConversation', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('project-automation-modal')).toHaveTextContent('acp-automation-open');
+    });
+  });
+
+  it('opens the project skill market modal from the header entry', async () => {
+    const conversation = createConversation('acp', 'acp-skill-market-open');
+
+    render(<ChatConversation conversation={conversation} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.skillMarket.action' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-skill-market-modal')).toHaveTextContent('/tmp/acp-skill-market-open');
     });
   });
 

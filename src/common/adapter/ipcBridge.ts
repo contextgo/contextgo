@@ -698,6 +698,14 @@ export const fs = {
     IBridgeResponse<{ skillName: string; installedPath: string; archiveUrl: string }>,
     { skillId: string; archive?: { source: string; relativePath: string; label?: string } }
   >('install-skill-market-skill'),
+  installSkillMarketSkillToWorkspace: bridge.buildProvider<
+    IBridgeResponse<{ skillName: string; installedPath: string; archiveUrl: string }>,
+    {
+      workspacePath: string;
+      skillId: string;
+      archive?: { source: string; relativePath: string; label?: string };
+    }
+  >('install-skill-market-skill-to-workspace'),
   // Skills Market: inject/remove the bundled builtin skill
   enableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('enable-skills-market'),
   disableSkillsMarket: bridge.buildProvider<IBridgeResponse, void>('disable-skills-market'),
