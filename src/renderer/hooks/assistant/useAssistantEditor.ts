@@ -33,6 +33,7 @@ type AssistantEditorOpenOptions = {
 
 type AssistantSaveOptions = {
   closeAfterSave?: boolean;
+  linkedPackagePresetId?: string;
 };
 
 /**
@@ -105,6 +106,10 @@ export const useAssistantEditor = ({
 
   const handleEdit = async (assistant: AssistantListItem, options: AssistantEditorOpenOptions = {}) => {
     const shouldOpenEditor = options.openEditor ?? true;
+    const linkedPackagePresetId =
+      typeof assistant.linkedPackagePresetId === 'string' && assistant.linkedPackagePresetId.trim()
+        ? assistant.linkedPackagePresetId.trim()
+        : assistant.id;
     setIsCreating(false);
     setActiveAssistantId(assistant.id);
     setEditName(assistant.name || '');
@@ -142,7 +147,7 @@ export const useAssistantEditor = ({
 
       // Load skills list for builtin assistants with bundled skills payloads and all custom assistants
       if (hasBuiltinSkills(assistant.id) || !assistant.isBuiltin) {
-        const skillsList = await ipcBridge.fs.listAvailableSkills.invoke({ presetAssistantId: assistant.id });
+        const skillsList = await ipcBridge.fs.listAvailableSkills.invoke({ presetAssistantId: linkedPackagePresetId });
         setAvailableSkills(skillsList);
         setSelectedSkills(assistant.enabledSkills || []);
         setSelectedHooks(assistant.enabledHooks || []);
@@ -245,6 +250,10 @@ export const useAssistantEditor = ({
 
   const handleSave = async (options: AssistantSaveOptions = {}): Promise<string | null> => {
     const shouldCloseAfterSave = options.closeAfterSave ?? true;
+    const linkedPackagePresetId =
+      typeof options.linkedPackagePresetId === 'string' && options.linkedPackagePresetId.trim()
+        ? options.linkedPackagePresetId.trim()
+        : undefined;
     try {
       // Validate required fields
       if (!editName.trim()) {
@@ -358,6 +367,7 @@ export const useAssistantEditor = ({
           enabledSkills: selectedSkills,
           enabledHooks: selectedHooks,
           customSkillNames: finalCustomSkills,
+          linkedPackagePresetId,
         };
 
         // Save rule file
@@ -388,6 +398,7 @@ export const useAssistantEditor = ({
           enabledSkills: selectedSkills,
           enabledHooks: selectedHooks,
           customSkillNames: finalCustomSkills,
+          linkedPackagePresetId: linkedPackagePresetId ?? activeAssistant.linkedPackagePresetId,
         };
 
         // Save rule file (if changed)
