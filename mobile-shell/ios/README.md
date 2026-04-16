@@ -39,3 +39,54 @@ IOS_BUILD_PROVISION_PROFILE_BASE64=... \
 CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST=/path/to/ExportOptions.plist \
 bash ../scripts/build-ios-release.sh 1.0.2 /tmp/contextgo-ios-release
 ```
+
+## TestFlight CI Workflow
+
+Dedicated GitHub Actions entry:
+
+- `.github/workflows/ios-testflight.yml`
+
+Reusable implementation:
+
+- `.github/workflows/_ios-testflight-reusable.yml`
+
+The current supported CI path is manual signing plus App Store Connect upload:
+
+- `IOS_BUILD_CERTIFICATE_BASE64`: base64-encoded `Apple Distribution` `.p12`
+- `IOS_P12_PASSWORD`: password for the `.p12`
+- `IOS_BUILD_PROVISION_PROFILE_BASE64`: base64-encoded App Store provisioning profile for `io.contextgo.ios`
+- `IOS_KEYCHAIN_PASSWORD`: optional temporary keychain password override
+- `APPLE_API_PRIVATE_KEY`: App Store Connect API private key contents for TestFlight upload
+- `APPLE_API_KEY_ID`: upload API key id
+- `APPLE_API_ISSUER_ID`: upload API issuer id
+- `IOS_DEVELOPMENT_TEAM`: Apple Team ID, defaults to `DQ362F38WB`
+- `IOS_APP_BUNDLE_ID`: bundle identifier, defaults to `io.contextgo.ios`
+- `IOS_CODE_SIGN_IDENTITY`: optional signing identity override, for example `Apple Distribution`
+
+Automatic triggers:
+
+- after a successful `Build and Release` run on `main` when `ENABLE_IOS_TESTFLIGHT_RELEASES=true` or `ENABLE_IOS_SHELL_RELEASES=true`
+
+Manual trigger:
+
+- run `iOS TestFlight` with a branch, tag, or commit SHA in the `ref` input
+
+The workflow builds the archive through `mobile-shell/scripts/build-ios-release.sh`, exports an IPA, then uploads it through `mobile-shell/scripts/upload-ios-testflight.sh`.
+
+## Team API Key Entry Point
+
+Optional future-facing inputs:
+
+- `APPLE_PROVISIONING_API_PRIVATE_KEY`
+- `APPLE_PROVISIONING_API_KEY_ID`
+- `APPLE_PROVISIONING_API_ISSUER_ID`
+
+These are for provisioning/auth during `xcodebuild -allowProvisioningUpdates`, not for the final TestFlight upload step.
+
+Important boundary:
+
+- a personal App Store Connect API key can work for upload authorization
+- a personal key does not unlock the Provisioning API needed for certificate/profile management
+- if you want CI-driven provisioning updates, create a Team-scoped App Store Connect API key and provide all three provisioning inputs together
+
+Even with the Team key path enabled, the runner still needs an Apple-valid signing environment. The supported baseline remains uploaded `p12 + mobileprovision`.
