@@ -169,7 +169,7 @@ Future release automation should extend or compose this path instead of creating
 
 Stable rules:
 
-- desktop release builds should keep using tag-triggered GitHub Actions as the default automation path
+- desktop release builds should stay in the shared GitHub Actions release workflow, but actual execution should require an explicit maintainer release action rather than automatic branch-push triggers
 - future mobile-shell release jobs should be added as additional jobs or reusable workflows in the same release system
 - release workflows should upload distributable artifacts with stable, human-readable names
 - direct-download artifacts should be publishable without requiring store submission

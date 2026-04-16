@@ -33,6 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { iconColors } from '@renderer/styles/colors';
 import InfermeshMenuLogo from '@renderer/assets/logos/brand/infermesh-menu.png';
+import ObsidianSpaceLogo from '@renderer/assets/logos/brand/obsidian-space.svg';
 import AppleDashboardLogo from '@renderer/assets/logos/tools/apple-dashboard.svg';
 import GithubDashboardLogo from '@renderer/assets/logos/tools/github-dashboard.svg';
 import GoogleDashboardLogo from '@renderer/assets/logos/tools/google-dashboard.svg';
@@ -278,6 +279,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const [newSpaceDescription, setNewSpaceDescription] = useState('');
   const [desktopUsername, setDesktopUsername] = useState('');
   const [userMenuVisible, setUserMenuVisible] = useState(false);
+  const [spaceMenuVisible, setSpaceMenuVisible] = useState(false);
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const [openingSpaceVault, setOpeningSpaceVault] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<CloudStatus | null>(null);
@@ -841,7 +843,10 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     return `${currentLanguageLabel} · ${currentThemeLabel}`;
   }, [cloudSignedOutLabel, currentLanguageLabel, currentThemeLabel, isCloudAuthenticated, user?.email, user?.username]);
   const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
-  const currentDevicePlatform = useMemo(() => resolveDevicePlatformVisual(cloudStatus?.device?.platform), [cloudStatus?.device?.platform]);
+  const currentDevicePlatform = useMemo(
+    () => resolveDevicePlatformVisual(cloudStatus?.device?.platform),
+    [cloudStatus?.device?.platform]
+  );
   const currentDeviceSummary = isCloudAuthenticated ? (
     <span
       className='sider-user-menu__status-icons'
@@ -912,8 +917,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     },
   };
   const spaceMenuTriggerProps = {
+    autoAlignPopupWidth: true,
     autoFitPosition: true,
-    className: 'sider-user-submenu-popup',
+    className: 'sider-user-menu-popup',
     duration: 0,
     popupStyle: {
       maxHeight: 'min(360px, calc(100vh - 24px))',
@@ -930,29 +936,24 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     <Menu
       className='sider-user-menu'
       onClickMenuItem={(key) => {
-        if (key === 'space:open-vault') {
-          void handleOpenSpaceVault();
-          return;
-        }
-
         if (key === 'space:create') {
+          setSpaceMenuVisible(false);
           handleOpenCreateSpaceModal();
           return;
         }
 
         if (typeof key === 'string' && key.startsWith('space:')) {
+          setSpaceMenuVisible(false);
           void handleSwitchSpace(key.slice('space:'.length));
         }
       }}
     >
-      <Menu.Item key='space:open-vault'>
+      <Menu.Item key='space:create'>
         <div className='sider-user-menu__row'>
           <span className='sider-user-menu__icon'>
-            <FolderOpen theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />
+            <Plus theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />
           </span>
-          <span className='sider-user-menu__row-text'>
-            {openingSpaceVault ? t('common.processing') : t('guid.vault.affordance')}
-          </span>
+          <span className='sider-user-menu__row-text'>{t('guid.space.newSpace')}</span>
         </div>
       </Menu.Item>
       {spaces.map((space) => (
@@ -969,14 +970,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           </div>
         </Menu.Item>
       ))}
-      <Menu.Item key='space:create'>
-        <div className='sider-user-menu__row'>
-          <span className='sider-user-menu__icon'>
-            <Plus theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />
-          </span>
-          <span className='sider-user-menu__row-text'>{t('guid.space.newSpace')}</span>
-        </div>
-      </Menu.Item>
     </Menu>
   );
   const createEntryMenu = (
@@ -1250,9 +1243,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                 type='button'
                 className={classNames(
                   actionRowClassName,
-                  pathname === '/agents' || pathname.startsWith('/agents/')
-                    ? 'sider-entry-row--active'
-                    : null
+                  pathname === '/agents' || pathname.startsWith('/agents/') ? 'sider-entry-row--active' : null
                 )}
                 onClick={() => handleNavigate('/agents')}
                 onMouseEnter={() => handlePreloadRoute('/agents')}
@@ -1292,7 +1283,14 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       </div>
       <div className='sider-footer mt-auto shrink-0 pt-10px'>
         <div className='sider-space-card-wrap'>
-          <Dropdown droplist={spaceMenu} trigger='click' position='tl' triggerProps={spaceMenuTriggerProps}>
+          <Dropdown
+            droplist={spaceMenu}
+            trigger='click'
+            position='tl'
+            popupVisible={spaceMenuVisible}
+            onVisibleChange={setSpaceMenuVisible}
+            triggerProps={spaceMenuTriggerProps}
+          >
             <button
               type='button'
               className={classNames('sider-space-card', isMobile && 'sider-footer-btn-mobile')}
@@ -1301,28 +1299,30 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
             >
               <span className='sider-space-card__summary'>
                 <span className='sider-space-card__icon'>
-                  <FolderOpen
-                    theme='outline'
-                    size='18'
-                    fill={iconColors.primary}
-                    className='app-icon block shrink-0 leading-none'
-                  />
+                  <img src={ObsidianSpaceLogo} alt='Obsidian' className='h-20px w-20px shrink-0 object-contain' />
                 </span>
                 <span className='sider-space-card__content'>
                   <span className='sider-space-card__title'>{selectedSpaceName}</span>
                   <span className='sider-space-card__meta'>{selectedSpaceMeta}</span>
                 </span>
               </span>
-              <span className='sider-space-card__action'>
-                <Down
-                  theme='outline'
-                  size='16'
-                  fill={iconColors.secondary}
-                  className='app-icon block shrink-0 leading-none'
-                />
-              </span>
             </button>
           </Dropdown>
+          <button
+            type='button'
+            className='sider-space-card__vault-button'
+            data-testid='space-card-vault-button'
+            aria-label={openingSpaceVault ? t('common.processing') : t('guid.vault.affordance')}
+            disabled={openingSpaceVault}
+            onClick={() => void handleOpenSpaceVault()}
+          >
+            <Right
+              theme='outline'
+              size='18'
+              fill={iconColors.primary}
+              className='app-icon block shrink-0 leading-none'
+            />
+          </button>
         </div>
         <ContextGoModal
           visible={cloudLoginVisible}
@@ -1440,7 +1440,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                           {cloudSignedOutLabel}
                         </span>
                       </div>
-                      <div className='text-13px leading-relaxed text-t-secondary'>{t('settings.cloud.description')}</div>
+                      <div className='text-13px leading-relaxed text-t-secondary'>
+                        {t('settings.cloud.description')}
+                      </div>
                     </div>
                   </div>
                 </div>

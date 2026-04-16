@@ -65,11 +65,7 @@ vi.mock('@renderer/utils/chat/latexDelimiters', () => ({
 
 describe('MarkdownView', () => {
   it('renders single-line fenced code blocks from skill markdown with full block chrome', () => {
-    render(
-      <MarkdownView>
-        {'# Workflow\n\n```bash\nnpm run ops -- auth cloudflare newapi\n```\n'}
-      </MarkdownView>
-    );
+    render(<MarkdownView>{'# Workflow\n\n```bash\nnpm run ops -- auth cloudflare newapi\n```\n'}</MarkdownView>);
 
     expect(screen.getByText('Workflow')).toBeInTheDocument();
     expect(screen.getByText('preview.code')).toBeInTheDocument();

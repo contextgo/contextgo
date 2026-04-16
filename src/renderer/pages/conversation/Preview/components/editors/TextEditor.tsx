@@ -5,6 +5,7 @@
  */
 
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
+import { json } from '@codemirror/lang-json';
 import { EditorView } from '@codemirror/view';
 import CodeMirror from '@uiw/react-codemirror';
 import React, { useCallback, useMemo } from 'react';
@@ -13,6 +14,7 @@ interface TextEditorProps {
   value: string; // 编辑器内容 / Editor content
   onChange: (value: string) => void; // 内容变化回调 / Content change callback
   readOnly?: boolean; // 是否只读 / Whether read-only
+  language?: string; // 语言提示，用于启用对应语法支持 / Optional language hint for syntax support
   containerRef?: React.RefObject<HTMLDivElement>; // 容器引用，用于滚动同步 / Container ref for scroll sync
   onScroll?: (scrollTop: number, scrollHeight: number, clientHeight: number) => void; // 滚动回调 / Scroll callback
 }
@@ -24,7 +26,14 @@ interface TextEditorProps {
  * 基于 CodeMirror 实现，支持语法高亮和实时编辑
  * Based on CodeMirror, supports syntax highlighting and live editing
  */
-const TextEditor: React.FC<TextEditorProps> = ({ value, onChange, readOnly = false, containerRef, onScroll }) => {
+const TextEditor: React.FC<TextEditorProps> = ({
+  value,
+  onChange,
+  readOnly = false,
+  language,
+  containerRef,
+  onScroll,
+}) => {
   const { theme } = useThemeContext();
 
   // 监听容器滚动事件 / Listen to container scroll events
@@ -59,6 +68,16 @@ const TextEditor: React.FC<TextEditorProps> = ({ value, onChange, readOnly = fal
     []
   );
 
+  const editorExtensions = useMemo(() => {
+    const extensions = [EditorView.lineWrapping];
+
+    if (language === 'json') {
+      extensions.push(json());
+    }
+
+    return extensions;
+  }, [language]);
+
   // 缓存样式对象 / Memoize style object
   const editorStyle = useMemo(
     () => ({
@@ -75,7 +94,7 @@ const TextEditor: React.FC<TextEditorProps> = ({ value, onChange, readOnly = fal
         value={value}
         height='100%'
         theme={theme === 'dark' ? 'dark' : 'light'}
-        extensions={[EditorView.lineWrapping]}
+        extensions={editorExtensions}
         onChange={handleChange}
         readOnly={readOnly}
         basicSetup={basicSetupConfig}

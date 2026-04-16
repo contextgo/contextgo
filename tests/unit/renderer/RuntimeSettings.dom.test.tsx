@@ -82,13 +82,9 @@ vi.mock('@/renderer/pages/settings/components/SettingsPageWrapper', () => ({
 }));
 
 vi.mock('@/renderer/pages/conversation/Preview/components/editors/TextEditor', () => ({
-  default: ({
-    value,
-    onChange,
-  }: {
-    value: string;
-    onChange: (value: string) => void;
-  }) => <textarea aria-label='Runtime config editor' value={value} onChange={(event) => onChange(event.target.value)} />,
+  default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => (
+    <textarea aria-label='Runtime config editor' value={value} onChange={(event) => onChange(event.target.value)} />
+  ),
 }));
 
 vi.mock('@/renderer/components/settings/SettingsModal/contents/channels/ChannelModalContent', () => ({

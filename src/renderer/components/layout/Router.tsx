@@ -1,4 +1,5 @@
 import { Button } from '@arco-design/web-react';
+import { ipcBridge } from '@/common';
 import { copyText } from '@renderer/utils/ui/clipboard';
 import AppLoader from '@renderer/components/layout/AppLoader';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
@@ -249,22 +250,67 @@ const ProtectedLayout: React.FC<{
 };
 
 const StartupConversationRedirect: React.FC = () => {
-  const { openTabs, activeTabId } = useConversationTabs();
-  const startupPath = useMemo(() => {
-    const preferOfficialRemoteShell =
-      typeof window !== 'undefined' &&
-      shouldPreferOfficialRemoteShell({
-        currentHref: window.location.href,
-        isDesktopRuntime: isElectronDesktop(),
-        isMobileShellRuntime: isMobileShellWebView(),
+  const { openTabs, activeTabId, closeAllTabs } = useConversationTabs();
+  const [startupPath, setStartupPath] = useState<string | null>(null);
+  const preferOfficialRemoteShell =
+    typeof window !== 'undefined' &&
+    shouldPreferOfficialRemoteShell({
+      currentHref: window.location.href,
+      isDesktopRuntime: isElectronDesktop(),
+      isMobileShellRuntime: isMobileShellWebView(),
+    });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveStartupPath = async () => {
+      const nextPath = resolveAuthenticatedStartupPath({
+        activeTabId,
+        openTabIds: openTabs.map((tab) => tab.id),
+        preferOfficialRemoteShell,
       });
 
-    return resolveAuthenticatedStartupPath({
-      activeTabId,
-      openTabIds: openTabs.map((tab) => tab.id),
-      preferOfficialRemoteShell,
-    });
-  }, [activeTabId, openTabs]);
+      if (preferOfficialRemoteShell || !activeTabId || nextPath === '/guid') {
+        if (!cancelled) {
+          setStartupPath(nextPath);
+        }
+        return;
+      }
+
+      setStartupPath(null);
+
+      try {
+        const restoredConversation = await ipcBridge.conversation.get.invoke({ id: activeTabId });
+
+        if (cancelled) {
+          return;
+        }
+
+        if (restoredConversation) {
+          setStartupPath(nextPath);
+          return;
+        }
+      } catch (error) {
+        console.warn('[StartupConversationRedirect] Failed to validate restored active conversation:', error);
+        if (cancelled) {
+          return;
+        }
+      }
+
+      closeAllTabs();
+      setStartupPath('/guid');
+    };
+
+    void resolveStartupPath();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTabId, closeAllTabs, openTabs, preferOfficialRemoteShell]);
+
+  if (!startupPath) {
+    return <AppLoader />;
+  }
 
   return <Navigate to={startupPath} replace />;
 };

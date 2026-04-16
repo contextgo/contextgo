@@ -18,9 +18,10 @@ vi.mock('@arco-design/web-react', () => ({
   Button: ({
     children,
     icon,
+    className,
     ...props
-  }: { children?: React.ReactNode; icon?: React.ReactNode } & Record<string, unknown>) => (
-    <button type='button' {...props}>
+  }: { children?: React.ReactNode; icon?: React.ReactNode; className?: string } & Record<string, unknown>) => (
+    <button type='button' data-arco-button='true' className={className} {...props}>
       {icon}
       {children}
     </button>
@@ -29,7 +30,7 @@ vi.mock('@arco-design/web-react', () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
-  Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  Tooltip: ({ children }: { children?: React.ReactNode }) => <span data-arco-tooltip='true'>{children}</span>,
 }));
 
 vi.mock('@icon-park/react', () => ({
@@ -70,7 +71,12 @@ describe('CodeBlock', () => {
     expect(
       screen.getByText((content) => content.includes('const a = 1;') && content.includes('const b = 2;'))
     ).toBeInTheDocument();
-    expect(container.querySelector('.not-prose')).not.toBeNull();
+    expect(container.querySelector('.markdown-code-block')).not.toBeNull();
+    expect(container.querySelector('.markdown-code-block__header')).not.toBeNull();
+    expect(container.querySelector('.markdown-code-block__body')).not.toBeNull();
+    expect(container.querySelector('.markdown-code-block__copy')).not.toBeNull();
+    expect(container.querySelector('[data-arco-button="true"]')).not.toBeNull();
+    expect(container.querySelector('[data-arco-tooltip="true"]')).not.toBeNull();
     expect(screen.queryByText('<ts>')).not.toBeInTheDocument();
   });
 
@@ -81,6 +87,8 @@ describe('CodeBlock', () => {
 
     expect(screen.getByRole('button', { name: 'common.collapse' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'common.expandMore' })).not.toBeInTheDocument();
+    expect(document.querySelector('.markdown-code-block__toggle')).not.toBeNull();
+    expect(document.querySelectorAll('[data-arco-button="true"]').length).toBeGreaterThan(1);
     expect(
       screen.getByText((content) => content.includes('line 1') && content.includes('line 28'))
     ).toBeInTheDocument();
@@ -111,7 +119,7 @@ describe('CodeBlock', () => {
 
     expect(screen.getByText('preview.code')).toBeInTheDocument();
     expect(screen.getByText('JSON')).toBeInTheDocument();
-    expect(container.querySelector('.not-prose')).toBeNull();
+    expect(container.querySelector('.markdown-code-block')).not.toBeNull();
   });
 
   it('renders single-line plain text blocks as standard code blocks when markdown treats them as fenced blocks', () => {

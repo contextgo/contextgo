@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import { STORAGE_KEYS } from '@/common/config/storageKeys';
 import { ConfigStorage, type ICssTheme } from '@/common/config/storage';
 import PwaPullToRefresh from '@/renderer/components/layout/PwaPullToRefresh';
 import Titlebar from '@/renderer/components/layout/Titlebar';
@@ -41,6 +42,11 @@ type MobileSiderGesture = {
   mode: 'opening' | 'closing';
   startX: number;
   startY: number;
+};
+
+type LayoutSiderElementProps = {
+  onSessionClick?: () => void;
+  collapsed?: boolean;
 };
 
 const detectMobileViewportOrTouch = (): boolean => {
@@ -90,24 +96,69 @@ const resolveMobileThemeColor = (mode: MobileTopChromeMode, isDarkTheme: boolean
   return isDarkTheme ? '#161b22' : '#f7f8fb';
 };
 
+const readPersistedSiderCollapsed = (): boolean | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSE);
+    if (rawValue === 'true') {
+      return true;
+    }
+
+    if (rawValue === 'false') {
+      return false;
+    }
+  } catch {
+    // Ignore storage read failures during startup hydration.
+  }
+
+  return null;
+};
+
+const persistSiderCollapsed = (value: boolean): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSE, String(value));
+  } catch {
+    // Ignore storage write failures in constrained environments.
+  }
+};
+
+const resolveInitialSiderCollapsed = (pathname: string): boolean => {
+  if (detectMobileViewportOrTouch()) {
+    return true;
+  }
+
+  if (pathname.startsWith('/settings')) {
+    return false;
+  }
+
+  const persistedCollapsed = readPersistedSiderCollapsed();
+  return persistedCollapsed ?? true;
+};
+
 const Layout: React.FC<{
   sider: React.ReactNode;
   onSessionClick?: () => void;
 }> = ({ sider, onSessionClick: _onSessionClick }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [collapsed, setCollapsedState] = useState<boolean>(() => resolveInitialSiderCollapsed(location.pathname));
   const [isMobile, setIsMobile] = useState(false);
   const [viewportWidth, setViewportWidth] = useState<number>(() =>
     typeof window === 'undefined' ? 390 : window.innerWidth
   );
   const [customCss, setCustomCss] = useState<string>('');
-  const [shouldMountUpdateModal, setShouldMountUpdateModal] = useState(false);
   const { contextHolder: multiAgentContextHolder } = useMultiAgentDetection();
   const { contextHolder: directorySelectionContextHolder } = useDirectorySelection();
   useDeepLink();
   useNotificationClick();
-  const navigate = useNavigate();
   useConversationShortcuts({ navigate });
-  const location = useLocation();
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const isConversationDetailRoute = location.pathname.startsWith('/conversation/');
   const isMobileShellRuntime = !isElectronDesktop() && isMobileShellWebView();
@@ -120,6 +171,27 @@ const Layout: React.FC<{
   const [mobileSiderTranslateX, setMobileSiderTranslateX] = useState<number | null>(null);
   const [isDraggingMobileSider, setIsDraggingMobileSider] = useState(false);
   const [remoteAccessTarget, setRemoteAccessTarget] = useState(createDefaultRemoteAccessTarget);
+
+  const updateCollapsed = useCallback((nextCollapsed: boolean, options?: { persist?: boolean }) => {
+    setCollapsedState((current) => {
+      if (current === nextCollapsed) {
+        return current;
+      }
+
+      if (options?.persist !== false) {
+        persistSiderCollapsed(nextCollapsed);
+      }
+
+      return nextCollapsed;
+    });
+  }, []);
+
+  const setCollapsed = useCallback(
+    (nextCollapsed: boolean) => {
+      updateCollapsed(nextCollapsed);
+    },
+    [updateCollapsed]
+  );
 
   const loadAndHealCustomCss = useCallback(async () => {
     try {
@@ -273,16 +345,16 @@ const Layout: React.FC<{
     if (!isMobile || collapsedRef.current) {
       return;
     }
-    setCollapsed(true);
-  }, [isMobile]);
+    updateCollapsed(true, { persist: false });
+  }, [isMobile, updateCollapsed]);
 
   useEffect(() => {
     if (isMobile || !isSettingsRoute || !collapsedRef.current) {
       return;
     }
 
-    setCollapsed(false);
-  }, [isMobile, isSettingsRoute]);
+    updateCollapsed(false, { persist: false });
+  }, [isMobile, isSettingsRoute, updateCollapsed]);
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -345,8 +417,8 @@ const Layout: React.FC<{
 
     // Handle pause all tasks request from tray / 托盘请求暂停所有任务
     const handlePauseAllTasks = async () => {
-      const { ipcBridge } = await import('@/common');
-      const result = await ipcBridge.task.stopAll.invoke();
+      const { ipcBridge: runtimeIpcBridge } = await import('@/common');
+      const result = await runtimeIpcBridge.task.stopAll.invoke();
       if (result?.success) {
         // Navigate to settings page to show task status
         void navigate('/settings/system');
@@ -507,9 +579,9 @@ const Layout: React.FC<{
       );
 
       if (gesture.mode === 'opening') {
-        setCollapsed(deltaX >= triggerDistance ? false : true);
+        setCollapsed(deltaX < triggerDistance);
       } else {
-        setCollapsed(deltaX <= -triggerDistance ? true : false);
+        setCollapsed(deltaX <= -triggerDistance);
       }
 
       resetMobileSiderGesture();
@@ -605,14 +677,14 @@ const Layout: React.FC<{
                 <ArcoLayout.Content className='layout-sider-content !flex !flex-1 !min-h-0 p-8px'>
                   <div className='flex h-full min-h-0 min-w-0 w-full flex-1'>
                     <div className='min-h-0 min-w-0 flex-1 w-full'>
-                      {React.isValidElement(sider)
+                      {React.isValidElement<LayoutSiderElementProps>(sider)
                         ? React.cloneElement(sider, {
                             onSessionClick: () => {
                               cleanupSiderTooltips();
                               if (isMobile) setCollapsed(true);
                             },
                             collapsed,
-                          } as any)
+                          })
                         : sider}
                     </div>
                   </div>

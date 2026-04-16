@@ -2,6 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { STORAGE_KEYS } from '@/common/config/storageKeys';
+
+const mockTitlebar = vi.fn(() => <div data-testid='titlebar' />);
 
 vi.mock('@/common', () => ({
   ipcBridge: {
@@ -71,7 +74,7 @@ vi.mock('@/renderer/components/layout/PwaPullToRefresh', () => ({
 }));
 
 vi.mock('@/renderer/components/layout/Titlebar', () => ({
-  default: () => <div data-testid='titlebar' />,
+  default: (props: unknown) => mockTitlebar(props),
 }));
 
 vi.mock('@/renderer/components/layout/WindowControls', () => ({
@@ -92,6 +95,8 @@ vi.mock('@/renderer/hooks/context/RemoteAccessContext', () => ({
 
 describe('Layout mobile sider gestures', () => {
   beforeEach(() => {
+    localStorage.clear();
+    mockTitlebar.mockClear();
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
       writable: true,
@@ -217,5 +222,118 @@ describe('Layout mobile sider gestures', () => {
     expect(screen.getByTestId('titlebar')).toBeInTheDocument();
     expect(container.querySelector('.desktop-remote-session-bar')).toBeNull();
     expect(dispatchEventSpy).not.toHaveBeenCalled();
+  });
+
+  it('starts with the desktop sider collapsed by default on non-settings routes', async () => {
+    vi.resetModules();
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    });
+    Object.defineProperty(navigator, 'maxTouchPoints', {
+      configurable: true,
+      value: 0,
+    });
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    vi.doMock('@renderer/utils/platform', () => ({
+      isElectronDesktop: () => true,
+      isMacOS: () => false,
+      isMobileShellWebView: () => false,
+    }));
+    vi.doMock('@/renderer/components/layout/Titlebar', () => ({
+      default: (props: unknown) => mockTitlebar(props),
+    }));
+    vi.doMock('@/renderer/hooks/context/RemoteAccessContext', () => ({
+      createDefaultRemoteAccessTarget: () => ({
+        mode: 'local',
+        currentUrl: '',
+        entryUrl: '',
+      }),
+      RemoteAccessContext: {
+        Provider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+      },
+    }));
+
+    const { default: Layout } = await import('@/renderer/components/layout/Layout');
+
+    const { container } = render(
+      <MemoryRouter initialEntries={['/guid']}>
+        <Layout sider={<div data-testid='desktop-sider'>Sider Content</div>} />
+      </MemoryRouter>
+    );
+
+    expect(container.querySelector('.layout-sider')).toBeTruthy();
+    expect(container.querySelector('.layout-sider')?.className).toContain('collapsed');
+    expect(mockTitlebar).toHaveBeenCalled();
+    expect(mockTitlebar.mock.calls.at(-1)?.[0]).toMatchObject({
+      leftPaneWidth: 0,
+    });
+  });
+
+  it('starts with the desktop sider expanded on settings routes without showing a persisted collapsed state first', async () => {
+    vi.resetModules();
+    localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSE, 'true');
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    });
+    Object.defineProperty(navigator, 'maxTouchPoints', {
+      configurable: true,
+      value: 0,
+    });
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    vi.doMock('@renderer/utils/platform', () => ({
+      isElectronDesktop: () => true,
+      isMacOS: () => false,
+      isMobileShellWebView: () => false,
+    }));
+    vi.doMock('@/renderer/components/layout/Titlebar', () => ({
+      default: (props: unknown) => mockTitlebar(props),
+    }));
+    vi.doMock('@/renderer/hooks/context/RemoteAccessContext', () => ({
+      createDefaultRemoteAccessTarget: () => ({
+        mode: 'local',
+        currentUrl: '',
+        entryUrl: '',
+      }),
+      RemoteAccessContext: {
+        Provider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+      },
+    }));
+
+    const { default: Layout } = await import('@/renderer/components/layout/Layout');
+
+    render(
+      <MemoryRouter initialEntries={['/settings/runtime']}>
+        <Layout sider={<div data-testid='desktop-sider'>Sider Content</div>} />
+      </MemoryRouter>
+    );
+
+    expect(mockTitlebar).toHaveBeenCalled();
+    expect(mockTitlebar.mock.calls.at(-1)?.[0]).toMatchObject({
+      leftPaneWidth: 250,
+    });
   });
 });
