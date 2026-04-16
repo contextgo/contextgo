@@ -11,7 +11,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: Pick<AuthUser, 'id' | 'username'>;
-      authSource?: 'local' | 'cloud';
+      authSource?: 'host-session' | 'breakglass-local' | 'cloud';
       cloudUser?: CloudUser;
       cookies?: Record<string, string>;
       csrfToken?: () => string;

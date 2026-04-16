@@ -2,6 +2,7 @@
   "pageTitle": "ContextGo - ログイン",
   "brand": "ContextGo",
   "subtitle": "おかえりなさい。アカウントにサインインしてください",
+  "recoverySubtitle": "このログイン画面はホストのローカル復旧経路です。リモート利用の主入口は引き続き Official Remote です。",
   "username": "ユーザー名",
   "usernamePlaceholder": "ユーザー名を入力してください",
   "password": "パスワード",
