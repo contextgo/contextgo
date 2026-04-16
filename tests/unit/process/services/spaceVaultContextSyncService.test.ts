@@ -305,6 +305,101 @@ describe('SpaceVaultContextSyncService', () => {
     expect(mounted?.summary).toContain('Use the staged release checklist.');
   });
 
+  it('appends session timeline events into a dedicated session timeline file', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(workspacePath, { recursive: true });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+    await service.appendSessionTimelineEvent({
+      conversation: conversation as any,
+      timestamp: '2026-04-23T13:00:00.000Z',
+      title: 'User query',
+      body: '用户发起 query: aaaa',
+    });
+
+    const timelinePath = path.join(
+      vaultPath,
+      'Projects',
+      'workspace',
+      '_context',
+      'sessions',
+      'conv-1',
+      'timeline.md'
+    );
+    const timelineContent = await fs.readFile(timelinePath, 'utf8');
+    expect(timelineContent).toContain('[2026-04-23 13:00:00]');
+    expect(timelineContent).toContain('User query: 用户发起 query: aaaa');
+  });
+
+  it('writes and reads the session working-context file separately from the timeline', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(workspacePath, { recursive: true });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+    await service.writeSessionWorkingContext({
+      conversation: conversation as any,
+      timestamp: '2026-04-23T13:10:00.000Z',
+      currentTask: '整理发布前的回归检查',
+      stableStrategies: ['先缩小改动面，再补验证。'],
+      failureModes: ['长对话容易把约束冲掉。'],
+      pendingConstraints: ['没有审批前不能扩大发布范围。'],
+      signalKinds: ['context_window_prepared'],
+      pressure: 42,
+      sourceProfileKey: 'session.compaction.conv-1',
+    });
+
+    const mounted = await service.readSessionWorkingContextSection({ conversation: conversation as any });
+    expect(mounted?.id).toBe('session-working-context:conv-1');
+    expect(mounted?.summary).toContain('整理发布前的回归检查');
+    expect(mounted?.summary).toContain('先缩小改动面，再补验证。');
+  });
+
   it('skips vault sync when the target space is not bound to an obsidian vault', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
     tempDirs.push(root);
