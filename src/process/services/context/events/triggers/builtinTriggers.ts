@@ -125,7 +125,8 @@ export const CONTEXT_ENGINE_BUILTIN_TRIGGERS: readonly ContextTriggerSpec[] = [
     event: 'manual.project_capability_curation',
     label: 'Manual project capability curation',
     defaultPriority: 'medium',
-    defaultReason: 'Manually refresh the project capability mirror from local .contextgo automation.',
+    defaultReason:
+      'Manually refresh project docs, AGENTS append proposals, and skill proposals from local automation evidence.',
   },
   {
     id: 'timer.session-pattern-detection',
@@ -173,7 +174,7 @@ export const CONTEXT_ENGINE_BUILTIN_TRIGGERS: readonly ContextTriggerSpec[] = [
     event: 'timer.project_capability_curation',
     label: 'Project capability curation',
     defaultPriority: 'medium',
-    defaultReason: 'Periodically refresh the project capability mirror from local automation files.',
+    defaultReason: 'Periodically refresh project docs and append-first proposals from local automation evidence.',
   },
   {
     id: 'connector.connector-digest',
