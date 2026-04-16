@@ -82,6 +82,10 @@ function formatArtifactTargets(targets: readonly string[] | undefined): string {
   return targets.join(' · ');
 }
 
+function formatRecentEventKind(kind: string): string {
+  return kind;
+}
+
 function resolveArtifactKindLabel(run: IExtensionSystemRunItem): string | undefined {
   const targets = run.artifactTargets ?? [];
   if (targets.includes('project_rules') || targets.includes('project_skill')) {
@@ -133,6 +137,17 @@ const SystemRunsPage: React.FC = () => {
   const navigate = useNavigate();
   const { status, systemRuns, activeMaintenanceCount, lastCheckedAt } = useContextEngineActivity();
   const lastCheckedLabel = lastCheckedAt ? formatUpdateTime(lastCheckedAt) : '--';
+  const governanceSummary = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const run of systemRuns) {
+      const identity = run.governanceIdentity;
+      if (!identity) {
+        continue;
+      }
+      counts.set(identity, (counts.get(identity) ?? 0) + 1);
+    }
+    return [...counts.entries()];
+  }, [systemRuns]);
 
   return (
     <SettingsPageWrapper>
@@ -185,6 +200,22 @@ const SystemRunsPage: React.FC = () => {
             </div>
           </div>
         </section>
+
+        {governanceSummary.length > 0 ? (
+          <section className='rounded-20px border border-border-2 bg-fill-1 px-16px py-12px'>
+            <div className='flex flex-wrap items-center gap-8px'>
+              {governanceSummary.map(([identity, count]) => (
+                <Tag key={identity} size='small'>
+                  {t('settings.systemRunsIdentityCount', {
+                    identity,
+                    count,
+                    defaultValue: `${identity} · ${count}`,
+                  })}
+                </Tag>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {systemRuns.length === 0 ? (
           <>
@@ -432,7 +463,10 @@ const SystemRunsPage: React.FC = () => {
                         <span className={styles.systemRunsEventIcon}>
                           <Right theme='outline' size={12} />
                         </span>
-                        <span className={styles.systemRunsEventText}>{event.text}</span>
+                        <span className={styles.systemRunsEventText}>
+                          <Tag size='small'>{formatRecentEventKind(event.kind)}</Tag>
+                          <span className='ml-6px'>{event.text}</span>
+                        </span>
                       </div>
                     ))}
                   </div>

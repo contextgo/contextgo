@@ -494,6 +494,7 @@
   "systemRuns": "系统运行台",
   "systemRunsDesc": "只读展示 Context Engine 的 session 与 run，统一触发来源、执行边界和产物都会在这里暴露。",
   "systemRunsCount": "{{count}} 条运行",
+  "systemRunsIdentityCount": "{{identity}} · {{count}}",
   "systemRunsActiveNow": "当前活跃",
   "systemRunsEmpty": "还没有系统运行记录。",
   "systemRunsBoundary": "执行边界：{{path}}",

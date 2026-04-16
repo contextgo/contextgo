@@ -123,13 +123,21 @@ describe('SystemRunsPage', () => {
         triggerEvent: 'context.window.prepared',
         executionBoundaryPath: '/vault/space-1',
         executionBoundaryLabel: 'My Space',
-        recentEvents: [],
+        recentEvents: [
+          {
+            conversationId: 'thread-1',
+            kind: 'status',
+            text: 'Running session compaction',
+            at: new Date('2026-04-11T06:08:00Z').getTime(),
+          },
+        ],
       },
     ];
 
     render(<SystemRunsPage />);
 
     expect(await screen.findByText('Compressing repeated session signals')).toBeInTheDocument();
+    expect(screen.getByText('session_steward · 1')).toBeInTheDocument();
     expect(screen.getByText('Governance: session_steward')).toBeInTheDocument();
     expect(screen.getByText('Source: hook')).toBeInTheDocument();
     expect(screen.getByText('Artifact kind: session-context')).toBeInTheDocument();
@@ -137,5 +145,7 @@ describe('SystemRunsPage', () => {
     expect(
       screen.getByText('Artifacts: session_timeline · session_working_context · session_checkpoint')
     ).toBeInTheDocument();
+    expect(screen.getByText('status')).toBeInTheDocument();
+    expect(screen.getByText('Running session compaction')).toBeInTheDocument();
   });
 });

@@ -494,6 +494,7 @@
   "systemRuns": "システム実行",
   "systemRunsDesc": "Context Engine の session と run を読み取り専用で表示します。トリガー経路、実行境界、成果物をここで確認できます。",
   "systemRunsCount": "{{count}} 件の実行",
+  "systemRunsIdentityCount": "{{identity}} · {{count}}",
   "systemRunsActiveNow": "現在実行中",
   "systemRunsEmpty": "システム実行はまだありません。",
   "systemRunsBoundary": "実行境界: {{path}}",

@@ -494,6 +494,7 @@
   "systemRuns": "系統執行台",
   "systemRunsDesc": "以唯讀方式展示 Context Engine 的 session 與 run，統一觸發來源、執行邊界與產物都會在這裡呈現。",
   "systemRunsCount": "{{count}} 筆執行",
+  "systemRunsIdentityCount": "{{identity}} · {{count}}",
   "systemRunsActiveNow": "目前活躍",
   "systemRunsEmpty": "目前還沒有系統執行紀錄。",
   "systemRunsBoundary": "執行邊界：{{path}}",
