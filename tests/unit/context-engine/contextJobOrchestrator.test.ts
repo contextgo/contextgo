@@ -3,6 +3,7 @@ import {
   ContextJobOrchestrator,
   buildPromotionCandidateFromSummary,
   collectSessionSignalKinds,
+  createPlannedContextJob,
 } from '../../../src/process/services/context/ContextJobOrchestrator';
 
 function makeSignal(kind: Parameters<typeof collectSessionSignalKinds>[0][number]['kind'], summary: string) {
@@ -94,6 +95,34 @@ describe('ContextJobOrchestrator', () => {
     expect(weakJob).toBeUndefined();
     expect(strongJob?.type).toBe('project_promotion');
     expect(strongJob?.priority).toBe('high');
+    expect(strongJob?.governanceIdentity).toBe('project_curator');
+    expect(strongJob?.payload).toEqual(
+      expect.objectContaining({
+        artifactTargets: ['project_doc'],
+      })
+    );
+  });
+
+  it('creates project capability curation jobs as Project Curator work with rule and skill targets', () => {
+    const job = createPlannedContextJob({
+      type: 'project_capability_curation',
+      priority: 'medium',
+      spaceId: 'space-1',
+      projectSlug: 'repo-1',
+      source: 'timer',
+      triggerEvent: 'timer.project_capability_curation',
+      reason: 'Refresh project capability mirror.',
+      payload: {
+        summary: 'Refresh project capability mirror.',
+      },
+    });
+
+    expect(job.governanceIdentity).toBe('project_curator');
+    expect(job.payload).toEqual(
+      expect.objectContaining({
+        artifactTargets: ['project_doc', 'project_rules', 'project_skill'],
+      })
+    );
   });
 
   it('collects unique signal kinds for downstream hooks', () => {
