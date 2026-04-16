@@ -42,6 +42,7 @@ import {
 } from './vaultLayout';
 import { isSpaceVaultProviderRef } from './vaultBinding';
 import { SqliteSpaceRepository } from '@process/services/database/space/SqliteSpaceRepository';
+import { formatProjectCuratorProposal } from '@process/services/context/jobs/ProjectCuratorProposalFormatter';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -244,6 +245,18 @@ type ProjectCapabilityCurationWriteInput = {
   projectSlug: string;
   summary: string;
   detail?: string;
+  timestamp: string;
+};
+
+type ProjectCuratorProposalWriteInput = {
+  spaceId: string;
+  projectSlug: string;
+  title: string;
+  proposalKind: 'project_rules' | 'project_skill';
+  summary: string;
+  targetPath: string;
+  additions: readonly string[];
+  evidence: readonly string[];
   timestamp: string;
 };
 
@@ -2522,6 +2535,51 @@ export class SpaceVaultContextSyncService {
       projectSlug: refreshedProject.slug,
       noteTitle: getProjectCapabilitiesTitle(refreshedProject.name),
       relativePath: getProjectCapabilitiesRelativePath(refreshedProject.folderName),
+      summary: input.summary,
+    };
+  }
+
+  async writeProjectCuratorProposal(input: ProjectCuratorProposalWriteInput): Promise<
+    | {
+        title: string;
+        relativePath: string;
+        summary: string;
+      }
+    | undefined
+  > {
+    const space = await this.spaceService.getSpace(input.spaceId);
+    const providerRef = space?.providerRef;
+    if (!space || !isSpaceVaultProviderRef(providerRef)) {
+      return undefined;
+    }
+
+    await this.ensureBaseStructure(providerRef.vaultPath);
+    const project = await this.findProjectBindingBySlug(providerRef.vaultPath, input.projectSlug);
+    if (!project) {
+      return undefined;
+    }
+
+    const fileName = `${sanitizeVaultPathSegment(input.title)}.md`;
+    const relativePath = path.posix.join(
+      PROJECTS_DIR,
+      project.folderName,
+      PROJECT_CONTEXT_DIR,
+      'proposals',
+      fileName
+    );
+    const absolutePath = path.join(providerRef.vaultPath, relativePath);
+    const body = formatProjectCuratorProposal({
+      title: input.title,
+      targetPath: input.targetPath,
+      summary: input.summary,
+      evidence: input.evidence,
+      additions: input.additions,
+    });
+    await ensureFile(absolutePath, body);
+
+    return {
+      title: input.title,
+      relativePath,
       summary: input.summary,
     };
   }
