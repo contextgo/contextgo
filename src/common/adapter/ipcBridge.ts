@@ -1693,6 +1693,7 @@ import type {
   IChannelBindingCatalog,
   IChannelPublicationSnapshot,
   IChannelBinding,
+  IChannelPublicationUpsertInput,
   IChannelPublicationCatalogRefreshResult,
   ChannelControlMode,
   IChannelContinuationRequest,
@@ -1794,6 +1795,11 @@ export const channel = {
     IBridgeResponse<IChannelBinding[]>,
     { channelAccountId?: string; connectorId?: string } | void
   >('channel.get-bindings'),
+  upsertPublication: bridge.buildProvider<IBridgeResponse, { publication: IChannelPublicationUpsertInput }>(
+    'channel.upsert-publication'
+  ),
+  deletePublication: bridge.buildProvider<IBridgeResponse, { publicationId: string }>('channel.delete-publication'),
+  // Deprecated compatibility aliases
   upsertBinding: bridge.buildProvider<IBridgeResponse, { binding: IChannelBinding }>('channel.upsert-binding'),
   deleteBinding: bridge.buildProvider<IBridgeResponse, { bindingId: string }>('channel.delete-binding'),
   prepareConversationPublication: bridge.buildProvider<IBridgeResponse<IAgentProfile>, { conversationId: string }>(

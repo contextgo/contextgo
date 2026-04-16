@@ -28,7 +28,7 @@ import {
   type AgentPublicationObjectEntry,
 } from './agentPublicationViewModel';
 import { getPublicationObjectKindLabel } from './objectViewModel';
-import { buildBindingPayload, splitBindingsByLifetime, type DurableBindingScopeType } from './viewModel';
+import { buildPublicationPayload, splitBindingsByLifetime, type DurableBindingScopeType } from './viewModel';
 
 type PublicationIntent = {
   agentProfileId?: string;
@@ -42,7 +42,7 @@ type PublicationIntent = {
 
 type PublicationEditorState = {
   open: boolean;
-  editingBindingId: string;
+  editingPublicationId: string;
   channelAccountId: string;
   selectedAudienceKey: string;
   useManualScope: boolean;
@@ -72,7 +72,7 @@ function applyPublicationSnapshot(
 function createPublicationEditorState(): PublicationEditorState {
   return {
     open: false,
-    editingBindingId: '',
+    editingPublicationId: '',
     channelAccountId: '',
     selectedAudienceKey: '',
     useManualScope: false,
@@ -228,6 +228,34 @@ function getBindingAudience(
   return audienceMap.get(binding.scopeKey);
 }
 
+function getPublicationAudience(
+  entry: AgentPublicationObjectEntry,
+  audiences: IChannelAudienceEntry[]
+): IChannelAudienceEntry | undefined {
+  const primaryBinding = entry.object.bindings[0];
+  const publishObjectCatalogEntryId = entry.object.publishObjectCatalogEntryId;
+
+  return audiences.find((audience) => {
+    if (getChannelAccountId(audience) !== entry.channelAccount.id) {
+      return false;
+    }
+
+    if (publishObjectCatalogEntryId && audience.publishObjectCatalogEntryId === publishObjectCatalogEntryId) {
+      return true;
+    }
+
+    if (primaryBinding?.scopeKey && audience.key === primaryBinding.scopeKey) {
+      return true;
+    }
+
+    if (primaryBinding?.scopeKey && audience.objectKey === primaryBinding.scopeKey) {
+      return true;
+    }
+
+    return false;
+  });
+}
+
 function getObjectRefreshBadgeLabel(entry: AgentPublicationObjectEntry, t: TranslationFn): string | null {
   const refreshState = entry.object.refreshState;
   if (refreshState?.status === 'needs-refresh') {
@@ -343,10 +371,21 @@ const PublicationBindingPanel: React.FC = () => {
         channelAccounts: catalogChannelAccounts,
         audiences: catalog.audiences,
         bindings: selectedAgentBindings,
+        publications: catalog.publications?.filter(
+          (publication) => publication.agentProfileId === selectedAgentProfileId
+        ),
         publishObjects: catalog.publishObjects,
         sessions: activeSessions,
       }),
-    [activeSessions, catalog.audiences, catalog.publishObjects, catalogChannelAccounts, selectedAgentBindings]
+    [
+      activeSessions,
+      catalog.audiences,
+      catalog.publications,
+      catalog.publishObjects,
+      catalogChannelAccounts,
+      selectedAgentBindings,
+      selectedAgentProfileId,
+    ]
   );
 
   const publishedBindingCount = useMemo(
@@ -435,29 +474,40 @@ const PublicationBindingPanel: React.FC = () => {
     setEditor(createPublicationEditorState());
   }, []);
 
-  const handleEditBinding = useCallback(
-    (binding: IChannelBinding) => {
-      const audience = getBindingAudience(binding, audienceMap);
-      const channelAccountId = getChannelAccountId(binding) ?? '';
+  const handleEditPublication = useCallback(
+    (entry: AgentPublicationObjectEntry) => {
+      const primaryBinding = entry.object.bindings[0];
+      if (!primaryBinding) {
+        return;
+      }
+
+      const audience =
+        getPublicationAudience(entry, catalog.audiences) ?? getBindingAudience(primaryBinding, audienceMap);
+      const channelAccountId = entry.channelAccount.id;
 
       setEditor({
         open: true,
-        editingBindingId: binding.id,
+        editingPublicationId: primaryBinding.id,
         channelAccountId,
         selectedAudienceKey: audience ? audience.key : '',
         useManualScope: !audience,
-        manualScopeType: binding.scopeType === 'remote_user' ? 'remote_user' : 'remote_chat',
-        manualScopeKey: audience ? '' : (binding.scopeKey ?? ''),
+        manualScopeType: primaryBinding.scopeType === 'remote_user' ? 'remote_user' : 'remote_chat',
+        manualScopeKey: audience ? '' : (primaryBinding.scopeKey ?? ''),
       });
     },
-    [audienceMap]
+    [audienceMap, catalog.audiences]
   );
 
-  const handleDeleteBinding = useCallback(
-    async (bindingId: string) => {
-      setDeletingBindingId(bindingId);
+  const handleDeletePublication = useCallback(
+    async (entry: AgentPublicationObjectEntry) => {
+      const primaryBinding = entry.object.bindings[0];
+      if (!primaryBinding) {
+        return;
+      }
+
+      setDeletingBindingId(primaryBinding.id);
       try {
-        const result = await channel.deleteBinding.invoke({ bindingId });
+        const result = await channel.deletePublication.invoke({ publicationId: primaryBinding.id });
         if (!result.success) {
           throw new Error(result.msg || t('settings.channels.publication.deleteFailed'));
         }
@@ -504,16 +554,16 @@ const PublicationBindingPanel: React.FC = () => {
               discoverySource: 'inbound-learned' as const,
             }
           : undefined;
-      const binding = buildBindingPayload(catalog.bindings, {
+      const publication = buildPublicationPayload(catalog.bindings, {
+        existingPublicationId: editor.editingPublicationId || undefined,
         channelAccountId: editor.channelAccountId,
         scopeType,
         scopeKey,
         agentProfileId: selectedAgentProfileId,
-        temporary: false,
         priority: 0,
         publishObject,
       });
-      const result = await channel.upsertBinding.invoke({ binding });
+      const result = await channel.upsertPublication.invoke({ publication });
       if (!result.success) {
         throw new Error(result.msg || t('settings.channels.publication.saveFailed'));
       }
@@ -820,7 +870,7 @@ const PublicationBindingPanel: React.FC = () => {
                                   shape='circle'
                                   className={styles.bindingIconButton}
                                   icon={<Edit theme='outline' size='16' />}
-                                  onClick={() => handleEditBinding(primaryBinding)}
+                                  onClick={() => handleEditPublication(entry)}
                                 />
                               </Tooltip>
                               <Tooltip content={t('common.delete')}>
@@ -832,7 +882,7 @@ const PublicationBindingPanel: React.FC = () => {
                                   className={styles.bindingIconButton}
                                   icon={<Delete theme='outline' size='16' />}
                                   loading={deletingBindingId === primaryBinding.id}
-                                  onClick={() => void handleDeleteBinding(primaryBinding.id)}
+                                  onClick={() => void handleDeletePublication(entry)}
                                 />
                               </Tooltip>
                             </div>
@@ -864,7 +914,7 @@ const PublicationBindingPanel: React.FC = () => {
                     {t('settings.channels.publication.addObjectDescription')}
                   </div>
                 </div>
-                {editor.editingBindingId ? (
+                {editor.editingPublicationId ? (
                   <Tag className={styles.metricTag}>{t('settings.channels.publication.updateDurable')}</Tag>
                 ) : null}
               </div>
@@ -987,7 +1037,7 @@ const PublicationBindingPanel: React.FC = () => {
                     )
                   }
                 >
-                  {editor.editingBindingId
+                  {editor.editingPublicationId
                     ? t('settings.channels.publication.updateDurable')
                     : t('settings.channels.publication.saveDurable')}
                 </Button>

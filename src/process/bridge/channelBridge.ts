@@ -27,6 +27,8 @@ import type {
   IChannelBinding,
   IChannelControlLease,
   IChannelBindingCatalog,
+  IChannelPublicationEntry,
+  IChannelPublicationUpsertInput,
   IChannelPublicationSnapshot,
   IChannelPublishObjectActiveSessionPointer,
   IChannelPublishObjectCatalogEntry,
@@ -40,7 +42,6 @@ import type {
 import {
   findConflictingChannelBinding,
   getChannelAccountId,
-  getChannelBindingPublishObject,
   getChannelBindingPublishObjectLabel,
   getChannelPublishObjectCatalogEntryIdentity,
   getChannelBindingSource,
@@ -756,6 +757,138 @@ function attachPublishObjectActiveSessionPointers(params: {
   }));
 }
 
+function buildPublicationEntries(params: {
+  connectors: IConnectorInstance[];
+  bindings: IChannelBinding[];
+  audiences: IChannelAudienceEntry[];
+  publishObjects: IChannelPublishObjectCatalogEntry[];
+  activeSessions: IChannelActiveSessionEntry[];
+}): IChannelPublicationEntry[] {
+  const connectorMap = new Map(params.connectors.map((connector) => [connector.id, connector] as const));
+  const audienceMap = new Map(params.audiences.map((audience) => [audience.key, audience] as const));
+  const sessionsByBindingId = new Map<string, IChannelActiveSessionEntry[]>();
+
+  for (const session of params.activeSessions) {
+    const bindingId = session.publicationBindingId ?? session.bindingId;
+    if (!bindingId) {
+      continue;
+    }
+
+    const currentSessions = sessionsByBindingId.get(bindingId) ?? [];
+    currentSessions.push(session);
+    sessionsByBindingId.set(bindingId, currentSessions);
+  }
+
+  return params.bindings
+    .filter((binding) => binding.scopeType !== 'connector_default')
+    .flatMap((binding) => {
+      const channelAccountId = getChannelAccountId(binding);
+      if (!channelAccountId) {
+        return [];
+      }
+
+      const audience = binding.scopeKey ? audienceMap.get(binding.scopeKey) : undefined;
+      const publishObject = resolveCatalogPublishObjectEntry({
+        binding,
+        audience,
+        publishObjects: params.publishObjects,
+      });
+      if (!publishObject) {
+        return [];
+      }
+
+      const connector = connectorMap.get(channelAccountId);
+      const currentSession = (sessionsByBindingId.get(binding.id) ?? []).toSorted(
+        (left, right) => right.lastActivity - left.lastActivity
+      )[0];
+
+      return [
+        {
+          id: binding.id,
+          agentProfileId: binding.agentProfileId,
+          channelAccountId,
+          channelAccountName: connector?.name,
+          channelAccountPlatform: connector?.platform,
+          publishObject,
+          binding,
+          currentSession,
+          enabled: binding.enabled,
+          createdAt: binding.createdAt,
+          updatedAt: binding.updatedAt,
+        },
+      ];
+    })
+    .toSorted((left, right) => {
+      const sessionDelta = (right.currentSession?.lastActivity ?? 0) - (left.currentSession?.lastActivity ?? 0);
+      if (sessionDelta !== 0) {
+        return sessionDelta;
+      }
+
+      return right.updatedAt - left.updatedAt;
+    });
+}
+
+function normalizePublicationScopeKey(
+  scopeType: IChannelPublicationUpsertInput['scopeType'],
+  scopeKey: string
+): string | undefined {
+  if (scopeType === 'connector_default') {
+    return undefined;
+  }
+
+  const normalizedScopeKey = scopeKey.trim();
+  return normalizedScopeKey || undefined;
+}
+
+function buildPublicationBindingId(
+  channelAccountId: string,
+  scopeType: IChannelPublicationUpsertInput['scopeType'],
+  scopeKey: string
+): string {
+  const normalizedScopeKey = normalizePublicationScopeKey(scopeType, scopeKey) ?? 'default';
+  const randomSuffix = Math.random().toString(36).slice(2, 8);
+  return `binding_manual_${channelAccountId}_${scopeType}_${normalizedScopeKey}_${randomSuffix}`;
+}
+
+function buildBindingFromPublicationInput(params: {
+  publication: IChannelPublicationUpsertInput;
+  existingBinding?: IChannelBinding;
+}): IChannelBinding {
+  const now = Date.now();
+  const existingMetadata =
+    params.existingBinding?.metadata && typeof params.existingBinding.metadata === 'object'
+      ? params.existingBinding.metadata
+      : {};
+
+  return {
+    id:
+      params.existingBinding?.id ??
+      params.publication.publicationId ??
+      buildPublicationBindingId(
+        params.publication.channelAccountId,
+        params.publication.scopeType,
+        params.publication.scopeKey
+      ),
+    connectorId: params.publication.channelAccountId,
+    channelAccountId: params.publication.channelAccountId,
+    scopeType: params.publication.scopeType,
+    scopeKey: normalizePublicationScopeKey(params.publication.scopeType, params.publication.scopeKey),
+    agentProfileId: params.publication.agentProfileId,
+    priority: params.publication.priority,
+    enabled: params.existingBinding?.enabled ?? true,
+    temporary: false,
+    fallbackAgentProfileId: params.existingBinding?.fallbackAgentProfileId,
+    metadata: {
+      ...existingMetadata,
+      source: 'settings-publication-panel',
+      operation: 'durable-publication',
+      ...(params.publication.publishObject ? { publishObject: params.publication.publishObject } : {}),
+    },
+    createdAt: params.existingBinding?.createdAt ?? now,
+    updatedAt: now,
+  };
+}
+
 /**
  * Initialize Channel IPC Bridge
  * Handles communication between renderer (Settings UI) and main process (Channel system)
@@ -828,6 +961,13 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       activeSessions,
     });
     const connectors = params.allConnectors.filter((connector) => (connector.configured ?? false) && connector.enabled);
+    const publications = buildPublicationEntries({
+      connectors,
+      bindings: params.publicationCatalog.bindings,
+      audiences,
+      publishObjects,
+      activeSessions,
+    });
     const bindings = params.channelAccountId
       ? params.publicationCatalog.bindings.filter((binding) => getChannelAccountId(binding) === params.channelAccountId)
       : params.publicationCatalog.bindings;
@@ -840,6 +980,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         bindings: bindings.map((binding) => withChannelAccountId(binding)),
         audiences,
         publishObjects,
+        publications: params.channelAccountId
+          ? publications.filter((publication) => publication.channelAccountId === params.channelAccountId)
+          : publications,
       },
       activeSessions,
     };
@@ -908,13 +1051,24 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       audiences: buildAudienceEntries(enrichedRemoteIdentities, allConnectors, publishObjects),
       activeSessions,
     });
+    const catalogAudiences = buildAudienceEntries(enrichedRemoteIdentities, allConnectors, catalogPublishObjects);
+    const publications = buildPublicationEntries({
+      connectors,
+      bindings: publicationCatalog.bindings,
+      audiences: catalogAudiences,
+      publishObjects: catalogPublishObjects,
+      activeSessions,
+    });
     const catalog: IChannelBindingCatalog = {
       connectors,
       channelAccounts: connectors,
       agentProfiles: publicationCatalog.agentProfiles,
       bindings: bindings.map((binding) => withChannelAccountId(binding)),
-      audiences: buildAudienceEntries(enrichedRemoteIdentities, allConnectors, catalogPublishObjects),
+      audiences: catalogAudiences,
       publishObjects: catalogPublishObjects,
+      publications: channelAccountId
+        ? publications.filter((publication) => publication.channelAccountId === channelAccountId)
+        : publications,
     };
 
     return {
@@ -1573,26 +1727,33 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   });
 
-  /**
-   * Upsert channel binding
-   */
-  channel.upsertBinding.provider(async ({ binding }) => {
+  const upsertPublication = async ({ publication }: { publication: IChannelPublicationUpsertInput }) => {
     try {
-      const normalizedBinding = withChannelBindingPublishObject(withChannelAccountId(binding));
-      const channelAccountId = getChannelAccountId(normalizedBinding);
-      if (!channelAccountId) {
+      const conversations = await conversationServiceSingleton.listAllConversations();
+      const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
+      const existingBinding = publication.publicationId
+        ? publicationCatalog.bindings.find((binding) => binding.id === publication.publicationId)
+        : undefined;
+      const normalizedBinding = withChannelBindingPublishObject(
+        withChannelAccountId(
+          buildBindingFromPublicationInput({
+            publication,
+            existingBinding,
+          })
+        )
+      );
+      const normalizedChannelAccountId = getChannelAccountId(normalizedBinding);
+      if (!normalizedChannelAccountId) {
         throw new Error('Channel account is required before saving a durable IM binding');
       }
 
-      const conversations = await conversationServiceSingleton.listAllConversations();
-      const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
       const workspace = publicationCatalog.agentProfileWorkspaceById[normalizedBinding.agentProfileId];
       if (!workspace) {
         throw new Error(`Agent profile ${normalizedBinding.agentProfileId} is not bound to a project workspace`);
       }
 
       const conflictingBinding = findConflictingChannelBinding(
-        publicationCatalog.bindings.filter((item) => getChannelAccountId(item) === channelAccountId),
+        publicationCatalog.bindings.filter((item) => getChannelAccountId(item) === normalizedChannelAccountId),
         normalizedBinding
       );
       if (conflictingBinding && conflictingBinding.agentProfileId !== normalizedBinding.agentProfileId) {
@@ -1607,30 +1768,30 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       await projectChannelPublicationService.upsertChannelBinding(workspace, normalizedBinding);
       return { success: true };
     } catch (error) {
-      console.error('[ChannelBridge] upsertBinding error:', error);
+      console.error('[ChannelBridge] upsertPublication error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
-  });
+  };
 
-  /**
-   * Delete channel binding
-   */
-  channel.deleteBinding.provider(async ({ bindingId }) => {
+  const deletePublication = async ({ publicationId }: { publicationId: string }) => {
     try {
       const conversations = await conversationServiceSingleton.listAllConversations();
       const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
-      const workspace = publicationCatalog.bindingWorkspaceById[bindingId];
+      const workspace = publicationCatalog.bindingWorkspaceById[publicationId];
       if (!workspace) {
-        throw new Error(`Binding ${bindingId} is not bound to a project workspace`);
+        throw new Error(`Publication ${publicationId} is not bound to a project workspace`);
       }
 
-      await projectChannelPublicationService.deleteChannelBinding(workspace, bindingId);
+      await projectChannelPublicationService.deleteChannelBinding(workspace, publicationId);
       return { success: true };
     } catch (error) {
-      console.error('[ChannelBridge] deleteBinding error:', error);
+      console.error('[ChannelBridge] deletePublication error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
-  });
+  };
+
+  channel.upsertPublication.provider(upsertPublication);
+  channel.deletePublication.provider(deletePublication);
 
   const prepareConversationPublication = async (conversationId: string) => {
     const publicationService = getChannelPublicationService();

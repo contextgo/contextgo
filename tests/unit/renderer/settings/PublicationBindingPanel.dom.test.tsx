@@ -6,8 +6,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockGetBindingCatalogInvoke = vi.fn();
 const mockGetActiveSessionCatalogInvoke = vi.fn();
 const mockRefreshPublicationSnapshotInvoke = vi.fn();
-const mockUpsertBindingInvoke = vi.fn();
-const mockDeleteBindingInvoke = vi.fn();
+const mockUpsertPublicationInvoke = vi.fn();
+const mockDeletePublicationInvoke = vi.fn();
 const messageError = vi.fn();
 const messageSuccess = vi.fn();
 
@@ -89,11 +89,11 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     refreshPublicationSnapshot: {
       invoke: (...args: unknown[]) => mockRefreshPublicationSnapshotInvoke(...args),
     },
-    upsertBinding: {
-      invoke: (...args: unknown[]) => mockUpsertBindingInvoke(...args),
+    upsertPublication: {
+      invoke: (...args: unknown[]) => mockUpsertPublicationInvoke(...args),
     },
-    deleteBinding: {
-      invoke: (...args: unknown[]) => mockDeleteBindingInvoke(...args),
+    deletePublication: {
+      invoke: (...args: unknown[]) => mockDeletePublicationInvoke(...args),
     },
   },
 }));
@@ -294,6 +294,28 @@ const catalogResponse = {
         lastActive: 2000,
       },
       {
+        key: 'feishu://topic/chat-topic/root-2',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        remoteChatId: 'feishu://topic/chat-topic/root-2',
+        platformChatId: 'chat-topic',
+        peerScope: 'thread',
+        threadId: 'root-2',
+        title: 'Release topic',
+        subtitle: 'Topic root 2',
+        objectKey: 'feishu://topic/chat-topic/root-2',
+        objectKind: 'topic',
+        objectTitle: 'Release topic',
+        objectSubtitle: 'Topic root 2',
+        parentObjectKey: 'chat-topic',
+        parentObjectTitle: 'Core Ops Group',
+        parentObjectKind: 'group',
+        publishObjectCatalogEntryId: 'connector-1::topic::feishu://topic/chat-topic/root-2::chat-topic',
+        objectSource: 'inbound-learned',
+        objectQuality: 'resolved',
+        lastActive: 1800,
+      },
+      {
         key: 'slack://ws/team/channel/support',
         connectorId: 'connector-2',
         scopeType: 'remote_chat',
@@ -338,10 +360,50 @@ const sessionCatalogResponse = {
   ],
 };
 
+const publicationEntryPublishObject = {
+  id: 'connector-1::topic::feishu://topic/chat-topic/root-1::chat-topic',
+  channelAccountId: 'connector-1',
+  nativeObjectType: 'topic',
+  nativeObjectId: 'feishu://topic/chat-topic/root-1',
+  parentNativeObjectId: 'chat-topic',
+  displayProfile: {
+    title: 'Ops topic',
+    subtitle: 'Topic root 1',
+    parentTitle: 'Core Ops Group',
+    source: 'inbound-learned',
+    quality: 'fallback',
+    resolvedAt: 2000,
+  },
+  refreshState: {
+    status: 'needs-refresh',
+    reason: 'technical-fallback',
+    updatedAt: 2000,
+  },
+  createdAt: 1200,
+  updatedAt: 2000,
+};
+
 const publicationSnapshotResponse = {
   success: true,
   data: {
-    catalog: catalogResponse.data,
+    catalog: {
+      ...catalogResponse.data,
+      publications: [
+        {
+          id: 'binding-topic-1',
+          agentProfileId: 'agent-profile-1',
+          channelAccountId: 'connector-1',
+          channelAccountName: 'Feishu Ops',
+          channelAccountPlatform: 'lark',
+          enabled: true,
+          createdAt: 1000,
+          updatedAt: 1200,
+          binding: catalogResponse.data.bindings[1],
+          publishObject: publicationEntryPublishObject,
+          currentSession: sessionCatalogResponse.data[0],
+        },
+      ],
+    },
     activeSessions: sessionCatalogResponse.data,
     refreshedAt: 2000,
   },
@@ -365,8 +427,8 @@ describe('PublicationBindingPanel', () => {
     mockGetBindingCatalogInvoke.mockResolvedValue(catalogResponse);
     mockGetActiveSessionCatalogInvoke.mockResolvedValue(sessionCatalogResponse);
     mockRefreshPublicationSnapshotInvoke.mockResolvedValue(publicationSnapshotResponse);
-    mockUpsertBindingInvoke.mockResolvedValue({ success: true });
-    mockDeleteBindingInvoke.mockResolvedValue({ success: true });
+    mockUpsertPublicationInvoke.mockResolvedValue({ success: true });
+    mockDeletePublicationInvoke.mockResolvedValue({ success: true });
   });
 
   it('shows the selected agent summary and only that agent published objects by default', async () => {
@@ -388,6 +450,42 @@ describe('PublicationBindingPanel', () => {
     await screen.findByText('Ops topic');
 
     expect(screen.getByText('Needs identification')).toBeInTheDocument();
+  });
+
+  it('renders published objects from explicit publication entries even without audience reconstruction', async () => {
+    mockRefreshPublicationSnapshotInvoke.mockResolvedValueOnce({
+      success: true,
+      data: {
+        catalog: {
+          ...catalogResponse.data,
+          audiences: [],
+          publications: [
+            {
+              id: 'binding-topic-1',
+              agentProfileId: 'agent-profile-1',
+              channelAccountId: 'connector-1',
+              channelAccountName: 'Feishu Ops',
+              channelAccountPlatform: 'lark',
+              enabled: true,
+              createdAt: 1000,
+              updatedAt: 1200,
+              binding: catalogResponse.data.bindings[1],
+              publishObject: publicationEntryPublishObject,
+              currentSession: sessionCatalogResponse.data[0],
+            },
+          ],
+        },
+        activeSessions: sessionCatalogResponse.data,
+        refreshedAt: 2000,
+      },
+    });
+
+    renderPanel();
+
+    await screen.findByText('Ops topic');
+
+    expect(screen.getByText(/Channel instance:\s*Feishu Ops/i)).toBeInTheDocument();
+    expect(screen.getByText(/Current project session:\s*Active now/i)).toBeInTheDocument();
   });
 
   it('preselects the agent from publication intent and starts with an empty published-object list', async () => {
@@ -436,21 +534,19 @@ describe('PublicationBindingPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Publish Agent/i }));
 
     await waitFor(() => {
-      expect(mockUpsertBindingInvoke).toHaveBeenCalledWith({
-        binding: expect.objectContaining({
-          connectorId: 'connector-2',
+      expect(mockUpsertPublicationInvoke).toHaveBeenCalledWith({
+        publication: expect.objectContaining({
+          channelAccountId: 'connector-2',
           scopeType: 'remote_chat',
           scopeKey: 'slack://ws/team/channel/support',
           agentProfileId: 'agent-profile-2',
-          metadata: expect.objectContaining({
-            publishObject: {
-              nativeObjectType: 'channel',
-              nativeObjectId: 'slack://ws/team/channel/support',
-              parentNativeObjectId: undefined,
-              displayName: 'Support room',
-              discoverySource: 'inbound-learned',
-            },
-          }),
+          publishObject: {
+            nativeObjectType: 'channel',
+            nativeObjectId: 'slack://ws/team/channel/support',
+            parentNativeObjectId: undefined,
+            displayName: 'Support room',
+            discoverySource: 'inbound-learned',
+          },
         }),
       });
     });
@@ -484,8 +580,41 @@ describe('PublicationBindingPanel', () => {
     fireEvent.click(screen.getByText('delete-icon').closest('button') as HTMLButtonElement);
 
     await waitFor(() => {
-      expect(mockDeleteBindingInvoke).toHaveBeenCalledWith({ bindingId: 'binding-topic-1' });
+      expect(mockDeletePublicationInvoke).toHaveBeenCalledWith({ publicationId: 'binding-topic-1' });
       expect(mockRefreshPublicationSnapshotInvoke).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('edits one publication while preserving the publication identity', async () => {
+    renderPanel();
+
+    await screen.findByText('Ops topic');
+
+    fireEvent.click(screen.getByText('edit-icon').closest('button') as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Select a publish object' })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Select a publish object' }), {
+      target: { value: 'feishu://topic/chat-topic/root-2' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Update publication/i }));
+
+    await waitFor(() => {
+      expect(mockUpsertPublicationInvoke).toHaveBeenCalledWith({
+        publication: expect.objectContaining({
+          publicationId: 'binding-topic-1',
+          channelAccountId: 'connector-1',
+          scopeKey: 'feishu://topic/chat-topic/root-2',
+          agentProfileId: 'agent-profile-1',
+          publishObject: expect.objectContaining({
+            nativeObjectId: 'feishu://topic/chat-topic/root-2',
+            displayName: 'Release topic',
+          }),
+        }),
+      });
     });
   });
 

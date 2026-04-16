@@ -389,6 +389,7 @@ export type IChannelBindingCatalog = {
   bindings: IChannelBinding[];
   audiences: IChannelAudienceEntry[];
   publishObjects?: IChannelPublishObjectCatalogEntry[];
+  publications?: IChannelPublicationEntry[];
 };
 
 export type IChannelPublicationCatalogRefreshResult = {
@@ -400,6 +401,30 @@ export type IChannelPublicationSnapshot = {
   catalog: IChannelBindingCatalog;
   activeSessions: IChannelActiveSessionEntry[];
   refreshedAt: number;
+};
+
+export type IChannelPublicationEntry = {
+  id: string;
+  agentProfileId: string;
+  channelAccountId: string;
+  channelAccountName?: string;
+  channelAccountPlatform?: PluginType;
+  publishObject: IChannelPublishObjectCatalogEntry;
+  binding: IChannelBinding;
+  currentSession?: IChannelActiveSessionEntry;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type IChannelPublicationUpsertInput = {
+  publicationId?: string;
+  channelAccountId: string;
+  scopeType: Exclude<ChannelBindingScopeType, 'temporary_override'>;
+  scopeKey: string;
+  agentProfileId: string;
+  priority: number;
+  publishObject?: IChannelPublishObject;
 };
 
 export type IChannelBindingTarget = {
