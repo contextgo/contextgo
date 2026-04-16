@@ -23,6 +23,19 @@
             entities: ['entity.system.home'],
             actions: ['action.system.home'],
           },
+          {
+            entities: ['entity.system.browsable'],
+            actions: ['action.system.view'],
+            uris: [
+              {
+                scheme: 'https',
+                host: 'remote.contextgo.io',
+              },
+              {
+                scheme: 'contextgo-remote',
+              },
+            ],
+          },
         ],
       },
     ],
