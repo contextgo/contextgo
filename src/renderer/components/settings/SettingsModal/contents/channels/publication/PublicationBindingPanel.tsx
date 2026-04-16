@@ -273,6 +273,11 @@ function getObjectRefreshBadgeLabel(entry: AgentPublicationObjectEntry, t: Trans
   return null;
 }
 
+type DiscoveryStatus = {
+  kind: 'official' | 'learned' | 'empty';
+  count: number;
+};
+
 const PublicationBindingPanel: React.FC = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -448,6 +453,41 @@ const PublicationBindingPanel: React.FC = () => {
       value: audience.key,
     }));
   }, [availableAudiences, selectedEditorChannelAccount, t]);
+
+  const discoverySummaryMap = useMemo(
+    () => new Map((catalog.discoverySummaries ?? []).map((summary) => [summary.channelAccountId, summary] as const)),
+    [catalog.discoverySummaries]
+  );
+
+  const discoveryStatus = useMemo<DiscoveryStatus | null>(() => {
+    if (!selectedEditorChannelAccount || !editor.channelAccountId) {
+      return null;
+    }
+
+    const explicitSummary = discoverySummaryMap.get(editor.channelAccountId);
+    if (explicitSummary) {
+      return {
+        kind: explicitSummary.state,
+        count: explicitSummary.discoveredCount,
+      };
+    }
+
+    if (availableAudiences.length === 0) {
+      return {
+        kind: 'empty',
+        count: 0,
+      };
+    }
+
+    const hasOfficialDiscovery = availableAudiences.some(
+      (audience) => audience.objectSource === 'official-pull' || audience.objectSource === 'runtime-resolved'
+    );
+
+    return {
+      kind: hasOfficialDiscovery ? 'official' : 'learned',
+      count: availableAudiences.length,
+    };
+  }, [availableAudiences, discoverySummaryMap, editor.channelAccountId, selectedEditorChannelAccount]);
 
   useEffect(() => {
     if (!editor.selectedAudienceKey) {
@@ -958,6 +998,44 @@ const PublicationBindingPanel: React.FC = () => {
                     disabled={!editor.channelAccountId || editor.useManualScope}
                     allowClear
                   />
+                  {discoveryStatus ? (
+                    <div className='space-y-6px border border-[var(--color-border-2)] rd-12px p-10px bg-[var(--color-fill-1)]/40'>
+                      <div className='text-12px font-600 text-t-primary'>
+                        {t('settings.channels.publication.discoveryStatusLabel')}
+                      </div>
+                      <div className='text-12px text-t-secondary leading-relaxed'>
+                        {discoveryStatus.kind === 'official'
+                          ? t('settings.channels.publication.discoveryHintOfficial', {
+                              count: discoveryStatus.count,
+                            })
+                          : discoveryStatus.kind === 'learned'
+                            ? t('settings.channels.publication.discoveryHintLearned', {
+                                count: discoveryStatus.count,
+                              })
+                            : t('settings.channels.publication.discoveryHintEmpty')}
+                      </div>
+                      {discoveryStatus.kind === 'empty' ? (
+                        <div className='space-y-6px'>
+                          <Button
+                            type='text'
+                            className='!justify-start !px-0'
+                            onClick={() =>
+                              setEditor((current) => ({
+                                ...current,
+                                useManualScope: true,
+                                selectedAudienceKey: '',
+                              }))
+                            }
+                          >
+                            {t('settings.channels.publication.discoveryHintEmptyAction')}
+                          </Button>
+                          <div className='text-12px text-t-secondary leading-relaxed'>
+                            {t('settings.channels.publication.discoveryHintEmptyHelp')}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <Button
                     type='text'
                     className='!justify-start !px-0'
@@ -1006,9 +1084,6 @@ const PublicationBindingPanel: React.FC = () => {
                         {t('settings.channels.publication.manualKeyHint')}
                       </div>
                     </div>
-                  ) : null}
-                  {!editor.useManualScope && editor.channelAccountId && publishObjectOptions.length === 0 ? (
-                    <Empty description={t('settings.channels.publication.emptyObjects')} className='w-full py-12px' />
                   ) : null}
                   {!editor.useManualScope && editor.selectedAudienceKey ? (
                     <div className='text-12px text-t-secondary'>

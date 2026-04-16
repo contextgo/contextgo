@@ -2106,6 +2106,15 @@ describe('channelBridge', () => {
           }),
         ])
       );
+      expect(result.data?.catalog.discoverySummaries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            channelAccountId: 'connector-lark-refresh',
+            state: 'official',
+            discoveredCount: 1,
+          }),
+        ])
+      );
       expect(typeof result.data?.refreshedAt).toBe('number');
       expect(publicationServiceMocks.resolvePublishObjectCatalog).toHaveBeenCalled();
     });

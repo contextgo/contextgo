@@ -1799,9 +1799,6 @@ export const channel = {
     'channel.upsert-publication'
   ),
   deletePublication: bridge.buildProvider<IBridgeResponse, { publicationId: string }>('channel.delete-publication'),
-  // Deprecated compatibility aliases
-  upsertBinding: bridge.buildProvider<IBridgeResponse, { binding: IChannelBinding }>('channel.upsert-binding'),
-  deleteBinding: bridge.buildProvider<IBridgeResponse, { bindingId: string }>('channel.delete-binding'),
   prepareConversationPublication: bridge.buildProvider<IBridgeResponse<IAgentProfile>, { conversationId: string }>(
     'channel.prepare-conversation-publication'
   ),

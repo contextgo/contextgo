@@ -381,6 +381,14 @@ export interface IChannelAudienceEntry {
   lastActive?: number;
 }
 
+export type ChannelPublicationDiscoveryState = 'official' | 'learned' | 'empty';
+
+export type IChannelPublicationDiscoverySummary = {
+  channelAccountId: string;
+  state: ChannelPublicationDiscoveryState;
+  discoveredCount: number;
+};
+
 export type IChannelBindingCatalog = {
   connectors: IChannelAccount[];
   /** @deprecated Use connectors. */
@@ -388,6 +396,7 @@ export type IChannelBindingCatalog = {
   agentProfiles: IAgentProfile[];
   bindings: IChannelBinding[];
   audiences: IChannelAudienceEntry[];
+  discoverySummaries?: IChannelPublicationDiscoverySummary[];
   publishObjects?: IChannelPublishObjectCatalogEntry[];
   publications?: IChannelPublicationEntry[];
 };

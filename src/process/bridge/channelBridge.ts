@@ -27,6 +27,7 @@ import type {
   IChannelBinding,
   IChannelControlLease,
   IChannelBindingCatalog,
+  IChannelPublicationDiscoverySummary,
   IChannelPublicationEntry,
   IChannelPublicationUpsertInput,
   IChannelPublicationSnapshot,
@@ -828,6 +829,39 @@ function buildPublicationEntries(params: {
     });
 }
 
+function buildPublicationDiscoverySummaries(params: {
+  connectors: IConnectorInstance[];
+  audiences: IChannelAudienceEntry[];
+}): IChannelPublicationDiscoverySummary[] {
+  return params.connectors.map((connector) => {
+    const connectorAudiences = params.audiences.filter((audience) => {
+      if (getChannelAccountId(audience) !== connector.id) {
+        return false;
+      }
+
+      return audience.scopeType === 'remote_chat' || audience.scopeType === 'remote_user';
+    });
+
+    if (connectorAudiences.length === 0) {
+      return {
+        channelAccountId: connector.id,
+        state: 'empty',
+        discoveredCount: 0,
+      };
+    }
+
+    const hasOfficialDiscovery = connectorAudiences.some(
+      (audience) => audience.objectSource === 'official-pull' || audience.objectSource === 'runtime-resolved'
+    );
+
+    return {
+      channelAccountId: connector.id,
+      state: hasOfficialDiscovery ? 'official' : 'learned',
+      discoveredCount: connectorAudiences.length,
+    };
+  });
+}
+
 function normalizePublicationScopeKey(
   scopeType: IChannelPublicationUpsertInput['scopeType'],
   scopeKey: string
@@ -961,6 +995,10 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       activeSessions,
     });
     const connectors = params.allConnectors.filter((connector) => (connector.configured ?? false) && connector.enabled);
+    const discoverySummaries = buildPublicationDiscoverySummaries({
+      connectors,
+      audiences,
+    });
     const publications = buildPublicationEntries({
       connectors,
       bindings: params.publicationCatalog.bindings,
@@ -979,6 +1017,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         agentProfiles: params.publicationCatalog.agentProfiles,
         bindings: bindings.map((binding) => withChannelAccountId(binding)),
         audiences,
+        discoverySummaries: params.channelAccountId
+          ? discoverySummaries.filter((summary) => summary.channelAccountId === params.channelAccountId)
+          : discoverySummaries,
         publishObjects,
         publications: params.channelAccountId
           ? publications.filter((publication) => publication.channelAccountId === params.channelAccountId)
@@ -1052,6 +1093,10 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       activeSessions,
     });
     const catalogAudiences = buildAudienceEntries(enrichedRemoteIdentities, allConnectors, catalogPublishObjects);
+    const discoverySummaries = buildPublicationDiscoverySummaries({
+      connectors,
+      audiences: catalogAudiences,
+    });
     const publications = buildPublicationEntries({
       connectors,
       bindings: publicationCatalog.bindings,
@@ -1065,6 +1110,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       agentProfiles: publicationCatalog.agentProfiles,
       bindings: bindings.map((binding) => withChannelAccountId(binding)),
       audiences: catalogAudiences,
+      discoverySummaries: channelAccountId
+        ? discoverySummaries.filter((summary) => summary.channelAccountId === channelAccountId)
+        : discoverySummaries,
       publishObjects: catalogPublishObjects,
       publications: channelAccountId
         ? publications.filter((publication) => publication.channelAccountId === channelAccountId)

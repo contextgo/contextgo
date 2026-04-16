@@ -47,6 +47,22 @@ const translations: Record<string, string> = {
   'settings.channels.publication.publishObjectLabel': 'Publish object',
   'settings.channels.publication.publishObjectPlaceholder': 'Select a publish object',
   'settings.channels.publication.publishObjectRequired': 'Please select a publish object first',
+  'settings.channels.publication.discoveryStatusLabel': 'Discovery status',
+  'settings.channels.publication.discoveryHintOfficial':
+    '{{count}} objects are available from channel discovery for this instance.',
+  'settings.channels.publication.discoveryHintLearned':
+    '{{count}} objects are available from recent IM activity for this instance.',
+  'settings.channels.publication.discoveryHintEmpty': 'No publish objects have been discovered for this instance yet.',
+  'settings.channels.publication.discoveryHintEmptyAction': 'Use manual fallback',
+  'settings.channels.publication.discoveryHintEmptyHelp':
+    'Use a target key directly, or let the target speak in IM first so ContextGo can learn it.',
+  'settings.channels.publication.scope.remoteUser': 'Specific user / DM',
+  'settings.channels.publication.scope.remoteChat': 'Specific group / channel / topic',
+  'settings.channels.publication.scopeKeyRemoteUserPlaceholder': 'Remote user key, for example: user_123456',
+  'settings.channels.publication.scopeKeyRemoteChatPlaceholder':
+    'Audience key, for example: group:alpha or -100123456:thread:9',
+  'settings.channels.publication.manualKeyHint':
+    'Let the target speak in IM first when possible. Manual target keys are only for audiences that have not been discovered yet.',
   'settings.channels.publication.agentRequired': 'Please select the Agent to publish',
   'settings.channels.publication.saveDurable': 'Publish Agent',
   'settings.channels.publication.updateDurable': 'Update publication',
@@ -200,6 +216,15 @@ const catalogResponse = {
         createdAt: 1000,
         updatedAt: 1000,
       },
+      {
+        id: 'connector-3',
+        platform: 'weixin',
+        name: 'WeChat Personal',
+        enabled: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
     ],
     channelAccounts: [
       {
@@ -215,6 +240,15 @@ const catalogResponse = {
         id: 'connector-2',
         platform: 'slack',
         name: 'Slack Support',
+        enabled: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      },
+      {
+        id: 'connector-3',
+        platform: 'weixin',
+        name: 'WeChat Personal',
         enabled: true,
         status: 'running',
         createdAt: 1000,
@@ -328,6 +362,23 @@ const catalogResponse = {
         objectTitle: 'Support room',
         objectSubtitle: 'Slack shared channel',
         lastActive: 1500,
+      },
+    ],
+    discoverySummaries: [
+      {
+        channelAccountId: 'connector-1',
+        state: 'learned',
+        discoveredCount: 2,
+      },
+      {
+        channelAccountId: 'connector-2',
+        state: 'official',
+        discoveredCount: 1,
+      },
+      {
+        channelAccountId: 'connector-3',
+        state: 'empty',
+        discoveredCount: 0,
       },
     ],
   },
@@ -526,6 +577,10 @@ describe('PublicationBindingPanel', () => {
     await waitFor(() => {
       expect(screen.getByRole('combobox', { name: 'Select a publish object' })).toBeInTheDocument();
     });
+    expect(screen.getByText('Discovery status')).toBeInTheDocument();
+    expect(
+      screen.getByText('{{count}} objects are available from channel discovery for this instance.')
+    ).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Select a publish object' }), {
       target: { value: 'slack://ws/team/channel/support' },
@@ -549,6 +604,48 @@ describe('PublicationBindingPanel', () => {
           },
         }),
       });
+    });
+  });
+
+  it('surfaces a manual fallback action when no publish objects have been discovered', async () => {
+    renderPanel();
+
+    await screen.findByText('Ops Agent');
+
+    fireEvent.click(screen.getByRole('button', { name: /Add publish object/i }));
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Select a channel instance' }), {
+      target: { value: 'connector-3' },
+    });
+
+    expect(screen.getByText('No publish objects have been discovered for this instance yet.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Use a target key directly, or let the target speak in IM first so ContextGo can learn it.')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use manual fallback' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText('Audience key, for example: group:alpha or -100123456:thread:9')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('prefers process-provided discovery summary over audience-level inference', async () => {
+    renderPanel();
+
+    await screen.findByText('Ops Agent');
+
+    fireEvent.click(screen.getByRole('button', { name: /Add publish object/i }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Select a channel instance' }), {
+      target: { value: 'connector-2' },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('{{count}} objects are available from channel discovery for this instance.')
+      ).toBeInTheDocument();
     });
   });
 
