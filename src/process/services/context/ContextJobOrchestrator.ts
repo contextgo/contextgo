@@ -147,6 +147,7 @@ export class ContextJobOrchestrator {
       reason: `Promotion candidate is stable enough for project wiki (confidence=${input.candidate.confidence.toFixed(2)}).`,
       payload: {
         candidate: input.candidate,
+        artifactTargets: ['project_doc'],
       },
     });
   }
@@ -249,6 +250,12 @@ export function createPlannedContextJob(input: {
     triggerLabel: input.triggerLabel,
     triggeredAt: input.triggeredAt,
     reason: input.reason,
-    payload: input.payload ?? {},
+    payload: {
+      ...(input.payload ?? {}),
+      artifactTargets:
+        input.type === 'project_capability_curation'
+          ? ['project_doc', 'project_rules', 'project_skill']
+          : (input.payload as { artifactTargets?: string[] } | undefined)?.artifactTargets,
+    },
   });
 }
