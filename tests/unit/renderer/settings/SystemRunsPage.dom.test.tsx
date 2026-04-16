@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const navigateMock = vi.fn();
@@ -191,5 +191,137 @@ describe('SystemRunsPage', () => {
     expect(screen.getByText('Source: timer')).toBeInTheDocument();
     expect(screen.getByText('Artifact summary: Add a stable release-validation rule.')).toBeInTheDocument();
     expect(screen.getByText('Queued AGENTS append proposal')).toBeInTheDocument();
+  });
+
+  it('renders recent events as structured log rows with artifact qualifiers', async () => {
+    activityState.status = 'active';
+    activityState.activeMaintenanceCount = 3;
+    activityState.systemRuns = [
+      {
+        id: 'run-1',
+        rootRunId: 'run-1',
+        backend: 'context-engine',
+        agentProfileId: 'profile-1',
+        agentName: 'Context Engine · Session Compactor',
+        state: 'writing',
+        runtimeStatus: 'running',
+        lastActiveAt: new Date('2026-04-11T06:08:00Z').getTime(),
+        currentTask: 'Compressing repeated session signals',
+        systemManaged: true,
+        assistantId: 'system-context-engine-session-compactor',
+        systemOwner: 'context-engine',
+        systemRole: 'context-engine-session-compactor',
+        governanceIdentity: 'session_steward',
+        scopeLabel: 'workspace-alpha',
+        maintenanceKind: 'session_compaction',
+        latestArtifactSummary: 'Session working context refreshed.',
+        artifactRelativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
+        artifactTitle: 'Session working context',
+        artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+        reason: 'Session compaction triggered by repeated requests.',
+        source: 'hook',
+        triggerLabel: 'Context window prepared',
+        triggerEvent: 'context.window.prepared',
+        executionBoundaryPath: '/vault/space-1',
+        executionBoundaryLabel: 'My Space',
+        recentEvents: [
+          {
+            conversationId: 'thread-1',
+            kind: 'status',
+            text: 'Running session compaction',
+            at: new Date('2026-04-11T06:08:00Z').getTime(),
+          },
+        ],
+      },
+      {
+        id: 'run-2',
+        rootRunId: 'run-2',
+        backend: 'context-engine',
+        agentProfileId: 'profile-2',
+        agentName: 'Context Engine · Project Curator',
+        state: 'writing',
+        runtimeStatus: 'running',
+        lastActiveAt: new Date('2026-04-11T06:18:00Z').getTime(),
+        currentTask: 'Writing AGENTS append proposal',
+        systemManaged: true,
+        assistantId: 'system-context-engine-project-capability-curator',
+        systemOwner: 'context-engine',
+        systemRole: 'context-engine-project-capability-curator',
+        governanceIdentity: 'project_curator',
+        scopeLabel: 'workspace-alpha',
+        maintenanceKind: 'project_capability_curation',
+        latestArtifactSummary: 'Add a stable release-validation rule.',
+        artifactRelativePath: 'Projects/workspace/_context/proposals/agents-append-proposal.md',
+        artifactTitle: 'AGENTS append proposal',
+        artifactTargets: ['project_doc', 'project_rules', 'project_skill'],
+        reason: 'Refresh project docs and append-first proposals.',
+        source: 'timer',
+        triggerLabel: 'Project capability curation',
+        triggerEvent: 'timer.project_capability_curation',
+        executionBoundaryPath: '/vault/space-1',
+        executionBoundaryLabel: 'My Space',
+        recentEvents: [
+          {
+            conversationId: 'thread-2',
+            kind: 'message',
+            text: 'Queued AGENTS append proposal',
+            at: new Date('2026-04-11T06:18:00Z').getTime(),
+          },
+        ],
+      },
+      {
+        id: 'run-3',
+        rootRunId: 'run-3',
+        backend: 'context-engine',
+        agentProfileId: 'profile-3',
+        agentName: 'Context Engine · Space Distiller',
+        state: 'syncing',
+        runtimeStatus: 'running',
+        lastActiveAt: new Date('2026-04-11T06:28:00Z').getTime(),
+        currentTask: 'Distilling space memory',
+        systemManaged: true,
+        assistantId: 'system-context-engine-space-memory-distiller',
+        systemOwner: 'context-engine',
+        systemRole: 'context-engine-space-memory-distiller',
+        governanceIdentity: 'space_curator',
+        scopeLabel: 'workspace-alpha',
+        maintenanceKind: 'space_memory_distillation',
+        latestArtifactSummary: 'Merged repeated space-level signals.',
+        artifactRelativePath: 'Projects/workspace/_context/space/digest.md',
+        artifactTitle: 'Space digest',
+        artifactTargets: ['space_digest', 'profile_memory'],
+        reason: 'Refresh space memory digest.',
+        source: 'schedule',
+        triggerLabel: 'Space memory distillation',
+        triggerEvent: 'schedule.space_memory_distillation',
+        executionBoundaryPath: '/vault/space-1',
+        executionBoundaryLabel: 'My Space',
+        recentEvents: [
+          {
+            conversationId: 'thread-3',
+            kind: 'message',
+            text: 'Merged repeated space-level signals.',
+            at: new Date('2026-04-11T06:28:00Z').getTime(),
+          },
+        ],
+      },
+    ];
+
+    render(<SystemRunsPage />);
+
+    const proposalRun = await screen.findByTestId('system-run-run-2');
+    const sessionRun = screen.getByTestId('system-run-run-1');
+    const distillationRun = screen.getByTestId('system-run-run-3');
+
+    expect(within(proposalRun).getByText('Routing')).toBeInTheDocument();
+    expect(within(proposalRun).getByText('Artifact')).toBeInTheDocument();
+    expect(within(proposalRun).getByTestId('system-run-event-stream-run-2')).toBeInTheDocument();
+    expect(within(proposalRun).getByTestId('system-run-event-qualifier-run-2-0')).toHaveTextContent('proposal');
+    expect(within(sessionRun).getByTestId('system-run-event-qualifier-run-1-0')).toHaveTextContent('session-context');
+    expect(within(sessionRun).getByTestId('system-run-event-kind-run-1-0')).toHaveTextContent('status');
+    expect(within(distillationRun).getByText('Artifact summary: Merged repeated space-level signals.')).toBeInTheDocument();
+    expect(within(distillationRun).getByTestId('system-run-event-qualifier-run-3-0')).toHaveTextContent(
+      'space-distillation'
+    );
   });
 });
