@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetBindingCatalogInvoke = vi.fn();
 const mockGetActiveSessionCatalogInvoke = vi.fn();
-const mockRefreshPublicationSnapshotInvoke = vi.fn();
+const mockRefreshPublicationCatalogInvoke = vi.fn();
 const mockContinuationSessionInvoke = vi.fn();
 const mockEndContinuationSessionInvoke = vi.fn();
 const mockSetContinuationControlModeInvoke = vi.fn();
@@ -16,31 +16,29 @@ const messageWarning = vi.fn();
 const translations: Record<string, string> = {
   'settings.activeSessions.handoffTitle': 'Continue in IM',
   'settings.activeSessions.handoffDescription':
-    'Reuse an existing IM object or hand off a conversation into a new one.',
+    'Choose one source session or conversation, then continue it in an IM target object.',
   'settings.activeSessions.sourceTitle': 'Source',
-  'settings.activeSessions.sourceDescription': 'Pick a conversation or session to continue from.',
-  'settings.activeSessions.sourcePlaceholder': 'Select source',
+  'settings.activeSessions.sourceDescription': 'Choose a source conversation or session to continue.',
   'settings.activeSessions.targetTitle': 'Target',
-  'settings.activeSessions.targetDescription': 'Pick a channel instance and publish object.',
-  'settings.activeSessions.connectorPlaceholder': 'Select connector',
-  'settings.activeSessions.targetPlaceholder': 'Select target',
-  'settings.activeSessions.mode.resume': 'Resume current thread',
-  'settings.activeSessions.mode.newThread': 'Start new thread',
-  'settings.activeSessions.mode.resumeHint': 'Resume in the current IM thread.',
-  'settings.activeSessions.mode.newThreadHint': 'Start a new IM thread.',
-  'settings.activeSessions.controlMode.imOwner': 'IM owner',
-  'settings.activeSessions.controlMode.imObserver': 'Observer',
-  'settings.activeSessions.controlMode.imOwnerHint': 'IM side keeps control.',
-  'settings.activeSessions.controlMode.imObserverHint': 'Desktop keeps control.',
-  'settings.activeSessions.submitResume': 'Resume in IM',
-  'settings.activeSessions.submitNewThread': 'Start in new thread',
-  'settings.activeSessions.loadFailed': 'Failed to load session continuation data',
-  'settings.activeSessions.empty': 'No sessions',
-  'settings.activeSessions.noConversation': 'No conversation',
+  'settings.activeSessions.targetDescription': 'Choose which IM object should host the continued session.',
+  'settings.activeSessions.connectorPlaceholder': 'Select a channel instance',
+  'settings.activeSessions.targetPlaceholder': 'Select a target object',
+  'settings.activeSessions.sourcePlaceholder': 'Select a source',
   'settings.activeSessions.selectedTag': 'Selected',
   'settings.activeSessions.activeTag': 'Active',
-  'settings.activeSessions.handoffTag': 'Handoff',
   'settings.activeSessions.useAsSource': 'Use as source',
+  'settings.activeSessions.noConversation': 'No conversation',
+  'settings.activeSessions.empty': 'No active sessions',
+  'settings.activeSessions.loadFailed': 'Failed to load continuation data',
+  'settings.activeSessions.sourceRequired': 'Source required',
+  'settings.activeSessions.connectorRequired': 'Connector required',
+  'settings.activeSessions.targetRequired': 'Target required',
+  'settings.activeSessions.handoffNow': 'Continue now',
+  'settings.activeSessions.mode.resume': 'Resume',
+  'settings.activeSessions.mode.newThread': 'New thread',
+  'settings.activeSessions.controlMode.imOwner': 'IM owner',
+  'settings.activeSessions.controlMode.imObserver': 'IM observer',
+  'settings.activeSessions.controlMode.desktopOwner': 'Desktop owner',
   'common.refresh': 'Refresh',
 };
 
@@ -54,8 +52,8 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     getActiveSessionCatalog: {
       invoke: (...args: unknown[]) => mockGetActiveSessionCatalogInvoke(...args),
     },
-    refreshPublicationSnapshot: {
-      invoke: (...args: unknown[]) => mockRefreshPublicationSnapshotInvoke(...args),
+    refreshPublicationCatalog: {
+      invoke: (...args: unknown[]) => mockRefreshPublicationCatalogInvoke(...args),
     },
     continuationSession: {
       invoke: (...args: unknown[]) => mockContinuationSessionInvoke(...args),
@@ -119,9 +117,9 @@ vi.mock('@arco-design/web-react', () => ({
       aria-label={placeholder ?? 'select'}
       onChange={(event) => onChange?.(event.target.value)}
     >
-      <option value=''>{placeholder ?? 'empty'}</option>
+      {placeholder ? <option value=''>{placeholder}</option> : null}
       {options.map((option) => (
-        <option key={option.value} value={option.value}>
+        <option key={String(option.value)} value={String(option.value)}>
           {option.label}
         </option>
       ))}
@@ -133,17 +131,16 @@ vi.mock('@arco-design/web-react', () => ({
 
 import SessionContinuationPanel from '@/renderer/components/settings/SettingsModal/contents/channels/SessionContinuationPanel';
 
-const snapshotResponse = {
+const refreshSnapshotResponse = {
   success: true,
   data: {
-    catalog: {
+    bindingCatalog: {
       connectors: [
         {
           id: 'connector-1',
           platform: 'lark',
           name: 'Feishu Ops',
           enabled: true,
-          configured: true,
           status: 'running',
           createdAt: 1000,
           updatedAt: 1000,
@@ -155,7 +152,6 @@ const snapshotResponse = {
           platform: 'lark',
           name: 'Feishu Ops',
           enabled: true,
-          configured: true,
           status: 'running',
           createdAt: 1000,
           updatedAt: 1000,
@@ -165,16 +161,20 @@ const snapshotResponse = {
       bindings: [],
       audiences: [
         {
-          key: 'group:ops-room',
           connectorId: 'connector-1',
-          scopeType: 'group',
-          title: 'Ops Room',
-          subtitle: 'Lark group',
-          displayName: 'Ops Room',
-          remoteChatId: 'chat-1',
+          scopeType: 'remote_chat',
+          key: 'chat:ops-room',
+          title: 'Ops room',
+          displayName: 'Ops room',
+          subtitle: 'Incident bridge',
+          remoteChatId: 'chat:ops-room',
+          platformChatId: 'oc_group_1',
           remoteChatType: 'group',
-          remoteUserId: null,
-          platformChatId: 'oc_chat_1',
+          objectKey: 'chat:ops-room',
+          objectKind: 'group',
+          objectTitle: 'Ops room',
+          createdAt: 1000,
+          updatedAt: 1000,
         },
       ],
       publishObjects: [],
@@ -182,64 +182,73 @@ const snapshotResponse = {
     activeSessions: [
       {
         id: 'session-1',
+        externalSessionId: 'session-1',
         connectorId: 'connector-1',
         connectorName: 'Feishu Ops',
         connectorPlatform: 'lark',
-        audienceTitle: 'Ops Room',
+        audienceKey: 'chat:ops-room',
+        audienceTitle: 'Ops room',
         conversationId: 'conversation-1',
-        workspace: 'Project Alpha',
-        lastActivity: Date.now() - 60_000,
+        workspace: '/tmp/workspace',
         agentType: 'codex',
         bindingTemporary: false,
+        lastActivity: Date.now(),
       },
     ],
-    refreshedAt: Date.now(),
   },
 };
-
-function renderPanel() {
-  return render(
-    <MemoryRouter initialEntries={[{ pathname: '/settings/continuation' } as const]}>
-      <SessionContinuationPanel />
-    </MemoryRouter>
-  );
-}
 
 describe('SessionContinuationPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetBindingCatalogInvoke.mockResolvedValue({ success: true, data: snapshotResponse.data.catalog });
-    mockGetActiveSessionCatalogInvoke.mockResolvedValue({ success: true, data: snapshotResponse.data.activeSessions });
-    mockRefreshPublicationSnapshotInvoke.mockResolvedValue(snapshotResponse);
-    mockContinuationSessionInvoke.mockResolvedValue({ success: true, data: { id: 'continuation-1' } });
-    mockEndContinuationSessionInvoke.mockResolvedValue({ success: true, data: true });
-    mockSetContinuationControlModeInvoke.mockResolvedValue({ success: true, data: true });
+    mockRefreshPublicationCatalogInvoke.mockResolvedValue(refreshSnapshotResponse);
+    mockGetBindingCatalogInvoke.mockResolvedValue({ success: true, data: refreshSnapshotResponse.data.bindingCatalog });
+    mockGetActiveSessionCatalogInvoke.mockResolvedValue({
+      success: true,
+      data: refreshSnapshotResponse.data.activeSessions,
+    });
+    mockContinuationSessionInvoke.mockResolvedValue({ success: true, data: { targetExternalSessionId: 'session-2' } });
+    mockEndContinuationSessionInvoke.mockResolvedValue({
+      success: true,
+      data: { targetExternalSessionId: 'session-1' },
+    });
+    mockSetContinuationControlModeInvoke.mockResolvedValue({
+      success: true,
+      data: { targetExternalSessionId: 'session-1' },
+    });
   });
 
-  it('loads source and target options via refreshPublicationSnapshot on first render', async () => {
-    renderPanel();
+  it('loads continuation data from the explicit publication snapshot instead of stitching catalog and sessions separately', async () => {
+    render(
+      <MemoryRouter>
+        <SessionContinuationPanel />
+      </MemoryRouter>
+    );
 
     await screen.findByText('Continue in IM');
-    await waitFor(() => expect(screen.getByText('Use as source')).toBeInTheDocument());
 
-    expect(mockRefreshPublicationSnapshotInvoke).toHaveBeenCalled();
-    expect(mockRefreshPublicationSnapshotInvoke).toHaveBeenLastCalledWith(undefined);
-    expect(mockGetActiveSessionCatalogInvoke).not.toHaveBeenCalled();
+    expect(mockRefreshPublicationCatalogInvoke).toHaveBeenCalledTimes(1);
     expect(mockGetBindingCatalogInvoke).not.toHaveBeenCalled();
+    expect(mockGetActiveSessionCatalogInvoke).not.toHaveBeenCalled();
+    expect(screen.getByRole('combobox', { name: 'Select a source' })).toHaveValue('session:session-1');
+    expect(screen.getByRole('combobox', { name: 'Select a channel instance' })).toHaveValue('connector-1');
   });
 
-  it('reuses refreshPublicationSnapshot when the user manually refreshes', async () => {
-    renderPanel();
-
-    await waitFor(() => expect(mockRefreshPublicationSnapshotInvoke).toHaveBeenCalled());
-    const callCountBeforeManualRefresh = mockRefreshPublicationSnapshotInvoke.mock.calls.length;
-
-    fireEvent.click(screen.getByRole('button', { name: /Refresh/ }));
-
-    await waitFor(() =>
-      expect(mockRefreshPublicationSnapshotInvoke.mock.calls.length).toBe(callCountBeforeManualRefresh + 1)
+  it('refreshes the continuation view via the explicit publication snapshot provider', async () => {
+    render(
+      <MemoryRouter>
+        <SessionContinuationPanel />
+      </MemoryRouter>
     );
-    expect(mockGetActiveSessionCatalogInvoke).not.toHaveBeenCalled();
+
+    await screen.findByText('Continue in IM');
+
+    fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
+
+    await waitFor(() => {
+      expect(mockRefreshPublicationCatalogInvoke).toHaveBeenCalledTimes(2);
+    });
     expect(mockGetBindingCatalogInvoke).not.toHaveBeenCalled();
+    expect(mockGetActiveSessionCatalogInvoke).not.toHaveBeenCalled();
   });
 });
