@@ -6,6 +6,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
+import { buildWorkspaceReferenceLabel } from '@/renderer/utils/file/workspaceReferences';
 
 describe('buildDisplayMessage', () => {
   const workspace = '/tmp/contextgo/workspace-1';
@@ -44,5 +45,24 @@ describe('buildDisplayMessage', () => {
     const files = [`${workspace}/uploads/photo_contextgo_1234567890123.jpg`];
     const result = buildDisplayMessage('hello', files, workspace);
     expect(result).toContain(`${workspace}/uploads/photo.jpg`);
+  });
+});
+
+describe('buildWorkspaceReferenceLabel', () => {
+  it('uses relative workspace paths when available', () => {
+    const result = buildWorkspaceReferenceLabel({
+      path: '/tmp/contextgo/workspace-1/src/index.ts',
+      name: 'index.ts',
+      isFile: true,
+      relativePath: 'src/index.ts',
+    });
+
+    expect(result).toBe('@workspace/src/index.ts');
+  });
+
+  it('falls back to basename when no relative workspace path is available', () => {
+    const result = buildWorkspaceReferenceLabel('/tmp/contextgo/workspace-1/README.md');
+
+    expect(result).toBe('@workspace/README.md');
   });
 });

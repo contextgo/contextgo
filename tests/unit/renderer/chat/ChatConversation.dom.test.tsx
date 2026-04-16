@@ -240,6 +240,7 @@ const createConversation = (type: TChatConversation['type'], id: string): TChatC
     type,
     name: `${type}-${id}`,
     extra: {
+      spaceId: 'space-default',
       workspace: `/tmp/${id}`,
     },
     model: {
@@ -381,16 +382,17 @@ describe('ChatConversation', () => {
     );
   });
 
-  it('does not render the browser context header button when the conversation has no bound browser context', () => {
+  it('renders the browser context header button when the conversation can bind a browser context from its space', () => {
     render(<ChatConversation conversation={createConversation('acp', 'acp-no-browser')} />);
 
-    expect(screen.queryByTestId('browser-context-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('browser-context-button')).toBeInTheDocument();
   });
 
   it('renders the browser context header button when the conversation is already bound to a browser context', () => {
     const conversation = {
       ...createConversation('acp', 'acp-browser-bound'),
       extra: {
+        spaceId: 'space-default',
         workspace: '/tmp/acp-browser-bound',
         browserContextAssetId: 'asset-1',
       },

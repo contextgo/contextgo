@@ -103,6 +103,8 @@
   },
   "workspace": {
     "title": "Çalışma Alanı",
+    "viewFiles": "Dosyalar",
+    "viewChanges": "Değişiklikler",
     "pasteConfirm_title": "Dosyaları yapıştır",
     "pasteConfirm_message": "'{{name}}' dosyasını seçili klasöre ({{target}}) yapıştırmak istediğinizden emin misiniz?",
     "pasteConfirm_paste": "Yapıştır",
@@ -118,6 +120,8 @@
     "search.empty": "Arama sonucu boş",
     "addFile": "Dosya Ekle",
     "refresh": "Yenile",
+    "changesEmpty": "Çalışma alanında değişiklik yok",
+    "changesNotRepository": "Bu çalışma alanı bir git deposunun içinde değil",
     "temporarySpace": "Geçici Alan",
     "groupMembers": {
       "title": "Grup Uyeleri",
@@ -303,6 +307,7 @@
     "noModelSelected": "Mevcut oturum için model seçilmedi, mesaj gönderilemiyor",
     "sendMessageTo": "{{model}} modeline mesaj gönder",
     "processing": "İşleniyor...",
+    "uploadPending": "{{count}} dosya yükleniyor...",
     "quotaExceededTitle": "Model kotasına ulaşıldı",
     "quotaExceededBody": "Mevcut model kotası tükendi. Devam etmek için {{model}} modeline geçilsin mi?",
     "quotaExceededNoFallback": "Model kotasına ulaşıldı. Lütfen başka bir uygun modele geçin.",

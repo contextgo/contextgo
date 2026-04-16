@@ -244,6 +244,8 @@
   },
   "workspace": {
     "title": "工作空間",
+    "viewFiles": "檔案",
+    "viewChanges": "變更",
     "pasteConfirm_title": "貼上檔案",
     "pasteConfirm_message": "確定要將 '{{name}}' 貼上到選中的資料夾 ({{target}}) 嗎？",
     "pasteConfirm_paste": "貼上",
@@ -259,6 +261,8 @@
     "search.empty": "搜索結果為空",
     "addFile": "新增檔案",
     "refresh": "重新整理",
+    "changesEmpty": "目前工作區沒有變更",
+    "changesNotRepository": "目前工作區不在 git 儲存庫中",
     "temporarySpace": "臨時空間",
     "groupMembers": {
       "title": "組內成員",
@@ -442,6 +446,7 @@
     "noModelSelected": "當前會話未選擇模型，無法發送訊息",
     "sendMessageTo": "發送訊息到 {{model}}",
     "processing": "正在處理中……",
+    "uploadPending": "正在上傳 {{count}} 個檔案...",
     "quotaExceededTitle": "模型額度已用盡",
     "quotaExceededBody": "當前模型額度已用盡，是否切換到 {{model}}？",
     "quotaExceededNoFallback": "當前模型額度已用盡，請切換到其他可用模型。",

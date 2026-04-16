@@ -392,6 +392,19 @@ export const fs = {
       path: string;
     }
   >('get-git-repository-info'),
+  getWorkspaceGitChanges: bridge.buildProvider<
+    IBridgeResponse<IWorkspaceGitChangesPayload>,
+    {
+      path: string;
+    }
+  >('get-workspace-git-changes'),
+  getWorkspaceGitDiff: bridge.buildProvider<
+    IBridgeResponse<{ content: string }>,
+    {
+      workspacePath: string;
+      filePath: string;
+    }
+  >('get-workspace-git-diff'),
   createTempFile: bridge.buildProvider<string, { fileName: string }>('create-temp-file'), // 创建临时文件
   writeFile: bridge.buildProvider<boolean, { path: string; data: Uint8Array | string }>('write-file'), // 写入文件
   createZip: bridge.buildProvider<
@@ -1341,6 +1354,17 @@ export interface IGitRepositoryInfo {
   branch?: string | null;
   gitDir?: string | null;
   remoteUrl?: string | null;
+}
+
+export interface IWorkspaceGitChange {
+  path: string;
+  absolutePath: string;
+  status: string;
+}
+
+export interface IWorkspaceGitChangesPayload {
+  repository: IGitRepositoryInfo | null;
+  changes: IWorkspaceGitChange[];
 }
 
 // 文件元数据接口

@@ -233,6 +233,128 @@ async function getGitRepositoryInfo(targetPath: string): Promise<{
   }
 }
 
+async function resolveWorkspaceGitWorkingDir(targetPath: string): Promise<string | null> {
+  const resolvedPath = path.resolve(targetPath);
+
+  try {
+    const stat = await fs.stat(resolvedPath);
+    return stat.isDirectory() ? resolvedPath : path.dirname(resolvedPath);
+  } catch {
+    return null;
+  }
+}
+
+function parseWorkspaceGitStatus(
+  stdout: string,
+  workingDir: string
+): Array<{
+  path: string;
+  absolutePath: string;
+  status: string;
+}> {
+  return stdout
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter(Boolean)
+    .map((line) => {
+      const status = line.slice(0, 2).trim() || '??';
+      const rawPath = line.slice(3).trim();
+      const displayPath = rawPath.includes(' -> ') ? (rawPath.split(' -> ').at(-1) ?? rawPath) : rawPath;
+
+      return {
+        path: displayPath,
+        absolutePath: path.resolve(workingDir, displayPath),
+        status,
+      };
+    });
+}
+
+async function getWorkspaceGitChanges(targetPath: string): Promise<{
+  repository: Awaited<ReturnType<typeof getGitRepositoryInfo>> | null;
+  changes: Array<{
+    path: string;
+    absolutePath: string;
+    status: string;
+  }>;
+}> {
+  const repository = await getGitRepositoryInfo(targetPath);
+  if (!repository.isRepository) {
+    return {
+      repository: null,
+      changes: [],
+    };
+  }
+
+  const workingDir = await resolveWorkspaceGitWorkingDir(targetPath);
+  if (!workingDir) {
+    return {
+      repository,
+      changes: [],
+    };
+  }
+
+  const { stdout } = await execFileAsync('git', ['status', '--short', '--untracked-files=all', '--', '.'], {
+    cwd: workingDir,
+  });
+
+  return {
+    repository,
+    changes: parseWorkspaceGitStatus(stdout, workingDir),
+  };
+}
+
+async function buildUntrackedFileDiff(filePath: string, relativePath: string): Promise<string> {
+  const content = await fs.readFile(filePath, 'utf-8').catch(() => '[binary file]');
+  const lines = content.split(/\r?\n/);
+  const addedLines = lines.map((line) => `+${line}`).join('\n');
+  const lineCount = Math.max(lines.length, 1);
+
+  return [
+    `diff --git a/${relativePath} b/${relativePath}`,
+    'new file mode 100644',
+    '--- /dev/null',
+    `+++ b/${relativePath}`,
+    `@@ -0,0 +1,${lineCount} @@`,
+    addedLines,
+  ].join('\n');
+}
+
+async function getWorkspaceGitDiff(workspacePath: string, filePath: string): Promise<string> {
+  const workingDir = await resolveWorkspaceGitWorkingDir(workspacePath);
+  if (!workingDir) {
+    return '';
+  }
+
+  const relativePath = path.relative(workingDir, filePath).replace(/\\/g, '/');
+  if (!relativePath || relativePath.startsWith('..')) {
+    return '';
+  }
+
+  const runGitDiff = async (args: string[]): Promise<string> => {
+    try {
+      const { stdout } = await execFileAsync('git', args, { cwd: workingDir });
+      return stdout;
+    } catch (error) {
+      if (error && typeof error === 'object' && 'stdout' in error && typeof error.stdout === 'string') {
+        return error.stdout;
+      }
+      return '';
+    }
+  };
+
+  const unstagedDiff = await runGitDiff(['diff', '--no-ext-diff', '--relative', '--', relativePath]);
+  if (unstagedDiff.trim()) {
+    return unstagedDiff;
+  }
+
+  const stagedDiff = await runGitDiff(['diff', '--no-ext-diff', '--cached', '--relative', '--', relativePath]);
+  if (stagedDiff.trim()) {
+    return stagedDiff;
+  }
+
+  return buildUntrackedFileDiff(filePath, relativePath);
+}
+
 /**
  * Read assistant resource file with locale fallback
  * 读取助手资源文件，支持语言回退
@@ -635,6 +757,36 @@ export function initFsBridge(): void {
       return {
         success: true,
         data: await getGitRepositoryInfo(targetPath),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcBridge.fs.getWorkspaceGitChanges.provider(async ({ path: targetPath }) => {
+    try {
+      return {
+        success: true,
+        data: await getWorkspaceGitChanges(targetPath),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcBridge.fs.getWorkspaceGitDiff.provider(async ({ workspacePath, filePath }) => {
+    try {
+      return {
+        success: true,
+        data: {
+          content: await getWorkspaceGitDiff(workspacePath, filePath),
+        },
       };
     } catch (error) {
       return {

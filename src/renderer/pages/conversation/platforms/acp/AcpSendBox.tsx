@@ -12,12 +12,13 @@ import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/ho
 import { allSupportedExts } from '@/renderer/services/FileService';
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import { mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
+import { buildWorkspaceReferenceLabel } from '@/renderer/utils/file/workspaceReferences';
 import { Tag } from '@arco-design/web-react';
 import { Shield } from '@icon-park/react';
 import { iconColors } from '@/renderer/styles/colors';
 import FileAttachButton from '@/renderer/components/media/FileAttachButton';
 import AcpConfigSelector from '@/renderer/components/agent/AcpConfigSelector';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
@@ -101,6 +102,7 @@ const AcpSendBox: React.FC<{
   const { checkAndUpdateTitle } = useAutoTitle();
   const slashCommands = useSlashCommands(conversation_id, { agentStatus: acpStatus });
   const { atPath, uploadFile, setAtPath, setUploadFile, content, setContent } = useSendBoxDraft(conversation_id);
+  const [pendingUploadCount, setPendingUploadCount] = useState(0);
   const { setSendBoxHandler } = usePreviewContext();
 
   // Use useLatestRef to keep latest setters to avoid re-registering handler
@@ -283,6 +285,9 @@ const AcpSendBox: React.FC<{
     },
     [setUploadFile]
   );
+  const handleUploadStateChange = useCallback((state: { isUploading: boolean; pendingCount: number }) => {
+    setPendingUploadCount(state.pendingCount);
+  }, []);
   const { openFileSelector, onSlashBuiltinCommand } = useOpenFileSelector({
     onFilesSelected: appendSelectedFiles,
   });
@@ -326,12 +331,18 @@ const AcpSendBox: React.FC<{
         className='z-10'
         onStop={handleStop}
         onFilesAdded={handleFilesAdded}
+        pendingUploadCount={pendingUploadCount}
+        onUploadStateChange={handleUploadStateChange}
         supportedExts={allSupportedExts}
         defaultMultiLine={true}
         lockMultiLine={true}
         tools={
           <div className='sendbox-tool-cluster'>
-            <FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />
+            <FileAttachButton
+              openFileSelector={openFileSelector}
+              onLocalFilesAdded={handleFilesAdded}
+              onUploadStateChange={handleUploadStateChange}
+            />
             <div className='sendbox-tool-pill-row'>
               <AgentModeSelector
                 backend={backend}
@@ -387,28 +398,26 @@ const AcpSendBox: React.FC<{
                 })}
               </HorizontalFileList>
             )}
-            {/* Folder tags below */}
-            {atPath.some((item) => (typeof item === 'string' ? false : !item.isFile)) && (
+            {atPath.length > 0 && (
               <div className='flex flex-wrap items-center gap-8px mb-8px'>
                 {atPath.map((item) => {
-                  if (typeof item === 'string') return null;
-                  if (!item.isFile) {
-                    return (
-                      <Tag
-                        key={item.path}
-                        color='blue'
-                        closable
-                        onClose={() => {
-                          const newAtPath = atPath.filter((v) => (typeof v === 'string' ? true : v.path !== item.path));
-                          emitter.emit('acp.selected.file', newAtPath);
-                          setAtPath(newAtPath);
-                        }}
-                      >
-                        {item.name}
-                      </Tag>
-                    );
-                  }
-                  return null;
+                  const itemPath = typeof item === 'string' ? item : item.path;
+                  return (
+                    <Tag
+                      key={itemPath}
+                      color='blue'
+                      closable
+                      onClose={() => {
+                        const newAtPath = atPath.filter((value) =>
+                          typeof value === 'string' ? value !== itemPath : value.path !== itemPath
+                        );
+                        emitter.emit('acp.selected.file', newAtPath);
+                        setAtPath(newAtPath);
+                      }}
+                    >
+                      {buildWorkspaceReferenceLabel(item)}
+                    </Tag>
+                  );
                 })}
               </div>
             )}

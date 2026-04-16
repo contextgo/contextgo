@@ -162,7 +162,10 @@ vi.mock('@arco-design/web-react', () => ({
 
 import SendBox from '@/renderer/components/chat/sendbox';
 
-const Harness: React.FC<{ lockMultiLine?: boolean }> = ({ lockMultiLine = false }) => {
+const Harness: React.FC<{ lockMultiLine?: boolean; pendingUploadCount?: number }> = ({
+  lockMultiLine = false,
+  pendingUploadCount = 0,
+}) => {
   const [value, setValue] = useState('');
 
   return (
@@ -171,6 +174,7 @@ const Harness: React.FC<{ lockMultiLine?: boolean }> = ({ lockMultiLine = false 
       onChange={setValue}
       onSend={vi.fn().mockResolvedValue(undefined)}
       lockMultiLine={lockMultiLine}
+      pendingUploadCount={pendingUploadCount}
     />
   );
 };
@@ -275,6 +279,25 @@ describe('SendBox layout mode with pretext', () => {
 
     expect(textarea.style.minHeight).toBe('80px');
     expect(textarea.style.whiteSpace).toBe('pre-wrap');
+  });
+
+  it('shows pending upload state and disables send while uploads are unresolved', async () => {
+    const { container } = render(<Harness pendingUploadCount={2} />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea).toBeTruthy();
+    setupTextarea(textarea);
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    await act(async () => {
+      fireEvent.change(textarea, { target: { value: 'hello' } });
+      await vi.runAllTimersAsync();
+    });
+
+    expect(screen.getByText('conversation.chat.uploadPending')).toBeInTheDocument();
+    expect(screen.getByRole('button')).toBeDisabled();
   });
 
   it('uses the composer stop button as the only danger action while loading', () => {

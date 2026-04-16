@@ -12,13 +12,20 @@ interface UsePasteServiceProps {
   onTextPaste?: (text: string) => void;
   /** Conversation ID for WebUI file uploads */
   conversationId?: string;
+  onUploadStateChange?: (state: { isUploading: boolean; pendingCount: number }) => void;
 }
 
 /**
  * 通用的PasteService集成hook
  * 为所有组件提供统一的粘贴处理功能
  */
-export const usePasteService = ({ supportedExts, onFilesAdded, onTextPaste, conversationId }: UsePasteServiceProps) => {
+export const usePasteService = ({
+  supportedExts,
+  onFilesAdded,
+  onTextPaste,
+  conversationId,
+  onUploadStateChange,
+}: UsePasteServiceProps) => {
   const { t } = useTranslation();
   const componentId = useRef('paste-service-' + uuid(4)).current;
   // 统一的粘贴事件处理
@@ -29,6 +36,7 @@ export const usePasteService = ({ supportedExts, onFilesAdded, onTextPaste, conv
       if (files && files.length > 0) {
         event.preventDefault();
         event.stopPropagation();
+        onUploadStateChange?.({ isUploading: true, pendingCount: files.length });
       }
 
       try {
@@ -52,9 +60,13 @@ export const usePasteService = ({ supportedExts, onFilesAdded, onTextPaste, conv
           Message.error(t('common.fileAttach.failed'));
         }
         return false;
+      } finally {
+        if (files && files.length > 0) {
+          onUploadStateChange?.({ isUploading: false, pendingCount: 0 });
+        }
       }
     },
-    [conversationId, supportedExts, onFilesAdded, onTextPaste, t]
+    [conversationId, onFilesAdded, onTextPaste, onUploadStateChange, supportedExts, t]
   );
 
   // 焦点处理

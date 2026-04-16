@@ -244,6 +244,8 @@
   },
   "workspace": {
     "title": "ワークスペース",
+    "viewFiles": "ファイル",
+    "viewChanges": "変更",
     "pasteConfirm_title": "ファイルを貼り付け",
     "pasteConfirm_message": "'{{name}}' を選択したフォルダー ({{target}}) に貼り付けてもよろしいですか？",
     "pasteConfirm_paste": "貼り付け",
@@ -258,6 +260,8 @@
     "createNewConversation": "現在のワークスペースで新しいチャットを作成",
     "search.empty": "検索結果は空です",
     "addFile": "ファイルを追加",
+    "changesEmpty": "ワークスペースに変更はありません",
+    "changesNotRepository": "このワークスペースは git リポジトリ内にありません",
     "refresh": "更新",
     "temporarySpace": "一時スペース",
     "groupMembers": {
@@ -442,6 +446,7 @@
     "noModelSelected": "現在のセッションでモデルが選択されていないため、メッセージを送信できません",
     "sendMessageTo": "{{model}}にメッセージを送信",
     "processing": "処理中……",
+    "uploadPending": "{{count}} 件のファイルをアップロード中...",
     "quotaExceededTitle": "モデルの上限に達しました",
     "quotaExceededBody": "現在のモデルの上限に達しました。{{model}}に切り替えて続行しますか？",
     "quotaExceededNoFallback": "現在のモデルの上限に達しました。別の利用可能なモデルに切り替えてください。",

@@ -19,6 +19,7 @@ interface FileAttachButtonProps {
   openFileSelector: () => void;
   /** Callback when local device files are selected via browser file picker */
   onLocalFilesAdded?: (files: FileMetadata[]) => void;
+  onUploadStateChange?: (state: { isUploading: boolean; pendingCount: number }) => void;
 }
 
 /**
@@ -28,7 +29,11 @@ interface FileAttachButtonProps {
  * - **WebUI (desktop/mobile browser)**: "+" button with dropdown → choose between
  *   host machine files (server-side directory browser) or local device files (browser file picker).
  */
-const FileAttachButton: React.FC<FileAttachButtonProps> = ({ openFileSelector, onLocalFilesAdded }) => {
+const FileAttachButton: React.FC<FileAttachButtonProps> = ({
+  openFileSelector,
+  onLocalFilesAdded,
+  onUploadStateChange,
+}) => {
   const conversationContext = useConversationContextSafe();
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +44,7 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({ openFileSelector, o
       const fileList = e.target.files;
       if (!fileList || fileList.length === 0 || !onLocalFilesAdded) return;
       setUploading(true);
+      onUploadStateChange?.({ isUploading: true, pendingCount: fileList.length });
       try {
         const processed = await FileService.processDroppedFiles(fileList, conversationContext?.conversationId);
         if (processed.length > 0) {
@@ -53,11 +59,12 @@ const FileAttachButton: React.FC<FileAttachButtonProps> = ({ openFileSelector, o
         }
       } finally {
         setUploading(false);
+        onUploadStateChange?.({ isUploading: false, pendingCount: 0 });
       }
       // Reset so the same file can be re-selected
       e.target.value = '';
     },
-    [conversationContext?.conversationId, onLocalFilesAdded, t]
+    [conversationContext?.conversationId, onLocalFilesAdded, onUploadStateChange, t]
   );
 
   const plusIcon = <Plus theme='outline' size='14' strokeWidth={2} fill={iconColors.primary} />;

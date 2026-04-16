@@ -26,6 +26,7 @@ import SessionHooksDrawer from './components/SessionHooksDrawer';
 import WorkspaceContextMenu from './components/WorkspaceContextMenu';
 import WorkspaceDialogs from './components/WorkspaceDialogs';
 import WorkspaceToolbar from './components/WorkspaceToolbar';
+import WorkspaceChanges from './Changes';
 import { useWorkspaceCollapse } from './hooks/useWorkspaceCollapse';
 import { useWorkspaceDragImport } from './hooks/useWorkspaceDragImport';
 import { useWorkspaceEvents } from './hooks/useWorkspaceEvents';
@@ -68,6 +69,7 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
   const shouldRenderLocalMessageContext = !externalMessageApi;
   const [workspaceLoadDeferred, setWorkspaceLoadDeferred] = useState(false);
   const [isParticipantsPanelOpen, setIsParticipantsPanelOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'files' | 'changes'>('files');
 
   useEffect(() => {
     setWorkspaceLoadDeferred(false);
@@ -75,6 +77,10 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
 
   useEffect(() => {
     setIsParticipantsPanelOpen(false);
+  }, [conversation_id]);
+
+  useEffect(() => {
+    setCurrentView('files');
   }, [conversation_id]);
 
   useEffect(() => {
@@ -384,13 +390,15 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
 
         {/* Toolbar: search input + directory name + action buttons */}
         <WorkspaceToolbar
+          currentView={currentView}
+          onViewChange={setCurrentView}
           t={t}
           isWorkspaceCollapsed={isWorkspaceCollapsed}
           setIsWorkspaceCollapsed={setIsWorkspaceCollapsed}
           isTemporaryWorkspace={isTemporaryWorkspace}
           workspacePath={workspace}
           workspaceDisplayName={workspaceDisplayName}
-          showSearch={searchHook.showSearch}
+          showSearch={currentView === 'files' ? searchHook.showSearch : false}
           searchText={searchHook.searchText}
           setSearchText={searchHook.setSearchText}
           onSearch={searchHook.onSearch}
@@ -437,200 +445,204 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
             />
 
             <div className='flex min-h-0 flex-1 flex-col'>
-              <div className='min-h-0 flex-1 overflow-y-auto'>
-                {/* Empty state or Tree */}
-                {!hasOriginalFiles ? (
-                  <div className='flex size-full flex-1 items-center justify-center px-12px box-border'>
-                    {workspaceLoadDeferred && !searchHook.searchText ? (
-                      <div className='w-full max-w-420px rounded-16px border border-border-2 bg-bg-1 p-20px text-center'>
-                        <Typography.Title heading={6} className='!mb-8px'>
-                          {t('conversation.workspace.externalSessionDeferredTitle', {
-                            defaultValue: 'Workspace loading is paused',
-                          })}
-                        </Typography.Title>
-                        <Typography.Paragraph className='!mb-16px text-t-secondary'>
-                          {t('conversation.workspace.externalSessionDeferredDescription', {
-                            defaultValue:
-                              'This session was taken over from an external CLI. Load the workspace files only when you need them to avoid scanning a large project on open.',
-                          })}
-                        </Typography.Paragraph>
-                        <Button type='primary' onClick={() => void handleLoadDeferredWorkspace()}>
-                          {t('conversation.workspace.externalSessionDeferredAction', {
-                            defaultValue: 'Load Workspace Files',
-                          })}
-                        </Button>
-                      </div>
-                    ) : (
-                      <Empty
-                        description={
-                          <div>
-                            <span className='text-t-secondary font-bold text-14px'>
-                              {searchHook.searchText
-                                ? t('conversation.workspace.search.empty')
-                                : t('conversation.workspace.empty')}
-                            </span>
-                            <div className='text-t-secondary'>
-                              {searchHook.searchText ? '' : t('conversation.workspace.emptyDescription')}
-                            </div>
-                          </div>
-                        }
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <Tree
-                    className={`${isMobile ? '!pl-20px !pr-10px chat-workspace-tree--mobile' : '!pl-32px !pr-16px'} workspace-tree`}
-                    showLine
-                    key={treeHook.treeKey}
-                    selectedKeys={treeHook.selected}
-                    expandedKeys={treeHook.expandedKeys}
-                    treeData={treeData}
-                    fieldNames={{
-                      children: 'children',
-                      title: 'name',
-                      key: 'relativePath',
-                      isLeaf: 'isFile',
-                    }}
-                    multiple
-                    renderTitle={(node) => {
-                      const relativePath = node.dataRef.relativePath;
-                      const isFile = node.dataRef.isFile;
-                      const isPasteTarget = !isFile && pasteHook.pasteTargetFolder === relativePath;
-                      const nodeData = node.dataRef as IDirOrFile;
-
-                      return (
-                        <div
-                          className='flex w-full max-w-full items-center justify-between gap-6px min-w-0'
-                          style={{ color: 'inherit' }}
-                          onDoubleClick={() => {
-                            if (isFile) {
-                              fileOpsHook.handleAddToChat(nodeData);
-                            }
-                          }}
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            openNodeContextMenu(nodeData, event.clientX, event.clientY);
-                          }}
-                        >
-                          <span className='flex min-w-0 flex-1 items-center gap-4px overflow-hidden'>
-                            <span className='overflow-hidden text-ellipsis whitespace-nowrap'>{node.title}</span>
-                            {isPasteTarget && (
-                              <span className='ml-1 text-xs text-blue-700 font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded'>
-                                PASTE
-                              </span>
-                            )}
-                          </span>
-                          {isMobile && (
-                            <button
-                              type='button'
-                              className='workspace-header__toggle workspace-node-more-btn h-28px w-28px rd-8px flex items-center justify-center text-t-secondary hover:text-t-primary active:text-t-primary flex-shrink-0'
-                              aria-label={t('common.more')}
-                              onMouseDown={(event) => {
-                                event.stopPropagation();
-                              }}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                const rect = (event.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                                const menuWidth = 220;
-                                const menuHeight = 220;
-                                const maxX =
-                                  typeof window !== 'undefined'
-                                    ? Math.max(8, window.innerWidth - menuWidth - 8)
-                                    : rect.left;
-                                const maxY =
-                                  typeof window !== 'undefined'
-                                    ? Math.max(8, window.innerHeight - menuHeight - 8)
-                                    : rect.bottom;
-                                const menuX = Math.min(Math.max(8, rect.left - menuWidth + rect.width), maxX);
-                                const menuY = Math.min(Math.max(8, rect.bottom + 4), maxY);
-                                openNodeContextMenu(nodeData, menuX, menuY);
-                              }}
-                            >
-                              <div
-                                className='flex flex-col gap-2px items-center justify-center'
-                                style={{ width: '12px', height: '12px' }}
-                              >
-                                <div className='w-2px h-2px rounded-full bg-current'></div>
-                                <div className='w-2px h-2px rounded-full bg-current'></div>
-                                <div className='w-2px h-2px rounded-full bg-current'></div>
-                              </div>
-                            </button>
-                          )}
+              {currentView === 'changes' ? (
+                <WorkspaceChanges workspace={workspace} openPreview={openPreview} />
+              ) : (
+                <div className='min-h-0 flex-1 overflow-y-auto'>
+                  {/* Empty state or Tree */}
+                  {!hasOriginalFiles ? (
+                    <div className='flex size-full flex-1 items-center justify-center px-12px box-border'>
+                      {workspaceLoadDeferred && !searchHook.searchText ? (
+                        <div className='w-full max-w-420px rounded-16px border border-border-2 bg-bg-1 p-20px text-center'>
+                          <Typography.Title heading={6} className='!mb-8px'>
+                            {t('conversation.workspace.externalSessionDeferredTitle', {
+                              defaultValue: 'Workspace loading is paused',
+                            })}
+                          </Typography.Title>
+                          <Typography.Paragraph className='!mb-16px text-t-secondary'>
+                            {t('conversation.workspace.externalSessionDeferredDescription', {
+                              defaultValue:
+                                'This session was taken over from an external CLI. Load the workspace files only when you need them to avoid scanning a large project on open.',
+                            })}
+                          </Typography.Paragraph>
+                          <Button type='primary' onClick={() => void handleLoadDeferredWorkspace()}>
+                            {t('conversation.workspace.externalSessionDeferredAction', {
+                              defaultValue: 'Load Workspace Files',
+                            })}
+                          </Button>
                         </div>
-                      );
-                    }}
-                    onSelect={(keys, extra) => {
-                      const clickedKey = extractNodeKey(extra?.node);
-                      const nodeData = extra && extra.node ? extractNodeData(extra.node) : null;
-                      const isFileNode = Boolean(nodeData?.isFile);
-                      const wasSelected = clickedKey ? treeHook.selectedKeysRef.current.includes(clickedKey) : false;
+                      ) : (
+                        <Empty
+                          description={
+                            <div>
+                              <span className='text-t-secondary font-bold text-14px'>
+                                {searchHook.searchText
+                                  ? t('conversation.workspace.search.empty')
+                                  : t('conversation.workspace.empty')}
+                              </span>
+                              <div className='text-t-secondary'>
+                                {searchHook.searchText ? '' : t('conversation.workspace.emptyDescription')}
+                              </div>
+                            </div>
+                          }
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <Tree
+                      className={`${isMobile ? '!pl-20px !pr-10px chat-workspace-tree--mobile' : '!pl-32px !pr-16px'} workspace-tree`}
+                      showLine
+                      key={treeHook.treeKey}
+                      selectedKeys={treeHook.selected}
+                      expandedKeys={treeHook.expandedKeys}
+                      treeData={treeData}
+                      fieldNames={{
+                        children: 'children',
+                        title: 'name',
+                        key: 'relativePath',
+                        isLeaf: 'isFile',
+                      }}
+                      multiple
+                      renderTitle={(node) => {
+                        const relativePath = node.dataRef.relativePath;
+                        const isFile = node.dataRef.isFile;
+                        const isPasteTarget = !isFile && pasteHook.pasteTargetFolder === relativePath;
+                        const nodeData = node.dataRef as IDirOrFile;
 
-                      if (isFileNode) {
-                        // Single-click file only opens preview without changing selection state
-                        if (clickedKey) {
-                          const filteredKeys = treeHook.selectedKeysRef.current.filter((key) => key !== clickedKey);
-                          treeHook.selectedKeysRef.current = filteredKeys;
-                          treeHook.setSelected(filteredKeys);
+                        return (
+                          <div
+                            className='flex w-full max-w-full items-center justify-between gap-6px min-w-0'
+                            style={{ color: 'inherit' }}
+                            onDoubleClick={() => {
+                              if (isFile) {
+                                fileOpsHook.handleAddToChat(nodeData);
+                              }
+                            }}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openNodeContextMenu(nodeData, event.clientX, event.clientY);
+                            }}
+                          >
+                            <span className='flex min-w-0 flex-1 items-center gap-4px overflow-hidden'>
+                              <span className='overflow-hidden text-ellipsis whitespace-nowrap'>{node.title}</span>
+                              {isPasteTarget && (
+                                <span className='ml-1 text-xs text-blue-700 font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded'>
+                                  PASTE
+                                </span>
+                              )}
+                            </span>
+                            {isMobile && (
+                              <button
+                                type='button'
+                                className='workspace-header__toggle workspace-node-more-btn h-28px w-28px rd-8px flex items-center justify-center text-t-secondary hover:text-t-primary active:text-t-primary flex-shrink-0'
+                                aria-label={t('common.more')}
+                                onMouseDown={(event) => {
+                                  event.stopPropagation();
+                                }}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  const rect = (event.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                  const menuWidth = 220;
+                                  const menuHeight = 220;
+                                  const maxX =
+                                    typeof window !== 'undefined'
+                                      ? Math.max(8, window.innerWidth - menuWidth - 8)
+                                      : rect.left;
+                                  const maxY =
+                                    typeof window !== 'undefined'
+                                      ? Math.max(8, window.innerHeight - menuHeight - 8)
+                                      : rect.bottom;
+                                  const menuX = Math.min(Math.max(8, rect.left - menuWidth + rect.width), maxX);
+                                  const menuY = Math.min(Math.max(8, rect.bottom + 4), maxY);
+                                  openNodeContextMenu(nodeData, menuX, menuY);
+                                }}
+                              >
+                                <div
+                                  className='flex flex-col gap-2px items-center justify-center'
+                                  style={{ width: '12px', height: '12px' }}
+                                >
+                                  <div className='w-2px h-2px rounded-full bg-current'></div>
+                                  <div className='w-2px h-2px rounded-full bg-current'></div>
+                                  <div className='w-2px h-2px rounded-full bg-current'></div>
+                                </div>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      }}
+                      onSelect={(keys, extra) => {
+                        const clickedKey = extractNodeKey(extra?.node);
+                        const nodeData = extra && extra.node ? extractNodeData(extra.node) : null;
+                        const isFileNode = Boolean(nodeData?.isFile);
+                        const wasSelected = clickedKey ? treeHook.selectedKeysRef.current.includes(clickedKey) : false;
+
+                        if (isFileNode) {
+                          // Single-click file only opens preview without changing selection state
+                          if (clickedKey) {
+                            const filteredKeys = treeHook.selectedKeysRef.current.filter((key) => key !== clickedKey);
+                            treeHook.selectedKeysRef.current = filteredKeys;
+                            treeHook.setSelected(filteredKeys);
+                          }
+                          treeHook.selectedNodeRef.current = null;
+                          if (nodeData && clickedKey && !wasSelected) {
+                            void fileOpsHook.handlePreviewFile(nodeData);
+                          }
+                          return;
                         }
-                        treeHook.selectedNodeRef.current = null;
-                        if (nodeData && clickedKey && !wasSelected) {
-                          void fileOpsHook.handlePreviewFile(nodeData);
+
+                        // Keep existing selection logic for folders
+                        let newKeys: string[];
+
+                        if (clickedKey && wasSelected) {
+                          newKeys = treeHook.selectedKeysRef.current.filter((key) => key !== clickedKey);
+                        } else if (clickedKey) {
+                          newKeys = [...treeHook.selectedKeysRef.current, clickedKey];
+                        } else {
+                          newKeys = keys.filter((key) => key !== workspace);
                         }
-                        return;
-                      }
 
-                      // Keep existing selection logic for folders
-                      let newKeys: string[];
+                        treeHook.setSelected(newKeys);
+                        treeHook.selectedKeysRef.current = newKeys;
 
-                      if (clickedKey && wasSelected) {
-                        newKeys = treeHook.selectedKeysRef.current.filter((key) => key !== clickedKey);
-                      } else if (clickedKey) {
-                        newKeys = [...treeHook.selectedKeysRef.current, clickedKey];
-                      } else {
-                        newKeys = keys.filter((key) => key !== workspace);
-                      }
+                        if (extra && extra.node && nodeData && nodeData.fullPath && nodeData.relativePath != null) {
+                          treeHook.selectedNodeRef.current = {
+                            relativePath: nodeData.relativePath,
+                            fullPath: nodeData.fullPath,
+                          };
+                        } else {
+                          treeHook.selectedNodeRef.current = null;
+                        }
 
-                      treeHook.setSelected(newKeys);
-                      treeHook.selectedKeysRef.current = newKeys;
-
-                      if (extra && extra.node && nodeData && nodeData.fullPath && nodeData.relativePath != null) {
-                        treeHook.selectedNodeRef.current = {
-                          relativePath: nodeData.relativePath,
-                          fullPath: nodeData.fullPath,
-                        };
-                      } else {
-                        treeHook.selectedNodeRef.current = null;
-                      }
-
-                      const items: Array<{ path: string; name: string; isFile: boolean }> = [];
-                      for (const k of newKeys) {
-                        const node = findNodeByKey(treeHook.files, k);
-                        if (node && node.fullPath) {
-                          items.push({
-                            path: node.fullPath,
-                            name: node.name,
-                            isFile: node.isFile,
+                        const items: Array<{ path: string; name: string; isFile: boolean }> = [];
+                        for (const k of newKeys) {
+                          const node = findNodeByKey(treeHook.files, k);
+                          if (node && node.fullPath) {
+                            items.push({
+                              path: node.fullPath,
+                              name: node.name,
+                              isFile: node.isFile,
+                            });
+                          }
+                        }
+                        emitter.emit(`${eventPrefix}.selected.file`, items);
+                      }}
+                      onExpand={(keys) => {
+                        treeHook.setExpandedKeys(keys);
+                      }}
+                      loadMore={(treeNode) => {
+                        const path = treeNode.props.dataRef.fullPath;
+                        return ipcBridge.conversation.getWorkspace
+                          .invoke({ conversation_id, workspace, path })
+                          .then((res) => {
+                            treeNode.props.dataRef.children = res[0].children;
+                            treeHook.setFiles([...treeHook.files]);
                           });
-                        }
-                      }
-                      emitter.emit(`${eventPrefix}.selected.file`, items);
-                    }}
-                    onExpand={(keys) => {
-                      treeHook.setExpandedKeys(keys);
-                    }}
-                    loadMore={(treeNode) => {
-                      const path = treeNode.props.dataRef.fullPath;
-                      return ipcBridge.conversation.getWorkspace
-                        .invoke({ conversation_id, workspace, path })
-                        .then((res) => {
-                          treeNode.props.dataRef.children = res[0].children;
-                          treeHook.setFiles([...treeHook.files]);
-                        });
-                    }}
-                  ></Tree>
-                )}
-              </div>
+                      }}
+                    ></Tree>
+                  )}
+                </div>
+              )}
             </div>
           </FlexFullContainer>
         )}

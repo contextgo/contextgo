@@ -25,6 +25,7 @@ import { allSupportedExts } from '@/renderer/services/FileService';
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import { mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
 import { buildDisplayMessage, collectSelectedFiles } from '@/renderer/utils/file/messageFiles';
+import { buildWorkspaceReferenceLabel } from '@/renderer/utils/file/workspaceReferences';
 import { getModelContextLimit } from '@/renderer/utils/model/modelContextLimits';
 import { Tag } from '@arco-design/web-react';
 import { Shield } from '@icon-park/react';
@@ -127,6 +128,7 @@ const GeminiSendBox: React.FC<{
     useGeminiMessage(conversation_id, handleGeminiError);
 
   const { atPath, uploadFile, setAtPath, setUploadFile, content, setContent } = useSendBoxDraft(conversation_id);
+  const [pendingUploadCount, setPendingUploadCount] = useState(0);
 
   useGeminiInitialMessage({
     conversationId: conversation_id,
@@ -325,6 +327,9 @@ const GeminiSendBox: React.FC<{
     },
     [setUploadFile]
   );
+  const handleUploadStateChange = useCallback((state: { isUploading: boolean; pendingCount: number }) => {
+    setPendingUploadCount(state.pendingCount);
+  }, []);
   const { openFileSelector, onSlashBuiltinCommand } = useOpenFileSelector({
     onFilesSelected: appendSelectedFiles,
   });
@@ -381,12 +386,18 @@ const GeminiSendBox: React.FC<{
         onStop={handleStop}
         className='z-10'
         onFilesAdded={handleFilesAdded}
+        pendingUploadCount={pendingUploadCount}
+        onUploadStateChange={handleUploadStateChange}
         supportedExts={allSupportedExts}
         defaultMultiLine={true}
         lockMultiLine={true}
         tools={
           <div className='sendbox-tool-cluster'>
-            <FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />
+            <FileAttachButton
+              openFileSelector={openFileSelector}
+              onLocalFilesAdded={handleFilesAdded}
+              onUploadStateChange={handleUploadStateChange}
+            />
             <div className='sendbox-tool-pill-row'>
               <AgentModeSelector
                 backend='gemini'
@@ -447,28 +458,26 @@ const GeminiSendBox: React.FC<{
                 })}
               </HorizontalFileList>
             )}
-            {/* Folder tags below */}
-            {atPath.some((item) => (typeof item === 'string' ? false : !item.isFile)) && (
+            {atPath.length > 0 && (
               <div className='flex flex-wrap items-center gap-8px mb-8px'>
                 {atPath.map((item) => {
-                  if (typeof item === 'string') return null;
-                  if (!item.isFile) {
-                    return (
-                      <Tag
-                        key={item.path}
-                        color='blue'
-                        closable
-                        onClose={() => {
-                          const newAtPath = atPath.filter((v) => (typeof v === 'string' ? true : v.path !== item.path));
-                          emitter.emit('gemini.selected.file', newAtPath);
-                          setAtPath(newAtPath);
-                        }}
-                      >
-                        {item.name}
-                      </Tag>
-                    );
-                  }
-                  return null;
+                  const itemPath = typeof item === 'string' ? item : item.path;
+                  return (
+                    <Tag
+                      key={itemPath}
+                      color='blue'
+                      closable
+                      onClose={() => {
+                        const newAtPath = atPath.filter((value) =>
+                          typeof value === 'string' ? value !== itemPath : value.path !== itemPath
+                        );
+                        emitter.emit('gemini.selected.file', newAtPath);
+                        setAtPath(newAtPath);
+                      }}
+                    >
+                      {buildWorkspaceReferenceLabel(item)}
+                    </Tag>
+                  );
                 })}
               </div>
             )}

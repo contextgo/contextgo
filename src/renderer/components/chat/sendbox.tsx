@@ -46,6 +46,8 @@ const SendBox: React.FC<{
   prefix?: React.ReactNode;
   placeholder?: string;
   onFilesAdded?: (files: FileMetadata[]) => void;
+  pendingUploadCount?: number;
+  onUploadStateChange?: (state: { isUploading: boolean; pendingCount: number }) => void;
   supportedExts?: string[];
   defaultMultiLine?: boolean;
   lockMultiLine?: boolean;
@@ -67,6 +69,8 @@ const SendBox: React.FC<{
   value: input = '',
   onChange: setInput = constVoid,
   onFilesAdded,
+  pendingUploadCount = 0,
+  onUploadStateChange,
   supportedExts = allSupportedExts,
   defaultMultiLine = false,
   lockMultiLine = false,
@@ -93,6 +97,7 @@ const SendBox: React.FC<{
 
   // 集成预览面板的"添加到聊天"功能 / Integrate preview panel's "Add to chat" functionality
   const { setSendBoxHandler, domSnippets, removeDomSnippet, clearDomSnippets } = usePreviewContext();
+  const hasPendingUploads = pendingUploadCount > 0;
 
   // 注册处理器以接收来自预览面板的文本 / Register handler to receive text from preview panel
   useEffect(() => {
@@ -193,6 +198,7 @@ const SendBox: React.FC<{
     supportedExts,
     onFilesAdded,
     conversationId: conversationContext?.conversationId,
+    onUploadStateChange,
   });
 
   const [message, context] = Message.useMessage();
@@ -259,6 +265,7 @@ const SendBox: React.FC<{
     supportedExts,
     onFilesAdded,
     conversationId: conversationContext?.conversationId,
+    onUploadStateChange,
     onTextPaste: (text: string) => {
       // 处理清理后的文本粘贴，在当前光标位置插入文本而不是替换整个内容
       const textarea = document.activeElement as HTMLTextAreaElement;
@@ -342,16 +349,19 @@ const SendBox: React.FC<{
       if (!handler || !hasMessageContent) {
         return false;
       }
+      if (hasPendingUploads) {
+        return false;
+      }
 
       const finalMessage = consumeInputMessage();
       void Promise.resolve(handler(finalMessage));
       return true;
     },
-    [consumeInputMessage, hasMessageContent]
+    [consumeInputMessage, hasMessageContent, hasPendingUploads]
   );
 
   const sendMessageHandler = () => {
-    if (loading || isLoading) {
+    if (loading || isLoading || hasPendingUploads) {
       message.warning(t('messages.conversationInProgress'));
       return;
     }
@@ -378,7 +388,7 @@ const SendBox: React.FC<{
   };
 
   // Calculate button disabled state and style
-  const isButtonDisabled = disabled || !hasMessageContent;
+  const isButtonDisabled = disabled || !hasMessageContent || hasPendingUploads;
   const buttonStyle = {
     backgroundColor: isButtonDisabled ? undefined : '#000000',
     borderColor: isButtonDisabled ? undefined : '#000000',
@@ -511,6 +521,16 @@ const SendBox: React.FC<{
         <div style={{ width: '100%' }}>
           {prefix}
           {context}
+          {hasPendingUploads && (
+            <div className='mb-8px'>
+              <Tag color='arcoblue'>
+                {t('conversation.chat.uploadPending', {
+                  count: pendingUploadCount,
+                  defaultValue: 'Uploading {{count}} file(s)...',
+                })}
+              </Tag>
+            </div>
+          )}
           {/* DOM 片段标签 / DOM snippet tags */}
           {domSnippets.length > 0 && (
             <div className='flex flex-wrap gap-6px mb-8px'>

@@ -244,6 +244,8 @@
   },
   "workspace": {
     "title": "워크스페이스",
+    "viewFiles": "파일",
+    "viewChanges": "변경 사항",
     "pasteConfirm_title": "파일 붙여넣기",
     "pasteConfirm_message": "'{{name}}'을(를) 선택된 폴더({{target}})에 붙여넣으시겠습니까?",
     "pasteConfirm_paste": "붙여넣기",
@@ -259,6 +261,8 @@
     "search.empty": "검색 결과가 없습니다",
     "addFile": "파일 추가",
     "refresh": "새로고침",
+    "changesEmpty": "워크스페이스 변경 사항이 없습니다",
+    "changesNotRepository": "이 워크스페이스는 git 저장소 안에 있지 않습니다",
     "temporarySpace": "임시 공간",
     "groupMembers": {
       "title": "그룹 멤버",
@@ -442,6 +446,7 @@
     "noModelSelected": "현재 세션에 선택된 모델이 없어 메시지를 보낼 수 없습니다",
     "sendMessageTo": "{{model}}에게 메시지 보내기",
     "processing": "처리 중...",
+    "uploadPending": "{{count}}개 파일 업로드 중...",
     "quotaExceededTitle": "모델 할당량 도달",
     "quotaExceededBody": "현재 모델 할당량이 소진되었습니다. {{model}}(으)로 전환하여 계속하시겠습니까?",
     "quotaExceededNoFallback": "모델 할당량에 도달했습니다. 다른 사용 가능한 모델로 전환하세요.",

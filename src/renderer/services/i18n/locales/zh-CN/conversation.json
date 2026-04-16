@@ -258,6 +258,8 @@
   "createFailed": "创建会话失败",
   "workspace": {
     "title": "工作空间",
+    "viewFiles": "文件",
+    "viewChanges": "变更",
     "pasteConfirm_title": "粘贴文件",
     "pasteConfirm_message": "确定要将 '{{name}}' 粘贴到选中的文件夹 ({{target}}) 吗？",
     "pasteConfirm_paste": "粘贴",
@@ -273,6 +275,8 @@
     "search.empty": "搜索结果为空",
     "addFile": "添加文件",
     "refresh": "刷新",
+    "changesEmpty": "当前工作区没有变更",
+    "changesNotRepository": "当前工作区不在 git 仓库中",
     "temporarySpace": "临时空间",
     "groupMembers": {
       "title": "组内成员",
@@ -456,6 +460,7 @@
     "noModelSelected": "当前会话未选择模型，无法发送消息",
     "sendMessageTo": "发送消息到 {{model}}",
     "processing": "正在处理中……",
+    "uploadPending": "正在上传 {{count}} 个文件...",
     "quotaExceededTitle": "模型额度已用尽",
     "quotaExceededBody": "当前模型额度已用尽，是否切换到 {{model}}？",
     "quotaExceededNoFallback": "当前模型额度已用尽，请切换到其他可用模型。",

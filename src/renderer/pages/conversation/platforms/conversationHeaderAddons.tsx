@@ -24,7 +24,7 @@ type HeaderAddonDefinition = {
 const headerAddonDefinitions: HeaderAddonDefinition[] = [
   {
     id: 'browser-context',
-    shouldRender: ({ conversation }) => Boolean(conversation.extra?.browserContextAssetId),
+    shouldRender: ({ conversation }) => Boolean(conversation.extra?.spaceId),
     render: ({ conversation, openUrlPreview }) => (
       <ConversationBrowserContextButton conversation={conversation} onOpenUrl={openUrlPreview} />
     ),

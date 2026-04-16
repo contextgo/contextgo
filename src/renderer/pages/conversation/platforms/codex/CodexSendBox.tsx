@@ -36,6 +36,7 @@ import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import AcpConfigSelector from '@/renderer/components/agent/AcpConfigSelector';
 import { useSlashCommands } from '@/renderer/hooks/chat/useSlashCommands';
+import { buildWorkspaceReferenceLabel } from '@/renderer/utils/file/workspaceReferences';
 
 interface CodexDraftData {
   _type: 'codex';
@@ -94,6 +95,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
   const [hasActiveToolCalls, setHasActiveToolCalls] = useState(initialUiState.hasActiveToolCalls);
   const [sawToolActivityInTurn, setSawToolActivityInTurn] = useState(initialUiState.sawToolActivityInTurn);
   const [runtimePlanEntries, setRuntimePlanEntries] = useState<RuntimePlanEntry[]>(initialUiState.runtimePlanEntries);
+  const [pendingUploadCount, setPendingUploadCount] = useState(0);
   const slashCommands = useSlashCommands(conversation_id, {
     conversationType: 'codex',
     codexStatus,
@@ -523,6 +525,9 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
     },
     [setUploadFile]
   );
+  const handleUploadStateChange = useCallback((state: { isUploading: boolean; pendingCount: number }) => {
+    setPendingUploadCount(state.pendingCount);
+  }, []);
   const { openFileSelector, onSlashBuiltinCommand } = useOpenFileSelector({
     onFilesSelected: appendSelectedFiles,
   });
@@ -642,12 +647,18 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
         }
         onStop={handleStop}
         onFilesAdded={handleFilesAdded}
+        pendingUploadCount={pendingUploadCount}
+        onUploadStateChange={handleUploadStateChange}
         supportedExts={allSupportedExts}
         defaultMultiLine={true}
         lockMultiLine={true}
         tools={
           <div className='sendbox-tool-cluster'>
-            <FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />
+            <FileAttachButton
+              openFileSelector={openFileSelector}
+              onLocalFilesAdded={handleFilesAdded}
+              onUploadStateChange={handleUploadStateChange}
+            />
             <div className='sendbox-tool-pill-row'>
               <AgentModeSelector
                 backend='codex'
@@ -702,28 +713,26 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
                 })}
               </HorizontalFileList>
             )}
-            {/* Folder tags below */}
-            {atPath.some((item) => (typeof item === 'string' ? false : !item.isFile)) && (
+            {atPath.length > 0 && (
               <div className='flex flex-wrap items-center gap-8px mb-8px'>
                 {atPath.map((item) => {
-                  if (typeof item === 'string') return null;
-                  if (!item.isFile) {
-                    return (
-                      <Tag
-                        key={item.path}
-                        color='blue'
-                        closable
-                        onClose={() => {
-                          const newAtPath = atPath.filter((v) => (typeof v === 'string' ? true : v.path !== item.path));
-                          emitter.emit('codex.selected.file', newAtPath);
-                          setAtPath(newAtPath);
-                        }}
-                      >
-                        {item.name}
-                      </Tag>
-                    );
-                  }
-                  return null;
+                  const itemPath = typeof item === 'string' ? item : item.path;
+                  return (
+                    <Tag
+                      key={itemPath}
+                      color='blue'
+                      closable
+                      onClose={() => {
+                        const newAtPath = atPath.filter((value) =>
+                          typeof value === 'string' ? value !== itemPath : value.path !== itemPath
+                        );
+                        emitter.emit('codex.selected.file', newAtPath);
+                        setAtPath(newAtPath);
+                      }}
+                    >
+                      {buildWorkspaceReferenceLabel(item)}
+                    </Tag>
+                  );
                 })}
               </div>
             )}
