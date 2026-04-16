@@ -29,6 +29,7 @@ type MaintenanceRunMetadata = {
   assistantId?: string;
   systemOwner?: 'context-engine';
   systemRole?: string;
+  governanceIdentity?: ContextJob['governanceIdentity'];
   jobType?: string;
   spaceId?: string;
   threadId?: string;
@@ -42,6 +43,7 @@ type MaintenanceRunMetadata = {
   latestArtifactSummary?: string;
   artifactRelativePath?: string;
   artifactTitle?: string;
+  artifactTargets?: string[];
   lastError?: string;
   events?: MaintenanceRunEvent[];
 };
@@ -191,6 +193,7 @@ async function upsertRun(input: {
       assistantId: resolvedRuntime.assistant?.id ?? existingMetadata.assistantId,
       systemOwner: resolvedRuntime.assistant?.owner ?? existingMetadata.systemOwner,
       systemRole: resolvedRuntime.assistant?.systemRole ?? existingMetadata.systemRole,
+      governanceIdentity: input.job.governanceIdentity,
       jobType: input.job.type,
       spaceId: input.job.spaceId,
       threadId: input.job.threadId,
@@ -204,6 +207,9 @@ async function upsertRun(input: {
       latestArtifactSummary: input.artifact?.summary ?? existingMetadata.latestArtifactSummary,
       artifactRelativePath: getArtifactRelativePath(input.artifact) ?? existingMetadata.artifactRelativePath,
       artifactTitle: getArtifactTitle(input.artifact) ?? existingMetadata.artifactTitle,
+      artifactTargets: Array.isArray(input.job.payload.artifactTargets)
+        ? input.job.payload.artifactTargets.filter((target): target is string => typeof target === 'string')
+        : existingMetadata.artifactTargets,
       lastError: input.error,
     },
     {
