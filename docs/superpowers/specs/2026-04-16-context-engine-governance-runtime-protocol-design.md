@@ -15,6 +15,13 @@
 
 这份文档**不**定义最终 prompt 文本，也不定义每个身份最终加载哪些具体 packaged skills。它定义的是协议与边界，而不是最终素材清单。
 
+## Phase 1 状态
+
+- `Session Steward` 的最小治理协议已进入实现
+- `session_compaction` job 已携带治理身份元数据
+- `Session Steward` 已开始通过 `working-context` 与 session checkpoints 写出 vault artifacts
+- `Project Curator`、`Space Curator` 的 skill 装配和控制台观察面仍待后续实现
+
 ## 架构前提
 
 本文默认以下架构已经冻结：
