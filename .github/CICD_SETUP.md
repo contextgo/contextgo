@@ -22,15 +22,7 @@
   4. 执行发布相关资产整理
   5. 等待后续发布操作
 
-### 2. `build-manual.yml` - 手动构建流
-
-- **触发时机**: 手动 `workflow_dispatch`
-- **功能**:
-  - 按平台单独构建，适合调试单个平台构建问题
-  - 支持通过 `runner_mode` 输入切换 `self-hosted` 或 `hosted`
-  - 在 self-hosted 模式下读取仓库变量中的 runner labels
-
-### 3. `deploy-site.yml` - Hosted Services 部署流
+### 2. `deploy-site.yml` - Hosted Services 部署流
 
 - **触发时机**:
   - 推送到 `main`
@@ -45,7 +37,7 @@
   - `deploy_target=cloud`
   - `deploy_target=both`
 
-### 4. `pr-checks.yml` - 默认轻量 PR 检查
+### 3. `pr-checks.yml` - 默认轻量 PR 检查
 
 - **触发时机**:
   - PR 自动触发：仅轻量检查
@@ -64,11 +56,22 @@
 - 默认 PR 不会自动跑覆盖率
 - 需要更重 CI 时，由维护者显式打标签
 
-### 5. 其他重工作流治理
+### 4. `manual-qa.yml` - 手动 QA / 调试流
 
-- `pr-e2e-artifacts.yml`：手动触发
-- `gpt-review.yml` / `gpt-pr-assessment.yml` / `ai_pr_reviewer.yml`：手动触发
-- `bump-homebrew.yml`：手动触发
+- **触发时机**: 手动 `workflow_dispatch`
+- **功能**:
+  - `task=build`：按平台单独构建，适合调试单个平台构建问题
+  - `task=e2e-artifacts`：手动跑 Linux E2E 并上传截图 / report / trace
+  - `task=runner-health`：检查 self-hosted runner 基础可用性
+  - 支持通过 `runner_mode` 输入切换 `self-hosted` 或 `hosted`
+
+### 5. 已清理的附属工作流
+
+以下 workflow 已从主仓库清理，以减少维护成本和误触发入口：
+
+- AI review 系列：`gpt-review.yml`、`gpt-pr-assessment.yml`、`ai_pr_reviewer.yml`
+- Homebrew 校验：`bump-homebrew.yml`
+- 项目看板自动化：`project-automation.yml`
 
 ## 推荐的 GitHub Actions Variables 配置
 
@@ -248,12 +251,15 @@ CONTEXTGO_OIDC_SIGNING_KEY_ID=contextgo-auth-1
 6. 等待 workflow 完成后继续后续 release 操作
 7. 编辑并发布最终发布说明
 
-### 手动构建
+### 手动 QA
 
-1. 打开 GitHub Actions 中的 `🔨 Manual Build`
-2. 选择分支和平台
-3. 如果已经切到 self-hosted，保持 `runner_mode=self-hosted`
-4. 如果只是临时验证公开仓库 / hosted runner 行为，再切成 `hosted`
+1. 打开 GitHub Actions 中的 `🧪 Manual QA`
+2. 选择 `task`
+3. 如果 `task=build`，再选择分支和平台
+4. 如果 `task=e2e-artifacts`，选择要验证的分支
+5. 如果 `task=runner-health`，用来检查 self-hosted runner 基础可用性
+6. 如果已经切到 self-hosted，保持 `runner_mode=self-hosted`
+7. 如果只是临时验证 hosted runner 行为，再切成 `hosted`
 
 ### 手动发布注意事项
 
