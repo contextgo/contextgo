@@ -10,6 +10,7 @@ const mountStats = {
   mounts: 0,
   unmounts: 0,
 };
+const workbenchHostPropsSpy = vi.fn();
 
 vi.mock('@renderer/hooks/context/AuthContext', () => ({
   useAuth: () => ({
@@ -84,6 +85,18 @@ vi.mock('@renderer/pages/conversation', () => ({
     }, []);
 
     return <div data-testid='conversation-page'>{id}</div>;
+  },
+}));
+
+vi.mock('@renderer/pages/WorkbenchHost', () => ({
+  default: ({ workbenchKind, children }: { workbenchKind: string; children?: React.ReactNode }) => {
+    workbenchHostPropsSpy({ workbenchKind });
+
+    return (
+      <div data-testid='workbench-host' data-workbench-kind={workbenchKind}>
+        {children}
+      </div>
+    );
   },
 }));
 
@@ -187,6 +200,7 @@ describe('Router route switching', () => {
   beforeEach(() => {
     mountStats.mounts = 0;
     mountStats.unmounts = 0;
+    workbenchHostPropsSpy.mockClear();
     mockUseConversationTabs.mockReturnValue({
       openTabs: [],
       activeTabId: null,
@@ -199,7 +213,9 @@ describe('Router route switching', () => {
   it('keeps the conversation route mounted when only the route param changes', async () => {
     renderRouter();
 
+    expect(await screen.findByTestId('workbench-host')).toHaveAttribute('data-workbench-kind', 'conversation-cowork');
     expect(await screen.findByTestId('conversation-page')).toHaveTextContent('alpha');
+    expect(workbenchHostPropsSpy).toHaveBeenCalledWith({ workbenchKind: 'conversation-cowork' });
     expect(mountStats.mounts).toBe(1);
     expect(mountStats.unmounts).toBe(0);
 
