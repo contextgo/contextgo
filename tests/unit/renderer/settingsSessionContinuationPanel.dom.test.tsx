@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetBindingCatalogInvoke = vi.fn();
 const mockGetActiveSessionCatalogInvoke = vi.fn();
-const mockRefreshPublicationCatalogInvoke = vi.fn();
+const mockRefreshPublicationSnapshotInvoke = vi.fn();
 const mockContinuationSessionInvoke = vi.fn();
 const mockEndContinuationSessionInvoke = vi.fn();
 const mockSetContinuationControlModeInvoke = vi.fn();
@@ -52,8 +52,8 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     getActiveSessionCatalog: {
       invoke: (...args: unknown[]) => mockGetActiveSessionCatalogInvoke(...args),
     },
-    refreshPublicationCatalog: {
-      invoke: (...args: unknown[]) => mockRefreshPublicationCatalogInvoke(...args),
+    refreshPublicationSnapshot: {
+      invoke: (...args: unknown[]) => mockRefreshPublicationSnapshotInvoke(...args),
     },
     continuationSession: {
       invoke: (...args: unknown[]) => mockContinuationSessionInvoke(...args),
@@ -134,7 +134,7 @@ import SessionContinuationPanel from '@/renderer/components/settings/SettingsMod
 const refreshSnapshotResponse = {
   success: true,
   data: {
-    bindingCatalog: {
+    catalog: {
       connectors: [
         {
           id: 'connector-1',
@@ -201,8 +201,8 @@ const refreshSnapshotResponse = {
 describe('SessionContinuationPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockRefreshPublicationCatalogInvoke.mockResolvedValue(refreshSnapshotResponse);
-    mockGetBindingCatalogInvoke.mockResolvedValue({ success: true, data: refreshSnapshotResponse.data.bindingCatalog });
+    mockRefreshPublicationSnapshotInvoke.mockResolvedValue(refreshSnapshotResponse);
+    mockGetBindingCatalogInvoke.mockResolvedValue({ success: true, data: refreshSnapshotResponse.data.catalog });
     mockGetActiveSessionCatalogInvoke.mockResolvedValue({
       success: true,
       data: refreshSnapshotResponse.data.activeSessions,
@@ -227,7 +227,7 @@ describe('SessionContinuationPanel', () => {
 
     await screen.findByText('Continue in IM');
 
-    expect(mockRefreshPublicationCatalogInvoke).toHaveBeenCalledTimes(1);
+    expect(mockRefreshPublicationSnapshotInvoke).toHaveBeenCalledTimes(1);
     expect(mockGetBindingCatalogInvoke).not.toHaveBeenCalled();
     expect(mockGetActiveSessionCatalogInvoke).not.toHaveBeenCalled();
     expect(screen.getByRole('combobox', { name: 'Select a source' })).toHaveValue('session:session-1');
@@ -246,7 +246,7 @@ describe('SessionContinuationPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Refresh/i }));
 
     await waitFor(() => {
-      expect(mockRefreshPublicationCatalogInvoke).toHaveBeenCalledTimes(2);
+      expect(mockRefreshPublicationSnapshotInvoke).toHaveBeenCalledTimes(2);
     });
     expect(mockGetBindingCatalogInvoke).not.toHaveBeenCalled();
     expect(mockGetActiveSessionCatalogInvoke).not.toHaveBeenCalled();
