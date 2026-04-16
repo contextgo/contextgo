@@ -31,7 +31,8 @@ Current domain split:
 - Shared secure session cookie for `*.contextgo.io`
 - Human-friendly login page on `auth.contextgo.io`
 - JSON session API on `api.contextgo.io`
-- OIDC identity provider endpoints for InferMesh and other first-party consumers
+- ContextGo SSO (OIDC) endpoints for InferMesh and other first-party consumers
+- InferMesh account bootstrap and direct handoff flows for ContextGo Cloud users
 
 ## Environment Variables
 
@@ -144,8 +145,21 @@ python3 -m unittest discover -s tests
 - `POST /api/sync/push`
 - `GET /api/sync/pull`
 
+## InferMesh Integration
+
+ContextGo Cloud currently supports two first-party InferMesh sign-in patterns:
+
+- ContextGo SSO (OIDC)
+  - InferMesh redirects the browser to ContextGo Cloud and completes a standard OIDC authorization-code sign-in flow.
+  - This is the right choice when the product surface should read as "Continue with ContextGo" while keeping a standard SSO protocol underneath.
+- InferMesh bootstrap + handoff
+  - ContextGo Cloud provisions or reuses a managed InferMesh account and token for the signed-in ContextGo Cloud user.
+  - It can also mint a signed handoff URL that lands the same user directly inside InferMesh.
+
 ## InferMesh Provisioning
 
 `GET /api/integrations/infermesh/provider` supports both browser session auth and device-token auth.
 
 It provisions or reuses a deterministic InferMesh account for the current ContextGo Cloud user, ensures a managed API token exists, fetches the current model list from InferMesh, and returns a ready-to-save `new-api` provider payload for the desktop app.
+
+This path is about provider bootstrap, not browser SSO. For browser sign-in, use the ContextGo SSO (OIDC) endpoints above.
