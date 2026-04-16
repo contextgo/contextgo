@@ -253,4 +253,77 @@ describe('useAutoScroll - scroll to bottom on message send (#977)', () => {
 
     expect(result.current.handleFollowOutput(true)).toBe('auto');
   });
+
+  it('should ignore transient false atBottom updates immediately after the user settles at the bottom', () => {
+    const { result } = renderHook(({ messages, itemCount }) => useAutoScroll({ messages, itemCount }), {
+      initialProps: { messages: [], itemCount: 0 },
+    });
+
+    act(() => {
+      result.current.handleAtBottomStateChange(false);
+      result.current.handleScroll({
+        target: { scrollTop: 500 },
+      } as unknown as React.UIEvent<HTMLDivElement>);
+      result.current.handleAtBottomStateChange(true);
+    });
+
+    expect(result.current.showScrollButton).toBe(false);
+
+    act(() => {
+      result.current.handleAtBottomStateChange(false);
+    });
+
+    expect(result.current.showScrollButton).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(950);
+      result.current.handleAtBottomStateChange(false);
+    });
+
+    expect(result.current.showScrollButton).toBe(true);
+  });
+
+  it('should debounce leaving the bottom state when Virtuoso briefly reports false near the end', () => {
+    const { result } = renderHook(({ messages, itemCount }) => useAutoScroll({ messages, itemCount }), {
+      initialProps: { messages: [], itemCount: 0 },
+    });
+
+    act(() => {
+      result.current.handleAtBottomStateChange(true);
+      vi.advanceTimersByTime(950);
+      result.current.handleScroll({
+        target: { scrollTop: 120 },
+      } as unknown as React.UIEvent<HTMLDivElement>);
+      result.current.handleAtBottomStateChange(false);
+    });
+
+    expect(result.current.showScrollButton).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(130);
+    });
+
+    expect(result.current.showScrollButton).toBe(true);
+  });
+
+  it('should keep the bottom state when false flips back to true before debounce completes', () => {
+    const { result } = renderHook(({ messages, itemCount }) => useAutoScroll({ messages, itemCount }), {
+      initialProps: { messages: [], itemCount: 0 },
+    });
+
+    act(() => {
+      result.current.handleAtBottomStateChange(true);
+      vi.advanceTimersByTime(950);
+      result.current.handleScroll({
+        target: { scrollTop: 120 },
+      } as unknown as React.UIEvent<HTMLDivElement>);
+      result.current.handleAtBottomStateChange(false);
+      vi.advanceTimersByTime(60);
+      result.current.handleAtBottomStateChange(true);
+      vi.advanceTimersByTime(120);
+    });
+
+    expect(result.current.showScrollButton).toBe(false);
+    expect(result.current.handleFollowOutput(true)).toBe(false);
+  });
 });

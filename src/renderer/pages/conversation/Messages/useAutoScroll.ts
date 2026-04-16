@@ -15,6 +15,9 @@ import type { TMessage } from '@/common/chat/chatLib';
 
 // Ignore scroll events within this window after a programmatic scroll (ms)
 const PROGRAMMATIC_SCROLL_GUARD_MS = 150;
+// Delay leaving the bottom state briefly so transient Virtuoso threshold flips
+// near the end of a manual drag do not cause visible viewport jitter.
+const AT_BOTTOM_EXIT_DEBOUNCE_MS = 120;
 // After a user manually reaches the bottom, briefly suppress followOutput so
 // Virtuoso and native touchpad momentum do not fight over the final position.
 const MANUAL_BOTTOM_SETTLE_MS = 900;
@@ -50,10 +53,12 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
   // Refs for scroll control
   const isAtBottomRef = useRef(true);
   const userScrolledRef = useRef(false);
+  const manualScrollActiveRef = useRef(false);
   const lastScrollTopRef = useRef(0);
   const previousListLengthRef = useRef(messages.length);
   const lastProgrammaticScrollTimeRef = useRef(0);
   const autoScrollBlockedUntilRef = useRef(0);
+  const pendingAtBottomExitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Scroll to bottom helper - only for user messages and button clicks
   const scrollToBottom = useCallback(
@@ -83,15 +88,40 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
 
   // Reliable bottom state detection from Virtuoso
   const handleAtBottomStateChange = useCallback((atBottom: boolean) => {
-    isAtBottomRef.current = atBottom;
-    setShowScrollButton(!atBottom);
+    if (pendingAtBottomExitTimerRef.current) {
+      clearTimeout(pendingAtBottomExitTimerRef.current);
+      pendingAtBottomExitTimerRef.current = null;
+    }
+
+    if (!atBottom && Date.now() < autoScrollBlockedUntilRef.current) {
+      return;
+    }
 
     if (atBottom) {
-      if (userScrolledRef.current) {
+      isAtBottomRef.current = true;
+      setShowScrollButton(false);
+      if (userScrolledRef.current || manualScrollActiveRef.current) {
         autoScrollBlockedUntilRef.current = Date.now() + MANUAL_BOTTOM_SETTLE_MS;
       }
       userScrolledRef.current = false;
+      manualScrollActiveRef.current = false;
+      return;
     }
+
+    const shouldDebounceBottomExit =
+      isAtBottomRef.current && (manualScrollActiveRef.current || Date.now() < autoScrollBlockedUntilRef.current);
+
+    if (shouldDebounceBottomExit) {
+      pendingAtBottomExitTimerRef.current = setTimeout(() => {
+        isAtBottomRef.current = false;
+        setShowScrollButton(true);
+        pendingAtBottomExitTimerRef.current = null;
+      }, AT_BOTTOM_EXIT_DEBOUNCE_MS);
+      return;
+    }
+
+    isAtBottomRef.current = false;
+    setShowScrollButton(true);
   }, []);
 
   // Detect user scrolling up
@@ -107,6 +137,9 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
     }
 
     const delta = currentScrollTop - lastScrollTopRef.current;
+    if (Math.abs(delta) > 2) {
+      manualScrollActiveRef.current = true;
+    }
     if (delta < -10) {
       userScrolledRef.current = true;
       autoScrollBlockedUntilRef.current = 0;
@@ -130,6 +163,7 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
     // User sent a message - force scroll regardless of userScrolled state
     if (lastMessage?.position === 'right') {
       userScrolledRef.current = false;
+      manualScrollActiveRef.current = false;
       autoScrollBlockedUntilRef.current = 0;
 
       // When already pinned to the bottom, let Virtuoso's native followOutput
@@ -160,10 +194,24 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
 
   // Hide scroll button handler
   const hideScrollButton = useCallback(() => {
+    if (pendingAtBottomExitTimerRef.current) {
+      clearTimeout(pendingAtBottomExitTimerRef.current);
+      pendingAtBottomExitTimerRef.current = null;
+    }
     userScrolledRef.current = false;
+    manualScrollActiveRef.current = false;
     autoScrollBlockedUntilRef.current = 0;
     setShowScrollButton(false);
   }, []);
+
+  useEffect(
+    () => () => {
+      if (pendingAtBottomExitTimerRef.current) {
+        clearTimeout(pendingAtBottomExitTimerRef.current);
+      }
+    },
+    []
+  );
 
   return {
     virtuosoRef,
