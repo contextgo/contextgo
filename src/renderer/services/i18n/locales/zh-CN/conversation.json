@@ -401,6 +401,25 @@
       "skillsEmpty": "当前工作空间还没有发现项目本地 skill。",
       "skillsLoadFailed": "加载项目技能失败"
     },
+    "skillMarket": {
+      "action": "技能市场",
+      "title": "项目技能市场",
+      "description": "直接发现远程技能，并把它们安装到当前项目的自动化面中。",
+      "workspaceLabel": "工作空间：{{workspace}}",
+      "installPathHint": "安装目标：{{path}}",
+      "catalogLabel": "{{brand}} 远程目录",
+      "searchPlaceholder": "搜索项目技能...",
+      "curatedView": "精选",
+      "fullView": "完整库",
+      "install": "添加到项目",
+      "installedTag": "已安装",
+      "loadMore": "加载更多",
+      "empty": "没有找到适合当前项目的技能。",
+      "loadFailed": "加载项目技能市场失败",
+      "archiveUnavailable": "“{{name}}”当前没有可下载的安装包",
+      "installSuccess": "已将“{{name}}”添加到当前项目",
+      "installFailed": "无法将“{{name}}”添加到当前项目"
+    },
     "contextMenu": {
       "open": "打开",
       "openLocation": "打开文件所在目录",

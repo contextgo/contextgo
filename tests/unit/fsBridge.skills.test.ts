@@ -6,6 +6,7 @@ let mockFsStore: Record<string, any> = {};
 let mockCustomExternalPaths: Array<{ name: string; path: string }> = [];
 let mockSearchSkillMarket = vi.fn();
 let mockInstallSkillMarketSkill = vi.fn();
+let mockSyncWorkspaceManagedSkillsRuntimeProjections = vi.fn();
 
 describe('fsBridge skills functionality', () => {
   const originalEnv = { ...process.env };
@@ -17,6 +18,7 @@ describe('fsBridge skills functionality', () => {
     mockCustomExternalPaths = [];
     mockSearchSkillMarket = vi.fn();
     mockInstallSkillMarketSkill = vi.fn();
+    mockSyncWorkspaceManagedSkillsRuntimeProjections = vi.fn();
 
     // Mock electron
     vi.doMock('electron', () => ({
@@ -178,6 +180,11 @@ describe('fsBridge skills functionality', () => {
       },
     }));
 
+    vi.doMock('@process/utils/initAgent', () => ({
+      syncWorkspaceManagedSkillsRuntimeProjections: (...args: unknown[]) =>
+        mockSyncWorkspaceManagedSkillsRuntimeProjections(...args),
+    }));
+
     vi.doMock('@process/bridge/services/skillmarket/SkillMarketService', () => ({
       skillMarketService: {
         searchSkills: mockSearchSkillMarket,
@@ -251,6 +258,7 @@ describe('fsBridge skills functionality', () => {
             removeCustomExternalPath: createCommandMock('remove-custom-external-path'),
             searchSkillMarket: createCommandMock('search-skill-market'),
             installSkillMarketSkill: createCommandMock('install-skill-market-skill'),
+            installSkillMarketSkillToWorkspace: createCommandMock('install-skill-market-skill-to-workspace'),
             enableSkillsMarket: createCommandMock('enable-skills-market'),
             disableSkillsMarket: createCommandMock('disable-skills-market'),
           },
@@ -1416,6 +1424,45 @@ describe('fsBridge skills functionality', () => {
       expect(result).toEqual({
         success: true,
         data: expectedData,
+      });
+    });
+
+    it('installs a skill into the workspace .contextgo directory and syncs runtime projections', async () => {
+      mockInstallSkillMarketSkill.mockResolvedValue({
+        skillName: 'market-skill',
+        installedPath: '/tmp/workspace/.contextgo/skills/market-skill',
+        archiveUrl: 'https://www.skillmarket.com.cn/packages/market-skill.zip',
+      });
+
+      const handler = await getProvider('installSkillMarketSkillToWorkspace');
+      const result = await handler({
+        workspacePath: '/tmp/workspace',
+        skillId: 'market-skill::1.0.0::tester',
+        archive: {
+          source: 'skillhub',
+          relativePath: 'market-skill/1.0.0.zip',
+          label: 'Default package',
+        },
+      });
+
+      expect(mockInstallSkillMarketSkill).toHaveBeenCalledWith({
+        skillId: 'market-skill::1.0.0::tester',
+        archive: {
+          source: 'skillhub',
+          relativePath: 'market-skill/1.0.0.zip',
+          label: 'Default package',
+        },
+        skillsDir: path.resolve('/tmp/workspace', '.contextgo', 'skills'),
+      });
+      expect(mockSyncWorkspaceManagedSkillsRuntimeProjections).toHaveBeenCalledWith('/tmp/workspace');
+      expect(result).toEqual({
+        success: true,
+        data: {
+          skillName: 'market-skill',
+          installedPath: '/tmp/workspace/.contextgo/skills/market-skill',
+          archiveUrl: 'https://www.skillmarket.com.cn/packages/market-skill.zip',
+        },
+        msg: 'Skill "market-skill" installed to workspace successfully',
       });
     });
   });

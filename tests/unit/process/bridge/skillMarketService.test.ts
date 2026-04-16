@@ -464,4 +464,47 @@ describe('SkillMarketService.installSkill', () => {
       'trackup-food-analyze'
     );
   });
+
+  it('installs into an explicit target skills directory instead of the default service directory', async () => {
+    skillsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'skill-market-install-default-'));
+    const explicitSkillsDir = await fs.mkdtemp(path.join(os.tmpdir(), 'skill-market-install-explicit-'));
+    const archiveBuffer = await createArchiveBuffer({
+      'market-skill/SKILL.md': '---\nname: market-skill\ndescription: test skill\n---\n# Market Skill',
+    });
+
+    try {
+      const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url === CONFIG_URL) return createConfigResponse();
+        if (url === FULL_MANIFEST_URL) return createManifestResponse();
+        if (url === PACKAGE_URL) {
+          return new Response(archiveBuffer, {
+            status: 200,
+            headers: { 'Content-Type': 'application/zip' },
+          });
+        }
+
+        throw new Error(`Unexpected URL: ${url}`);
+      });
+
+      const service = new SkillMarketService({
+        fetchImpl,
+        configUrl: CONFIG_URL,
+        skillsDir,
+      });
+
+      const result = await service.installSkill({
+        skillId: 'market-skill::1.0.0::tester',
+        skillsDir: explicitSkillsDir,
+      });
+
+      expect(result.skillName).toBe('market-skill');
+      await expect(fs.readFile(path.join(explicitSkillsDir, 'market-skill', 'SKILL.md'), 'utf-8')).resolves.toContain(
+        'market-skill'
+      );
+      await expect(fs.access(path.join(skillsDir, 'market-skill', 'SKILL.md'))).rejects.toThrow();
+    } finally {
+      await fs.rm(explicitSkillsDir, { recursive: true, force: true });
+    }
+  });
 });

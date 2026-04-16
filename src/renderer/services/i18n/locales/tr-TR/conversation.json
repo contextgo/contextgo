@@ -246,6 +246,25 @@
       "skillsEmpty": "No project-local skills were found in this workspace.",
       "skillsLoadFailed": "Failed to load project skills"
     },
+    "skillMarket": {
+      "action": "Skill Market",
+      "title": "Project Skill Market",
+      "description": "Discover remote skills and install them directly into the current project automation surface.",
+      "workspaceLabel": "Workspace: {{workspace}}",
+      "installPathHint": "Install target: {{path}}",
+      "catalogLabel": "{{brand}} remote catalog",
+      "searchPlaceholder": "Search project skills...",
+      "curatedView": "Curated",
+      "fullView": "Full Library",
+      "install": "Add to Project",
+      "installedTag": "Installed",
+      "loadMore": "Load More",
+      "empty": "No matching skills were found for this project.",
+      "loadFailed": "Failed to load project Skill Market",
+      "archiveUnavailable": "No downloadable package is available for \"{{name}}\"",
+      "installSuccess": "Added \"{{name}}\" to this project",
+      "installFailed": "Failed to add \"{{name}}\" to this project"
+    },
     "contextMenu": {
       "open": "Aç",
       "openLocation": "Klasörde göster",

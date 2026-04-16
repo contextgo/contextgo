@@ -542,6 +542,35 @@ export async function setupAssistantWorkspace(
   }
 }
 
+export async function syncWorkspaceManagedSkillsRuntimeProjections(workspace: string): Promise<void> {
+  const managedSkillsDir = getWorkspaceManagedSkillsDir(workspace);
+  await fs.mkdir(managedSkillsDir, { recursive: true });
+
+  const runtimeSkillsDirs = [...new Set(Object.values(AGENT_SKILLS_DIRS).flat())];
+  const projectionModes = new Map<string, RuntimeSkillsProjectionMode>();
+
+  for (const skillsRelDir of runtimeSkillsDirs) {
+    projectionModes.set(skillsRelDir, await ensureRuntimeSkillsProjection(workspace, skillsRelDir, managedSkillsDir));
+  }
+
+  const managedSkills = await discoverSkillDirectories(managedSkillsDir).catch(
+    (): Awaited<ReturnType<typeof discoverSkillDirectories>> => []
+  );
+
+  for (const skill of managedSkills) {
+    const managedSkillDir = path.join(managedSkillsDir, skill.dirName);
+    for (const skillsRelDir of runtimeSkillsDirs) {
+      await ensureRuntimeSkillProjection(
+        workspace,
+        skillsRelDir,
+        managedSkillDir,
+        skill.dirName,
+        projectionModes.get(skillsRelDir) ?? 'shared-dir'
+      );
+    }
+  }
+}
+
 export async function ensureConversationWorkspaceBootstrap(conversation: TChatConversation): Promise<void> {
   const extra = conversation.extra as
     | {

@@ -387,6 +387,25 @@
       "skillsEmpty": "目前工作空間尚未發現專案本地 skill。",
       "skillsLoadFailed": "載入專案技能失敗"
     },
+    "skillMarket": {
+      "action": "技能市場",
+      "title": "專案技能市場",
+      "description": "直接探索遠端技能，並把它們安裝到目前專案的自動化介面中。",
+      "workspaceLabel": "工作空間：{{workspace}}",
+      "installPathHint": "安裝目標：{{path}}",
+      "catalogLabel": "{{brand}} 遠端目錄",
+      "searchPlaceholder": "搜尋專案技能...",
+      "curatedView": "精選",
+      "fullView": "完整庫",
+      "install": "加入專案",
+      "installedTag": "已安裝",
+      "loadMore": "載入更多",
+      "empty": "找不到適合目前專案的技能。",
+      "loadFailed": "載入專案技能市場失敗",
+      "archiveUnavailable": "「{{name}}」目前沒有可下載的安裝包",
+      "installSuccess": "已將「{{name}}」加入目前專案",
+      "installFailed": "無法將「{{name}}」加入目前專案"
+    },
     "contextMenu": {
       "open": "開啟",
       "openLocation": "開啟檔案所在資料夾",

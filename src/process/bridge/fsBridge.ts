@@ -33,6 +33,7 @@ import type { AgentPackageSourceDescriptor } from '@/common/config/presets/agent
 import { getPlatformServices } from '@/common/platform';
 import { getWorkspaceHooksDir } from '@process/bridge/services/workspaceAutomation';
 import { skillMarketService } from '@process/bridge/services/skillmarket/SkillMarketService';
+import { syncWorkspaceManagedSkillsRuntimeProjections } from '@process/utils/initAgent';
 import {
   getSystemDir,
   getAssistantsDir,
@@ -2196,6 +2197,39 @@ export function initFsBridge(): void {
       return {
         success: false,
         msg: `Failed to install Skill Market skill: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  });
+
+  ipcBridge.fs.installSkillMarketSkillToWorkspace.provider(async ({ workspacePath, skillId, archive }) => {
+    try {
+      const normalizedWorkspacePath = typeof workspacePath === 'string' ? workspacePath.trim() : '';
+      if (!normalizedWorkspacePath) {
+        return {
+          success: false,
+          msg: 'Workspace path is required',
+        };
+      }
+
+      const workspaceSkillsDir = path.resolve(normalizedWorkspacePath, '.contextgo', 'skills');
+      const data = await skillMarketService.installSkill({
+        skillId,
+        archive,
+        skillsDir: workspaceSkillsDir,
+      });
+
+      await syncWorkspaceManagedSkillsRuntimeProjections(normalizedWorkspacePath);
+
+      return {
+        success: true,
+        data,
+        msg: `Skill "${data.skillName}" installed to workspace successfully`,
+      };
+    } catch (error) {
+      console.error('[fsBridge] Failed to install Skill Market skill to workspace:', error);
+      return {
+        success: false,
+        msg: `Failed to install Skill Market skill to workspace: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   });
