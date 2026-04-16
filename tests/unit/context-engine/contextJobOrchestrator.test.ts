@@ -125,6 +125,48 @@ describe('ContextJobOrchestrator', () => {
     );
   });
 
+  it('creates space memory distillation jobs as Space Curator work with digest and profile targets', () => {
+    const job = createPlannedContextJob({
+      type: 'space_memory_distillation',
+      priority: 'high',
+      spaceId: 'space-1',
+      source: 'timer',
+      triggerEvent: 'timer.space_memory_distillation',
+      reason: 'Distill shared space memory from recent project activity.',
+      payload: {
+        summary: 'Distill shared space memory from recent project activity.',
+      },
+    });
+
+    expect(job.governanceIdentity).toBe('space_curator');
+    expect(job.payload).toEqual(
+      expect.objectContaining({
+        artifactTargets: ['space_digest', 'profile_memory'],
+      })
+    );
+  });
+
+  it('creates connector digest jobs as Space Curator work with digest targets', () => {
+    const job = createPlannedContextJob({
+      type: 'connector_digest',
+      priority: 'medium',
+      spaceId: 'space-1',
+      source: 'connector',
+      triggerEvent: 'connector.source.ingested',
+      reason: 'Digest newly ingested connector content into reusable context.',
+      payload: {
+        summary: 'Digest newly ingested connector content into reusable context.',
+      },
+    });
+
+    expect(job.governanceIdentity).toBe('space_curator');
+    expect(job.payload).toEqual(
+      expect.objectContaining({
+        artifactTargets: ['space_digest'],
+      })
+    );
+  });
+
   it('collects unique signal kinds for downstream hooks', () => {
     const result = collectSessionSignalKinds([
       makeSignal('user_interrupt', 'A'),

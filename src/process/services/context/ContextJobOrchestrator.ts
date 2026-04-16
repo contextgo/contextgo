@@ -253,7 +253,11 @@ export function createPlannedContextJob(input: {
     payload: {
       ...input.payload,
       artifactTargets:
-        input.type === 'project_capability_curation'
+        input.type === 'space_memory_distillation'
+          ? ['space_digest', 'profile_memory']
+          : input.type === 'connector_digest'
+            ? ['space_digest']
+            : input.type === 'project_capability_curation'
           ? ['project_doc', 'project_rules', 'project_skill']
           : (input.payload as { artifactTargets?: string[] } | undefined)?.artifactTargets,
     },
