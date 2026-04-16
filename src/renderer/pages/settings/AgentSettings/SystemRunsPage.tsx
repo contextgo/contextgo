@@ -82,6 +82,35 @@ function formatArtifactTargets(targets: readonly string[] | undefined): string {
   return targets.join(' · ');
 }
 
+function resolveDefinitionGovernanceIdentity(jobType: string): string {
+  if (jobType === 'session_compaction' || jobType === 'session_pattern_detection') {
+    return 'session_steward';
+  }
+  if (jobType === 'project_promotion' || jobType === 'project_capability_curation') {
+    return 'project_curator';
+  }
+  return 'space_curator';
+}
+
+function resolveDefinitionArtifactTargets(jobType: string): string[] {
+  if (jobType === 'session_compaction') {
+    return ['session_timeline', 'session_working_context', 'session_checkpoint'];
+  }
+  if (jobType === 'session_pattern_detection') {
+    return ['space_digest'];
+  }
+  if (jobType === 'project_promotion') {
+    return ['project_doc'];
+  }
+  if (jobType === 'project_capability_curation') {
+    return ['project_doc', 'project_rules', 'project_skill'];
+  }
+  if (jobType === 'space_memory_distillation') {
+    return ['space_digest', 'profile_memory'];
+  }
+  return ['space_digest'];
+}
+
 const SystemRunsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -184,6 +213,8 @@ const SystemRunsPage: React.FC = () => {
                     resolveTriggerKindLabel(kind, t)
                   );
                   const boundaryLabel = resolveExecutionBoundaryLabel(assistant.runtimeSpec.executionBoundary, t);
+                  const governanceIdentity = resolveDefinitionGovernanceIdentity(assistant.jobType);
+                  const artifactTargets = resolveDefinitionArtifactTargets(assistant.jobType);
                   const isPlanned = assistant.deliveryStatus === 'planned';
                   const runtimeStatusTone = isPlanned
                     ? SYSTEM_AGENT_STATUS_TAG_COLOR.planned
@@ -233,6 +264,10 @@ const SystemRunsPage: React.FC = () => {
                                 defaultValue: `Boundary: ${boundaryLabel}`,
                               })}
                             </div>
+                            <div className={styles.systemAgentMetaItem}>{`Governance: ${governanceIdentity}`}</div>
+                            <div
+                              className={styles.systemAgentMetaItem}
+                            >{`Artifacts: ${formatArtifactTargets(artifactTargets)}`}</div>
                             <div className={styles.systemAgentMetaItem}>
                               {t('settings.systemRunsLastChecked', {
                                 time: lastCheckedLabel,

@@ -79,6 +79,14 @@ describe('SystemRunsPage', () => {
     expect(screen.getByText('Registered system agents')).toBeInTheDocument();
     expect(screen.getByText('Session Context Keeper')).toBeInTheDocument();
     expect(screen.getByText('Project Knowledge Promoter')).toBeInTheDocument();
+    expect(screen.getAllByText('Governance: session_steward').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Governance: project_curator').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Governance: space_curator').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('Artifacts: session_timeline · session_working_context · session_checkpoint').length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText('Artifacts: project_doc').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Artifacts: space_digest · profile_memory').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Last checked:/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Trigger:/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Boundary:/).length).toBeGreaterThan(0);
