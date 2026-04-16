@@ -290,7 +290,8 @@ vi.mock('@renderer/utils/platform', () => ({
   requestAndroidObsidianVaultSetup: (...args: unknown[]) => hoisted.requestAndroidObsidianVaultSetupMock(...args),
   registerAndBootstrapAndroidObsidianReplica: (...args: unknown[]) =>
     hoisted.registerAndBootstrapAndroidObsidianReplicaMock(...args),
-  updateAndroidObsidianVaultSetupState: (...args: unknown[]) => hoisted.updateAndroidObsidianVaultSetupStateMock(...args),
+  updateAndroidObsidianVaultSetupState: (...args: unknown[]) =>
+    hoisted.updateAndroidObsidianVaultSetupStateMock(...args),
   openExternalUrl: (...args: unknown[]) => hoisted.openExternalUrlMock(...args),
 }));
 
@@ -508,8 +509,9 @@ describe('Sider', () => {
       healthStatus: 'warn',
       lastSyncedAt: '2026-04-16T00:00:00Z',
     });
-    (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: ReturnType<typeof vi.fn> }).__ensureOfficialRemoteReadyInvokeMock =
-      vi.fn().mockResolvedValue({ success: false });
+    (
+      globalThis as { __ensureOfficialRemoteReadyInvokeMock?: ReturnType<typeof vi.fn> }
+    ).__ensureOfficialRemoteReadyInvokeMock = vi.fn().mockResolvedValue({ success: false });
     hoisted.ensureDefaultSpaceInvokeMock.mockResolvedValue({ id: 'space-1', name: 'My Space' });
     hoisted.openVaultInvokeMock.mockResolvedValue({
       opened: true,

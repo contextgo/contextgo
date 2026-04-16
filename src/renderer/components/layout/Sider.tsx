@@ -429,10 +429,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
             }
 
             const syncStatus = await ipcBridge.cloud.getObsidianSyncStatus.invoke({ spaceId: targetSpace.id });
-            const matchingReplica =
-              syncStatus.success
-                ? syncStatus.data?.replicas.find((replica) => replica.replicaId === registeredState.replicaId)
-                : null;
+            const matchingReplica = syncStatus.success
+              ? syncStatus.data?.replicas.find((replica) => replica.replicaId === registeredState.replicaId)
+              : null;
 
             await updateAndroidObsidianVaultSetupState({
               status: 'registered-mobile-replica',
@@ -1011,9 +1010,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     ? t('guid.space.loading')
     : vaultOpenIntent.readinessKey
       ? t(vaultOpenIntent.readinessKey)
-    : selectedSpace
-      ? t('guid.space.selectorTitle')
-      : t('guid.space.empty');
+      : selectedSpace
+        ? t('guid.space.selectorTitle')
+        : t('guid.space.empty');
   const spaceMenu = (
     <Menu
       className='sider-user-menu'

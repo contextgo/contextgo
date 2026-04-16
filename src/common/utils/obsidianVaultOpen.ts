@@ -8,7 +8,9 @@ export type ObsidianVaultOpenIntent = {
   target: string | null;
 };
 
-export function isObsidianVaultProviderRef(providerRef?: SpaceProviderRef | null): providerRef is SpaceVaultProviderRef {
+export function isObsidianVaultProviderRef(
+  providerRef?: SpaceProviderRef | null
+): providerRef is SpaceVaultProviderRef {
   return providerRef != null && 'kind' in providerRef && providerRef.kind === 'obsidian-vault';
 }
 

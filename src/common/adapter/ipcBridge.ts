@@ -40,7 +40,12 @@ import type {
   TSpace,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
-import type { CloudAuthProviderId, CloudObsidianVaultBinding, CloudRemoteDevicesPayload, CloudStatus } from '../types/cloud';
+import type {
+  CloudAuthProviderId,
+  CloudObsidianVaultBinding,
+  CloudRemoteDevicesPayload,
+  CloudStatus,
+} from '../types/cloud';
 import type {
   UpdateCheckRequest,
   UpdateCheckResult,
