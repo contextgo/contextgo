@@ -1,5 +1,6 @@
 // WebUI 状态接口 / WebUI status interface
 export interface WebUIStatus {
+  lifecycle?: 'stopped' | 'starting' | 'running' | 'stopping' | 'degraded';
   running: boolean;
   port: number;
   allowRemote: boolean;

@@ -29,9 +29,13 @@ import { initializeAcpDetector, registerWindowMaximizeListeners } from '@process
 import { onCloseToTrayChanged, onLanguageChanged } from './process/bridge/systemSettingsBridge';
 import { setInitialLanguage } from '@process/services/i18n';
 import { getCloudService } from '@process/services/cloud/CloudService';
+import {
+  prepareHostBrowserEntryForWebUiMode,
+  prepareOfficialRemoteHostBrowserEntryAtStartup,
+  restoreDesktopHostBrowserEntryFromPreferences,
+} from '@process/services/host/hostBrowserEntryStartup';
 import { workerTaskManager } from './process/task/workerTaskManagerSingleton';
 import { setupApplicationMenu } from './process/utils/appMenu';
-import { startWebServer } from './process/webserver';
 import { applyZoomToWindow } from './process/utils/zoom';
 import {
   clearPendingDeepLinkUrl,
@@ -47,13 +51,7 @@ import {
   showAndFocusMainWindow,
   showOrCreateMainWindow,
 } from './process/utils/mainWindowLifecycle';
-import {
-  ensureDesktopWebUIForOfficialRemote,
-  loadUserWebUIConfig,
-  resolveRemoteAccess,
-  resolveWebUIPort,
-  restoreDesktopWebUIFromPreferences,
-} from './process/utils/webuiConfig';
+import { loadUserWebUIConfig, resolveRemoteAccess, resolveWebUIPort } from './process/utils/webuiConfig';
 import {
   createOrUpdateTray,
   destroyTray,
@@ -500,12 +498,9 @@ const handleAppReady = async (): Promise<void> => {
 
   if (!isWebUIMode && !isResetPasswordMode && !isE2ETestMode) {
     try {
-      const storedOfficialRemoteToken = await ProcessConfig.get('cloud.deviceToken');
-      if (typeof storedOfficialRemoteToken === 'string' && storedOfficialRemoteToken.trim()) {
-        await ensureDesktopWebUIForOfficialRemote().catch((error) => {
-          console.warn('[Cloud] Failed to eagerly prepare Official Remote desktop runtime at app startup:', error);
-        });
-      }
+      await prepareOfficialRemoteHostBrowserEntryAtStartup().catch((error) => {
+        console.warn('[Cloud] Failed to eagerly prepare Official Remote host browser entry at app startup:', error);
+      });
     } catch (error) {
       console.warn('[Cloud] Failed to inspect stored Official Remote device binding at app startup:', error);
     }
@@ -525,7 +520,7 @@ const handleAppReady = async (): Promise<void> => {
       await resetPasswordCLI(username);
 
       app.quit();
-    } catch (error) {
+    } catch {
       app.exit(1);
     }
   } else if (isWebUIMode) {
@@ -535,7 +530,10 @@ const handleAppReady = async (): Promise<void> => {
     }
     const resolvedPort = resolveWebUIPort(userConfigInfo.config, getSwitchValue);
     const allowRemote = resolveRemoteAccess(userConfigInfo.config, isRemoteMode);
-    await startWebServer(resolvedPort, allowRemote);
+    await prepareHostBrowserEntryForWebUiMode({
+      preferredPort: resolvedPort,
+      allowRemote,
+    });
 
     // Keep the process alive in WebUI mode by preventing default quit behavior.
     // On Linux headless (systemd), Electron may attempt to quit when no windows exist.
@@ -601,8 +599,8 @@ const handleAppReady = async (): Promise<void> => {
 
     if (!isE2ETestMode) {
       // 窗口创建后异步恢复 WebUI，不阻塞 UI / Restore WebUI async after window creation, non-blocking
-      restoreDesktopWebUIFromPreferences().catch((error) => {
-        console.error('[WebUI] Failed to auto-restore:', error);
+      restoreDesktopHostBrowserEntryFromPreferences().catch((error) => {
+        console.error('[HostBrowserEntry] Failed to auto-restore local client demand:', error);
       });
     }
 
