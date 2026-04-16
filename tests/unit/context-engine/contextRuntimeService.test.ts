@@ -534,4 +534,44 @@ describe('ContextRuntimeService', () => {
       })
     );
   });
+
+  it('emits delegation.completed with the governance lifecycle envelope', async () => {
+    const observedEvents: Array<{ type: string; payload: Record<string, unknown> }> = [];
+    const eventBus = {
+      emit: vi.fn(async (type: string, payload: Record<string, unknown>) => {
+        observedEvents.push({ type, payload });
+      }),
+    };
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      eventBus as any,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
+
+    await (service as any).captureDelegationCompletion({
+      conversation: makeConversation(),
+      delegationSummary: 'Planner delegate completed release validation synthesis.',
+      snapshot: {
+        userTurns: 3,
+        assistantReplies: 2,
+        interruptions: 0,
+        recentSignals: [],
+      },
+    });
+
+    expect(observedEvents).toContainEqual(
+      expect.objectContaining({
+        type: 'delegation.completed',
+        payload: expect.objectContaining({
+          spaceId: 'space-1',
+          threadId: 'conv-1',
+          projectSlug: PROJECT_SLUG,
+          delegationSummary: 'Planner delegate completed release validation synthesis.',
+        }),
+      })
+    );
+  });
 });
