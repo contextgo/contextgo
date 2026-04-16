@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CloudStatus } from '@/common/types/cloud';
 
 const getStatusInvoke = vi.fn();
+const getObsidianSyncStatusInvoke = vi.fn();
 const startLoginInvoke = vi.fn();
 const logoutInvoke = vi.fn();
 const openInfermeshInvoke = vi.fn();
@@ -40,6 +41,11 @@ const translations: Record<string, string> = {
     'ContextGo only needs the OAuth login and host linking. If you still need to register or complete account setup, continue on the InferMesh website.',
   'settings.cloud.openInfermesh': 'Open InferMesh',
   'settings.cloud.signOut': 'Sign out',
+  'settings.cloud.obsidianSync.loading': 'Checking Obsidian vault sync status...',
+  'settings.cloud.obsidianSync.noBinding': 'The current Space does not have an Obsidian vault sync binding yet.',
+  'settings.cloud.obsidianSync.title': 'Obsidian vault sync',
+  'settings.cloud.obsidianSync.description':
+    'This Space is linked to an Obsidian vault binding managed through ContextGo Cloud.',
   'settings.webui': 'WebUI',
   'settings.webui.description': 'WebUI description',
   'settings.webui.passwordHidden': '******',
@@ -141,6 +147,9 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
     openInfermesh: {
       invoke: openInfermeshInvoke,
     },
+    getObsidianSyncStatus: {
+      invoke: getObsidianSyncStatusInvoke,
+    },
     statusChanged: {
       on: statusChangedOn,
     },
@@ -166,6 +175,15 @@ vi.mock('@/common/config/storage', () => ({
 
 vi.mock('@/renderer/utils/platform', () => ({
   isElectronDesktop: () => true,
+}));
+
+vi.mock('@/renderer/hooks/context/useSelectedSpace', () => ({
+  useSelectedSpace: () => ({
+    selectedSpace: {
+      id: 'space_1',
+      name: 'My Space',
+    },
+  }),
 }));
 
 vi.mock('@/renderer/components/base/ContextGoModal', () => ({
@@ -202,6 +220,7 @@ vi.mock('react-i18next', () => ({
 describe('CloudSyncSection', () => {
   beforeEach(() => {
     getStatusInvoke.mockReset();
+    getObsidianSyncStatusInvoke.mockReset();
     startLoginInvoke.mockReset();
     logoutInvoke.mockReset();
     statusChangedOn.mockReset();
@@ -216,6 +235,10 @@ describe('CloudSyncSection', () => {
     webuiStatusChangedOn.mockImplementation(() => () => undefined);
     webuiResetPasswordResultOn.mockImplementation(() => () => undefined);
     openInfermeshInvoke.mockResolvedValue({ success: true, data: authenticatedStatus });
+    getObsidianSyncStatusInvoke.mockResolvedValue({
+      success: true,
+      data: null,
+    });
     configStorageGet.mockResolvedValue(false);
     webuiGetStatusInvoke.mockResolvedValue({
       success: true,
@@ -263,6 +286,15 @@ describe('CloudSyncSection', () => {
       success: true,
       data: authenticatedStatus,
     });
+    getObsidianSyncStatusInvoke.mockResolvedValue({
+      success: true,
+      data: {
+        vaultBindingId: 'vault_space_1',
+        spaceId: 'space_1',
+        riskLevel: 'normal',
+        replicas: [{ replicaId: 'desktop_a', platform: 'desktop', healthStatus: 'ok' }],
+      },
+    });
 
     const { default: CloudSyncSection } =
       await import('@/renderer/components/settings/SettingsModal/contents/SystemModalContent/CloudSyncSection');
@@ -272,6 +304,8 @@ describe('CloudSyncSection', () => {
     expect(await screen.findByText('ContextGo on mbp')).toBeInTheDocument();
     expect(screen.getByText('Host linked')).toBeInTheDocument();
     expect(screen.getByText('InferMesh website')).toBeInTheDocument();
+    expect(screen.getByText('vault_space_1')).toBeInTheDocument();
+    expect(getObsidianSyncStatusInvoke).toHaveBeenCalledWith({ spaceId: 'space_1' });
   });
 
   it('offers direct access to InferMesh before cloud login completes', async () => {

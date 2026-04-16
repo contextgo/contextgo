@@ -1597,7 +1597,13 @@
     "notAvailable": "Not available",
     "infermeshAccess": "InferMesh website",
     "infermeshAccessDesc": "ContextGo only needs the OAuth login and host linking. If you still need to register or complete account setup, continue on the InferMesh website.",
-    "openInfermesh": "Model Center"
+    "openInfermesh": "Model Center",
+    "obsidianSync": {
+      "title": "Obsidian vault sync",
+      "description": "This Space is linked to an Obsidian vault binding managed through ContextGo Cloud.",
+      "loading": "Checking Obsidian vault sync status...",
+      "noBinding": "The current Space does not have an Obsidian vault sync binding yet."
+    }
   },
   "commands": {
     "title": "Commands",

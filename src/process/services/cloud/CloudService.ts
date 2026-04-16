@@ -17,6 +17,8 @@ import { buildCloudDesktopOAuthStartUrl } from '@/common/utils/cloudAuth';
 import type {
   CloudAuthProviderId,
   CloudDevice,
+  CloudObsidianReplica,
+  CloudObsidianVaultBinding,
   CloudRemoteDevice,
   CloudRemoteDeviceSelection,
   CloudRemoteDevicesPayload,
@@ -67,6 +69,11 @@ type RemoteDevicesResponsePayload = {
   success?: boolean;
   devices?: CloudRemoteDevice[];
   selection?: CloudRemoteDeviceSelection;
+};
+
+type ObsidianSyncStatusResponsePayload = {
+  success?: boolean;
+  binding?: CloudObsidianVaultBinding | null;
 };
 
 type DesktopLoginResultWaiter = {
@@ -199,6 +206,57 @@ function normalizeRemoteDevicesPayload(payload: unknown): CloudRemoteDevicesPayl
   };
 }
 
+function normalizeObsidianReplica(value: unknown): CloudObsidianReplica | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const replicaId = readOptionalString(value.replicaId);
+  const platform = readOptionalString(value.platform);
+  const healthStatus = readOptionalString(value.healthStatus);
+  if (!replicaId || (platform !== 'desktop' && platform !== 'mobile')) {
+    return null;
+  }
+  if (healthStatus !== 'ok' && healthStatus !== 'warn' && healthStatus !== 'error') {
+    return null;
+  }
+
+  return {
+    replicaId,
+    platform,
+    healthStatus,
+    lastSyncedAt: readOptionalString(value.lastSyncedAt),
+    localReadyState: readOptionalString(value.localReadyState) as CloudObsidianReplica['localReadyState'],
+    rootTreeUri: readOptionalString(value.rootTreeUri),
+    localDirectoryUri: readOptionalString(value.localDirectoryUri),
+    landingNotePath: readOptionalString(value.landingNotePath),
+  };
+}
+
+function normalizeObsidianVaultBinding(payload: unknown): CloudObsidianVaultBinding | null {
+  if (!isRecord(payload)) {
+    return null;
+  }
+
+  const binding = isRecord(payload.binding) ? payload.binding : payload;
+  const vaultBindingId = readOptionalString(binding.vaultBindingId);
+  const spaceId = readOptionalString(binding.spaceId);
+  if (!vaultBindingId || !spaceId || !Array.isArray(binding.replicas)) {
+    return null;
+  }
+
+  const replicas = binding.replicas
+    .map((replica) => normalizeObsidianReplica(replica))
+    .filter((replica): replica is CloudObsidianReplica => replica !== null);
+
+  return {
+    vaultBindingId,
+    spaceId,
+    riskLevel: readOptionalString(binding.riskLevel) as CloudObsidianVaultBinding['riskLevel'],
+    replicas,
+  };
+}
+
 class CloudRequestError extends Error {
   constructor(
     message: string,
@@ -219,8 +277,6 @@ const CLOUD_LOGIN_LOOPBACK_PATH_PREFIX = '/contextgo-cloud-login';
 const OFFICIAL_REMOTE_READY_TIMEOUT_MS = 8_000;
 const OFFICIAL_REMOTE_READY_POLL_MS = 250;
 const OFFICIAL_REMOTE_DEMAND = 'official-remote';
-
-const isCloudRequestError = (error: unknown): error is CloudRequestError => error instanceof CloudRequestError;
 
 function sameUser(left?: CloudUser | null, right?: CloudUser | null): boolean {
   if (!left || !right) {
@@ -546,6 +602,7 @@ export class CloudService {
     const candidateBaseUrls = Array.from(new Set([CLOUD_API_BASE_URL, CLOUD_AUTH_BASE_URL]));
     let lastError: Error | null = null;
 
+    /* eslint-disable no-await-in-loop -- Base URLs are tried sequentially as an ordered fallback. */
     for (const baseUrl of candidateBaseUrls) {
       try {
         const response = await authSession.fetch(`${baseUrl}/api/remote/devices`, {
@@ -570,8 +627,39 @@ export class CloudService {
         lastError = error instanceof Error ? error : new Error(String(error));
       }
     }
+    /* eslint-enable no-await-in-loop */
 
     throw lastError ?? new Error('Remote device list is unavailable');
+  }
+
+  public async getObsidianSyncStatus(spaceId: string): Promise<CloudObsidianVaultBinding | null> {
+    const authSession = await this.getAuthSession();
+    const deviceToken = await ProcessConfig.get(CLOUD_DEVICE_TOKEN_KEY);
+    if (typeof deviceToken !== 'string' || !deviceToken.trim()) {
+      return null;
+    }
+
+    const response = await authSession.fetch(
+      `${CLOUD_API_BASE_URL}/api/obsidian-sync/spaces/${encodeURIComponent(spaceId)}`,
+      {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${deviceToken.trim()}`,
+        },
+      }
+    );
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw await readErrorResponse(response);
+    }
+
+    const payload = await parseJsonResponse<ObsidianSyncStatusResponsePayload | Record<string, unknown>>(response);
+    return normalizeObsidianVaultBinding(payload);
   }
 
   public async openInfermesh(): Promise<CloudStatus> {
@@ -1131,6 +1219,7 @@ export class CloudService {
     const deadline = Date.now() + OFFICIAL_REMOTE_READY_TIMEOUT_MS;
     let lastStatus = await this.getStatus();
 
+    /* eslint-disable no-await-in-loop -- Official Remote readiness intentionally polls until timeout or success. */
     while (Date.now() < deadline) {
       if (isHostRuntimeOfficialRemoteReady(lastStatus)) {
         return lastStatus;
@@ -1143,6 +1232,7 @@ export class CloudService {
       await new Promise((resolve) => setTimeout(resolve, OFFICIAL_REMOTE_READY_POLL_MS));
       lastStatus = await this.getStatus();
     }
+    /* eslint-enable no-await-in-loop */
 
     return lastStatus;
   }
