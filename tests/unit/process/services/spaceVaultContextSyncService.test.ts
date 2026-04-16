@@ -305,6 +305,93 @@ describe('SpaceVaultContextSyncService', () => {
     expect(mounted?.summary).toContain('Use the staged release checklist.');
   });
 
+  it('appends session timeline events into a dedicated session timeline file', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(workspacePath, { recursive: true });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+    await service.appendSessionTimelineEvent({
+      conversation: conversation as any,
+      timestamp: '2026-04-23T13:00:00.000Z',
+      title: 'User query',
+      body: '用户发起 query: aaaa',
+    });
+
+    const timelinePath = path.join(vaultPath, 'Projects', 'workspace', '_context', 'sessions', 'conv-1', 'timeline.md');
+    const timelineContent = await fs.readFile(timelinePath, 'utf8');
+    expect(timelineContent).toContain('[2026-04-23 13:00:00]');
+    expect(timelineContent).toContain('User query: 用户发起 query: aaaa');
+  });
+
+  it('writes and reads the session working-context file separately from the timeline', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(workspacePath, { recursive: true });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+    await service.writeSessionWorkingContext({
+      conversation: conversation as any,
+      timestamp: '2026-04-23T13:10:00.000Z',
+      currentTask: '整理发布前的回归检查',
+      stableStrategies: ['先缩小改动面，再补验证。'],
+      failureModes: ['长对话容易把约束冲掉。'],
+      pendingConstraints: ['没有审批前不能扩大发布范围。'],
+      signalKinds: ['context_window_prepared'],
+      pressure: 42,
+      sourceProfileKey: 'session.compaction.conv-1',
+    });
+
+    const mounted = await service.readSessionWorkingContextSection({ conversation: conversation as any });
+    expect(mounted?.id).toBe('session-working-context:conv-1');
+    expect(mounted?.summary).toContain('整理发布前的回归检查');
+    expect(mounted?.summary).toContain('先缩小改动面，再补验证。');
+  });
+
   it('skips vault sync when the target space is not bound to an obsidian vault', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
     tempDirs.push(root);
@@ -521,6 +608,112 @@ describe('SpaceVaultContextSyncService', () => {
     expect(capabilityDocContent).toContain('contextgoType: project-capability');
     expect(capabilityDocContent).toContain('- Capability kind: Skills');
     expect(capabilityDocContent).toContain('- Implicit invocation: enabled');
+  });
+
+  it('writes project curator proposal notes under the project context proposals directory', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(path.join(workspacePath, 'docs'), { recursive: true });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+
+    const artifact = await service.writeProjectCuratorProposal({
+      spaceId: 'space-1',
+      projectSlug: createWorkspaceProjectSlug(workspacePath),
+      title: 'AGENTS append proposal',
+      proposalKind: 'project_rules',
+      summary: 'Add a stable release-validation rule.',
+      targetPath: 'AGENTS.md',
+      additions: ['Add a short rule telling agents to keep release diffs minimal and validation explicit.'],
+      evidence: ['Observed in 3 session checkpoints.'],
+      timestamp: '2026-04-16T08:00:00.000Z',
+    });
+
+    expect(artifact).toEqual(
+      expect.objectContaining({
+        relativePath: expect.stringContaining('_context/proposals'),
+        summary: 'Add a stable release-validation rule.',
+      })
+    );
+
+    const proposalPath = path.join(vaultPath, artifact!.relativePath);
+    const proposalContent = await fs.readFile(proposalPath, 'utf8');
+    expect(proposalContent).toContain('# AGENTS append proposal');
+    expect(proposalContent).toContain('- Target: `AGENTS.md`');
+    expect(proposalContent).toContain('Observed in 3 session checkpoints.');
+    expect(proposalContent).toContain(
+      'Add a short rule telling agents to keep release diffs minimal and validation explicit.'
+    );
+  });
+
+  it('writes profile memory distillation into the context-engine system directory', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    await fs.mkdir(vaultPath, { recursive: true });
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({
+      getSpace: vi.fn(async () => space),
+    } as any);
+
+    const artifact = await service.writeProfileMemoryDistillation({
+      spaceId: 'space-1',
+      summary: 'Team prefers minimal diffs and explicit validation.',
+      detail: 'Carry this preference into future project contexts.',
+      bullets: ['Observed across 3 project summaries.'],
+      timestamp: '2026-04-16T09:00:00.000Z',
+    });
+
+    expect(artifact).toEqual(
+      expect.objectContaining({
+        relativePath: expect.stringContaining('System/Context Engine'),
+        summary: 'Team prefers minimal diffs and explicit validation.',
+        spaceId: 'space-1',
+      })
+    );
+
+    const profilePath = path.join(vaultPath, artifact!.relativePath);
+    const profileContent = await fs.readFile(profilePath, 'utf8');
+    expect(profileContent).toContain('# Profile Memory');
+    expect(profileContent).toContain('Observed across 3 project summaries.');
+    expect(profileContent).toContain('Carry this preference into future project contexts.');
   });
 
   it('sanitizes imported session titles so graph nodes stay readable', async () => {

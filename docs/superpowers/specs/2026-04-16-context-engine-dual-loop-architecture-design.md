@@ -15,6 +15,25 @@
 
 它**不**定义内部 skill bundle、具体 prompt 文本或 job payload schema 的最终实现细节。这些属于边界冻结之后的后续细化话题。
 
+## Phase 1 状态
+
+- Session Loop foundation 已进入实现
+- `Session Steward` 的基础 job 元数据、split session vault artifacts、working-context 注入链已落地
+- `Project Curator`、`Space Curator` 与 runtime console 仍属于后续阶段
+
+## Phase 2 状态
+
+- `Project Curator` 的基础 artifact target 已进入实现
+- project docs curation 继续由 `project_promotion` / `project_capability_curation` 驱动
+- append-first 的 `AGENTS.md` / skill proposal artifacts 已开始写入 project `_context/proposals/`
+- direct source-file mutation 仍然不在当前范围内
+
+## Phase 3 状态
+
+- `Space Curator` 的 digest 与 profile-memory artifact 已进入实现
+- connector digest 已开始携带 source-aware detail
+- runtime console 与更完整的 temporal expiration automation 仍属于后续阶段
+
 ## 产品定位
 
 ContextGo 是一个 desktop-first、local-first、multi-agent 的工作系统。

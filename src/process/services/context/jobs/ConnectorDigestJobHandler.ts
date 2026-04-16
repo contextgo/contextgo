@@ -17,15 +17,23 @@ export class ConnectorDigestJobHandler {
       return undefined;
     }
 
+    const summary = typeof job.payload.summary === 'string' ? job.payload.summary : job.reason;
+    const bullets = [
+      typeof job.payload.connectorId === 'string' ? `Connector: ${job.payload.connectorId}` : undefined,
+      typeof job.payload.sourceKind === 'string' ? `Source kind: ${job.payload.sourceKind}` : undefined,
+      typeof job.payload.title === 'string' ? `Title: ${job.payload.title}` : undefined,
+      typeof job.payload.canonicalUri === 'string' ? `URI: ${job.payload.canonicalUri}` : undefined,
+    ].filter((value): value is string => Boolean(value));
+    const detailParts = [
+      typeof job.payload.summary === 'string' ? job.payload.summary : undefined,
+      ...bullets,
+      job.type === 'session_pattern_detection' ? 'Session pattern detection completed.' : undefined,
+    ].filter((value): value is string => Boolean(value));
+
     return this.vaultSyncService.writeConnectorDigest({
       spaceId: job.spaceId,
-      summary: job.reason,
-      detail:
-        typeof job.payload.summary === 'string'
-          ? job.payload.summary
-          : job.type === 'session_pattern_detection'
-            ? 'Session pattern detection completed.'
-            : undefined,
+      summary,
+      detail: detailParts.join('\n') || undefined,
       timestamp: job.completedAt || new Date().toISOString(),
     });
   }
