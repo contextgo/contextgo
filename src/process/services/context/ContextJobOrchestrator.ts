@@ -100,6 +100,7 @@ export class ContextJobOrchestrator {
       type: 'session_compaction',
       status: 'queued',
       priority: decision.priority,
+      governanceIdentity: 'session_steward',
       spaceId: input.spaceId,
       threadId: input.threadId,
       projectSlug: input.projectSlug,
@@ -111,6 +112,7 @@ export class ContextJobOrchestrator {
       reason: decision.reason,
       payload: {
         snapshot: input.snapshot,
+        artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
       },
     });
   }
@@ -133,6 +135,7 @@ export class ContextJobOrchestrator {
       type: 'project_promotion',
       status: 'queued',
       priority: input.candidate.confidence >= 0.86 ? 'high' : 'medium',
+      governanceIdentity: 'project_curator',
       spaceId: input.spaceId,
       threadId: input.threadId,
       projectSlug: input.candidate.projectSlug,
@@ -231,6 +234,12 @@ export function createPlannedContextJob(input: {
     type: input.type,
     status: 'queued',
     priority: input.priority,
+    governanceIdentity:
+      input.type === 'space_memory_distillation' || input.type === 'connector_digest'
+        ? 'space_curator'
+        : input.type === 'project_capability_curation' || input.type === 'project_promotion'
+          ? 'project_curator'
+          : 'session_steward',
     spaceId: input.spaceId,
     threadId: input.threadId,
     projectSlug: input.projectSlug,
