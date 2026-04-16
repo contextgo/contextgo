@@ -8,7 +8,7 @@ import type {
 import { getWorkspaceAutomationPaths, getWorkspaceDisplayName } from '@/renderer/utils/workspace/workspace';
 import { Button, Input, Message, Typography } from '@arco-design/web-react';
 import { Refresh, Search } from '@icon-park/react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type ProjectSkillMarketModalProps = {
@@ -52,12 +52,12 @@ const ProjectSkillMarketModal: React.FC<ProjectSkillMarketModalProps> = ({ visib
   const workspaceDisplayName = useMemo(() => getWorkspaceDisplayName(workspacePath, t), [workspacePath, t]);
   const hasMoreMarketSkills = marketSkills.length < marketTotal;
 
-  const refreshInstalledSkills = useCallback(async () => {
+  const refreshInstalledSkills = useEffectEvent(async () => {
     const skills = await ipcBridge.fs.listAvailableSkills.invoke({ workspacePath });
     setInstalledSkillNames(resolveWorkspaceInstalledSkillNames(skills, automationPaths.skillsDir));
-  }, [automationPaths.skillsDir, workspacePath]);
+  });
 
-  const loadSkillMarket = useCallback(
+  const loadSkillMarket = useEffectEvent(
     async ({
       append = false,
       forceRefresh = false,
@@ -118,8 +118,7 @@ const ProjectSkillMarketModal: React.FC<ProjectSkillMarketModalProps> = ({ visib
         setMarketLoadingMore(false);
         setMarketRefreshing(false);
       }
-    },
-    [marketQuery, marketView, messageApi, t]
+    }
   );
 
   const handleInstallSkill = useCallback(
@@ -186,7 +185,9 @@ const ProjectSkillMarketModal: React.FC<ProjectSkillMarketModalProps> = ({ visib
     setMarketQuery('');
     setMarketView('curated');
     void Promise.all([loadSkillMarket({ nextQuery: '', nextView: 'curated' }), refreshInstalledSkills()]);
-  }, [loadSkillMarket, refreshInstalledSkills, visible]);
+    // useEffectEvent handlers must NOT be used as effect deps; they are intentionally stable-call, unstable-identity.
+    // Depend only on the state that should trigger modal bootstrap.
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) {
@@ -200,7 +201,9 @@ const ProjectSkillMarketModal: React.FC<ProjectSkillMarketModalProps> = ({ visib
     return () => {
       window.clearTimeout(timer);
     };
-  }, [loadSkillMarket, marketQuery, marketView, visible]);
+    // useEffectEvent handlers must NOT be used as effect deps; they are intentionally stable-call, unstable-identity.
+    // Depend only on the state that should trigger market searching.
+  }, [marketQuery, marketView, visible]);
 
   return (
     <SettingsSubModal
