@@ -610,6 +610,62 @@ describe('SpaceVaultContextSyncService', () => {
     expect(capabilityDocContent).toContain('- Implicit invocation: enabled');
   });
 
+  it('writes project curator proposal notes under the project context proposals directory', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(path.join(workspacePath, 'docs'), { recursive: true });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+
+    const artifact = await service.writeProjectCuratorProposal({
+      spaceId: 'space-1',
+      projectSlug: createWorkspaceProjectSlug(workspacePath),
+      title: 'AGENTS append proposal',
+      proposalKind: 'project_rules',
+      summary: 'Add a stable release-validation rule.',
+      targetPath: 'AGENTS.md',
+      additions: ['Add a short rule telling agents to keep release diffs minimal and validation explicit.'],
+      evidence: ['Observed in 3 session checkpoints.'],
+      timestamp: '2026-04-16T08:00:00.000Z',
+    });
+
+    expect(artifact).toEqual(
+      expect.objectContaining({
+        relativePath: expect.stringContaining('_context/proposals'),
+        summary: 'Add a stable release-validation rule.',
+      })
+    );
+
+    const proposalPath = path.join(vaultPath, artifact!.relativePath);
+    const proposalContent = await fs.readFile(proposalPath, 'utf8');
+    expect(proposalContent).toContain('# AGENTS append proposal');
+    expect(proposalContent).toContain('- Target: `AGENTS.md`');
+    expect(proposalContent).toContain('Observed in 3 session checkpoints.');
+    expect(proposalContent).toContain('Add a short rule telling agents to keep release diffs minimal and validation explicit.');
+  });
+
   it('sanitizes imported session titles so graph nodes stay readable', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
     tempDirs.push(root);
