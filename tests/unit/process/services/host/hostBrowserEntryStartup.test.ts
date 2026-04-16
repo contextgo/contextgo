@@ -1,26 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const processConfigState = new Map<string, unknown>();
-const ensureForDemandMock = vi.fn();
+const restoreLocalClientAccessFromPreferencesMock = vi.fn(async () => undefined);
+const prepareOfficialRemoteAtStartupMock = vi.fn(async () => undefined);
+const prepareForWebUiModeMock = vi.fn(async () => undefined);
 
 describe('hostBrowserEntryStartup', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    processConfigState.clear();
 
-    vi.doMock('@process/utils/initStorage', () => ({
-      ProcessConfig: {
-        get: vi.fn(async (key: string) => processConfigState.get(key)),
-        set: vi.fn(async (key: string, value: unknown) => {
-          processConfigState.set(key, value);
-        }),
-      },
-    }));
-
-    vi.doMock('@process/services/host/HostBrowserEntryService', () => ({
-      getHostBrowserEntryService: () => ({
-        ensureForDemand: ensureForDemandMock,
+    vi.doMock('@process/services/host/HostRuntimeService', () => ({
+      getHostRuntimeService: () => ({
+        prepareForWebUiMode: prepareForWebUiModeMock,
+        prepareOfficialRemoteAtStartup: prepareOfficialRemoteAtStartupMock,
+        restoreLocalClientAccessFromPreferences: restoreLocalClientAccessFromPreferencesMock,
       }),
     }));
   });
@@ -29,64 +22,25 @@ describe('hostBrowserEntryStartup', () => {
     vi.restoreAllMocks();
   });
 
-  it('prepares the official remote host browser entry from a stored device binding', async () => {
-    processConfigState.set('cloud.deviceToken', 'ctxdev_token');
-    processConfigState.set('webui.desktop.port', 35808);
-    ensureForDemandMock.mockResolvedValue({
-      allowRemote: false,
-      port: 36808,
-    });
-
+  it('delegates official remote startup preparation to HostRuntimeService', async () => {
     const { prepareOfficialRemoteHostBrowserEntryAtStartup } =
       await import('@/process/services/host/hostBrowserEntryStartup');
 
     await prepareOfficialRemoteHostBrowserEntryAtStartup();
 
-    expect(ensureForDemandMock).toHaveBeenCalledWith('official-remote', {
-      allowPortFallback: true,
-      allowRemote: false,
-      preferredPort: 35808,
-      reason: 'app-startup-official-remote',
-    });
-    expect(processConfigState.get('webui.desktop.port')).toBe(36808);
+    expect(prepareOfficialRemoteAtStartupMock).toHaveBeenCalledTimes(1);
   });
 
-  it('skips official remote startup preparation when no stored device binding exists', async () => {
-    const { prepareOfficialRemoteHostBrowserEntryAtStartup } =
-      await import('@/process/services/host/hostBrowserEntryStartup');
-
-    await prepareOfficialRemoteHostBrowserEntryAtStartup();
-
-    expect(ensureForDemandMock).not.toHaveBeenCalled();
-  });
-
-  it('restores local-client demand from desktop preferences when local access is enabled', async () => {
-    processConfigState.set('webui.desktop.enabled', true);
-    processConfigState.set('webui.desktop.allowRemote', true);
-    processConfigState.set('webui.desktop.port', 35809);
-    ensureForDemandMock.mockResolvedValue({
-      allowRemote: true,
-      port: 35809,
-    });
-
+  it('delegates local-client restore to HostRuntimeService', async () => {
     const { restoreDesktopHostBrowserEntryFromPreferences } =
       await import('@/process/services/host/hostBrowserEntryStartup');
 
     await restoreDesktopHostBrowserEntryFromPreferences();
 
-    expect(ensureForDemandMock).toHaveBeenCalledWith('local-client', {
-      allowRemote: true,
-      preferredPort: 35809,
-      reason: 'desktop-preferences',
-    });
+    expect(restoreLocalClientAccessFromPreferencesMock).toHaveBeenCalledTimes(1);
   });
 
-  it('prepares local-client demand for electron webui mode through the host service', async () => {
-    ensureForDemandMock.mockResolvedValue({
-      allowRemote: true,
-      port: 35811,
-    });
-
+  it('delegates webui mode bootstrap to HostRuntimeService', async () => {
     const { prepareHostBrowserEntryForWebUiMode } = await import('@/process/services/host/hostBrowserEntryStartup');
 
     await prepareHostBrowserEntryForWebUiMode({
@@ -94,21 +48,9 @@ describe('hostBrowserEntryStartup', () => {
       preferredPort: 35811,
     });
 
-    expect(ensureForDemandMock).toHaveBeenCalledWith('local-client', {
+    expect(prepareForWebUiModeMock).toHaveBeenCalledWith({
       allowRemote: true,
       preferredPort: 35811,
-      reason: 'electron-webui-mode',
     });
-  });
-
-  it('does not restore local-client demand when desktop local access is disabled', async () => {
-    processConfigState.set('webui.desktop.enabled', false);
-
-    const { restoreDesktopHostBrowserEntryFromPreferences } =
-      await import('@/process/services/host/hostBrowserEntryStartup');
-
-    await restoreDesktopHostBrowserEntryFromPreferences();
-
-    expect(ensureForDemandMock).not.toHaveBeenCalled();
   });
 });
