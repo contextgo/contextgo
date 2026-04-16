@@ -1,4 +1,4 @@
-import { Alert, Button, Message, Space, Tag } from '@arco-design/web-react';
+import { Alert, Button, Message, Tag } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { acpConversation, shell } from '@/common/adapter/ipcBridge';
@@ -11,6 +11,7 @@ import {
 } from '@/common/types/acpTypes';
 import type { ExternalSessionProvider, ExternalSessionSummary } from '@/common/types/externalSessions';
 import RuntimeConfigDock from '@/renderer/pages/settings/components/RuntimeConfigDock';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { PRODUCT_VISIBLE_RUNTIME_BACKENDS } from '@/renderer/utils/model/availableAgents';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 
@@ -253,6 +254,8 @@ const getInstallStageLabel = (
 
 const CustomAcpAgent: React.FC = () => {
   const { t } = useTranslation();
+  const layout = useLayoutContext();
+  const isMobile = layout?.isMobile ?? false;
   const [message, messageContext] = Message.useMessage({ maxCount: 8 });
 
   const [availableAgents, setAvailableAgents] = useState<AvailableRuntimeAgent[]>([]);
@@ -689,7 +692,7 @@ const CustomAcpAgent: React.FC = () => {
         className='rounded-18px border border-border-2 bg-[color:color-mix(in_srgb,var(--color-bg-1)_94%,transparent)] p-14px shadow-[0_10px_24px_rgba(15,23,42,0.04)]'
       >
         <div className='flex flex-col gap-10px'>
-          <div className='flex flex-wrap items-start justify-between gap-8px'>
+          <div className={isMobile ? 'flex flex-col gap-10px' : 'flex flex-wrap items-start justify-between gap-8px'}>
             <div className='min-w-0 flex-1'>
               <div className='flex flex-wrap items-center gap-8px'>
                 <div className='app-icon-row min-w-0'>
@@ -730,11 +733,15 @@ const CustomAcpAgent: React.FC = () => {
               </div>
             </div>
 
-            <Space wrap>
+            <div
+              data-testid={`runtime-card-actions-${backend}`}
+              className={isMobile ? 'flex w-full flex-col gap-8px' : 'flex flex-wrap justify-end gap-8px'}
+            >
               {showInstallAction ? (
                 <Button
                   type='primary'
                   shape='round'
+                  className={isMobile ? 'w-full justify-center' : undefined}
                   loading={installingBackend === backend}
                   onClick={() => void handleInstallRuntime(backend)}
                 >
@@ -747,6 +754,7 @@ const CustomAcpAgent: React.FC = () => {
                 <Button
                   type={showInstallAction ? 'outline' : 'primary'}
                   shape='round'
+                  className={isMobile ? 'w-full justify-center' : undefined}
                   loading={health.status === 'checking'}
                   onClick={() => void handleHealthCheck(backend)}
                 >
@@ -759,6 +767,7 @@ const CustomAcpAgent: React.FC = () => {
                 <Button
                   type='outline'
                   shape='round'
+                  className={isMobile ? 'w-full justify-center' : undefined}
                   loading={configAction === 'open'}
                   onClick={() => void handleOpenConfig(backend)}
                 >
@@ -771,6 +780,7 @@ const CustomAcpAgent: React.FC = () => {
                 <Button
                   type='outline'
                   shape='round'
+                  className={isMobile ? 'w-full justify-center' : undefined}
                   loading={configAction === 'reveal'}
                   onClick={() => void handleRevealConfigPath(backend)}
                 >
@@ -783,6 +793,7 @@ const CustomAcpAgent: React.FC = () => {
                 <Button
                   type={emphasizeGuideAction ? 'primary' : 'outline'}
                   shape='round'
+                  className={isMobile ? 'w-full justify-center' : undefined}
                   onClick={() => void handleOpenDocs(meta.docsUrl)}
                 >
                   {t('settings.runtimeManager.openGuide', {
@@ -790,7 +801,7 @@ const CustomAcpAgent: React.FC = () => {
                   })}
                 </Button>
               ) : null}
-            </Space>
+            </div>
           </div>
 
           {!isMissing ? (
@@ -874,7 +885,7 @@ const CustomAcpAgent: React.FC = () => {
       ) : null}
 
       <div className='space-y-18px rounded-24px border border-border-2 bg-[color:color-mix(in_srgb,var(--color-bg-1)_90%,transparent)] px-16px py-18px shadow-[0_18px_44px_rgba(15,23,42,0.05)] md:px-[28px]'>
-        <div className='flex items-start justify-between gap-16px flex-wrap'>
+        <div className={isMobile ? 'flex flex-col gap-12px' : 'flex items-start justify-between gap-16px flex-wrap'}>
           <div>
             <div className='text-20px text-t-primary font-600 leading-28px'>
               {t('settings.runtimeManager.title', {
@@ -883,11 +894,19 @@ const CustomAcpAgent: React.FC = () => {
             </div>
           </div>
 
-          <Button type='outline' shape='round' onClick={() => void refreshRuntimeState()} loading={loading}>
-            {t('settings.runtimeManager.refresh', {
-              defaultValue: 'Refresh status',
-            })}
-          </Button>
+          <div data-testid='runtime-page-refresh-action' className={isMobile ? 'w-full' : undefined}>
+            <Button
+              type='outline'
+              shape='round'
+              className={isMobile ? 'w-full justify-center' : undefined}
+              onClick={() => void refreshRuntimeState()}
+              loading={loading}
+            >
+              {t('settings.runtimeManager.refresh', {
+                defaultValue: 'Refresh status',
+              })}
+            </Button>
+          </div>
         </div>
 
         <div className='space-y-10px'>

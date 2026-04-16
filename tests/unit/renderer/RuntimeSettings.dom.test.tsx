@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const useLayoutContextMock = vi.fn();
 const getAvailableAgentsInvokeMock = vi.fn();
 const listExternalSessionsInvokeMock = vi.fn();
 const checkAgentHealthInvokeMock = vi.fn();
@@ -79,6 +80,10 @@ vi.mock('swr', () => ({
 
 vi.mock('@/renderer/pages/settings/components/SettingsPageWrapper', () => ({
   default: ({ children }: { children: React.ReactNode }) => <div data-testid='settings-page-wrapper'>{children}</div>,
+}));
+
+vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
+  useLayoutContext: () => useLayoutContextMock(),
 }));
 
 vi.mock('@/renderer/pages/conversation/Preview/components/editors/TextEditor', () => ({
@@ -227,6 +232,7 @@ vi.mock('@arco-design/web-react', () => ({
 }));
 
 import AgentEntrySettings from '@/renderer/pages/settings/AgentSettings/AgentEntrySettings';
+import SettingsSideDock from '@/renderer/pages/settings/components/SettingsSideDock';
 
 const flushPromises = async () => {
   await Promise.resolve();
@@ -252,6 +258,9 @@ describe('Runtime Settings page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     managedRuntimeInstallEventListener = null;
+    useLayoutContextMock.mockReturnValue({
+      isMobile: false,
+    });
     getAvailableAgentsInvokeMock.mockResolvedValue({
       success: true,
       data: [
@@ -561,5 +570,32 @@ describe('Runtime Settings page', () => {
     const geminiCard = screen.getByTestId('runtime-card-gemini');
     expect(within(geminiCard).queryByRole('button', { name: 'Install locally' })).not.toBeInTheDocument();
     expect(within(geminiCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
+  });
+
+  it('uses the mobile runtime dock shell class on small screens', () => {
+    useLayoutContextMock.mockReturnValue({
+      isMobile: true,
+    });
+
+    render(
+      <SettingsSideDock variant='runtime-config' ariaLabel='Runtime config editor' dataTestId='runtime-config-dock'>
+        <div>dock body</div>
+      </SettingsSideDock>
+    );
+
+    expect(screen.getByTestId('runtime-config-dock')).toHaveClass('settings-side-dock--mobile');
+  });
+
+  it('stacks runtime page actions for the mobile layout', async () => {
+    useLayoutContextMock.mockReturnValue({
+      isMobile: true,
+    });
+
+    renderRuntimeSettings();
+
+    await screen.findByText('Runtime Management');
+
+    expect(screen.getByTestId('runtime-page-refresh-action')).toHaveClass('w-full');
+    expect(screen.getByTestId('runtime-card-actions-codex')).toHaveClass('flex-col');
   });
 });

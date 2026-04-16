@@ -12,6 +12,7 @@ import {
 } from '@/common/config/builtinChannels';
 import { channel, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import {
   getChannelAccountId,
   type IChannelAccount,
@@ -269,8 +270,10 @@ function getChannelPrimaryStatusLabel(state: ChannelPrimaryState, t: Translation
 
 const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mode = 'channels' }) => {
   const { t } = useTranslation();
+  const layout = useLayoutContext();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
+  const isMobile = layout?.isMobile ?? false;
   const isChannelMode = mode === 'channels';
   const [selectedFamilyId, setSelectedFamilyId] = useState('');
   const [selectedChannelId, setSelectedChannelId] = useState('');
@@ -1112,7 +1115,7 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
             'Choose a usable channel account and discovered IM target, then set long-term publication rules.',
         })
       : t('settings.agentEntryDesc', { defaultValue: 'Manage reusable IM channel accounts here.' });
-  const useSplitColumnScroll = mode === 'channels' && isPageMode;
+  const useSplitColumnScroll = mode === 'channels' && isPageMode && !isMobile;
 
   return (
     <ContextGoScrollArea
