@@ -146,6 +146,25 @@ const ensureRuntimeSkillsProjection = async (
   }
 };
 
+const copySkillDirectoryRecursively = async (sourceDir: string, targetDir: string): Promise<void> => {
+  await fs.mkdir(targetDir, { recursive: true });
+
+  const entries = await fs.readdir(sourceDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const targetPath = path.join(targetDir, entry.name);
+
+    if (entry.isDirectory()) {
+      await copySkillDirectoryRecursively(sourcePath, targetPath);
+      continue;
+    }
+
+    if (entry.isFile()) {
+      await fs.copyFile(sourcePath, targetPath);
+    }
+  }
+};
+
 const ensureManagedSkillLink = async (
   sourceSkillDir: string,
   managedSkillDir: string,
@@ -161,8 +180,8 @@ const ensureManagedSkillLink = async (
   try {
     await fs.lstat(managedSkillDir);
   } catch {
-    await fs.symlink(sourceSkillDir, managedSkillDir, 'junction');
-    console.log(`[setupAssistantWorkspace] Managed skill: ${skillName} -> ${managedSkillDir}`);
+    await copySkillDirectoryRecursively(sourceSkillDir, managedSkillDir);
+    console.log(`[setupAssistantWorkspace] Materialized skill: ${skillName} -> ${managedSkillDir}`);
   }
 
   return true;
