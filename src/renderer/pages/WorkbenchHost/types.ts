@@ -2,10 +2,18 @@ export type WorkbenchKind = 'conversation-cowork';
 
 export type WorkbenchCapability = 'chat' | 'preview' | 'workspace' | 'browser';
 
+export type WorkbenchShellTitlebarContract = {
+  primarySlotId: string;
+};
+
+export type WorkbenchShellToolbarContract = {
+  slotId: string;
+};
+
 export type WorkbenchShellContract = {
   shellStyle: 'conversation';
-  titlebarSlot: 'conversation-primary';
-  toolbarSlot: 'conversation-toolbar';
+  titlebar?: WorkbenchShellTitlebarContract;
+  toolbar?: WorkbenchShellToolbarContract;
 };
 
 export type WorkbenchDefinition = {

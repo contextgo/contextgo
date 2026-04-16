@@ -32,6 +32,10 @@ import CreateGroupModal from '@renderer/pages/conversation/platforms/group/Creat
 import { emitter } from '@renderer/utils/emitter';
 import { iconColors } from '@renderer/styles/colors';
 import { dispatchSettingsNavDrawerEvent } from '@/renderer/pages/settings/components/settingsNavigation';
+import {
+  getWorkbenchTitlebarPrimarySlotId,
+  getWorkbenchToolbarSlotId,
+} from '@/renderer/pages/WorkbenchHost/slots';
 import './titlebar.css';
 
 interface TitlebarProps {
@@ -159,7 +163,14 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const isGuidRoute = location.pathname === '/guid' || location.pathname === '/';
   const showDesktopConversationTabs =
-    !layout?.isMobile && workspaceAvailable && openTabs.length > 0 && !showRemoteDeviceMinimalHostChrome;
+    !layout?.isMobile &&
+    workspaceAvailable &&
+    openTabs.length > 0 &&
+    !showRemoteDeviceMinimalHostChrome &&
+    Boolean(getWorkbenchTitlebarPrimarySlotId(layout?.activeWorkbenchDefinition));
+  const titlebarPrimarySlotId = getWorkbenchTitlebarPrimarySlotId(layout?.activeWorkbenchDefinition);
+  const toolbarSlotId = getWorkbenchToolbarSlotId(layout?.activeWorkbenchDefinition);
+  const showWorkbenchToolbarSlot = Boolean(toolbarSlotId);
   const iconSize = layout?.isMobile ? 24 : 18;
   // Host chrome stays minimal for remote devices: mode badge + dev badge + window controls only.
   const showDesktopNavigationButtons = !showRemoteDeviceMinimalHostChrome;
@@ -565,7 +576,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
             >
               {showDesktopConversationTabs ? (
                 <div className='app-titlebar__desktop-content app-titlebar__desktop-content--conversation'>
-                  <div id='app-titlebar-chat-slot' className='h-full min-w-0' />
+                  <div id={titlebarPrimarySlotId ?? 'app-titlebar-chat-slot'} className='h-full min-w-0' />
                   {isDesktopRuntime ? <div className='app-titlebar__drag-spacer' aria-hidden='true' /> : null}
                 </div>
               ) : isDesktopRuntime ? (
@@ -574,7 +585,9 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
               {showDesktopToolbar && (
                 <div className='app-titlebar__toolbar app-titlebar__toolbar--desktop'>
                   <div className='app-titlebar__toolbar-actions'>
-                    <div id='app-titlebar-toolbar-slot' className='app-titlebar__toolbar-slot' />
+                    {showWorkbenchToolbarSlot ? (
+                      <div id={toolbarSlotId ?? 'app-titlebar-toolbar-slot'} className='app-titlebar__toolbar-slot' />
+                    ) : null}
 
                     {showWorkspaceButton && (
                       <div className='app-titlebar__toolbar-chip-slot'>

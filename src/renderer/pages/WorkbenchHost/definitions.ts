@@ -5,7 +5,19 @@ export const conversationCoworkWorkbench: WorkbenchDefinition = {
   capabilities: ['chat', 'preview', 'workspace', 'browser'],
   shellContract: {
     shellStyle: 'conversation',
-    titlebarSlot: 'conversation-primary',
-    toolbarSlot: 'conversation-toolbar',
+    titlebar: {
+      primarySlotId: 'app-titlebar-chat-slot',
+    },
+    toolbar: {
+      slotId: 'app-titlebar-toolbar-slot',
+    },
   },
+};
+
+export const getWorkbenchDefinitionForPath = (pathname: string): WorkbenchDefinition | null => {
+  if (pathname.startsWith('/conversation/')) {
+    return conversationCoworkWorkbench;
+  }
+
+  return null;
 };

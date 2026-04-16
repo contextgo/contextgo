@@ -12,6 +12,10 @@ import { useTitleRename } from '@/renderer/pages/conversation/hooks/useTitleRena
 import { useWorkspaceCollapse } from '@/renderer/pages/conversation/hooks/useWorkspaceCollapse';
 import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { dispatchWorkspaceToggleEvent } from '@/renderer/utils/workspace/workspaceEvents';
+import {
+  getWorkbenchTitlebarPrimarySlotId,
+  getWorkbenchToolbarSlotId,
+} from '@/renderer/pages/WorkbenchHost/slots';
 import classNames from 'classnames';
 import { isMacEnvironment, isWindowsEnvironment } from '@/renderer/pages/conversation/utils/detectPlatform';
 import {
@@ -51,6 +55,8 @@ const ChatLayout: React.FC<{
   const isWindowsRuntime = isWindowsEnvironment();
   const isDesktop = !layout?.isMobile;
   const isMobile = Boolean(layout?.isMobile);
+  const titlebarPrimarySlotId = getWorkbenchTitlebarPrimarySlotId(layout?.activeWorkbenchDefinition);
+  const toolbarSlotId = getWorkbenchToolbarSlotId(layout?.activeWorkbenchDefinition);
   const showWorkspaceHeader = Boolean(props.siderTitle) || (!isMacRuntime && !isWindowsRuntime);
   const workspaceHeaderHeight = showWorkspaceHeader ? WORKSPACE_HEADER_HEIGHT : 0;
   const [desktopHeaderTarget, setDesktopHeaderTarget] = useState<HTMLElement | null>(null);
@@ -63,9 +69,9 @@ const ChatLayout: React.FC<{
       return;
     }
 
-    setDesktopHeaderTarget(document.getElementById('app-titlebar-chat-slot'));
-    setDesktopToolbarTarget(document.getElementById('app-titlebar-toolbar-slot'));
-  }, [isMobile]);
+    setDesktopHeaderTarget(titlebarPrimarySlotId ? document.getElementById(titlebarPrimarySlotId) : null);
+    setDesktopToolbarTarget(toolbarSlotId ? document.getElementById(toolbarSlotId) : null);
+  }, [isMobile, titlebarPrimarySlotId, toolbarSlotId]);
 
   // Preview panel state
   const { isOpen: isPreviewOpen } = usePreviewContext();

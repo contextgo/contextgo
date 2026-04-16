@@ -123,6 +123,7 @@ const renderTitlebar = (
     isMobile: false,
     siderCollapsed: false,
     setSiderCollapsed: setSiderCollapsedMock,
+    activeWorkbenchDefinition: null,
     ...layoutValue,
   };
 
@@ -248,6 +249,21 @@ describe('Titlebar', () => {
     const { container } = renderTitlebar('/conversation/conv-1', {
       workspaceAvailable: true,
       openTabs: [createTab('conv-1')],
+      layoutValue: {
+        activeWorkbenchDefinition: {
+          kind: 'conversation-cowork',
+          capabilities: ['chat', 'preview', 'workspace', 'browser'],
+          shellContract: {
+            shellStyle: 'conversation',
+            titlebar: {
+              primarySlotId: 'app-titlebar-chat-slot',
+            },
+            toolbar: {
+              slotId: 'app-titlebar-toolbar-slot',
+            },
+          },
+        } as never,
+      },
     });
 
     expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
@@ -258,10 +274,61 @@ describe('Titlebar', () => {
     expect(conversationContent?.querySelector('.app-titlebar__drag-spacer')).toBeTruthy();
   });
 
+  it('renders shell slots defined by the active conversation workbench contract', async () => {
+    const { container } = renderTitlebar('/conversation/conv-1', {
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+      layoutValue: {
+        activeWorkbenchDefinition: {
+          kind: 'conversation-cowork',
+          capabilities: ['chat', 'preview', 'workspace', 'browser'],
+          shellContract: {
+            shellStyle: 'conversation',
+            titlebar: {
+              primarySlotId: 'shell-titlebar-primary-slot',
+            },
+            toolbar: {
+              slotId: 'shell-toolbar-slot',
+            },
+          },
+        } as never,
+      },
+    });
+
+    expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+    expect(container.querySelector('#shell-titlebar-primary-slot')).toBeTruthy();
+    expect(container.querySelector('#shell-toolbar-slot')).toBeTruthy();
+    expect(container.querySelector('#app-titlebar-chat-slot')).toBeNull();
+    expect(container.querySelector('#app-titlebar-toolbar-slot')).toBeNull();
+  });
+
+  it('does not render workbench slots when the active route has no shell contract', async () => {
+    const { container } = renderTitlebar('/guid');
+
+    expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+    expect(container.querySelector('#app-titlebar-chat-slot')).toBeNull();
+    expect(container.querySelector('#app-titlebar-toolbar-slot')).toBeNull();
+  });
+
   it('renders desktop conversation content when multiple tabs are open', async () => {
     const { container } = renderTitlebar('/conversation/conv-1', {
       workspaceAvailable: true,
       openTabs: [createTab('conv-1'), createTab('conv-2')],
+      layoutValue: {
+        activeWorkbenchDefinition: {
+          kind: 'conversation-cowork',
+          capabilities: ['chat', 'preview', 'workspace', 'browser'],
+          shellContract: {
+            shellStyle: 'conversation',
+            titlebar: {
+              primarySlotId: 'app-titlebar-chat-slot',
+            },
+            toolbar: {
+              slotId: 'app-titlebar-toolbar-slot',
+            },
+          },
+        } as never,
+      },
     });
 
     expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
