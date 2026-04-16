@@ -353,6 +353,8 @@ const SystemRunsPage: React.FC = () => {
                         {t(`agent.contextEngine.state.${run.state}`, { defaultValue: run.state })}
                       </Tag>
                       {run.maintenanceKind ? <Tag size='small'>{run.maintenanceKind}</Tag> : null}
+                      {run.source ? <Tag size='small'>{run.source}</Tag> : null}
+                      {resolveArtifactKindLabel(run) ? <Tag size='small'>{resolveArtifactKindLabel(run)}</Tag> : null}
                     </div>
                     <div className='mt-6px text-13px leading-6 text-t-primary'>
                       {run.currentTask || t('agent.contextEngine.taskFallback', { defaultValue: 'No summary yet' })}
