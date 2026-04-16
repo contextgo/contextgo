@@ -222,6 +222,7 @@ export type SkillMarketSearchResult = {
 export type SkillMarketInstallParams = {
   skillId: string;
   archive?: SkillMarketArchive;
+  skillsDir?: string;
 };
 
 export type SkillMarketInstallResult = {
@@ -832,7 +833,12 @@ export class SkillMarketService {
     for (const archive of archives) {
       try {
         const buffer = await this.downloadArchive(archive.archiveUrl);
-        return await this.extractAndInstallArchive(normalizedItem.name, buffer, archive.archiveUrl);
+        return await this.extractAndInstallArchive(
+          normalizedItem.name,
+          buffer,
+          archive.archiveUrl,
+          normalizeString(params.skillsDir) || this.skillsDir
+        );
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
       }
@@ -1079,7 +1085,8 @@ export class SkillMarketService {
   private async extractAndInstallArchive(
     expectedSkillName: string,
     archiveBuffer: Buffer,
-    archiveUrl: string
+    archiveUrl: string,
+    skillsDir: string
   ): Promise<SkillMarketInstallResult> {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-skill-market-'));
 
@@ -1090,9 +1097,9 @@ export class SkillMarketService {
 
       const skillRoot = await this.selectSkillRoot(extractDir, expectedSkillName);
       const skillInfo = await this.readSkillInfo(skillRoot);
-      const targetDir = path.join(this.skillsDir, skillInfo.name);
+      const targetDir = path.join(skillsDir, skillInfo.name);
 
-      await fs.mkdir(this.skillsDir, { recursive: true });
+      await fs.mkdir(skillsDir, { recursive: true });
 
       try {
         await fs.access(targetDir);
