@@ -1602,7 +1602,13 @@
     "notAvailable": "Mevcut degil",
     "infermeshAccess": "InferMesh web sitesi",
     "infermeshAccessDesc": "ContextGo tarafinda yalnizca OAuth girisi ve host baglama gerekir. Kayit gibi ek hesap adimlari gerekiyorsa InferMesh web sitesinde devam edin.",
-    "openInfermesh": "Model Merkezi"
+    "openInfermesh": "Model Merkezi",
+    "obsidianSync": {
+      "title": "Obsidian vault sync",
+      "description": "This Space is linked to an Obsidian vault binding managed through ContextGo Cloud.",
+      "loading": "Checking Obsidian vault sync status...",
+      "noBinding": "The current Space does not have an Obsidian vault sync binding yet."
+    }
   },
   "commands": {
     "title": "Commands",

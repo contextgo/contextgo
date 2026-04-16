@@ -1604,7 +1604,13 @@
     "notAvailable": "暫無",
     "infermeshAccess": "InferMesh 官網",
     "infermeshAccessDesc": "ContextGo 這裡只需要 OAuth 登入和主機綁定。如果你還需要註冊或補完帳號流程，再去 InferMesh 官網繼續。",
-    "openInfermesh": "模型中心"
+    "openInfermesh": "模型中心",
+    "obsidianSync": {
+      "title": "Obsidian Vault 同步",
+      "description": "目前 Space 已連結到一份由 ContextGo Cloud 管理的 Obsidian Vault 綁定。",
+      "loading": "正在檢查 Obsidian Vault 同步狀態...",
+      "noBinding": "目前 Space 尚未設定 Obsidian Vault 同步綁定。"
+    }
   },
   "commands": {
     "title": "Commands",

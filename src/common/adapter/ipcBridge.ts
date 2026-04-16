@@ -40,7 +40,12 @@ import type {
   TSpace,
 } from '../config/storage';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/preview';
-import type { CloudAuthProviderId, CloudRemoteDevicesPayload, CloudStatus } from '../types/cloud';
+import type {
+  CloudAuthProviderId,
+  CloudObsidianVaultBinding,
+  CloudRemoteDevicesPayload,
+  CloudStatus,
+} from '../types/cloud';
 import type {
   UpdateCheckRequest,
   UpdateCheckResult,
@@ -243,6 +248,9 @@ export const cloud = {
   ),
   listRemoteDevices: bridge.buildProvider<IBridgeResponse<CloudRemoteDevicesPayload>, void>(
     'cloud.list-remote-devices'
+  ),
+  getObsidianSyncStatus: bridge.buildProvider<IBridgeResponse<CloudObsidianVaultBinding | null>, { spaceId: string }>(
+    'cloud.get-obsidian-sync-status'
   ),
   openInfermesh: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.open-infermesh'),
   logout: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.logout'),

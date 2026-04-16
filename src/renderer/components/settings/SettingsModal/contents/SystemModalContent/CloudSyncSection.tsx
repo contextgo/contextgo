@@ -6,11 +6,13 @@
 
 import { cloud } from '@/common/adapter/ipcBridge';
 import InfermeshLogo from '@/renderer/assets/logos/brand/infermesh.png';
-import type { CloudAuthProviderId, CloudStatus } from '@/common/types/cloud';
+import type { CloudAuthProviderId, CloudObsidianVaultBinding, CloudStatus } from '@/common/types/cloud';
 import { Alert, Avatar, Button, Message, Space, Spin, Tag, Typography } from '@arco-design/web-react';
-import { CheckOne, LinkCloud, Right } from '@icon-park/react';
+import { useSelectedSpace } from '@/renderer/hooks/context/useSelectedSpace';
+import { CheckOne, LinkCloud } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ObsidianSyncPanel from './ObsidianSyncPanel';
 
 const { Text } = Typography;
 
@@ -25,6 +27,9 @@ const CloudSyncSection: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [authLoadingProvider, setAuthLoadingProvider] = useState<CloudAuthProviderId | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [obsidianBinding, setObsidianBinding] = useState<CloudObsidianVaultBinding | null>(null);
+  const [obsidianLoading, setObsidianLoading] = useState(false);
+  const { selectedSpace } = useSelectedSpace();
 
   const refreshStatus = useCallback(async (): Promise<CloudStatus | null> => {
     setLoading(true);
@@ -126,6 +131,32 @@ const CloudSyncSection: React.FC = () => {
     }
   }, [t]);
 
+  const refreshObsidianSyncStatus = useCallback(async () => {
+    if (!status?.authenticated || !selectedSpace?.id) {
+      setObsidianBinding(null);
+      return null;
+    }
+
+    setObsidianLoading(true);
+    try {
+      const result = await cloud.getObsidianSyncStatus.invoke({ spaceId: selectedSpace.id });
+      if (result.success) {
+        setObsidianBinding(result.data ?? null);
+        return result.data ?? null;
+      }
+    } catch (error) {
+      console.error('[CloudSyncSection] Failed to load Obsidian sync status:', error);
+    } finally {
+      setObsidianLoading(false);
+    }
+
+    return null;
+  }, [selectedSpace?.id, status?.authenticated]);
+
+  useEffect(() => {
+    void refreshObsidianSyncStatus();
+  }, [refreshObsidianSyncStatus]);
+
   return (
     <div className='px-[12px] md:px-[32px] py-16px bg-2 rd-16px space-y-16px'>
       <div className='flex items-start justify-between gap-12px'>
@@ -212,6 +243,30 @@ const CloudSyncSection: React.FC = () => {
             </Button>
           </Space>
         </div>
+      )}
+
+      {!loading && status?.user && selectedSpace?.id && (
+        <>
+          {obsidianLoading ? (
+            <div className='flex items-center gap-12px py-4px'>
+              <Spin size={16} />
+              <Text type='secondary'>
+                {t('settings.cloud.obsidianSync.loading', {
+                  defaultValue: 'Checking Obsidian vault sync status...',
+                })}
+              </Text>
+            </div>
+          ) : obsidianBinding ? (
+            <ObsidianSyncPanel binding={obsidianBinding} />
+          ) : (
+            <Alert
+              type='info'
+              content={t('settings.cloud.obsidianSync.noBinding', {
+                defaultValue: 'The current Space does not have an Obsidian vault sync binding yet.',
+              })}
+            />
+          )}
+        </>
       )}
 
       {!loading && !status?.user && (
