@@ -323,7 +323,9 @@ describe('ContextScheduleService', () => {
   });
 
   it('keeps the richer project curator trigger copy for timer and manual capability curation', async () => {
-    const timerTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find((trigger) => trigger.id === 'timer.project-capability-curation');
+    const timerTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find(
+      (trigger) => trigger.id === 'timer.project-capability-curation'
+    );
     const manualTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find(
       (trigger) => trigger.id === 'manual.project-capability-curation'
     );

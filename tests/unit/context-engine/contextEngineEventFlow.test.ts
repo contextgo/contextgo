@@ -676,9 +676,8 @@ describe('context engine event flow', () => {
   });
 
   it('writes AGENTS and skill proposal artifacts for project capability curation jobs', async () => {
-    const { ProjectCapabilityCurationJobHandler } = await import(
-      '../../../src/process/services/context/jobs/ProjectCapabilityCurationJobHandler'
-    );
+    const { ProjectCapabilityCurationJobHandler } =
+      await import('../../../src/process/services/context/jobs/ProjectCapabilityCurationJobHandler');
 
     const vaultSyncService = {
       curateProjectCapabilities: vi.fn(async () => ({

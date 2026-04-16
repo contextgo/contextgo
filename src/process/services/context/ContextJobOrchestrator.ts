@@ -251,7 +251,7 @@ export function createPlannedContextJob(input: {
     triggeredAt: input.triggeredAt,
     reason: input.reason,
     payload: {
-      ...(input.payload ?? {}),
+      ...input.payload,
       artifactTargets:
         input.type === 'project_capability_curation'
           ? ['project_doc', 'project_rules', 'project_skill']
