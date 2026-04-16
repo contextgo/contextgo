@@ -158,10 +158,23 @@ describe('context engine event flow', () => {
       projectSlug: 'workspace-abcd1234',
       interruptedAt: Date.parse('2026-04-08T00:00:00.000Z'),
       snapshot: {
-        userTurns: 1,
-        assistantReplies: 0,
+        userTurns: 3,
+        assistantReplies: 2,
         interruptions: 1,
-        recentSignals: [],
+        recentSignals: [
+          {
+            kind: 'user_interrupt',
+            summary: 'User stopped the previous run.',
+            score: 0.8,
+            occurredAt: '2026-04-08T00:00:00.000Z',
+          },
+          {
+            kind: 'repeated_request',
+            summary: 'User repeated the release ask.',
+            score: 0.8,
+            occurredAt: '2026-04-08T00:01:00.000Z',
+          },
+        ],
       },
     });
 
@@ -556,7 +569,11 @@ describe('context engine event flow', () => {
   it('queues project promotion after a successful session compaction artifact', async () => {
     const bus = new ContextEventBus();
     const emittedJobs: ContextJob[] = [];
+    const router = new ContextTriggerRouter(bus, {
+      resolve: vi.fn(async () => ({ kind: 'space-vault-root', spaceId: 'space-1', vaultRoot: '/vault/space-1' })),
+    } as never);
 
+    router.register();
     registerContextJobProjector(bus);
     bus.on('context.job.queued', async (event) => {
       emittedJobs.push(event.payload.job);
@@ -601,6 +618,45 @@ describe('context engine event flow', () => {
         threadId: 'thread-1',
       })
     );
+  });
+
+  it('keeps governance routing on the trigger router after projector reduction', async () => {
+    const bus = new ContextEventBus();
+    const emittedJobs: ContextJob[] = [];
+    const router = new ContextTriggerRouter(bus, {
+      resolve: vi.fn(async () => ({ kind: 'space-vault-root', spaceId: 'space-1', vaultRoot: '/vault/space-1' })),
+    } as never);
+
+    router.register();
+    registerContextJobProjector(bus);
+    bus.on('context.job.queued', async (event) => {
+      emittedJobs.push(event.payload.job);
+    });
+
+    await (bus as any).emit('delegation.completed', {
+      spaceId: 'space-1',
+      threadId: 'thread-1',
+      projectSlug: 'workspace-abcd1234',
+      occurredAt: '2026-04-17T01:00:00.000Z',
+      sourceSummary: 'Planner delegate completed release validation synthesis.',
+      delegationSummary: 'Planner delegate completed release validation synthesis.',
+      snapshot: {
+        userTurns: 1,
+        assistantReplies: 2,
+        interruptions: 0,
+        recentSignals: [
+          {
+            kind: 'strategy_shift',
+            summary: 'Planner delegate converged on a narrower rollout path.',
+            score: 0.8,
+            occurredAt: '2026-04-08T00:00:00.000Z',
+          },
+        ],
+      },
+    });
+
+    expect(emittedJobs).toHaveLength(1);
+    expect(emittedJobs[0]?.source).toBe('lifecycle');
   });
 
   it('routes delegation.completed through the lifecycle trigger contract', async () => {
