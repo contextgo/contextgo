@@ -222,4 +222,29 @@ describe('useAutoScroll - scroll to bottom on message send (#977)', () => {
     // When not at bottom, should return false
     expect(result.current.handleFollowOutput(false)).toBe(false);
   });
+
+  it('should briefly suppress followOutput after the user manually settles at the bottom', () => {
+    const { result } = renderHook(({ messages, itemCount }) => useAutoScroll({ messages, itemCount }), {
+      initialProps: { messages: [], itemCount: 0 },
+    });
+
+    act(() => {
+      result.current.handleAtBottomStateChange(false);
+      result.current.handleScroll({
+        target: { scrollTop: 500 },
+      } as unknown as React.UIEvent<HTMLDivElement>);
+      result.current.handleScroll({
+        target: { scrollTop: 0 },
+      } as unknown as React.UIEvent<HTMLDivElement>);
+      result.current.handleAtBottomStateChange(true);
+    });
+
+    expect(result.current.handleFollowOutput(true)).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(260);
+    });
+
+    expect(result.current.handleFollowOutput(true)).toBe('auto');
+  });
 });

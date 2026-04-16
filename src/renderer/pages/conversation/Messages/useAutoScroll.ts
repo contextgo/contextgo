@@ -15,6 +15,9 @@ import type { TMessage } from '@/common/chat/chatLib';
 
 // Ignore scroll events within this window after a programmatic scroll (ms)
 const PROGRAMMATIC_SCROLL_GUARD_MS = 150;
+// After a user manually reaches the bottom, briefly suppress followOutput so
+// Virtuoso and native touchpad momentum do not fight over the final position.
+const MANUAL_BOTTOM_SETTLE_MS = 250;
 
 interface UseAutoScrollOptions {
   /** Message list for detecting new messages */
@@ -50,6 +53,7 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
   const lastScrollTopRef = useRef(0);
   const previousListLengthRef = useRef(messages.length);
   const lastProgrammaticScrollTimeRef = useRef(0);
+  const autoScrollBlockedUntilRef = useRef(0);
 
   // Scroll to bottom helper - only for user messages and button clicks
   const scrollToBottom = useCallback(
@@ -57,6 +61,7 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
       if (!virtuosoRef.current) return;
 
       lastProgrammaticScrollTimeRef.current = Date.now();
+      autoScrollBlockedUntilRef.current = 0;
       virtuosoRef.current.scrollToIndex({
         index: itemCount - 1,
         behavior,
@@ -69,6 +74,9 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
   // Virtuoso native followOutput - handles streaming auto-scroll internally
   // without external scrollToIndex calls that cause jitter
   const handleFollowOutput = useCallback((isAtBottom: boolean): false | 'auto' => {
+    if (Date.now() < autoScrollBlockedUntilRef.current) {
+      return false;
+    }
     if (userScrolledRef.current || !isAtBottom) return false;
     return 'auto';
   }, []);
@@ -79,6 +87,9 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
     setShowScrollButton(!atBottom);
 
     if (atBottom) {
+      if (userScrolledRef.current) {
+        autoScrollBlockedUntilRef.current = Date.now() + MANUAL_BOTTOM_SETTLE_MS;
+      }
       userScrolledRef.current = false;
     }
   }, []);
@@ -98,6 +109,7 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
     const delta = currentScrollTop - lastScrollTopRef.current;
     if (delta < -10) {
       userScrolledRef.current = true;
+      autoScrollBlockedUntilRef.current = 0;
     }
 
     lastScrollTopRef.current = currentScrollTop;
@@ -118,6 +130,7 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
     // User sent a message - force scroll regardless of userScrolled state
     if (lastMessage?.position === 'right') {
       userScrolledRef.current = false;
+      autoScrollBlockedUntilRef.current = 0;
 
       // When already pinned to the bottom, let Virtuoso's native followOutput
       // keep the viewport stable. Triggering an extra scrollToIndex here fights
@@ -148,6 +161,7 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
   // Hide scroll button handler
   const hideScrollButton = useCallback(() => {
     userScrolledRef.current = false;
+    autoScrollBlockedUntilRef.current = 0;
     setShowScrollButton(false);
   }, []);
 
