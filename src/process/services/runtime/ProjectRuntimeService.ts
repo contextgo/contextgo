@@ -15,6 +15,18 @@ export type ResolvedProjectRuntime = {
   runtimeRoot: string;
 };
 
+const buildDefaultProjectRuntimePolicy = (): ProjectRuntimePolicy => ({
+  version: 1,
+  mode: 'auto',
+  resolvedSource: 'model_center',
+  providerProtocol: 'openai',
+  baseUrl: null,
+  apiKeyRef: null,
+  defaultModel: null,
+  importedFrom: null,
+  lastImportedAt: null,
+});
+
 type ProjectRuntimeServiceDeps = {
   readPolicy?: (workspace: string) => Promise<ProjectRuntimePolicy | null>;
   writePolicy?: (workspace: string, policy: ProjectRuntimePolicy) => Promise<void>;
@@ -33,12 +45,14 @@ export class ProjectRuntimeService {
   }
 
   async resolve(workspace: string): Promise<ResolvedProjectRuntime> {
-    const policy = await this.readPolicy(workspace);
-    if (!policy) {
-      throw new Error(`Missing project runtime policy for workspace: ${workspace}`);
-    }
+    const existingPolicy = await this.readPolicy(workspace);
+    const policy = existingPolicy ?? buildDefaultProjectRuntimePolicy();
 
     const runtimeRoot = getProjectRuntimeRoot(workspace);
+
+    if (!existingPolicy) {
+      await this.writePolicy(workspace, policy);
+    }
 
     if (policy.mode === 'project_managed') {
       return {
@@ -49,7 +63,11 @@ export class ProjectRuntimeService {
     }
 
     if (policy.mode === 'import_local_runtime' || policy.mode === 'auto') {
-      const imported = await this.importLocalRuntime(workspace, policy);
+      const imported = (await this.importLocalRuntime(workspace, policy)) ?? {
+        imported: false,
+        importedFrom: null,
+        lastImportedAt: null,
+      };
       const nextPolicy: ProjectRuntimePolicy = {
         ...policy,
         resolvedSource: imported.imported ? 'imported_local_runtime' : 'model_center',

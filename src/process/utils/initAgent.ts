@@ -24,6 +24,7 @@ import { resolveBuiltinAssistantWorkspaceSkillNames } from '@/common/config/pres
 import { resolveBundledAgentPackageSourceRelativeRoots } from '@/common/config/presets/bundledAgentPackageRegistry';
 import { getPlatformServices } from '@/common/platform';
 import { uuid } from '@/common/utils';
+import { ProjectRuntimeService } from '@process/services/runtime/ProjectRuntimeService';
 import fs from 'fs/promises';
 import path from 'path';
 import { getAutoSkillsDir, getSkillsDir, getBuiltinSkillsCopyDir, getSystemDir } from './initStorage';
@@ -448,6 +449,8 @@ export async function setupAssistantWorkspace(
     presetAssistantId?: string;
   }
 ): Promise<void> {
+  await new ProjectRuntimeService().resolve(workspace);
+
   // Determine skills directories based on agent type or backend
   const key = options.backend || options.agentType || '';
   const skillsDirs = AGENT_SKILLS_DIRS[key];
