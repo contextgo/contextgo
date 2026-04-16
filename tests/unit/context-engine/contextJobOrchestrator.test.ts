@@ -41,6 +41,12 @@ describe('ContextJobOrchestrator', () => {
     expect(job?.type).toBe('session_compaction');
     expect(job?.priority).toBe('high');
     expect(job?.projectSlug).toBe('repo-1');
+    expect(job?.governanceIdentity).toBe('session_steward');
+    expect(job?.payload).toEqual(
+      expect.objectContaining({
+        artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+      })
+    );
   });
 
   it('does not queue compaction when the session is still too small and quiet', () => {
