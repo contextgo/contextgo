@@ -152,4 +152,27 @@ describe('ChannelPublicationService', () => {
     );
     expect(result.spaceId).toBe('space-temp-1');
   });
+
+  it('applies a default channel reply policy for IM-published agent profiles', async () => {
+    const service = new ChannelPublicationService({
+      getConversation: vi.fn(async () => conversation as never),
+      publicationStore: publicationStore as never,
+    });
+
+    const result = await service.prepareConversationPublication(conversation.id);
+
+    expect(publicationStore.upsertAgentProfile).toHaveBeenCalledWith(
+      '/workspace/project',
+      expect.objectContaining({
+        channelReplyPolicy: {
+          capabilities: ['text', 'file'],
+          fallbackMode: 'text_path',
+        },
+      })
+    );
+    expect(result.channelReplyPolicy).toEqual({
+      capabilities: ['text', 'file'],
+      fallbackMode: 'text_path',
+    });
+  });
 });

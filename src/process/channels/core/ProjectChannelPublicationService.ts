@@ -10,6 +10,7 @@ import type { ChannelPublishObjectDiscoveryProvider } from '@process/channels/pl
 import type {
   IAgentProfile,
   IChannelBinding,
+  IChannelReplyPolicy,
   IChannelPublishObjectCatalogEntry,
   IConnectorInstance,
   IRemoteIdentity,
@@ -81,16 +82,27 @@ const pathExists = async (targetPath: string): Promise<boolean> => {
 
 const normalizeAgentProfiles = (profiles: readonly IAgentProfile[]): IAgentProfile[] => {
   return profiles
-    .map((profile) => ({
-      ...profile,
-      workspaceRef: profile.workspaceRef?.trim() || undefined,
-      spaceId: profile.spaceId?.trim() || undefined,
-      promptProfile: profile.promptProfile ?? {},
-      toolPolicy: profile.toolPolicy ?? {},
-      memoryPolicy: profile.memoryPolicy ?? {},
-      delegationPolicy: profile.delegationPolicy ?? {},
-      archived: profile.archived === true,
-    }))
+    .map((profile) => {
+      const channelReplyPolicy: IChannelReplyPolicy = {
+        capabilities:
+          profile.channelReplyPolicy?.capabilities && profile.channelReplyPolicy.capabilities.length > 0
+            ? [...new Set(profile.channelReplyPolicy.capabilities)]
+            : ['text', 'file'],
+        fallbackMode: profile.channelReplyPolicy?.fallbackMode ?? 'text_path',
+      };
+
+      return {
+        ...profile,
+        workspaceRef: profile.workspaceRef?.trim() || undefined,
+        spaceId: profile.spaceId?.trim() || undefined,
+        promptProfile: profile.promptProfile ?? {},
+        toolPolicy: profile.toolPolicy ?? {},
+        memoryPolicy: profile.memoryPolicy ?? {},
+        delegationPolicy: profile.delegationPolicy ?? {},
+        channelReplyPolicy,
+        archived: profile.archived === true,
+      };
+    })
     .toSorted((left, right) => right.updatedAt - left.updatedAt || left.createdAt - right.createdAt);
 };
 
