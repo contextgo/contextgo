@@ -42,7 +42,6 @@ import MicrosoftDashboardLogo from '@renderer/assets/logos/tools/microsoft-dashb
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
-import { useRemoteAccessContext } from '@renderer/hooks/context/RemoteAccessContext';
 import { blurActiveElement } from '@renderer/utils/ui/focus';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
 import { useSelectedSpace } from '@renderer/hooks/context/useSelectedSpace';
@@ -52,7 +51,13 @@ import { useConversationTabs } from '@renderer/pages/conversation/hooks/Conversa
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
 import { isElectronDesktop, isMacOS, isMobileShellWebView, openExternalUrl } from '@renderer/utils/platform';
-import { buildOfficialRemoteDevicesRoute, OFFICIAL_REMOTE_SWITCHER_EVENT } from '@renderer/utils/officialRemote';
+import {
+  buildOfficialRemoteDevicesRoute,
+  getCurrentHostRuntimeStatusKey,
+  isCurrentHostRuntimeReady,
+  OFFICIAL_REMOTE_SWITCHER_EVENT,
+  shouldEnsureCurrentHostRuntime,
+} from '@renderer/utils/officialRemote';
 import { preloadRoutePath } from './routerLocation';
 import { ContextGoModal } from '../base';
 
@@ -153,26 +158,6 @@ const isOpenableRemoteDevice = (device: CloudRemoteDevice): boolean => {
   );
 };
 
-const isCurrentCloudDeviceReady = (cloudStatus: CloudStatus | null): boolean => {
-  return Boolean(
-    cloudStatus?.authenticated &&
-    (cloudStatus.officialRemoteReady === true ||
-      (cloudStatus.officialRemote.running === true && cloudStatus.officialRemote.browserEntryReady === true))
-  );
-};
-
-const shouldEnsureCurrentCloudDevice = (cloudStatus: CloudStatus | null): boolean => {
-  if (!cloudStatus?.authenticated || !cloudStatus.device || !cloudStatus.deviceTokenAvailable) {
-    return false;
-  }
-
-  if (cloudStatus.officialRemote?.needsAttention === true) {
-    return false;
-  }
-
-  return !isCurrentCloudDeviceReady(cloudStatus);
-};
-
 const getRemoteDeviceStatusKey = (
   device: CloudRemoteDevice,
   cloudStatus: CloudStatus | null,
@@ -183,27 +168,7 @@ const getRemoteDeviceStatusKey = (
   }
 
   if (isCurrentDevice) {
-    if (isCurrentCloudDeviceReady(cloudStatus)) {
-      return 'settings.webui.officialRemoteStatusShort.ready';
-    }
-
-    if (cloudStatus.officialRemote?.needsAttention) {
-      return 'settings.webui.officialRemoteStatusShort.relogin';
-    }
-
-    if (!cloudStatus.deviceTokenAvailable) {
-      return 'settings.webui.officialRemoteStatusShort.linking';
-    }
-
-    if (cloudStatus.officialRemote?.running) {
-      return 'settings.webui.officialRemoteStatusShort.preparing';
-    }
-
-    if (cloudStatus.officialRemote?.desired) {
-      return 'settings.webui.officialRemoteStatusShort.connecting';
-    }
-
-    return 'settings.webui.officialRemoteStatusShort.unavailable';
+    return getCurrentHostRuntimeStatusKey(cloudStatus);
   }
 
   if (device.remoteStatus.clientConnected || isOpenableRemoteDevice(device)) {
@@ -249,10 +214,10 @@ const buildCurrentDeviceFallback = (
   return {
     ...cloudStatus.device,
     remoteStatus: {
-      connected: cloudStatus.officialRemote.running === true,
+      connected: cloudStatus.hostRuntime?.officialRemoteDesired ?? cloudStatus.officialRemote.running === true,
       clientConnected: cloudStatus.officialRemote.clientConnected === true,
       transport: cloudStatus.officialRemote.transport,
-      browserEntryReady: cloudStatus.officialRemote.browserEntryReady === true,
+      browserEntryReady: isCurrentHostRuntimeReady(cloudStatus),
       browserEntryReason: cloudStatus.officialRemote.browserEntryReason,
       browserEntryUrl: null,
       connectedAt: null,
@@ -268,7 +233,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { pathname } = location;
 
   const { t, i18n } = useTranslation();
-  const remoteAccess = useRemoteAccessContext();
   const { theme, setTheme } = useThemeContext();
   const navigate = useNavigate();
   const { closePreview } = usePreviewContext();
@@ -283,7 +247,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const [isDevToolsOpen, setIsDevToolsOpen] = useState(false);
   const [openingSpaceVault, setOpeningSpaceVault] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<CloudStatus | null>(null);
-  const [cloudLoading, setCloudLoading] = useState(false);
   const [authLoadingProvider, setAuthLoadingProvider] = useState<CloudAuthProviderId | null>(null);
   const [cloudActionLoading, setCloudActionLoading] = useState<'infermesh' | 'logout' | null>(null);
   const [cloudLoginVisible, setCloudLoginVisible] = useState(false);
@@ -310,7 +273,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   } = useSelectedSpace();
 
   const refreshCloudStatus = async (): Promise<CloudStatus | null> => {
-    setCloudLoading(true);
     try {
       const result = await withTimeout(
         ipcBridge.cloud.getStatus.invoke(),
@@ -326,8 +288,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       }
     } catch (error) {
       console.error('[Sider] Failed to load cloud status:', error);
-    } finally {
-      setCloudLoading(false);
     }
 
     return null;
@@ -564,7 +524,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
       if (!nextStatus.authenticated) {
         setRemoteDevicesPayload(null);
       }
-      setCloudLoading(false);
       setAuthLoadingProvider(null);
       setCloudActionLoading(null);
     });
@@ -683,7 +642,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   };
 
   const reconcileCurrentDeviceForSwitcher = async (status: CloudStatus | null): Promise<void> => {
-    if (!status?.authenticated || !shouldEnsureCurrentCloudDevice(status)) {
+    if (!status?.authenticated || !shouldEnsureCurrentHostRuntime(status)) {
       return;
     }
 
@@ -809,7 +768,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const preferredRemoteDeviceId = remoteDevicesPayload?.selection.preferredDeviceId ?? null;
   const currentCloudDeviceId = cloudStatus?.device?.id ?? null;
   const orderedRemoteDevices = useMemo(() => {
-    return [...switcherDevices].sort((left, right) => {
+    return [...switcherDevices].toSorted((left, right) => {
       const leftIsCurrent = currentCloudDeviceId === left.id;
       const rightIsCurrent = currentCloudDeviceId === right.id;
       if (leftIsCurrent !== rightIsCurrent) {

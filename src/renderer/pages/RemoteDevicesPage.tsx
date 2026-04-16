@@ -14,6 +14,7 @@ import {
   buildOfficialRemoteDevicesRoute,
   buildOfficialDeviceUrl,
   extractOfficialRemoteDeviceId,
+  getCurrentHostRuntimeDetailStatusKey,
   OFFICIAL_REMOTE_DEVICE_ID_QUERY_KEY,
   OFFICIAL_REMOTE_WEBVIEW_PARTITION,
   isOfficialRemotePickerView,
@@ -45,49 +46,10 @@ const getOfficialRemoteStatusText = (
     return translate('settings.cloud.loading', { defaultValue: 'Checking remote status...' });
   }
 
-  const officialRemoteStatus = cloudStatus?.officialRemote;
-  const officialRemoteRelayRunning = officialRemoteStatus?.running === true;
-  const officialRemoteBrowserEntryReady = officialRemoteStatus?.browserEntryReady === true;
-  const officialRemoteReady =
-    cloudStatus?.officialRemoteReady === true || (officialRemoteRelayRunning && officialRemoteBrowserEntryReady);
-  const officialRemoteNeedsLink = Boolean(cloudStatus?.user) && !cloudStatus?.deviceTokenAvailable;
-  const officialRemoteNeedsRelogin = officialRemoteStatus?.needsAttention === true;
-  const officialRemoteSetupInProgress =
-    Boolean(cloudStatus?.user) &&
-    cloudStatus?.deviceTokenAvailable &&
-    officialRemoteRelayRunning &&
-    !officialRemoteBrowserEntryReady;
-  const officialRemoteRelayConnecting =
-    Boolean(cloudStatus?.user) &&
-    cloudStatus?.deviceTokenAvailable &&
-    officialRemoteStatus?.desired === true &&
-    !officialRemoteRelayRunning;
-
-  if (!cloudStatus?.user) {
-    return translate('settings.webui.officialRemoteSignedOut');
-  }
-
-  if (officialRemoteReady) {
-    return translate('settings.webui.officialRemoteDeviceReady');
-  }
-
-  if (officialRemoteNeedsRelogin) {
-    return translate('settings.webui.officialRemoteNeedsRelogin');
-  }
-
-  if (officialRemoteNeedsLink) {
-    return translate('settings.webui.officialRemoteDevicePending');
-  }
-
-  if (officialRemoteSetupInProgress) {
-    return translate('settings.webui.officialRemotePreparing');
-  }
-
-  if (officialRemoteRelayConnecting) {
-    return translate('settings.webui.officialRemoteConnecting');
-  }
-
-  return translate('settings.webui.officialRemoteUnavailable');
+  const statusKey = getCurrentHostRuntimeDetailStatusKey(cloudStatus);
+  return translate(statusKey, {
+    defaultValue: statusKey,
+  });
 };
 
 const RemoteDevicesPage: React.FC = () => {
