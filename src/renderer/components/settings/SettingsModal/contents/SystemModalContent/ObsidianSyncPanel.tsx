@@ -50,7 +50,10 @@ const ObsidianSyncPanel: React.FC<ObsidianSyncPanelProps> = ({ binding }) => {
 
       <div className='space-y-8px'>
         {binding.replicas.map((replica) => (
-          <div key={replica.replicaId} className='flex items-center justify-between gap-8px rounded-8px bg-[var(--color-bg-2)] px-12px py-10px'>
+          <div
+            key={replica.replicaId}
+            className='flex items-center justify-between gap-8px rounded-8px bg-[var(--color-bg-2)] px-12px py-10px'
+          >
             <div className='min-w-0 space-y-4px'>
               <div className='flex items-center gap-8px min-w-0'>
                 <Text>{replica.replicaId}</Text>

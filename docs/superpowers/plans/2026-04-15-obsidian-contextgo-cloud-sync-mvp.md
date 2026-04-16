@@ -437,7 +437,9 @@ export default function ObsidianSyncPanel({ binding }: { binding: CloudObsidianV
 - [ ] **Step 5: 在设置页或侧边产品入口挂出最小状态面**
 
 ```tsx
-{obsidianBinding ? <ObsidianSyncPanel binding={obsidianBinding} /> : null}
+{
+  obsidianBinding ? <ObsidianSyncPanel binding={obsidianBinding} /> : null;
+}
 ```
 
 - [ ] **Step 6: 跑主仓定向测试**
