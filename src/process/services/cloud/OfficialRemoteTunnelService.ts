@@ -9,7 +9,7 @@ import WebSocket, { type RawData } from 'ws';
 import type { OfficialRemoteStatus } from '@/common/types/cloud';
 import { getBridgeEmitter, registerWebSocketBroadcaster } from '@/common/adapter/registry';
 import { ProcessConfig } from '@process/utils/initStorage';
-import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
+import { getHostRuntimeService } from '@process/services/host/HostRuntimeService';
 import { OfficialRemoteBrowserRelay } from './OfficialRemoteBrowserRelay';
 import { CLOUD_API_BASE_URL } from './constants';
 
@@ -110,7 +110,7 @@ function rawDataToString(value: RawData): string {
 
 function resolveBrowserEntryAvailability(): Promise<boolean> {
   try {
-    const runtimeStatus = getHostBrowserEntryService().getRuntimeStatus();
+    const runtimeStatus = getHostRuntimeService().getRuntimeStatus();
     return Promise.resolve(Boolean(runtimeStatus.running && runtimeStatus.port && runtimeStatus.port > 0));
   } catch {
     return Promise.resolve(false);

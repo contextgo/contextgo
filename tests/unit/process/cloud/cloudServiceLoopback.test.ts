@@ -66,10 +66,10 @@ const officialRemoteTunnelServiceMock = {
   getState: vi.fn(() => ({ ...officialRemoteTunnelState })),
 };
 
-const hostBrowserEntryServiceMock = {
-  ensureForDemand: vi.fn(async (_demand: string, request: { preferredPort: number }) => ({
+const hostRuntimeServiceMock = {
+  ensureOfficialRemoteRuntime: vi.fn(async (_reason: string) => ({
     allowRemote: false,
-    port: request.preferredPort,
+    port: 25809,
   })),
   getLocalBaseUrl: vi.fn(() => 'http://127.0.0.1:25809'),
   getRuntimeStatus: vi.fn(() => ({
@@ -81,7 +81,7 @@ const hostBrowserEntryServiceMock = {
     port: 25809,
     running: true,
   })),
-  releaseDemand: vi.fn(async () => undefined),
+  releaseOfficialRemoteRuntime: vi.fn(async () => undefined),
 };
 
 const authSessionFetch = vi.fn(async (url: string, init?: RequestInit) => {
@@ -309,6 +309,7 @@ vi.mock('@/common', () => ({
 }));
 
 vi.mock('@process/utils/initStorage', () => ({
+  getSkillsDir: vi.fn(() => '/tmp/contextgo-skills'),
   ProcessConfig: processConfigMock,
 }));
 
@@ -377,8 +378,8 @@ vi.mock('@/process/services/cloud/OfficialRemoteTunnelService', () => ({
   getOfficialRemoteTunnelService: () => officialRemoteTunnelServiceMock,
 }));
 
-vi.mock('@process/services/host/HostBrowserEntryService', () => ({
-  getHostBrowserEntryService: () => hostBrowserEntryServiceMock,
+vi.mock('@process/services/host/HostRuntimeService', () => ({
+  getHostRuntimeService: () => hostRuntimeServiceMock,
 }));
 
 async function flushAsyncWork(): Promise<void> {
@@ -386,6 +387,11 @@ async function flushAsyncWork(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
   await Promise.resolve();
   await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+async function importCloudService() {
+  const mod = await import('@/process/services/cloud/CloudService');
+  return mod.CloudService.getInstance();
 }
 
 describe('CloudService desktop loopback login', () => {
@@ -398,10 +404,10 @@ describe('CloudService desktop loopback login', () => {
     processConfigMock.remove.mockClear();
     ensureDesktopWebUIForOfficialRemoteMock.mockClear();
     releaseDesktopWebUIForOfficialRemoteMock.mockClear();
-    hostBrowserEntryServiceMock.ensureForDemand.mockClear();
-    hostBrowserEntryServiceMock.getLocalBaseUrl.mockClear();
-    hostBrowserEntryServiceMock.getRuntimeStatus.mockClear();
-    hostBrowserEntryServiceMock.releaseDemand.mockClear();
+    hostRuntimeServiceMock.ensureOfficialRemoteRuntime.mockClear();
+    hostRuntimeServiceMock.getLocalBaseUrl.mockClear();
+    hostRuntimeServiceMock.getRuntimeStatus.mockClear();
+    hostRuntimeServiceMock.releaseOfficialRemoteRuntime.mockClear();
     officialRemoteTunnelServiceMock.initialize.mockClear();
     officialRemoteTunnelServiceMock.reconcile.mockClear();
     officialRemoteTunnelServiceMock.getState.mockClear();
@@ -420,11 +426,6 @@ describe('CloudService desktop loopback login', () => {
   afterEach(() => {
     vi.resetModules();
   });
-
-  async function importCloudService() {
-    const mod = await import('@/process/services/cloud/CloudService');
-    return mod.CloudService.getInstance();
-  }
 
   async function finishLoopback(shellUrl: string, params: Record<string, string>) {
     if (!serverRequestHandler) {
@@ -504,7 +505,7 @@ describe('CloudService desktop loopback login', () => {
     cloudService.initialize();
     await flushAsyncWork();
 
-    expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalledTimes(2);
+    expect(hostRuntimeServiceMock.ensureOfficialRemoteRuntime).toHaveBeenCalledTimes(2);
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('cloud-init');
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
   });
@@ -516,7 +517,7 @@ describe('CloudService desktop loopback login', () => {
     cloudService.handleSystemResume();
     await flushAsyncWork();
 
-    expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalledTimes(1);
+    expect(hostRuntimeServiceMock.ensureOfficialRemoteRuntime).toHaveBeenCalledTimes(1);
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('system-resume');
   });
 
@@ -643,7 +644,7 @@ describe('CloudService desktop loopback login', () => {
     await flushAsyncWork();
 
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
-    expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalled();
+    expect(hostRuntimeServiceMock.ensureOfficialRemoteRuntime).toHaveBeenCalled();
   });
 
   it('includes an explicit host runtime architecture snapshot in cloud status', async () => {
@@ -1024,7 +1025,7 @@ describe('CloudService desktop loopback login', () => {
 
     const status = await cloudService.ensureOfficialRemoteReady();
 
-    expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalledTimes(1);
+    expect(hostRuntimeServiceMock.ensureOfficialRemoteRuntime).toHaveBeenCalledTimes(1);
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
     expect(status).not.toHaveProperty('officialRemoteReady');
     expect(status.hostRuntime.officialRemoteReady).toBe(true);
@@ -1047,6 +1048,6 @@ describe('CloudService desktop loopback login', () => {
 
     await cloudService.logout();
 
-    expect(hostBrowserEntryServiceMock.releaseDemand).toHaveBeenCalledTimes(1);
+    expect(hostRuntimeServiceMock.releaseOfficialRemoteRuntime).toHaveBeenCalledTimes(1);
   });
 });

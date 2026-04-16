@@ -80,11 +80,11 @@ describe('CloudService host browser entry ownership', () => {
     needsAttention: false,
   };
   let authSession: FakeAuthSession;
-  let hostBrowserEntryServiceMock: {
-    ensureForDemand: ReturnType<typeof vi.fn>;
+  let hostRuntimeServiceMock: {
+    ensureOfficialRemoteRuntime: ReturnType<typeof vi.fn>;
     getLocalBaseUrl: ReturnType<typeof vi.fn>;
     getRuntimeStatus: ReturnType<typeof vi.fn>;
-    releaseDemand: ReturnType<typeof vi.fn>;
+    releaseOfficialRemoteRuntime: ReturnType<typeof vi.fn>;
   };
   let officialRemoteTunnelServiceMock: {
     dispose: ReturnType<typeof vi.fn>;
@@ -129,8 +129,8 @@ describe('CloudService host browser entry ownership', () => {
       }),
     };
 
-    hostBrowserEntryServiceMock = {
-      ensureForDemand: vi.fn(async () => ({
+    hostRuntimeServiceMock = {
+      ensureOfficialRemoteRuntime: vi.fn(async () => ({
         allowRemote: false,
         port: 35808,
       })),
@@ -143,7 +143,7 @@ describe('CloudService host browser entry ownership', () => {
           running: true,
         })
       ),
-      releaseDemand: vi.fn(async () => undefined),
+      releaseOfficialRemoteRuntime: vi.fn(async () => undefined),
     };
 
     officialRemoteTunnelServiceMock = {
@@ -189,6 +189,7 @@ describe('CloudService host browser entry ownership', () => {
     }));
 
     vi.doMock('@process/utils/initStorage', () => ({
+      getSkillsDir: vi.fn(() => '/tmp/contextgo-skills'),
       ProcessConfig: {
         get: vi.fn(async (key: string) => processConfigState.get(key)),
         remove: vi.fn(async (key: string) => {
@@ -218,8 +219,8 @@ describe('CloudService host browser entry ownership', () => {
       getOfficialRemoteTunnelService: () => officialRemoteTunnelServiceMock,
     }));
 
-    vi.doMock('@process/services/host/HostBrowserEntryService', () => ({
-      getHostBrowserEntryService: () => hostBrowserEntryServiceMock,
+    vi.doMock('@process/services/host/HostRuntimeService', () => ({
+      getHostRuntimeService: () => hostRuntimeServiceMock,
     }));
   });
 
@@ -227,7 +228,7 @@ describe('CloudService host browser entry ownership', () => {
     vi.restoreAllMocks();
   });
 
-  it('ensures Official Remote readiness through HostBrowserEntryService', async () => {
+  it('ensures Official Remote readiness through HostRuntimeService', async () => {
     processConfigState.set('cloud.user', sessionUser);
     processConfigState.set('cloud.device', {
       createdAt: '2026-04-01T00:00:00Z',
@@ -246,18 +247,13 @@ describe('CloudService host browser entry ownership', () => {
 
     const status = await service.ensureOfficialRemoteReady();
 
-    expect(hostBrowserEntryServiceMock.ensureForDemand).toHaveBeenCalledWith('official-remote', {
-      allowPortFallback: true,
-      allowRemote: false,
-      preferredPort: 35808,
-      reason: 'official-remote',
-    });
+    expect(hostRuntimeServiceMock.ensureOfficialRemoteRuntime).toHaveBeenCalledWith('official-remote');
     expect(officialRemoteTunnelServiceMock.reconcile).toHaveBeenCalledWith('official-remote-ensure-ready');
     expect(status).not.toHaveProperty('officialRemoteReady');
     expect(status.hostRuntime.officialRemoteReady).toBe(true);
   });
 
-  it('releases the Official Remote demand through HostBrowserEntryService on logout', async () => {
+  it('releases the Official Remote demand through HostRuntimeService on logout', async () => {
     processConfigState.set('cloud.user', sessionUser);
     processConfigState.set('cloud.device', {
       createdAt: '2026-04-01T00:00:00Z',
@@ -275,8 +271,7 @@ describe('CloudService host browser entry ownership', () => {
 
     await service.logout();
 
-    expect(hostBrowserEntryServiceMock.releaseDemand).toHaveBeenCalledWith(
-      'official-remote',
+    expect(hostRuntimeServiceMock.releaseOfficialRemoteRuntime).toHaveBeenCalledWith(
       'Official Remote runtime released after cloud logout'
     );
   });
@@ -390,6 +385,7 @@ describe('OfficialRemoteTunnelService host runtime readiness', () => {
     }));
 
     vi.doMock('@process/utils/initStorage', () => ({
+      getSkillsDir: vi.fn(() => '/tmp/contextgo-skills'),
       ProcessConfig: {
         get: vi.fn(async (key: string) => {
           if (key === 'cloud.deviceToken') {
@@ -406,8 +402,8 @@ describe('OfficialRemoteTunnelService host runtime readiness', () => {
       },
     }));
 
-    vi.doMock('@process/services/host/HostBrowserEntryService', () => ({
-      getHostBrowserEntryService: () => ({
+    vi.doMock('@process/services/host/HostRuntimeService', () => ({
+      getHostRuntimeService: () => ({
         getRuntimeStatus: vi.fn(() => ({ ...hostRuntimeStatus })),
       }),
     }));
@@ -460,6 +456,7 @@ describe('OfficialRemoteBrowserRelay host runtime URL resolution', () => {
     }));
 
     vi.doMock('@process/utils/initStorage', () => ({
+      getSkillsDir: vi.fn(() => '/tmp/contextgo-skills'),
       ProcessConfig: {
         get: vi.fn(async (key: string) => {
           if (key === 'webui.desktop.port') {
@@ -470,8 +467,8 @@ describe('OfficialRemoteBrowserRelay host runtime URL resolution', () => {
       },
     }));
 
-    vi.doMock('@process/services/host/HostBrowserEntryService', () => ({
-      getHostBrowserEntryService: () => ({
+    vi.doMock('@process/services/host/HostRuntimeService', () => ({
+      getHostRuntimeService: () => ({
         getLocalBaseUrl: vi.fn(() => 'http://127.0.0.1:43123'),
       }),
     }));

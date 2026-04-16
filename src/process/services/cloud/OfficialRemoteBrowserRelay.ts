@@ -6,7 +6,7 @@
 
 import { Buffer } from 'node:buffer';
 import WebSocket, { type RawData } from 'ws';
-import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
+import { getHostRuntimeService } from '@process/services/host/HostRuntimeService';
 
 const VITE_DEV_PORT = 5173;
 const VITE_DEV_PROBE_PATH = '/@vite/client';
@@ -96,7 +96,7 @@ function sanitizeRequestHeaders(headers: Record<string, string> | undefined): He
 
 async function resolveLocalWebUiBaseUrl(): Promise<string | null> {
   try {
-    const runtimeBaseUrl = getHostBrowserEntryService().getLocalBaseUrl();
+    const runtimeBaseUrl = getHostRuntimeService().getLocalBaseUrl();
     if (runtimeBaseUrl) {
       return runtimeBaseUrl;
     }

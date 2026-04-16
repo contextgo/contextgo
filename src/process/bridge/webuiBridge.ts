@@ -7,7 +7,7 @@
 import { webui } from '@/common/adapter/ipcBridge';
 import { WebuiService } from './services/WebuiService';
 import { generateQRLoginUrlDirect, verifyQRTokenDirect } from './webuiQR';
-import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
+import { getHostRuntimeService } from '@process/services/host/HostRuntimeService';
 import type { WebServerInstance } from '@process/webserver';
 
 export { generateQRLoginUrlDirect, verifyQRTokenDirect };
@@ -17,7 +17,7 @@ export { generateQRLoginUrlDirect, verifyQRTokenDirect };
  * Set WebUI server instance (called from webserver/index.ts)
  */
 export function setWebServerInstance(instance: WebServerInstance | null): void {
-  getHostBrowserEntryService().setCurrentInstanceForLegacy(instance);
+  getHostRuntimeService().setCurrentInstanceForLegacy(instance);
 }
 
 /**
@@ -25,7 +25,7 @@ export function setWebServerInstance(instance: WebServerInstance | null): void {
  * Get WebUI server instance
  */
 export function getWebServerInstance(): WebServerInstance | null {
-  return getHostBrowserEntryService().getCurrentInstance();
+  return getHostRuntimeService().getCurrentInstance();
 }
 
 /**
@@ -33,7 +33,7 @@ export function getWebServerInstance(): WebServerInstance | null {
  * Initialize WebUI IPC bridge
  */
 export function initWebuiBridge(): void {
-  getHostBrowserEntryService().setStatusChangedEmitter((status) => {
+  getHostRuntimeService().setStatusChangedEmitter((status) => {
     webui.statusChanged.emit(status);
   });
 
@@ -110,7 +110,7 @@ export function initWebuiBridge(): void {
 
   // 生成二维码登录 token / Generate QR login token
   webui.generateQRToken.provider(async () => {
-    const webServerInstance = getHostBrowserEntryService().getCurrentInstance();
+    const webServerInstance = getHostRuntimeService().getCurrentInstance();
     // 检查 webServerInstance 状态
     if (!webServerInstance) {
       return {
