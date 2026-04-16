@@ -2,6 +2,7 @@
   "pageTitle": "ContextGo - Sign In",
   "brand": "ContextGo",
   "subtitle": "Welcome back, please sign in to your account",
+  "recoverySubtitle": "This sign-in page is a local recovery path for the host. Official Remote remains the primary remote entry.",
   "username": "Username",
   "usernamePlaceholder": "Enter your username",
   "password": "Password",

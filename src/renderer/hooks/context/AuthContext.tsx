@@ -11,7 +11,7 @@ export interface AuthUser {
   displayName?: string;
   email?: string;
   avatarUrl?: string | null;
-  authSource?: 'local' | 'cloud';
+  authSource?: 'host-session' | 'breakglass-local' | 'cloud';
 }
 
 interface LoginParams {
@@ -50,6 +50,7 @@ function normalizeAuthUser(user: AuthUser): AuthUser {
   return {
     ...user,
     displayName: user.displayName || user.username,
+    authSource: user.authSource || 'host-session',
   };
 }
 

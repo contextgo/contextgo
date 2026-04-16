@@ -95,6 +95,35 @@ describe('createAuthMiddleware cloud fallback', () => {
     expect(req.authSource).toBe('cloud');
   });
 
+  it('marks a local jwt-authenticated request as host-session auth', async () => {
+    verifyToken.mockResolvedValue({
+      userId: 'local-user-1',
+      username: 'admin',
+    });
+    findById.mockResolvedValue({
+      id: 'local-user-1',
+      username: 'admin',
+    });
+
+    const middleware = createAuthMiddleware('json');
+    const req = createRequest({
+      headers: {
+        authorization: 'Bearer local-token',
+      } as Request['headers'],
+    });
+    const res = createResponse();
+    const next = vi.fn();
+
+    await middleware(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(req.user).toEqual({
+      id: 'local-user-1',
+      username: 'admin',
+    });
+    expect(req.authSource).toBe('host-session');
+  });
+
   it('falls back to cloud auth when a local bearer token is invalid', async () => {
     verifyToken.mockResolvedValue(null);
     authenticateRequest.mockResolvedValue({

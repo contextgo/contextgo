@@ -2,6 +2,7 @@
   "pageTitle": "ContextGo - Giriş Yap",
   "brand": "ContextGo",
   "subtitle": "Tekrar hoş geldiniz, lütfen hesabınıza giriş yapın",
+  "recoverySubtitle": "Bu giriş sayfası host için yerel kurtarma yoludur. Uzaktan erişimin ana girişi Official Remote olmaya devam eder.",
   "username": "Kullanıcı Adı",
   "usernamePlaceholder": "Kullanıcı adınızı girin",
   "password": "Şifre",

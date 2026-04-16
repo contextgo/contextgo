@@ -398,7 +398,7 @@ const LoginPage: React.FC = () => {
           </div>
           <h1 className='login-page__title'>{t('login.brand')}</h1>
           <p className='login-page__subtitle'>
-            {isCloudRemoteLogin ? t('settings.cloud.description') : t('login.subtitle')}
+            {isCloudRemoteLogin ? t('settings.cloud.description') : t('login.recoverySubtitle')}
           </p>
         </div>
 
