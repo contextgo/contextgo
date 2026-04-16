@@ -26,6 +26,51 @@ vi.mock('@arco-design/web-react', () => ({
   Message: {
     useMessage: () => [{ success: vi.fn(), error: vi.fn(), warning: vi.fn() }, <div key='message-context' />],
   },
+  Button: ({ children, onClick }: React.PropsWithChildren<{ onClick?: () => void }>) => (
+    <button type='button' onClick={onClick}>
+      {children}
+    </button>
+  ),
+  Avatar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+  Input: Object.assign(
+    ({
+      value,
+      onChange,
+      placeholder,
+    }: {
+      value?: string;
+      onChange?: (value: string) => void;
+      placeholder?: string;
+    }) => <input value={value} placeholder={placeholder} onChange={(event) => onChange?.(event.target.value)} />,
+    {
+      TextArea: ({
+        value,
+        onChange,
+        placeholder,
+      }: {
+        value?: string;
+        onChange?: (value: string) => void;
+        placeholder?: string;
+      }) => <textarea value={value} placeholder={placeholder} onChange={(event) => onChange?.(event.target.value)} />,
+    }
+  ),
+  Select: Object.assign(
+    ({
+      value,
+      onChange,
+      children,
+    }: React.PropsWithChildren<{ value?: string; onChange?: (value: string) => void }>) => (
+      <select value={value} onChange={(event) => onChange?.(event.target.value)}>
+        {children}
+      </select>
+    ),
+    {
+      Option: ({ children, value }: React.PropsWithChildren<{ value: string }>) => (
+        <option value={value}>{children}</option>
+      ),
+    }
+  ),
+  Tag: ({ children }: React.PropsWithChildren) => <span>{children}</span>,
 }));
 
 vi.mock('@/renderer/hooks/assistant', () => ({
@@ -96,10 +141,6 @@ vi.mock('@/renderer/pages/settings/AgentSettings/AssistantManagement/AssistantLi
   default: () => <div>assistant-list</div>,
 }));
 
-vi.mock('@/renderer/pages/settings/AgentSettings/Workspace/detail/AgentBasicsPanel', () => ({
-  default: ({ mode }: { mode: 'create' | 'edit' }) => <div>{mode === 'create' ? 'Create Agent' : 'Agent Basics'}</div>,
-}));
-
 import Workspace from '@/renderer/pages/settings/AgentSettings/Workspace';
 
 describe('Agent workspace create route', () => {
@@ -121,5 +162,6 @@ describe('Agent workspace create route', () => {
     });
 
     expect(screen.getByText('Create Agent')).toBeInTheDocument();
+    expect(screen.getByText('Define Work')).toBeInTheDocument();
   });
 });

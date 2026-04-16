@@ -52,7 +52,7 @@ const AgentDetailPage: React.FC<AgentDetailPageProps> = ({
 
   const assistantName = assistant.nameI18n?.[localeKey] || assistant.name;
   const assistantDescription = assistant.descriptionI18n?.[localeKey] || assistant.description;
-  const packageContent = useBundledAgentPackageContent(assistant.id, model);
+  const packageContent = useBundledAgentPackageContent(model.packageAssistantId || assistant.id, model);
   const visibleTabs = getVisibleAgentWorkspaceTabs(model);
   const tabLabels: Record<string, string> = {
     skills: t('settings.agentWorkspaceSkillsTab', { defaultValue: 'Skills' }),

@@ -5,6 +5,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AssistantListItem } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/types';
 
 const handleEditMock = vi.fn();
+const readBundledAgentPackageContentInvoke = vi.fn().mockResolvedValue({
+  success: true,
+  data: {
+    agentsDocument: {
+      id: 'AGENTS.md',
+      title: 'AGENTS.md',
+      relativePath: 'AGENTS.md',
+      sourcePath: '/tmp/AGENTS.md',
+      content: '# PM Workbench',
+    },
+    docs: [],
+  },
+});
 
 const assistantFixture = {
   id: 'assistant-1',
@@ -16,11 +29,29 @@ const assistantFixture = {
   presetAgentType: 'codex',
 } as AssistantListItem;
 
+const linkedAssistantFixture = {
+  ...assistantFixture,
+  id: 'custom-123',
+  linkedPackagePresetId: 'builtin-pm-workbench',
+} as AssistantListItem;
+
+let currentAssistant = assistantFixture;
+let currentAssistants: AssistantListItem[] = [assistantFixture];
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (_key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? _key,
     i18n: { language: 'en-US' },
   }),
+}));
+
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    fs: {
+      readBundledAgentPackageContent: { invoke: (...args: unknown[]) => readBundledAgentPackageContentInvoke(...args) },
+      readSkillContent: { invoke: vi.fn().mockResolvedValue({ success: true, data: { content: '# Skill body' } }) },
+    },
+  },
 }));
 
 vi.mock('@arco-design/web-react', () => ({
@@ -63,11 +94,11 @@ vi.mock('@arco-design/web-react', () => ({
 
 vi.mock('@/renderer/hooks/assistant', () => ({
   useAssistantList: () => ({
-    assistants: [assistantFixture],
+    assistants: currentAssistants,
     systemAssistants: [],
-    activeAssistantId: 'assistant-1',
+    activeAssistantId: currentAssistant.id,
     setActiveAssistantId: vi.fn(),
-    activeAssistant: assistantFixture,
+    activeAssistant: currentAssistant,
     isReadonlyAssistant: false,
     isExtensionAssistant: () => false,
     loadAssistants: vi.fn(),
@@ -83,9 +114,9 @@ vi.mock('@/renderer/hooks/assistant', () => ({
     handleEdit: handleEditMock,
     handleDuplicate: vi.fn(),
     handleToggleEnabled: vi.fn(),
-    editName: 'Research Agent',
+    editName: currentAssistant.name,
     setEditName: vi.fn(),
-    editDescription: 'Summarize and draft',
+    editDescription: currentAssistant.description,
     setEditDescription: vi.fn(),
     editAvatar: '\u{1F916}',
     setEditAvatar: vi.fn(),
@@ -96,7 +127,7 @@ vi.mock('@/renderer/hooks/assistant', () => ({
     promptViewMode: 'preview',
     setPromptViewMode: vi.fn(),
     isCreating: false,
-    activeAssistant: assistantFixture,
+    activeAssistant: currentAssistant,
     editVisible: false,
     setEditVisible: vi.fn(),
     deleteConfirmVisible: false,
@@ -150,6 +181,9 @@ const LocationProbe = () => {
 describe('Agent workspace detail route', () => {
   beforeEach(() => {
     handleEditMock.mockReset();
+    readBundledAgentPackageContentInvoke.mockClear();
+    currentAssistant = assistantFixture;
+    currentAssistants = [assistantFixture];
   });
 
   it('redirects assistant detail roots to the resolved default tab', async () => {
@@ -166,5 +200,20 @@ describe('Agent workspace detail route', () => {
     expect(screen.getByText('Research Agent')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Skills' })).toBeInTheDocument();
     expect(handleEditMock).toHaveBeenCalledWith(assistantFixture, { openEditor: false });
+  });
+
+  it('loads bundled package content through linked package preset id for custom assistants', async () => {
+    currentAssistant = linkedAssistantFixture;
+    currentAssistants = [linkedAssistantFixture];
+
+    render(
+      <MemoryRouter initialEntries={['/agents/custom-123/agents']}>
+        <Routes>
+          <Route path='/agents/*' element={<Workspace />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(readBundledAgentPackageContentInvoke).toHaveBeenCalledWith({ assistantId: 'builtin-pm-workbench' });
   });
 });

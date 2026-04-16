@@ -17,6 +17,7 @@ const detectAndCountExternalSkillsInvoke = vi.fn().mockResolvedValue({ success: 
 const addCustomExternalPathInvoke = vi.fn().mockResolvedValue({ success: true });
 const readAssistantRuleInvoke = vi.fn().mockResolvedValue('');
 const readAssistantSkillInvoke = vi.fn().mockResolvedValue('');
+const writeAssistantRuleInvoke = vi.fn().mockResolvedValue(true);
 const listAvailableSkillsInvoke = vi.fn().mockResolvedValue([]);
 const listAvailableHooksInvoke = vi.fn().mockResolvedValue([]);
 
@@ -35,6 +36,7 @@ vi.mock('../../src/common', () => ({
       addCustomExternalPath: { invoke: (...args: unknown[]) => addCustomExternalPathInvoke(...args) },
       readAssistantRule: { invoke: (...args: unknown[]) => readAssistantRuleInvoke(...args) },
       readAssistantSkill: { invoke: (...args: unknown[]) => readAssistantSkillInvoke(...args) },
+      writeAssistantRule: { invoke: (...args: unknown[]) => writeAssistantRuleInvoke(...args) },
       listAvailableSkills: { invoke: (...args: unknown[]) => listAvailableSkillsInvoke(...args) },
       listAvailableHooks: { invoke: (...args: unknown[]) => listAvailableHooksInvoke(...args) },
     },
@@ -587,8 +589,11 @@ describe('useAssistantEditor', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    configStorageGetMock.mockResolvedValue([]);
+    configStorageSetMock.mockResolvedValue(undefined);
     readAssistantRuleInvoke.mockResolvedValue('');
     readAssistantSkillInvoke.mockResolvedValue('');
+    writeAssistantRuleInvoke.mockResolvedValue(true);
     listAvailableHooksInvoke.mockResolvedValue([]);
     listAvailableSkillsInvoke.mockResolvedValue([]);
   });
@@ -630,5 +635,99 @@ describe('useAssistantEditor', () => {
       }),
     ]);
     expect(result.current.selectedSkills).toEqual(['using-superpowers']);
+  });
+
+  it('uses linked package preset id when loading skills for a custom assistant', async () => {
+    listAvailableSkillsInvoke.mockResolvedValue([
+      {
+        name: 'pm-prd',
+        description: 'PRD drafting skill',
+        location: '/tmp/skills/pm-prd',
+        isCustom: false,
+      },
+    ]);
+
+    const customLinkedAssistant = {
+      id: 'custom-123',
+      name: 'Roadmap Pilot',
+      enabled: true,
+      isPreset: true,
+      isBuiltin: false,
+      presetAgentType: 'codex',
+      linkedPackagePresetId: 'builtin-pm-workbench',
+      enabledSkills: ['pm-prd'],
+      enabledHooks: [],
+    } as AssistantListItem;
+
+    const { result } = renderHook(() =>
+      useAssistantEditor({
+        localeKey: 'en-US',
+        activeAssistant: customLinkedAssistant,
+        isReadonlyAssistant: false,
+        isExtensionAssistant: () => false,
+        setActiveAssistantId: vi.fn(),
+        loadAssistants: vi.fn(),
+        refreshAgentDetection: vi.fn(),
+        message: mockMessage as unknown as ReturnType<typeof import('@arco-design/web-react').Message.useMessage>[0],
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleEdit(customLinkedAssistant, { openEditor: false });
+    });
+
+    expect(listAvailableSkillsInvoke).toHaveBeenCalledWith({ presetAssistantId: 'builtin-pm-workbench' });
+    expect(result.current.availableSkills).toEqual([
+      expect.objectContaining({
+        name: 'pm-prd',
+        description: 'PRD drafting skill',
+      }),
+    ]);
+  });
+
+  it('persists linked package preset id when creating a custom assistant from the new flow', async () => {
+    const setActiveAssistantId = vi.fn();
+    const loadAssistants = vi.fn();
+    const refreshAgentDetection = vi.fn();
+
+    const { result } = renderHook(() =>
+      useAssistantEditor({
+        localeKey: 'en-US',
+        activeAssistant: null,
+        isReadonlyAssistant: false,
+        isExtensionAssistant: () => false,
+        setActiveAssistantId,
+        loadAssistants,
+        refreshAgentDetection,
+        message: mockMessage as unknown as ReturnType<typeof import('@arco-design/web-react').Message.useMessage>[0],
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleCreate({ openEditor: false });
+    });
+
+    act(() => {
+      result.current.setEditName('Roadmap Pilot');
+      result.current.setEditDescription('Custom PM agent');
+      result.current.setEditContext('Operate like a PM workbench.');
+    });
+
+    await act(async () => {
+      await result.current.handleSave({
+        closeAfterSave: false,
+        linkedPackagePresetId: 'builtin-pm-workbench',
+      });
+    });
+
+    expect(configStorageSetMock).toHaveBeenCalledWith(
+      'acp.customAgents',
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'Roadmap Pilot',
+          linkedPackagePresetId: 'builtin-pm-workbench',
+        }),
+      ])
+    );
   });
 });
