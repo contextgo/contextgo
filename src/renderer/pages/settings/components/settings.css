@@ -178,6 +178,21 @@
   }
 }
 
+@media (max-width: 767px) {
+  .settings-side-dock--runtime-config.settings-side-dock--mobile {
+    top: calc(var(--titlebar-height) + 8px);
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+  }
+
+  .settings-side-dock--runtime-config.settings-side-dock--mobile .settings-side-dock__panel {
+    min-height: 0;
+    border-radius: 16px;
+  }
+}
+
 @media (max-width: 640px) {
   .settings-runtime-config-dock__header {
     gap: 12px;

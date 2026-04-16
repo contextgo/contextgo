@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 
 type SettingsSideDockProps = {
   variant: 'preview' | 'runtime-config';
@@ -10,6 +11,9 @@ type SettingsSideDockProps = {
 };
 
 const SettingsSideDock: React.FC<SettingsSideDockProps> = ({ variant, ariaLabel, dataTestId, children }) => {
+  const layout = useLayoutContext();
+  const isMobile = layout?.isMobile ?? false;
+
   if (typeof document === 'undefined') {
     return null;
   }
@@ -19,6 +23,7 @@ const SettingsSideDock: React.FC<SettingsSideDockProps> = ({ variant, ariaLabel,
       className={classNames('settings-side-dock', {
         'settings-side-dock--preview': variant === 'preview',
         'settings-side-dock--runtime-config': variant === 'runtime-config',
+        'settings-side-dock--mobile': isMobile && variant === 'runtime-config',
       })}
       data-testid={dataTestId}
       aria-label={ariaLabel}

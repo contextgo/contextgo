@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const useLayoutContextMock = vi.fn();
 const mockGetPluginStatusInvoke = vi.fn();
 const mockGetChannelAccountsInvoke = vi.fn();
 const mockGetAuthorizedTargetsInvoke = vi.fn();
@@ -104,11 +105,27 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/renderer/components/base/ContextGoScrollArea', () => ({
-  default: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  default: ({
+    children,
+    className,
+    disableOverflow,
+  }: {
+    children?: React.ReactNode;
+    className?: string;
+    disableOverflow?: boolean;
+  }) => (
+    <div data-testid='scroll-area' data-disable-overflow={disableOverflow ? 'true' : 'false'} className={className}>
+      {children}
+    </div>
+  ),
 }));
 
 vi.mock('@/renderer/components/settings/SettingsModal/settingsViewContext', () => ({
   useSettingsViewMode: () => 'page',
+}));
+
+vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
+  useLayoutContext: () => useLayoutContextMock(),
 }));
 
 vi.mock('@/renderer/components/settings/SettingsModal/contents/channels/publication/PublicationBindingPanel', () => ({
@@ -203,6 +220,9 @@ function renderChannelsPage() {
 describe('ChannelModalContent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useLayoutContextMock.mockReturnValue({
+      isMobile: false,
+    });
     mockGetPluginStatusInvoke.mockResolvedValue({
       success: true,
       data: [
@@ -302,6 +322,7 @@ describe('ChannelModalContent', () => {
     });
 
     expect(screen.getByText('IM Channels')).toBeInTheDocument();
+    expect(screen.getByTestId('scroll-area')).toHaveAttribute('data-disable-overflow', 'true');
     expect(screen.getAllByRole('button', { name: /Telegram/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /Slack/i }).length).toBeGreaterThan(0);
     expect(screen.getByText('telegram form')).toBeInTheDocument();
@@ -323,6 +344,20 @@ describe('ChannelModalContent', () => {
         'Each instance should expose one clear primary state: finish setup first, then it becomes usable.'
       )
     ).toBeInTheDocument();
+  });
+
+  it('keeps page scrolling enabled for the mobile channel settings layout', async () => {
+    useLayoutContextMock.mockReturnValue({
+      isMobile: true,
+    });
+
+    renderChannelsPage();
+
+    await waitFor(() => {
+      expect(mockGetPluginStatusInvoke).toHaveBeenCalled();
+    });
+
+    expect(screen.getByTestId('scroll-area')).toHaveAttribute('data-disable-overflow', 'false');
   });
 
   it('hides implicit builtin defaults when no real instance exists', async () => {
