@@ -143,7 +143,7 @@ export function registerAuthRoutes(app: Express): void {
           id: user.id,
           username: user.username,
           displayName: user.username,
-          authSource: 'local',
+          authSource: 'breakglass-local',
         },
         token,
       });
@@ -228,7 +228,7 @@ export function registerAuthRoutes(app: Express): void {
               id: req.user.id,
               username: req.user.username,
               displayName: req.user.username,
-              authSource: 'local' as const,
+              authSource: 'host-session' as const,
             }
           : null;
 

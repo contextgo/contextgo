@@ -23,9 +23,13 @@ import type {
   CloudRemoteDeviceSelection,
   CloudRemoteDevicesPayload,
   CloudStatus,
-  HostRuntimePlatform,
   CloudUser,
 } from '@/common/types/cloud';
+import {
+  getHostRuntimeSupportedClients,
+  resolveHostRuntimeMode,
+  resolveHostRuntimePlatform,
+} from '@process/services/host/hostRuntimeModel';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { onDeepLinkReceived } from '@process/utils/deepLink';
 import type { DeepLinkPayload } from '@process/utils/deepLink';
@@ -92,29 +96,6 @@ type DesktopLoginResultWaiter = {
 type DesktopLoopbackLoginResultWaiter = DesktopLoginResultWaiter & {
   callbackUrl: string;
 };
-
-const HOST_RUNTIME_SUPPORTED_CLIENTS = ['desktop-client', 'mobile-client', 'browser-client'] as const;
-
-function resolveHostRuntimePlatform(devicePlatform?: string | null): HostRuntimePlatform {
-  if (devicePlatform === 'macos') {
-    return 'macos';
-  }
-  if (devicePlatform === 'windows') {
-    return 'windows';
-  }
-  if (devicePlatform === 'linux') {
-    return 'linux';
-  }
-
-  switch (process.platform) {
-    case 'darwin':
-      return 'macos';
-    case 'win32':
-      return 'windows';
-    default:
-      return 'linux';
-  }
-}
 
 const isHostRuntimeOfficialRemoteReady = (status: Pick<CloudStatus, 'hostRuntime'>): boolean => {
   return status.hostRuntime.officialRemoteReady === true;
@@ -499,6 +480,7 @@ export class CloudService {
     const officialRemoteReady =
       Boolean(deviceToken) && officialRemote.running === true && officialRemote.browserEntryReady === true;
     const runtimeStatus = getHostBrowserEntryService().getRuntimeStatus();
+    const runtimeMode = resolveHostRuntimeMode();
 
     const nextStatus: CloudStatus = {
       authenticated: Boolean(sessionUser),
@@ -512,10 +494,10 @@ export class CloudService {
         defaultRemoteAccess: 'official-remote',
         exposure: runtimeStatus.allowRemote ? 'external' : 'loopback',
         lifecycle: runtimeStatus.lifecycle,
-        mode: 'gui-host',
+        mode: runtimeMode,
         platform: resolveHostRuntimePlatform(effectiveDevice?.platform ?? null),
         running: runtimeStatus.running,
-        supportedClients: [...HOST_RUNTIME_SUPPORTED_CLIENTS],
+        supportedClients: getHostRuntimeSupportedClients(runtimeMode),
         officialRemoteDesired: officialRemote.desired === true,
         officialRemoteReady,
         localUrl: runtimeStatus.localUrl,

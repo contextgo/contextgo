@@ -885,6 +885,7 @@ export type I18nKey =
   | 'login.pageTitle'
   | 'login.password'
   | 'login.passwordPlaceholder'
+  | 'login.recoverySubtitle'
   | 'login.rememberMe'
   | 'login.showPassword'
   | 'login.submit'
