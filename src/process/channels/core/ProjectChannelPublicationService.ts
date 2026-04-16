@@ -6,6 +6,7 @@
 
 import type { TChatConversation } from '@/common/config/storage';
 import { resolveWorkspacePath, WORKSPACE_AUTOMATION_DIR } from '@process/bridge/services/workspaceAutomation';
+import type { ChannelPublishObjectDiscoveryProvider } from '@process/channels/plugins/BasePlugin';
 import type {
   IAgentProfile,
   IChannelBinding,
@@ -13,6 +14,7 @@ import type {
   IConnectorInstance,
   IRemoteIdentity,
 } from '@process/channels/types';
+import { enrichRemoteIdentitiesForPublishObjectDiscovery } from '@process/channels/core/publishObjectDiscovery';
 import {
   getChannelAccountId,
   getChannelBindingPublishObject,
@@ -546,6 +548,7 @@ export class ProjectChannelPublicationService {
       bindings: readonly IChannelBinding[];
       remoteIdentities: readonly IRemoteIdentity[];
       channelAccounts: readonly IConnectorInstance[];
+      resolveDiscoveryProvider?: (runtimeId: string) => ChannelPublishObjectDiscoveryProvider | null | undefined;
     }
   ): Promise<IChannelPublishObjectCatalogEntry[]> {
     const workspacePath = resolveWorkspacePath(workspace);
@@ -556,10 +559,15 @@ export class ProjectChannelPublicationService {
     const snapshot = await this.readSnapshot(workspacePath);
     const connectorMap = new Map(params.channelAccounts.map((connector) => [connector.id, connector] as const));
     const now = Date.now();
+    const enrichedRemoteIdentities = await enrichRemoteIdentitiesForPublishObjectDiscovery(
+      params.remoteIdentities,
+      params.channelAccounts,
+      params.resolveDiscoveryProvider
+    );
     const bindingEntries = params.bindings
       .map((binding) => toBindingCatalogEntry(binding, now))
       .filter((entry): entry is IChannelPublishObjectCatalogEntry => Boolean(entry));
-    const remoteIdentityEntries = params.remoteIdentities
+    const remoteIdentityEntries = enrichedRemoteIdentities
       .map((identity) => {
         const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
         return connector ? toRemoteIdentityCatalogEntry(identity, connector, now) : null;

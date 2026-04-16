@@ -169,7 +169,6 @@ Run: `bun run test -- tests/unit/common/slashCommandLibrary.test.ts`
 
 Expected: PASS for the new normalization and resolution expectations.
 
-
 ### Task 2: Bootstrap full project command files from preset assistants and remove runtime default injection
 
 **Files:**
@@ -271,7 +270,6 @@ Run: `bun run test -- tests/unit/process/bridge/workspaceAutomation.test.ts`
 
 Expected: PASS with plain project command records written to `.contextgo/commands.json`.
 
-
 ### Task 3: Make the renderer edit and display only project commands
 
 **Files:**
@@ -360,13 +358,15 @@ const restoreDefaults = async () => {
   await persistLibrary(initialLibrary, 'settings.commands.restoreSuccess');
 };
 
-<div className='flex flex-col gap-12px'>{projectCommands.map((command) => renderCommandCard(command))}</div>
+<div className='flex flex-col gap-12px'>{projectCommands.map((command) => renderCommandCard(command))}</div>;
 ```
 
 ```tsx
-{command.description ? (
-  <Typography.Paragraph className='mb-0 mt-8px text-t-secondary'>{command.description}</Typography.Paragraph>
-) : null}
+{
+  command.description ? (
+    <Typography.Paragraph className='mb-0 mt-8px text-t-secondary'>{command.description}</Typography.Paragraph>
+  ) : null;
+}
 ```
 
 - [ ] **Step 4: Remove renderer-side fallback hydration and let slash commands merge runtime items with project-file commands only**
@@ -420,7 +420,6 @@ Also remove the unused keys:
 Run: `bun run test -- --project dom tests/unit/useSlashCommands.dom.test.ts tests/unit/renderer/settings/tools/ManagedCommandLibraryEditor.dom.test.tsx tests/unit/renderer/schedule/ProjectAutomationModal.dom.test.tsx`
 
 Expected: PASS with no builtin/custom labels and no commands fallback path when the project file is absent.
-
 
 ### Task 4: Final verification and cleanup
 

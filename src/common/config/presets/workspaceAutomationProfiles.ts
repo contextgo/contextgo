@@ -811,9 +811,7 @@ export const getWorkspaceAutomationProfileLabel = (
   return getWorkspaceAutomationProfileDefinition(profile)?.label;
 };
 
-export const getWorkspaceCommandSeedKind = (
-  seed: WorkspaceCommandSeed
-): 'builtin' | 'custom' => {
+export const getWorkspaceCommandSeedKind = (seed: WorkspaceCommandSeed): 'builtin' | 'custom' => {
   return seed.type;
 };
 

@@ -297,7 +297,9 @@ const ManagedCommandLibraryEditor: React.FC<ManagedCommandLibraryEditorProps> = 
           ) : resolvedCommands.length === 0 ? (
             <Empty description={t('settings.commands.emptyCustom')} />
           ) : (
-            <div className='flex flex-col gap-12px'>{resolvedCommands.map((command) => renderCommandCard(command))}</div>
+            <div className='flex flex-col gap-12px'>
+              {resolvedCommands.map((command) => renderCommandCard(command))}
+            </div>
           )}
         </AutomationSectionCard>
       </AutomationPanel>

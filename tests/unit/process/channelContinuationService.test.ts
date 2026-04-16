@@ -6,7 +6,14 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockGetDatabase, mockGetTask, dbState, failExternalSessionUpsert, mockListAllConversations, mockReadCatalogForConversations } = vi.hoisted(() => {
+const {
+  mockGetDatabase,
+  mockGetTask,
+  dbState,
+  failExternalSessionUpsert,
+  mockListAllConversations,
+  mockReadCatalogForConversations,
+} = vi.hoisted(() => {
   const state = {
     connector: {
       id: 'connector-wechat',

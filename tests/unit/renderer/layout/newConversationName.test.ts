@@ -24,7 +24,9 @@ describe('newConversationName', () => {
 
   it('drops technical prelude lines and extracts a human-readable title', () => {
     expect(
-      normalizeConversationTitle('准备中\ncodex\n5s\n\n这个运行中的时候输入框上方这个样式是否可以优化一下，看起来太技术风格了')
+      normalizeConversationTitle(
+        '准备中\ncodex\n5s\n\n这个运行中的时候输入框上方这个样式是否可以优化一下，看起来太技术风格了'
+      )
     ).toBe('这个运行中的时候输入框上方这个样式是否可以优化一下，看起来太技术风格了');
   });
 

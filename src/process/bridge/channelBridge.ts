@@ -7,9 +7,11 @@
 import { channel } from '@/common/adapter/ipcBridge';
 import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '@/common/config/builtinChannels';
 import { getChannelManager } from '@process/channels/core/ChannelManager';
+import { enrichRemoteIdentitiesForPublishObjectDiscovery } from '@process/channels/core/publishObjectDiscovery';
 import {
   describeRemoteIdentityObject,
   inferRemoteIdentityPublishObject,
+  isChannelObjectFallbackTitle,
   resolvePublishObjectCatalogEntry as resolveCatalogPublishObjectEntry,
 } from '@process/channels/utils';
 import { getChannelContinuationService } from '@process/channels/core/ChannelContinuationService';
@@ -24,6 +26,8 @@ import type {
   IChannelAudienceEntry,
   IChannelBinding,
   IChannelControlLease,
+  IChannelBindingCatalog,
+  IChannelPublicationSnapshot,
   IChannelPublishObjectActiveSessionPointer,
   IChannelPublishObjectCatalogEntry,
   IChannelPublicationCatalogRefreshResult,
@@ -120,6 +124,15 @@ function isDirectChatType(remoteChatType?: string): boolean {
     normalizedChatType === 'dm' ||
     normalizedChatType === 'private' ||
     normalizedChatType === 'p2p'
+  );
+}
+
+function isChildRemoteObject(identity: IRemoteIdentity): boolean {
+  return (
+    identity.remoteChatType === 'topic' ||
+    identity.remoteChatType === 'thread' ||
+    identity.peerScope === 'thread' ||
+    Boolean(identity.threadId)
   );
 }
 
@@ -314,6 +327,48 @@ function resolvePublishObjectCatalogEntry(
   return publishObjectCatalog.get(identityKey);
 }
 
+function buildEphemeralPublishObjectCatalogEntry(
+  identity: IRemoteIdentity,
+  connector: IConnectorInstance
+): IChannelPublishObjectCatalogEntry {
+  const publishObject = inferRemoteIdentityPublishObject(identity, connector.platform);
+  const descriptor = describeRemoteIdentityObject(identity, connector.platform);
+  const title = publishObject.displayName ?? descriptor.title;
+  const entry: IChannelPublishObjectCatalogEntry = {
+    id: '',
+    channelAccountId: connector.id,
+    nativeObjectType: publishObject.nativeObjectType,
+    nativeObjectId: publishObject.nativeObjectId,
+    parentNativeObjectId: publishObject.parentNativeObjectId,
+    displayProfile: {
+      title,
+      subtitle: descriptor.subtitle,
+      parentTitle: descriptor.parentTitle,
+      source:
+        identity.metadata?.displaySource === 'official-pull' || identity.metadata?.displaySource === 'runtime-resolved'
+          ? identity.metadata.displaySource
+          : 'runtime-resolved',
+      quality: isChannelObjectFallbackTitle({
+        platform: connector.platform,
+        kind: descriptor.kind,
+        title,
+        nativeObjectId: publishObject.nativeObjectId,
+      })
+        ? 'fallback'
+        : 'resolved',
+      resolvedAt: identity.lastActive ?? identity.authorizedAt,
+    },
+    refreshState: {
+      status: 'ready',
+      updatedAt: identity.lastActive ?? identity.authorizedAt,
+    },
+    createdAt: identity.authorizedAt,
+    updatedAt: identity.lastActive ?? identity.authorizedAt,
+  };
+  entry.id = getChannelPublishObjectCatalogEntryIdentity(entry);
+  return entry;
+}
+
 function getFriendlyDisplayName(identity: IRemoteIdentity, connector?: IConnectorInstance): string | undefined {
   if (connector?.platform === 'lark') {
     return getLarkRemoteDisplayName(identity);
@@ -333,237 +388,6 @@ function getFriendlySubtitle(identity: IRemoteIdentity, connector?: IConnectorIn
   }
 
   return getMetadataText(identity.metadata, 'objectSubtitle') ?? getMetadataText(identity.metadata, 'chatDescription');
-}
-
-type RuntimeDisplaySource = Extract<
-  IChannelPublishObjectCatalogEntry['displayProfile']['source'],
-  'official-pull' | 'runtime-resolved'
->;
-
-type RemoteChatDisplayData = {
-  name?: string;
-  description?: string;
-  chatType?: string;
-  parentTitle?: string;
-  containerId?: string;
-  containerType?: string;
-  containerTitle?: string;
-  source?: RuntimeDisplaySource;
-};
-
-type RemoteUserDisplayData = {
-  name?: string;
-  source?: RuntimeDisplaySource;
-};
-
-type RemoteDisplayResolver = {
-  getChatDisplayData?: (chatId: string) => Promise<RemoteChatDisplayData | null>;
-  getUserDisplayData?: (userId: string) => Promise<RemoteUserDisplayData | null>;
-};
-
-function isRemoteDisplayResolver(value: unknown): value is RemoteDisplayResolver {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  return (
-    ('getChatDisplayData' in value &&
-      typeof (value as { getChatDisplayData?: unknown }).getChatDisplayData === 'function') ||
-    ('getUserDisplayData' in value &&
-      typeof (value as { getUserDisplayData?: unknown }).getUserDisplayData === 'function')
-  );
-}
-
-function hasReadableDisplayName(value?: string): value is string {
-  if (!value) {
-    return false;
-  }
-
-  const normalized = value.trim();
-  return Boolean(normalized) && !looksLikeTechnicalIdentifier(normalized) && !normalized.startsWith('User ');
-}
-
-function isChildRemoteObject(identity: IRemoteIdentity): boolean {
-  return (
-    identity.remoteChatType === 'topic' ||
-    identity.remoteChatType === 'thread' ||
-    identity.peerScope === 'thread' ||
-    Boolean(identity.threadId)
-  );
-}
-
-function getDefaultDisplaySource(platform: IConnectorInstance['platform']): RuntimeDisplaySource {
-  return platform === 'dingtalk' ? 'runtime-resolved' : 'official-pull';
-}
-
-function normalizeDisplaySource(
-  value: unknown,
-  platform: IConnectorInstance['platform']
-): RuntimeDisplaySource | undefined {
-  if (value === 'official-pull' || value === 'runtime-resolved') {
-    return value;
-  }
-
-  return platform === 'lark' || platform === 'discord' || platform === 'dingtalk'
-    ? getDefaultDisplaySource(platform)
-    : undefined;
-}
-
-function pickPreferredDisplaySource(
-  ...sources: Array<RuntimeDisplaySource | undefined>
-): RuntimeDisplaySource | undefined {
-  if (sources.includes('official-pull')) {
-    return 'official-pull';
-  }
-
-  if (sources.includes('runtime-resolved')) {
-    return 'runtime-resolved';
-  }
-
-  return undefined;
-}
-
-async function enrichIdentityForDisplay(
-  identity: IRemoteIdentity,
-  connector: IConnectorInstance,
-  resolver: RemoteDisplayResolver
-): Promise<IRemoteIdentity> {
-  const metadata = identity.metadata ?? {};
-  const childObject = isChildRemoteObject(identity);
-  const parentChatId = identity.platformChatId ?? identity.parentChatId ?? identity.remoteChatId;
-  const objectChatId = childObject ? (identity.threadId ?? identity.remoteChatId) : parentChatId;
-  const loadObjectChatDisplay = Boolean(
-    objectChatId && !isDirectChatType(identity.remoteChatType) && typeof resolver.getChatDisplayData === 'function'
-  );
-  const loadParentChatDisplay = Boolean(
-    childObject && parentChatId && parentChatId !== objectChatId && typeof resolver.getChatDisplayData === 'function'
-  );
-
-  const [objectChatDisplay, parentChatDisplay, userDisplay] = await Promise.all([
-    loadObjectChatDisplay && objectChatId
-      ? resolver.getChatDisplayData?.(objectChatId).catch((_error): null => null)
-      : null,
-    loadParentChatDisplay && parentChatId
-      ? resolver.getChatDisplayData?.(parentChatId).catch((_error): null => null)
-      : null,
-    identity.remoteUserId && typeof resolver.getUserDisplayData === 'function'
-      ? resolver.getUserDisplayData(identity.remoteUserId).catch((_error): null => null)
-      : null,
-  ]);
-
-  const objectDisplaySource = pickPreferredDisplaySource(
-    normalizeDisplaySource(objectChatDisplay?.source, connector.platform),
-    loadObjectChatDisplay && objectChatDisplay ? getDefaultDisplaySource(connector.platform) : undefined
-  );
-  const parentDisplaySource = pickPreferredDisplaySource(
-    normalizeDisplaySource(parentChatDisplay?.source, connector.platform),
-    loadParentChatDisplay && parentChatDisplay ? getDefaultDisplaySource(connector.platform) : undefined
-  );
-  const userDisplaySource = pickPreferredDisplaySource(
-    normalizeDisplaySource(userDisplay?.source, connector.platform),
-    userDisplay ? getDefaultDisplaySource(connector.platform) : undefined
-  );
-  const chatName = childObject
-    ? parentChatDisplay?.name?.trim() ||
-      objectChatDisplay?.parentTitle?.trim() ||
-      getMetadataText(metadata, 'parentTitle')
-    : (connector.platform === 'lark' && childObject ? undefined : objectChatDisplay?.name?.trim()) ||
-      getMetadataText(metadata, 'chatName');
-  const chatDescription = objectChatDisplay?.description?.trim() || getMetadataText(metadata, 'chatDescription');
-  const userDisplayName = userDisplay?.name?.trim() || getMetadataText(metadata, 'userDisplayName');
-  const currentDisplayName = hasReadableDisplayName(identity.displayName) ? identity.displayName.trim() : undefined;
-  const resolvedObjectName = connector.platform === 'lark' && childObject ? undefined : objectChatDisplay?.name?.trim();
-  const resolvedParentTitle =
-    parentChatDisplay?.name?.trim() ||
-    objectChatDisplay?.parentTitle?.trim() ||
-    getMetadataText(metadata, 'parentTitle');
-  const resolvedObjectSubtitle =
-    getMetadataText(metadata, 'objectSubtitle') ||
-    (childObject ? (resolvedParentTitle ? `In ${resolvedParentTitle}` : undefined) : chatDescription);
-  const resolvedContainerId =
-    objectChatDisplay?.containerId?.trim() ||
-    parentChatDisplay?.containerId?.trim() ||
-    getMetadataText(metadata, 'containerId');
-  const resolvedContainerType =
-    objectChatDisplay?.containerType?.trim() ||
-    parentChatDisplay?.containerType?.trim() ||
-    getMetadataText(metadata, 'containerType');
-  const resolvedContainerTitle =
-    objectChatDisplay?.containerTitle?.trim() ||
-    parentChatDisplay?.containerTitle?.trim() ||
-    getMetadataText(metadata, 'containerTitle');
-  const resolvedDisplaySource = pickPreferredDisplaySource(
-    getMetadataText(metadata, 'displaySource') as RuntimeDisplaySource | undefined,
-    objectDisplaySource,
-    parentDisplaySource,
-    userDisplaySource
-  );
-
-  let displayName = currentDisplayName;
-  if (isDirectChatType(identity.remoteChatType)) {
-    displayName = userDisplayName ?? currentDisplayName;
-  } else if (childObject) {
-    displayName = resolvedObjectName ?? currentDisplayName;
-  } else {
-    displayName = chatName ?? currentDisplayName;
-  }
-
-  return {
-    ...identity,
-    displayName: displayName ?? identity.displayName,
-    remoteChatType: identity.remoteChatType ?? objectChatDisplay?.chatType ?? parentChatDisplay?.chatType,
-    metadata: {
-      ...metadata,
-      ...(chatName ? { chatName } : {}),
-      ...(chatDescription ? { chatDescription } : {}),
-      ...(userDisplayName ? { userDisplayName } : {}),
-      ...(resolvedParentTitle ? { parentTitle: resolvedParentTitle } : {}),
-      ...(resolvedObjectSubtitle ? { objectSubtitle: resolvedObjectSubtitle } : {}),
-      ...(resolvedContainerId ? { containerId: resolvedContainerId } : {}),
-      ...(resolvedContainerType ? { containerType: resolvedContainerType } : {}),
-      ...(resolvedContainerTitle ? { containerTitle: resolvedContainerTitle } : {}),
-      ...(resolvedDisplaySource ? { displaySource: resolvedDisplaySource } : {}),
-    },
-  };
-}
-
-async function enrichRemoteIdentitiesForDisplay(
-  remoteIdentities: IRemoteIdentity[],
-  connectors: IConnectorInstance[]
-): Promise<IRemoteIdentity[]> {
-  if (remoteIdentities.length === 0 || connectors.length === 0) {
-    return remoteIdentities;
-  }
-
-  const pluginManager = getChannelManager().getPluginManager?.();
-  if (!pluginManager) {
-    return remoteIdentities;
-  }
-
-  const connectorMap = new Map(connectors.map((connector) => [connector.id, connector] as const));
-  const displayResolvers = new Map<string, RemoteDisplayResolver>();
-
-  return Promise.all(
-    remoteIdentities.map(async (identity) => {
-      const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
-      if (!connector || !['lark', 'discord', 'dingtalk'].includes(connector.platform)) {
-        return identity;
-      }
-
-      const runtimeId = connector.legacyPluginId ?? connector.id;
-      let resolver = displayResolvers.get(runtimeId);
-      if (!resolver) {
-        const plugin = pluginManager.getPlugin(runtimeId);
-        if (!isRemoteDisplayResolver(plugin)) {
-          return identity;
-        }
-        resolver = plugin;
-        displayResolvers.set(runtimeId, resolver);
-      }
-
-      return enrichIdentityForDisplay(identity, connector, resolver);
-    })
-  );
 }
 
 function buildRemoteChatAudience(
@@ -823,6 +647,9 @@ function buildActiveSessionEntries(params: {
       remoteIdentity && connector
         ? resolvePublishObjectCatalogEntry(remoteIdentity, connector, publishObjectCatalog)
         : undefined;
+    const effectivePublishObject =
+      resolvedPublishObject ||
+      (remoteIdentity && connector ? buildEphemeralPublishObjectCatalogEntry(remoteIdentity, connector) : undefined);
 
     return {
       id: session.id,
@@ -845,15 +672,15 @@ function buildActiveSessionEntries(params: {
       audienceKey: remoteIdentity?.remoteChatId || session.chatId,
       objectKey: objectDescriptor?.key,
       objectKind: objectDescriptor?.kind,
-      objectTitle: resolvedPublishObject?.displayProfile.title ?? objectDescriptor?.title,
-      objectSubtitle: resolvedPublishObject?.displayProfile.subtitle ?? objectDescriptor?.subtitle,
+      objectTitle: effectivePublishObject?.displayProfile.title ?? objectDescriptor?.title,
+      objectSubtitle: effectivePublishObject?.displayProfile.subtitle ?? objectDescriptor?.subtitle,
       parentObjectKey: objectDescriptor?.parentKey,
-      parentObjectTitle: resolvedPublishObject?.displayProfile.parentTitle ?? objectDescriptor?.parentTitle,
+      parentObjectTitle: effectivePublishObject?.displayProfile.parentTitle ?? objectDescriptor?.parentTitle,
       parentObjectKind: objectDescriptor?.parentKind,
-      publishObjectCatalogEntryId: resolvedPublishObject?.id,
-      objectSource: resolvedPublishObject?.displayProfile.source,
-      objectQuality: resolvedPublishObject?.displayProfile.quality,
-      objectRefreshState: resolvedPublishObject?.refreshState,
+      publishObjectCatalogEntryId: effectivePublishObject?.id,
+      objectSource: effectivePublishObject?.displayProfile.source,
+      objectQuality: effectivePublishObject?.displayProfile.quality,
+      objectRefreshState: effectivePublishObject?.refreshState,
       activeConversationId,
       conversationId: activeConversationId,
       workspace: session.workspace,
@@ -946,6 +773,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       return [];
     }
 
+    const manager = getChannelManager();
+    const pluginManager = manager.getPluginManager?.();
+
     await Promise.all(
       params.publicationCatalog.workspaces.map((workspace) =>
         projectChannelPublicationService.resolvePublishObjectCatalog(workspace, {
@@ -954,6 +784,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
           ),
           remoteIdentities: params.remoteIdentities,
           channelAccounts: params.connectors,
+          resolveDiscoveryProvider: pluginManager
+            ? (runtimeId) => pluginManager.getPlugin(runtimeId)?.getPublishObjectDiscoveryProvider()
+            : undefined,
         })
       )
     );
@@ -1009,6 +842,85 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         publishObjects,
       },
       activeSessions,
+    };
+  };
+
+  const readPublicationSnapshot = async (params?: {
+    channelAccountId?: string;
+    refreshPublishObjects?: boolean;
+  }): Promise<IChannelPublicationSnapshot> => {
+    const channelAccountId = params?.channelAccountId;
+    const db = await getDatabase();
+    const [sessions, allConnectors, remoteIdentities, conversations] = await Promise.all([
+      channelRepo.getChannelSessions(),
+      channelRepo.getConnectorInstances(),
+      channelRepo.getRemoteIdentities(channelAccountId),
+      conversationServiceSingleton.listAllConversations(),
+    ]);
+    const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
+    const externalSessionsResult = db.getAllExternalSessions();
+    const controlLeasesResult = db.getAllChannelControlLeases();
+    if (!externalSessionsResult.success || !externalSessionsResult.data) {
+      throw new Error(externalSessionsResult.error || 'Failed to load external sessions');
+    }
+    if (!controlLeasesResult.success || !controlLeasesResult.data) {
+      throw new Error(controlLeasesResult.error || 'Failed to load channel control leases');
+    }
+
+    const identitiesWithAccountId = remoteIdentities.map((identity) => withChannelAccountId(identity));
+    const manager = getChannelManager();
+    const pluginManager = manager.getPluginManager?.();
+    const enrichedRemoteIdentities = await enrichRemoteIdentitiesForPublishObjectDiscovery(
+      identitiesWithAccountId,
+      allConnectors,
+      pluginManager ? (runtimeId) => pluginManager.getPlugin(runtimeId)?.getPublishObjectDiscoveryProvider() : undefined
+    );
+    const publishObjects =
+      params?.refreshPublishObjects === true
+        ? await resolvePublicationPublishObjects({
+            publicationCatalog,
+            remoteIdentities: enrichedRemoteIdentities,
+            connectors: allConnectors,
+          })
+        : publicationCatalog.publishObjects;
+    const connectors = allConnectors.filter((connector) => (connector.configured ?? false) && connector.enabled);
+    const bindings = channelAccountId
+      ? publicationCatalog.bindings.filter((binding) => getChannelAccountId(binding) === channelAccountId)
+      : publicationCatalog.bindings;
+    const activeSessions = buildActiveSessionEntries({
+      sessions,
+      connectors: allConnectors,
+      remoteIdentities: enrichedRemoteIdentities,
+      bindings: publicationCatalog.bindings,
+      publishObjects,
+      externalSessions: externalSessionsResult.data,
+      controlLeases: controlLeasesResult.data,
+    }).filter((session) => {
+      if (!channelAccountId) {
+        return true;
+      }
+
+      return getChannelAccountId(session) === channelAccountId || session.connectorId === channelAccountId;
+    });
+    const catalogPublishObjects = attachPublishObjectActiveSessionPointers({
+      publishObjects,
+      bindings: publicationCatalog.bindings,
+      audiences: buildAudienceEntries(enrichedRemoteIdentities, allConnectors, publishObjects),
+      activeSessions,
+    });
+    const catalog: IChannelBindingCatalog = {
+      connectors,
+      channelAccounts: connectors,
+      agentProfiles: publicationCatalog.agentProfiles,
+      bindings: bindings.map((binding) => withChannelAccountId(binding)),
+      audiences: buildAudienceEntries(enrichedRemoteIdentities, allConnectors, catalogPublishObjects),
+      publishObjects: catalogPublishObjects,
+    };
+
+    return {
+      catalog,
+      activeSessions,
+      refreshedAt: Date.now(),
     };
   };
 
@@ -1415,41 +1327,10 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
 
   channel.getActiveSessionCatalog.provider(async () => {
     try {
-      const db = await getDatabase();
-      const [sessions, connectors, remoteIdentities, conversations] = await Promise.all([
-        channelRepo.getChannelSessions(),
-        channelRepo.getConnectorInstances(),
-        channelRepo.getRemoteIdentities(),
-        conversationServiceSingleton.listAllConversations(),
-      ]);
-      const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
-      const bindings = publicationCatalog.bindings;
-      const externalSessionsResult = db.getAllExternalSessions();
-      const controlLeasesResult = db.getAllChannelControlLeases();
-      if (!externalSessionsResult.success || !externalSessionsResult.data) {
-        throw new Error(externalSessionsResult.error || 'Failed to load external sessions');
-      }
-      if (!controlLeasesResult.success || !controlLeasesResult.data) {
-        throw new Error(controlLeasesResult.error || 'Failed to load channel control leases');
-      }
-      const enrichedRemoteIdentities = await enrichRemoteIdentitiesForDisplay(remoteIdentities, connectors);
-      const publishObjects = await resolvePublicationPublishObjects({
-        publicationCatalog,
-        remoteIdentities: enrichedRemoteIdentities,
-        connectors,
-      });
-
+      const snapshot = await readPublicationSnapshot({ refreshPublishObjects: false });
       return {
         success: true,
-        data: buildActiveSessionEntries({
-          sessions,
-          connectors,
-          remoteIdentities: enrichedRemoteIdentities,
-          bindings,
-          publishObjects,
-          externalSessions: externalSessionsResult.data,
-          controlLeases: controlLeasesResult.data,
-        }),
+        data: snapshot.activeSessions,
       };
     } catch (error) {
       console.error('[ChannelBridge] getActiveSessionCatalog error:', error);
@@ -1592,37 +1473,13 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   channel.getBindingCatalog.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
     try {
       const channelAccountId = params?.channelAccountId ?? params?.connectorId;
-      const db = await getDatabase();
-      const [allConnectors, remoteIdentities, conversations, sessions] = await Promise.all([
-        listChannelAccounts(),
-        channelRepo.getRemoteIdentities(channelAccountId),
-        conversationServiceSingleton.listAllConversations(),
-        channelRepo.getChannelSessions(),
-      ]);
-      const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
-      const externalSessionsResult = db.getAllExternalSessions();
-      const controlLeasesResult = db.getAllChannelControlLeases();
-      if (!externalSessionsResult.success || !externalSessionsResult.data) {
-        throw new Error(externalSessionsResult.error || 'Failed to load external sessions');
-      }
-      if (!controlLeasesResult.success || !controlLeasesResult.data) {
-        throw new Error(controlLeasesResult.error || 'Failed to load channel control leases');
-      }
-      const identitiesWithAccountId = remoteIdentities.map((identity) => withChannelAccountId(identity));
-      const enrichedRemoteIdentities = await enrichRemoteIdentitiesForDisplay(identitiesWithAccountId, allConnectors);
-      const publicationSnapshot = buildPublicationCatalogRefreshResult({
+      const snapshot = await readPublicationSnapshot({
         channelAccountId,
-        publicationCatalog,
-        allConnectors,
-        enrichedRemoteIdentities,
-        sessions,
-        publishObjects: publicationCatalog.publishObjects,
-        externalSessions: externalSessionsResult.data,
-        controlLeases: controlLeasesResult.data,
+        refreshPublishObjects: false,
       });
       return {
         success: true,
-        data: publicationSnapshot.bindingCatalog,
+        data: snapshot.catalog,
       };
     } catch (error) {
       console.error('[ChannelBridge] getBindingCatalog error:', error);
@@ -1651,7 +1508,15 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       }
 
       const identitiesWithAccountId = remoteIdentities.map((identity) => withChannelAccountId(identity));
-      const enrichedRemoteIdentities = await enrichRemoteIdentitiesForDisplay(identitiesWithAccountId, allConnectors);
+      const manager = getChannelManager();
+      const pluginManager = manager.getPluginManager?.();
+      const enrichedRemoteIdentities = await enrichRemoteIdentitiesForPublishObjectDiscovery(
+        identitiesWithAccountId,
+        allConnectors,
+        pluginManager
+          ? (runtimeId) => pluginManager.getPlugin(runtimeId)?.getPublishObjectDiscoveryProvider()
+          : undefined
+      );
       const refreshedPublicationCatalog = await projectChannelPublicationService.refreshCatalog({
         publicationCatalog,
         remoteIdentities: enrichedRemoteIdentities,
@@ -1673,6 +1538,19 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       };
     } catch (error) {
       console.error('[ChannelBridge] refreshPublicationCatalog error:', error);
+      return { success: false, msg: getErrorMessage(error) };
+    }
+  });
+
+  channel.refreshPublicationSnapshot.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
+    try {
+      const snapshot = await readPublicationSnapshot({
+        channelAccountId: params?.channelAccountId ?? params?.connectorId,
+        refreshPublishObjects: true,
+      });
+      return { success: true, data: snapshot };
+    } catch (error) {
+      console.error('[ChannelBridge] refreshPublicationSnapshot error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
   });

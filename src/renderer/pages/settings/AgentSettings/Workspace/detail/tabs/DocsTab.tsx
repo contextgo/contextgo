@@ -52,7 +52,8 @@ const DocsTab: React.FC<DocsTabProps> = ({ model, docs, docsTree }) => {
   const resolvedDocs = docs ?? model.docs;
   const resolvedDocsTree = docsTree ?? model.docsTree;
   const selectedDocPath = searchParams.get('doc') ?? resolvedDocs[0]?.relativePath ?? null;
-  const selectedDoc = resolvedDocs.find((document) => document.relativePath === selectedDocPath) ?? resolvedDocs[0] ?? null;
+  const selectedDoc =
+    resolvedDocs.find((document) => document.relativePath === selectedDocPath) ?? resolvedDocs[0] ?? null;
 
   if (resolvedDocs.length === 0) {
     return (

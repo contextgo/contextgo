@@ -7,7 +7,7 @@
 import * as lark from '@larksuiteoapi/node-sdk';
 
 import type { BotInfo, IChannelPluginConfig, IUnifiedOutgoingMessage, PluginType } from '../../types';
-import { BasePlugin } from '../BasePlugin';
+import { BasePlugin, type ChannelPublishObjectDiscoveryProvider } from '../BasePlugin';
 import { extractCardAction, LARK_MESSAGE_LIMIT, toLarkSendParams, toUnifiedIncomingMessage } from './LarkAdapter';
 
 /**
@@ -25,13 +25,15 @@ type LarkChatDisplayData = {
   name?: string;
   description?: string;
   chatType?: string;
+  source: 'official-pull';
 };
 
 type LarkUserDisplayData = {
   name?: string;
+  source: 'official-pull';
 };
 
-export class LarkPlugin extends BasePlugin {
+export class LarkPlugin extends BasePlugin implements ChannelPublishObjectDiscoveryProvider {
   readonly type: PluginType = 'lark';
 
   private client: lark.Client | null = null;
@@ -184,6 +186,10 @@ export class LarkPlugin extends BasePlugin {
     };
   }
 
+  override getPublishObjectDiscoveryProvider(): ChannelPublishObjectDiscoveryProvider {
+    return this;
+  }
+
   /**
    * Get receive_id_type based on the ID prefix
    * - ou_ -> open_id (user's open_id)
@@ -271,6 +277,7 @@ export class LarkPlugin extends BasePlugin {
         name,
         description,
         chatType,
+        source: 'official-pull',
       });
     } catch (error) {
       console.warn(`[LarkPlugin] Failed to load chat display data for ${chatId}:`, error);
@@ -312,6 +319,7 @@ export class LarkPlugin extends BasePlugin {
 
       return this.writeDisplayCache(this.userDisplayCache, userId, {
         name,
+        source: 'official-pull',
       });
     } catch (error) {
       console.warn(`[LarkPlugin] Failed to load user display data for ${userId}:`, error);

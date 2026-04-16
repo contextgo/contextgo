@@ -16,11 +16,7 @@ import { promisify } from 'util';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
-import {
-  CLAUDE_ACP_NPX_PACKAGE,
-  CODEX_ACP_BRIDGE_VERSION,
-  CODEX_ACP_NPX_PACKAGE,
-} from '@/common/types/acpTypes';
+import { CLAUDE_ACP_NPX_PACKAGE, CODEX_ACP_BRIDGE_VERSION, CODEX_ACP_NPX_PACKAGE } from '@/common/types/acpTypes';
 import {
   findSuitableNodeBin,
   getEnhancedEnv,

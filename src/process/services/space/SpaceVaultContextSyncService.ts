@@ -5,10 +5,7 @@
  */
 
 import type { TChatConversation, SpaceVaultProviderRef, TSpace } from '@/common/config/storage';
-import type {
-  ProjectCapabilityRecord,
-  ProjectCapabilitySnapshot,
-} from './ProjectCapabilityService';
+import type { ProjectCapabilityRecord, ProjectCapabilitySnapshot } from './ProjectCapabilityService';
 import type { ContextPackSection } from '../../../../packages/context-engine/src/domain';
 import type { ISpaceService } from './ISpaceService';
 import { ProjectCapabilityService } from './ProjectCapabilityService';
@@ -820,10 +817,7 @@ const getCapabilityDisplayName = (capability: ProjectCapabilityRecord): string =
   return capability.kind === 'command' ? `/${capability.name}` : capability.name;
 };
 
-const getProjectCapabilityRelativePath = (
-  project: ProjectContext,
-  capability: ProjectCapabilityRecord
-): string => {
+const getProjectCapabilityRelativePath = (project: ProjectContext, capability: ProjectCapabilityRecord): string => {
   return getProjectCapabilityItemRelativePath(
     project.folderName,
     getCapabilityDirName(capability.kind),
@@ -850,12 +844,9 @@ const summarizeProjectCapability = (capability: ProjectCapabilityRecord): string
     ].join(' · ');
   }
   if (capability.kind === 'command') {
-    return [capability.enabled ? "enabled" : "disabled", capability.commandType].join(" · ");
+    return [capability.enabled ? 'enabled' : 'disabled', capability.commandType].join(' · ');
   }
-  return [
-    capability.enabled ? "enabled" : "disabled",
-    capability.scheduleLabel,
-  ].join(" · ");
+  return [capability.enabled ? 'enabled' : 'disabled', capability.scheduleLabel].join(' · ');
 };
 
 const buildProjectCapabilitySectionLines = (
@@ -868,8 +859,7 @@ const buildProjectCapabilitySectionLines = (
   }
 
   return capabilities.map(
-    (capability) =>
-      `- ${getProjectCapabilityLink(project, capability)} · ${summarizeProjectCapability(capability)}`
+    (capability) => `- ${getProjectCapabilityLink(project, capability)} · ${summarizeProjectCapability(capability)}`
   );
 };
 
@@ -882,41 +872,41 @@ const buildProjectCapabilitiesDocument = (
     buildProjectCapabilitiesFrontmatter(project, updatedAt),
     GENERATED_MARKER,
     `# ${getProjectCapabilitiesTitle(project.name)}`,
-    "",
+    '',
     `- Project doc: ${toWikiLink(project.relativePath, getProjectNoteTitle(project.name))}`,
     `- Workspace: \`${project.workspacePath}\``,
     `- Local-first automation root: \`${snapshot.automationRootRelativePath}\``,
     `- Updated at: ${updatedAt}`,
-    "",
-    "## Counts",
-    "",
+    '',
+    '## Counts',
+    '',
     `- Skills: ${snapshot.counts.skill}`,
     `- Hooks: ${snapshot.counts.hook}`,
     `- Commands: ${snapshot.counts.command}`,
     `- Schedules: ${snapshot.counts.schedule}`,
-    "",
-    "## Skills",
-    "",
-    ...buildProjectCapabilitySectionLines(project, snapshot.skills, "No project skills mirrored yet."),
-    "",
-    "## Hooks",
-    "",
-    ...buildProjectCapabilitySectionLines(project, snapshot.hooks, "No project hooks mirrored yet."),
-    "",
-    "## Commands",
-    "",
-    ...buildProjectCapabilitySectionLines(project, snapshot.commands, "No project commands mirrored yet."),
-    "",
-    "## Schedules",
-    "",
-    ...buildProjectCapabilitySectionLines(project, snapshot.schedules, "No project schedules mirrored yet."),
-    "",
-    "## Notes",
-    "",
-    "- These documents mirror the project-local .contextgo capability surface into the space vault.",
-    "- The project directory remains the source of truth; vault notes exist for browsing, linking, and graphing.",
-    "",
-  ].join("\n");
+    '',
+    '## Skills',
+    '',
+    ...buildProjectCapabilitySectionLines(project, snapshot.skills, 'No project skills mirrored yet.'),
+    '',
+    '## Hooks',
+    '',
+    ...buildProjectCapabilitySectionLines(project, snapshot.hooks, 'No project hooks mirrored yet.'),
+    '',
+    '## Commands',
+    '',
+    ...buildProjectCapabilitySectionLines(project, snapshot.commands, 'No project commands mirrored yet.'),
+    '',
+    '## Schedules',
+    '',
+    ...buildProjectCapabilitySectionLines(project, snapshot.schedules, 'No project schedules mirrored yet.'),
+    '',
+    '## Notes',
+    '',
+    '- These documents mirror the project-local .contextgo capability surface into the space vault.',
+    '- The project directory remains the source of truth; vault notes exist for browsing, linking, and graphing.',
+    '',
+  ].join('\n');
 };
 
 const buildProjectCapabilityDocument = (
@@ -941,40 +931,40 @@ const buildProjectCapabilityDocument = (
   if (capability.kind === 'skill') {
     detailLines.push(
       `- Source path: \`${capability.workspaceRelativePath}\``,
-      `- Implicit invocation: ${capability.implicitInvocation ? "enabled" : "disabled"}`,
-      capability.openAIDisplayName ? `- OpenAI display name: ${capability.openAIDisplayName}` : "",
-      capability.openAIShortDescription ? `- OpenAI short description: ${capability.openAIShortDescription}` : "",
-      "",
-      "## Compatibility",
-      "",
+      `- Implicit invocation: ${capability.implicitInvocation ? 'enabled' : 'disabled'}`,
+      capability.openAIDisplayName ? `- OpenAI display name: ${capability.openAIDisplayName}` : '',
+      capability.openAIShortDescription ? `- OpenAI short description: ${capability.openAIShortDescription}` : '',
+      '',
+      '## Compatibility',
+      '',
       ...(capability.compatibility.length > 0
         ? capability.compatibility.map((item) => `- ${item}`)
-        : ["- No compatibility hints declared."])
+        : ['- No compatibility hints declared.'])
     );
-  } else if (capability.kind === "hook") {
+  } else if (capability.kind === 'hook') {
     detailLines.push(
       `- Hook path: \`${capability.workspaceRelativePath}\``,
       `- Manifest: \`${capability.manifestRelativePath}\``,
-      `- Selected: ${capability.selected ? "yes" : "no"}`,
-      capability.category ? `- Category: ${capability.category}` : "",
-      capability.executionType ? `- Execution type: ${capability.executionType}` : "",
-      `- Declared events: ${capability.events.join(", ") || "none"}`,
-      `- Runnable events: ${capability.runnableEvents.join(", ") || "none"}`,
-      `- Output targets: ${capability.outputTargets.join(", ") || "none"}`
+      `- Selected: ${capability.selected ? 'yes' : 'no'}`,
+      capability.category ? `- Category: ${capability.category}` : '',
+      capability.executionType ? `- Execution type: ${capability.executionType}` : '',
+      `- Declared events: ${capability.events.join(', ') || 'none'}`,
+      `- Runnable events: ${capability.runnableEvents.join(', ') || 'none'}`,
+      `- Output targets: ${capability.outputTargets.join(', ') || 'none'}`
     );
-  } else if (capability.kind === "command") {
+  } else if (capability.kind === 'command') {
     detailLines.push(
       `- Command type: ${capability.commandType}`,
-      `- Enabled: ${capability.enabled ? "yes" : "no"}`,
+      `- Enabled: ${capability.enabled ? 'yes' : 'no'}`,
       `- Slash command: /${capability.name}`,
-      "",
-      "## Template",
-      "",
-      toMarkdownCodeBlock(capability.template || "No template configured.")
+      '',
+      '## Template',
+      '',
+      toMarkdownCodeBlock(capability.template || 'No template configured.')
     );
   } else {
     detailLines.push(
-      `- Enabled: ${capability.enabled ? "yes" : "no"}`,
+      `- Enabled: ${capability.enabled ? 'yes' : 'no'}`,
       `- Schedule kind: ${capability.scheduleKind}`,
       `- Schedule: ${capability.scheduleLabel}`,
       `- Description: ${capability.description}`,
@@ -982,9 +972,9 @@ const buildProjectCapabilityDocument = (
       `- Agent type: ${capability.agentType}`,
       `- Created by: ${capability.createdBy}`,
       capability.spaceId ? `- Space ID: \`${capability.spaceId}\`` : '',
-      "",
-      "## Message",
-      "",
+      '',
+      '## Message',
+      '',
       toMarkdownCodeBlock(capability.message)
     );
   }
@@ -996,7 +986,7 @@ const buildProjectCapabilityDocument = (
       frontmatterBlock,
       GENERATED_MARKER,
       `# ${title}`,
-      "",
+      '',
       `- Project capabilities: ${toWikiLink(
         getProjectCapabilitiesRelativePath(project.folderName),
         getProjectCapabilitiesTitle(project.name)
@@ -1004,13 +994,13 @@ const buildProjectCapabilityDocument = (
       `- Project doc: ${toWikiLink(project.relativePath, getProjectNoteTitle(project.name))}`,
       `- Capability kind: ${getCapabilitySectionTitle(capability.kind)}`,
       `- Updated at: ${updatedAt}`,
-      capability.description ? `- Description: ${capability.description}` : "",
-      "",
+      capability.description ? `- Description: ${capability.description}` : '',
+      '',
       ...detailLines.filter(Boolean),
-      "",
+      '',
     ]
       .filter(Boolean)
-      .join("\n"),
+      .join('\n'),
   };
 };
 
@@ -1039,12 +1029,12 @@ const buildProjectDocument = (
         (sourceDoc) =>
           `- ${toWikiLink(getProjectSourceRelativePath(project.folderName, sourceDoc.relativePath), sourceDoc.noteTitle)}`
       )
-    : ["- No markdown source docs scanned yet."];
+    : ['- No markdown source docs scanned yet.'];
   const graphEdgeCount = project.sourceDocs.reduce((count, sourceDoc) => count + sourceDoc.references.length, 0);
   const sessionLines = sessionRelativePaths.length
     ? sessionRelativePaths.map((relativePath) => `- ${toWikiLink(relativePath)}`)
-    : ["- No sessions bound to this project yet."];
-  const agentsDoc = project.sourceDocs.find((sourceDoc) => sourceDoc.relativePath === "AGENTS.md");
+    : ['- No sessions bound to this project yet.'];
+  const agentsDoc = project.sourceDocs.find((sourceDoc) => sourceDoc.relativePath === 'AGENTS.md');
   const sourceDocsWithEdges = project.sourceDocs.filter(
     (sourceDoc) => sourceDoc.references.length > 0 || sourceDoc.backlinks.length > 0
   );
@@ -1055,100 +1045,100 @@ const buildProjectDocument = (
   const graphLines = project.sourceDocs.length
     ? project.sourceDocs.flatMap((sourceDoc) => {
         const outbound = sourceDoc.references.length
-          ? sourceDoc.references.map((reference) => buildSourceDocLink(project, reference)).join(", ")
-          : "no outbound references";
+          ? sourceDoc.references.map((reference) => buildSourceDocLink(project, reference)).join(', ')
+          : 'no outbound references';
         const backlinks = sourceDoc.backlinks.length
-          ? sourceDoc.backlinks.map((reference) => buildSourceDocLink(project, reference)).join(", ")
-          : "no backlinks";
+          ? sourceDoc.backlinks.map((reference) => buildSourceDocLink(project, reference)).join(', ')
+          : 'no backlinks';
         return [
           `### ${sourceDoc.noteTitle}`,
-          "",
+          '',
           `- Doc: ${buildSourceDocLink(project, sourceDoc.relativePath)}`,
           `- Source path: \`${sourceDoc.relativePath}\``,
           `- Outbound: ${outbound}`,
           `- Backlinks: ${backlinks}`,
-          "",
+          '',
         ];
       })
-    : ["- No source graph available yet.", ""];
+    : ['- No source graph available yet.', ''];
 
   return [
     buildProjectFrontmatter(project, updatedAt),
     GENERATED_MARKER,
     `# ${getProjectNoteTitle(project.name)}`,
-    "",
+    '',
     `- Space: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(space.name))}`,
     `- Workspace: \`${project.workspacePath}\``,
     `- Project slug: \`${project.slug}\``,
     `- Updated at: ${updatedAt}`,
     agentsDoc
       ? `- Primary instructions: ${toWikiLink(getProjectSourceRelativePath(project.folderName, agentsDoc.relativePath), agentsDoc.noteTitle)}`
-      : "",
-    "",
-    "## Entry Points",
-    "",
+      : '',
+    '',
+    '## Entry Points',
+    '',
     `- Space overview: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(space.name))}`,
     `- Project graph canvas: ${toWikiLink(getProjectGraphRelativePath(project.folderName), `${project.name} Source Graph`)}`,
     `- Project insights: ${toWikiLink(getProjectInsightsRelativePath(project.folderName), getProjectInsightsTitle(project.name))}`,
     `- Project baseline: ${toWikiLink(getProjectBaselineRelativePath(project.folderName), getProjectBaselineTitle(project.name))}`,
     `- Project capabilities: ${toWikiLink(getProjectCapabilitiesRelativePath(project.folderName), getProjectCapabilitiesTitle(project.name))}`,
-    `- Space canvas: ${toWikiLink(DEFAULT_SPACE_CANVAS_PATH, "Space Overview Canvas")}`,
-    "",
-    "## Source Docs",
-    "",
+    `- Space canvas: ${toWikiLink(DEFAULT_SPACE_CANVAS_PATH, 'Space Overview Canvas')}`,
+    '',
+    '## Source Docs',
+    '',
     ...sourceLines,
-    "",
-    "## Project Capabilities",
-    "",
+    '',
+    '## Project Capabilities',
+    '',
     `- Capability index: ${toWikiLink(getProjectCapabilitiesRelativePath(project.folderName), getProjectCapabilitiesTitle(project.name))}`,
     `- Skills: ${capabilitySnapshot.counts.skill}`,
     `- Hooks: ${capabilitySnapshot.counts.hook}`,
     `- Commands: ${capabilitySnapshot.counts.command}`,
     `- Schedules: ${capabilitySnapshot.counts.schedule}`,
-    "",
+    '',
     ...(capabilityRecords.length > 0
       ? capabilityRecords.map((capability) => `- ${getProjectCapabilityLink(project, capability)}`)
-      : ["- No project capabilities mirrored yet."]),
-    "",
-    "## Source Graph",
-    "",
+      : ['- No project capabilities mirrored yet.']),
+    '',
+    '## Source Graph',
+    '',
     `- Source docs: ${project.sourceDocs.length}`,
     `- Reference edges: ${graphEdgeCount}`,
     `- Connected docs: ${sourceDocsWithEdges.length}`,
     `- Orphan docs: ${orphanSourceDocs.length}`,
-    agentsDoc ? `- Canonical entry: ${buildSourceDocLink(project, agentsDoc.relativePath)}` : "",
-    "",
-    "### Graph Backbone",
-    "",
+    agentsDoc ? `- Canonical entry: ${buildSourceDocLink(project, agentsDoc.relativePath)}` : '',
+    '',
+    '### Graph Backbone',
+    '',
     ...(sourceDocsWithEdges.length
       ? sourceDocsWithEdges.map((sourceDoc) => `- ${buildSourceDocLink(project, sourceDoc.relativePath)}`)
-      : ["- No connected source-doc graph yet."]),
-    "",
-    "### Orphan Docs",
-    "",
+      : ['- No connected source-doc graph yet.']),
+    '',
+    '### Orphan Docs',
+    '',
     ...(orphanSourceDocs.length
       ? orphanSourceDocs.map((sourceDoc) => `- ${buildSourceDocLink(project, sourceDoc.relativePath)}`)
-      : ["- No orphan docs."]),
-    "",
+      : ['- No orphan docs.']),
+    '',
     ...graphLines,
-    "",
-    "## Related Sessions",
-    "",
+    '',
+    '## Related Sessions',
+    '',
     ...sessionLines,
-    "",
-    "## Promoted Context",
-    "",
+    '',
+    '## Promoted Context',
+    '',
     `- Insights doc: ${toWikiLink(getProjectInsightsRelativePath(project.folderName), getProjectInsightsTitle(project.name))}`,
-    "",
-    "## Notes",
-    "",
-    "- This file is generated from the bound workspace and mirrored markdown source docs.",
-    "- Project-local .contextgo capabilities are mirrored into the vault so they can be linked and graphed.",
-    "- AGENTS.md is treated as the project entry document when present.",
-    "",
+    '',
+    '## Notes',
+    '',
+    '- This file is generated from the bound workspace and mirrored markdown source docs.',
+    '- Project-local .contextgo capabilities are mirrored into the vault so they can be linked and graphed.',
+    '- AGENTS.md is treated as the project entry document when present.',
+    '',
   ]
     .filter(Boolean)
-    .join("\n");
+    .join('\n');
 };
 
 const buildSessionDocument = (
@@ -1456,16 +1446,16 @@ const buildHomeDocument = (
 };
 
 const getCapabilityNodeColor = (kind: ProjectCapabilityRecord['kind']): string => {
-  if (kind === "skill") {
-    return "1";
+  if (kind === 'skill') {
+    return '1';
   }
-  if (kind === "hook") {
-    return "3";
+  if (kind === 'hook') {
+    return '3';
   }
-  if (kind === "command") {
-    return "5";
+  if (kind === 'command') {
+    return '5';
   }
-  return "6";
+  return '6';
 };
 
 const buildProjectSourceGraphCanvas = (
@@ -1476,34 +1466,34 @@ const buildProjectSourceGraphCanvas = (
   const nodes: JsonCanvasFile['nodes'] = [
     {
       id: `project-${project.slug}`,
-      type: "file",
+      type: 'file',
       file: toCanvasFileReference(canvasRelativePath, project.relativePath),
       x: 0,
       y: 0,
       width: 360,
       height: 220,
-      color: "2",
+      color: '2',
     },
     {
       id: `project-capabilities-${project.slug}`,
-      type: "file",
+      type: 'file',
       file: toCanvasFileReference(canvasRelativePath, getProjectCapabilitiesRelativePath(project.folderName)),
       x: 520,
       y: 0,
       width: 360,
       height: 220,
-      color: "3",
+      color: '3',
     },
   ];
   const edges: JsonCanvasFile['edges'] = [
     {
       id: `edge-project-capabilities-${project.slug}`,
       fromNode: `project-${project.slug}`,
-      fromSide: "right",
+      fromSide: 'right',
       toNode: `project-capabilities-${project.slug}`,
-      toSide: "left",
-      color: "3",
-      label: "capabilities",
+      toSide: 'left',
+      color: '3',
+      label: 'capabilities',
     },
   ];
 
@@ -1515,7 +1505,7 @@ const buildProjectSourceGraphCanvas = (
     const y = row * 260 + 340;
     nodes.push({
       id: nodeId,
-      type: "file",
+      type: 'file',
       file: toCanvasFileReference(
         canvasRelativePath,
         getProjectSourceRelativePath(project.folderName, sourceDoc.relativePath)
@@ -1524,16 +1514,16 @@ const buildProjectSourceGraphCanvas = (
       y,
       width: 360,
       height: 180,
-      color: sourceDoc.relativePath === "AGENTS.md" ? "4" : sourceDoc.backlinks.length > 0 ? "5" : "6",
+      color: sourceDoc.relativePath === 'AGENTS.md' ? '4' : sourceDoc.backlinks.length > 0 ? '5' : '6',
     });
     edges.push({
       id: `edge-project-${stableHash(sourceDoc.relativePath)}`,
       fromNode: `project-${project.slug}`,
-      fromSide: "bottom",
+      fromSide: 'bottom',
       toNode: nodeId,
-      toSide: "top",
-      color: "2",
-      label: "source",
+      toSide: 'top',
+      color: '2',
+      label: 'source',
     });
   });
 
@@ -1543,11 +1533,11 @@ const buildProjectSourceGraphCanvas = (
       edges.push({
         id: `edge-ref-${stableHash(`${sourceDoc.relativePath}->${reference}`)}`,
         fromNode,
-        fromSide: "right",
+        fromSide: 'right',
         toNode: `source-${stableHash(reference)}`,
-        toSide: "left",
-        color: "6",
-        label: "ref",
+        toSide: 'left',
+        color: '6',
+        label: 'ref',
       });
     }
   }
@@ -1558,7 +1548,7 @@ const buildProjectSourceGraphCanvas = (
     const row = Math.floor(index / 2);
     nodes.push({
       id: nodeId,
-      type: "file",
+      type: 'file',
       file: toCanvasFileReference(canvasRelativePath, getProjectCapabilityRelativePath(project, capability)),
       x: 1040 + column * 420,
       y: row * 220,
@@ -1569,9 +1559,9 @@ const buildProjectSourceGraphCanvas = (
     edges.push({
       id: `edge-capability-${stableHash(`${capability.kind}:${capability.id}`)}`,
       fromNode: `project-capabilities-${project.slug}`,
-      fromSide: "right",
+      fromSide: 'right',
       toNode: nodeId,
-      toSide: "left",
+      toSide: 'left',
       color: getCapabilityNodeColor(capability.kind),
       label: capability.kind,
     });
@@ -2242,7 +2232,6 @@ export class SpaceVaultContextSyncService {
     };
   }
 
-
   async curateProjectCapabilities(input: ProjectCapabilityCurationWriteInput): Promise<
     | {
         projectSlug: string;
@@ -2542,16 +2531,15 @@ export class SpaceVaultContextSyncService {
 
     const sessionRelativePaths = await this.listProjectSessionLinks(target.vaultPath, target.project.slug);
     const updatedAt = nowIso();
-    const capabilitySnapshot =
-      (await this.projectCapabilityService.readSnapshot(target.project.workspacePath)) ?? {
-        workspacePath: target.project.workspacePath,
-        automationRootRelativePath: '.contextgo',
-        counts: { skill: 0, hook: 0, command: 0, schedule: 0 },
-        skills: [],
-        hooks: [],
-        commands: [],
-        schedules: [],
-      };
+    const capabilitySnapshot = (await this.projectCapabilityService.readSnapshot(target.project.workspacePath)) ?? {
+      workspacePath: target.project.workspacePath,
+      automationRootRelativePath: '.contextgo',
+      counts: { skill: 0, hook: 0, command: 0, schedule: 0 },
+      skills: [],
+      hooks: [],
+      commands: [],
+      schedules: [],
+    };
 
     for (const sourceDoc of target.project.sourceDocs) {
       const absoluteTargetPath = path.join(
@@ -2563,9 +2551,7 @@ export class SpaceVaultContextSyncService {
     }
 
     const capabilityDocs = buildProjectCapabilityDocuments(target.project, capabilitySnapshot, updatedAt);
-    await removeDirectoryIfExists(
-      path.join(target.project.folderPath, PROJECT_CONTEXT_DIR, "capabilities")
-    );
+    await removeDirectoryIfExists(path.join(target.project.folderPath, PROJECT_CONTEXT_DIR, 'capabilities'));
     await ensureFile(
       path.join(target.vaultPath, getProjectCapabilitiesRelativePath(target.project.folderName)),
       capabilityDocs.summary
@@ -2602,7 +2588,7 @@ export class SpaceVaultContextSyncService {
     await ensureFile(projectInsightsPath, nextInsightsDocument);
     await ensureFile(
       path.join(target.vaultPath, getProjectGraphRelativePath(target.project.folderName)),
-      JSON.stringify(buildProjectSourceGraphCanvas(target.project, capabilitySnapshot), null, 2) + "\n"
+      JSON.stringify(buildProjectSourceGraphCanvas(target.project, capabilitySnapshot), null, 2) + '\n'
     );
   }
 

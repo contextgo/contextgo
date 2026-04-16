@@ -271,7 +271,6 @@ describe('ContextScheduleService', () => {
     });
   });
 
-
   it('runs project capability curation schedules through the timer trigger router', async () => {
     const { service, queueTimerTrigger, findByKindAndJobType } = createService();
     findByKindAndJobType.mockReturnValue({ id: 'timer.project-capability-curation' });

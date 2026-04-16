@@ -55,20 +55,14 @@ export type GuidAgentSelectionResult = {
   resolvePresetContext: (
     agentInfo: { backend: AcpBackend; customAgentId?: string; context?: string } | undefined
   ) => Promise<string | undefined>;
-  resolvePresetAgentType: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined
-  ) => string;
+  resolvePresetAgentType: (agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined) => string;
   resolveEnabledSkills: (
     agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined
   ) => string[] | undefined;
-  resolveEnabledHooks: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined
-  ) => string[] | undefined;
+  resolveEnabledHooks: (agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined) => string[] | undefined;
   isMainAgentAvailable: (agentType: string) => boolean;
   getAvailableFallbackAgent: () => string | null;
-  getEffectiveAgentType: (
-    agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined
-  ) => EffectiveAgentInfo;
+  getEffectiveAgentType: (agentInfo: { backend: AcpBackend; customAgentId?: string } | undefined) => EffectiveAgentInfo;
   refreshCustomAgents: () => Promise<void>;
   customAgentAvatarMap: Map<string, string | undefined>;
 };

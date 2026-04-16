@@ -31,9 +31,7 @@ import { mainLog } from '@process/utils/mainLogger';
 import { getEnhancedEnv, resolveNpxPath } from '@process/utils/shellEnv';
 import { AcpConnection } from './AcpConnection';
 import { AcpApprovalStore, createAcpApprovalKey } from './ApprovalStore';
-import {
-  CLAUDE_YOLO_SESSION_MODE,
-} from './constants';
+import { CLAUDE_YOLO_SESSION_MODE } from './constants';
 import { buildAcpModelInfo, summarizeAcpModelInfo } from './modelInfo';
 import { getClaudeModel } from './utils';
 

@@ -91,7 +91,7 @@ Reasons:
 - `/api/*` endpoints already exist
 - browser-side WebSocket transport already exists
 - upload and auth flows already assume same-origin hosting
-This means remote clients should reuse the existing host-side WebUI runtime instead of maintaining a disconnected static frontend fork.
+  This means remote clients should reuse the existing host-side WebUI runtime instead of maintaining a disconnected static frontend fork.
 
 ### 4. Remote transport does not replace the product runtime
 
