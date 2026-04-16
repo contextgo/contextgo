@@ -234,11 +234,21 @@ export interface IAgentProfile {
   toolPolicy?: Record<string, unknown>;
   memoryPolicy?: Record<string, unknown>;
   delegationPolicy?: Record<string, unknown>;
+  channelReplyPolicy?: IChannelReplyPolicy;
   publishedFromConversationId?: string;
   version: number;
   archived: boolean;
   createdAt: number;
   updatedAt: number;
+}
+
+export type ChannelReplyCapability = 'text' | 'image' | 'file';
+
+export type ChannelReplyFallbackMode = 'text_path' | 'text_only';
+
+export interface IChannelReplyPolicy {
+  capabilities?: ChannelReplyCapability[];
+  fallbackMode?: ChannelReplyFallbackMode;
 }
 
 /**
