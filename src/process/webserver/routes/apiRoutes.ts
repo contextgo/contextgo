@@ -19,12 +19,22 @@ import directoryApi from '../directoryApi';
 import { apiRateLimiter } from '../middleware/security';
 import { registerBrowserActivityRoutes } from './browserActivityRoutes';
 
-/** Max upload size in bytes (30MB per Issue #1233) */
-const MAX_UPLOAD_SIZE = 30 * 1024 * 1024;
+/** Max upload size in bytes for remote/browser/mobile uploads. */
+export const MAX_UPLOAD_SIZE_MB = 100;
+const MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
 
-/** Multer instance with memory storage and size limit */
+/** Multer instance with disk-backed temp storage and size limit */
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: multer.diskStorage({
+    destination: (_req, _file, callback) => {
+      void getTempUploadDir()
+        .then((tempDir) => callback(null, tempDir))
+        .catch((error) => callback(error as Error, ''));
+    },
+    filename: (_req, file, callback) => {
+      callback(null, `${Date.now()}-${sanitizeFileName(file.originalname)}`);
+    },
+  }),
   limits: { fileSize: MAX_UPLOAD_SIZE },
 });
 
@@ -87,6 +97,18 @@ async function getTempUploadDir(): Promise<string> {
   const tempDir = path.join(cacheDir, 'temp');
   await fsPromises.mkdir(tempDir, { recursive: true });
   return tempDir;
+}
+
+async function moveUploadedFile(sourcePath: string, targetPath: string): Promise<void> {
+  try {
+    await fsPromises.rename(sourcePath, targetPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EXDEV') {
+      throw error;
+    }
+    await fsPromises.copyFile(sourcePath, targetPath);
+    await fsPromises.unlink(sourcePath);
+  }
 }
 
 function resolveRouteHandler(moduleExports: unknown): RequestHandler | null {
@@ -301,7 +323,8 @@ export function registerApiRoutes(app: Express): void {
         next();
       });
     },
-    async (req: Request, res: Response) => {
+    wrapRouteHandler(async (req: Request, res: Response) => {
+      const tempFilePath = req.file?.path;
       try {
         const file = req.file;
         const conversationId = typeof req.body.conversationId === 'string' ? req.body.conversationId : '';
@@ -359,7 +382,7 @@ export function registerApiRoutes(app: Express): void {
           return;
         }
 
-        await fsPromises.writeFile(targetPath, file.buffer);
+        await moveUploadedFile(file.path, targetPath);
 
         res.json({
           success: true,
@@ -376,8 +399,16 @@ export function registerApiRoutes(app: Express): void {
           success: false,
           msg: error instanceof Error ? error.message : 'Failed to upload file',
         });
+      } finally {
+        if (tempFilePath) {
+          try {
+            await fsPromises.unlink(tempFilePath);
+          } catch {
+            // Temp file may already have been moved into place.
+          }
+        }
       }
-    }
+    })
   );
 
   registerExtensionWebuiRoutes(app, validateApiAccess);
