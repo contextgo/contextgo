@@ -304,7 +304,7 @@ describe('CloudSyncSection', () => {
     expect(await screen.findByText('ContextGo on mbp')).toBeInTheDocument();
     expect(screen.getByText('Host linked')).toBeInTheDocument();
     expect(screen.getByText('InferMesh website')).toBeInTheDocument();
-    expect(screen.getByText('vault_space_1')).toBeInTheDocument();
+    expect(await screen.findByText('vault_space_1')).toBeInTheDocument();
     expect(getObsidianSyncStatusInvoke).toHaveBeenCalledWith({ spaceId: 'space_1' });
   });
 
