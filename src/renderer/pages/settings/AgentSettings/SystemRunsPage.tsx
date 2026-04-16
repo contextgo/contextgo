@@ -74,6 +74,14 @@ function resolveExecutionBoundaryLabel(
   });
 }
 
+function formatArtifactTargets(targets: readonly string[] | undefined): string {
+  if (!targets || targets.length === 0) {
+    return '--';
+  }
+
+  return targets.join(' · ');
+}
+
 const SystemRunsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -301,6 +309,14 @@ const SystemRunsPage: React.FC = () => {
                         defaultValue: `Reason: ${run.reason}`,
                       })}
                     </div>
+                  ) : null}
+                  {run.governanceIdentity ? (
+                    <div className={styles.systemRunsDetailText}>{`Governance: ${run.governanceIdentity}`}</div>
+                  ) : null}
+                  {run.artifactTargets && run.artifactTargets.length > 0 ? (
+                    <div
+                      className={styles.systemRunsDetailText}
+                    >{`Artifacts: ${formatArtifactTargets(run.artifactTargets)}`}</div>
                   ) : null}
                   {run.artifactTitle ? (
                     <div className={styles.systemRunsDetailText}>

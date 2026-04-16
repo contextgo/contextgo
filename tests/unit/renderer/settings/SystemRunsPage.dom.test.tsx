@@ -1,8 +1,15 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const navigateMock = vi.fn();
+const activityState = {
+  status: 'idle' as const,
+  systemRuns: [] as Array<Record<string, unknown>>,
+  activeMaintenanceCount: 0,
+  maintenanceAgents: [] as Array<Record<string, unknown>>,
+  lastCheckedAt: new Date('2026-04-11T06:08:00Z').getTime(),
+};
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigateMock,
@@ -26,13 +33,7 @@ vi.mock('react-i18next', () => ({
 }));
 
 vi.mock('@/renderer/hooks/agent/useContextEngineActivity', () => ({
-  useContextEngineActivity: () => ({
-    status: 'idle',
-    systemRuns: [],
-    activeMaintenanceCount: 0,
-    maintenanceAgents: [],
-    lastCheckedAt: new Date('2026-04-11T06:08:00Z').getTime(),
-  }),
+  useContextEngineActivity: () => activityState,
 }));
 
 vi.mock('@/renderer/pages/settings/components/SettingsPageWrapper', () => ({
@@ -63,6 +64,14 @@ vi.mock('@icon-park/react', () => ({
 import SystemRunsPage from '@/renderer/pages/settings/AgentSettings/SystemRunsPage';
 
 describe('SystemRunsPage', () => {
+  beforeEach(() => {
+    activityState.status = 'idle';
+    activityState.systemRuns = [];
+    activityState.activeMaintenanceCount = 0;
+    activityState.maintenanceAgents = [];
+    activityState.lastCheckedAt = new Date('2026-04-11T06:08:00Z').getTime();
+  });
+
   it('shows registered system agent definitions when there is no run history', () => {
     render(<SystemRunsPage />);
 
@@ -73,5 +82,48 @@ describe('SystemRunsPage', () => {
     expect(screen.getAllByText(/Last checked:/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Trigger:/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Boundary:/).length).toBeGreaterThan(0);
+  });
+
+  it('shows governance identity and artifact targets for recorded system runs', async () => {
+    activityState.status = 'active';
+    activityState.activeMaintenanceCount = 1;
+    activityState.systemRuns = [
+      {
+        id: 'run-1',
+        rootRunId: 'run-1',
+        backend: 'context-engine',
+        agentProfileId: 'profile-1',
+        agentName: 'Context Engine · Session Compactor',
+        state: 'writing',
+        runtimeStatus: 'running',
+        lastActiveAt: new Date('2026-04-11T06:08:00Z').getTime(),
+        currentTask: 'Compressing repeated session signals',
+        systemManaged: true,
+        assistantId: 'system-context-engine-session-compactor',
+        systemOwner: 'context-engine',
+        systemRole: 'context-engine-session-compactor',
+        governanceIdentity: 'session_steward',
+        scopeLabel: 'workspace-alpha',
+        maintenanceKind: 'session_compaction',
+        artifactRelativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
+        artifactTitle: 'Session working context',
+        artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+        reason: 'Session compaction triggered by repeated requests.',
+        source: 'hook',
+        triggerLabel: 'Context window prepared',
+        triggerEvent: 'context.window.prepared',
+        executionBoundaryPath: '/vault/space-1',
+        executionBoundaryLabel: 'My Space',
+        recentEvents: [],
+      },
+    ];
+
+    render(<SystemRunsPage />);
+
+    expect(await screen.findByText('Compressing repeated session signals')).toBeInTheDocument();
+    expect(screen.getByText('Governance: session_steward')).toBeInTheDocument();
+    expect(
+      screen.getByText('Artifacts: session_timeline · session_working_context · session_checkpoint')
+    ).toBeInTheDocument();
   });
 });
