@@ -381,10 +381,10 @@ describe('ChatConversation', () => {
     );
   });
 
-  it('does not render the browser context header button when the conversation has no bound browser context', () => {
+  it('renders the browser capability addon even before a browser context is bound', () => {
     render(<ChatConversation conversation={createConversation('acp', 'acp-no-browser')} />);
 
-    expect(screen.queryByTestId('browser-context-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('browser-context-button')).toBeInTheDocument();
   });
 
   it('renders the browser context header button when the conversation is already bound to a browser context', () => {

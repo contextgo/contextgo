@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   browserContextCreateInvokeMock,
+  browserContextGetInvokeMock,
   browserContextUpdateInvokeMock,
   browserContextAssertBindableInvokeMock,
   conversationUpdateInvokeMock,
@@ -13,6 +14,7 @@ const {
   onOpenUrlMock,
 } = vi.hoisted(() => ({
   browserContextCreateInvokeMock: vi.fn(),
+  browserContextGetInvokeMock: vi.fn(),
   browserContextUpdateInvokeMock: vi.fn(),
   browserContextAssertBindableInvokeMock: vi.fn(),
   conversationUpdateInvokeMock: vi.fn(),
@@ -35,6 +37,9 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/common', () => ({
   ipcBridge: {
     browserContext: {
+      get: {
+        invoke: browserContextGetInvokeMock,
+      },
       create: {
         invoke: browserContextCreateInvokeMock,
       },
@@ -79,12 +84,13 @@ vi.mock('@arco-design/web-react', () => {
     children,
     icon,
     onClick,
+    ...props
   }: {
     children?: React.ReactNode;
     icon?: React.ReactNode;
     onClick?: () => void;
-  }) => (
-    <button type='button' onClick={onClick}>
+  } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type='button' onClick={onClick} {...props}>
       {icon}
       {children}
     </button>
@@ -186,6 +192,16 @@ const createConversation = (overrides?: Partial<TChatConversation>): TChatConver
 describe('ConversationBrowserContextButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    browserContextGetInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        id: 'asset-9',
+        label: 'Bound Browser',
+        metadata: {
+          homeUrl: 'https://bound.example.com',
+        },
+      },
+    });
     conversationUpdateInvokeMock.mockResolvedValue(true);
     browserContextUpdateInvokeMock.mockResolvedValue({
       success: true,
@@ -197,6 +213,13 @@ describe('ConversationBrowserContextButton', () => {
         },
       },
     });
+  });
+
+  it('shows an unbound browser capability chip before any browser asset is linked', () => {
+    render(<ConversationBrowserContextButton conversation={createConversation()} onOpenUrl={onOpenUrlMock} />);
+
+    expect(screen.getByRole('button', { name: /Browser/i })).toBeInTheDocument();
+    expect(screen.queryByText(/Browser:/i)).toBeNull();
   });
 
   it('creates and binds a managed browser context asset for the conversation', async () => {
@@ -276,7 +299,7 @@ describe('ConversationBrowserContextButton', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByRole('button', { name: /^Browser$/i }));
 
     await waitFor(() => {
       expect(browserContextAssertBindableInvokeMock).toHaveBeenCalledWith({
@@ -293,5 +316,51 @@ describe('ConversationBrowserContextButton', () => {
       id: 'asset-9',
       lastUsedAt: expect.any(Number),
     });
+  });
+
+  it('shows the bound browser asset label when a browser context is already linked', async () => {
+    render(
+      <ConversationBrowserContextButton
+        conversation={createConversation({
+          extra: {
+            spaceId: 'space-alpha',
+            browserContextAssetId: 'asset-9',
+          },
+        })}
+        onOpenUrl={onOpenUrlMock}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /^Browser$/i })).toBeInTheDocument();
+    expect(await screen.findByText(/Browser: Bound Browser/i)).toBeInTheDocument();
+  });
+
+  it('opens the lightweight browser reconfigure flow for a bound asset', async () => {
+    browserContextAssertBindableInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        id: 'asset-9',
+        label: 'Bound Browser',
+        metadata: {
+          homeUrl: 'https://bound.example.com',
+        },
+      } satisfies Partial<TBrowserContextAsset>,
+    });
+
+    render(
+      <ConversationBrowserContextButton
+        conversation={createConversation({
+          extra: {
+            spaceId: 'space-alpha',
+            browserContextAssetId: 'asset-9',
+          },
+        })}
+        onOpenUrl={onOpenUrlMock}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /configure browser/i }));
+
+    expect(await screen.findByTestId('contextgo-modal')).toBeInTheDocument();
   });
 });
