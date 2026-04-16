@@ -3,7 +3,7 @@ import type { SpaceProviderRef, SpaceVaultProviderRef } from '@/common/config/st
 
 export type ObsidianVaultOpenIntent = {
   actionKey: 'guid.vault.affordance' | 'guid.vault.mobileAffordance' | 'guid.vault.mobileSetupAffordance';
-  readiness: 'ready' | 'prepared-directory' | 'needs-bind-in-obsidian';
+  readiness: 'ready' | 'prepared-directory' | 'registered-mobile-replica' | 'needs-bind-in-obsidian';
   readinessKey: string | null;
   target: string | null;
 };
@@ -34,6 +34,9 @@ export function buildObsidianVaultOpenIntent(input: {
         status: 'prepared-directory';
       }
     | {
+        status: 'registered-mobile-replica';
+      }
+    | {
         status: 'unprepared';
       }
     | null;
@@ -61,6 +64,15 @@ export function buildObsidianVaultOpenIntent(input: {
       actionKey: 'guid.vault.mobileSetupAffordance',
       readiness: 'prepared-directory',
       readinessKey: 'guid.vault.androidStatusPrepared',
+      target: buildObsidianChooseVaultUri(),
+    };
+  }
+
+  if (input.androidSetupState?.status === 'registered-mobile-replica') {
+    return {
+      actionKey: 'guid.vault.mobileSetupAffordance',
+      readiness: 'registered-mobile-replica',
+      readinessKey: 'guid.vault.androidStatusRegistered',
       target: buildObsidianChooseVaultUri(),
     };
   }

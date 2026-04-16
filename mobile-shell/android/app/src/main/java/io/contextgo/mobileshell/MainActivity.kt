@@ -588,6 +588,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     @JavascriptInterface
+    fun updateObsidianVaultSetupState(stateJson: String) {
+      runOnUiThread {
+        try {
+          val payload = JSONObject(stateJson)
+          val spaceId = payload.optString("spaceId").trim()
+          if (spaceId.isBlank()) {
+            return@runOnUiThread
+          }
+
+          preferences.edit().putString(obsidianVaultSetupKey(spaceId), payload.toString()).apply()
+        } catch (_: Exception) {
+          // Ignore malformed payloads from the WebView side and keep the previous state.
+        }
+      }
+    }
+
+    @JavascriptInterface
     fun requestObsidianVaultSetup(requestJson: String) {
       val request =
         try {

@@ -27,6 +27,34 @@ export function initCloudBridge(): void {
     }
   });
 
+  ipcBridge.cloud.getObsidianSyncStatus.provider(async ({ spaceId }) => {
+    try {
+      return {
+        success: true,
+        data: await cloudService.getObsidianSyncStatus(spaceId),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcBridge.cloud.registerObsidianReplicaDraft.provider(async (input) => {
+    try {
+      return {
+        success: true,
+        data: await cloudService.registerObsidianReplicaDraft(input),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
   ipcBridge.cloud.startLogin.provider(async ({ provider }) => {
     try {
       return {

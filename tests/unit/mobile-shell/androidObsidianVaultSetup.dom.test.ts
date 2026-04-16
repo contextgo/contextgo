@@ -3,6 +3,7 @@ import {
   getAndroidObsidianVaultSetupState,
   isAndroidMobileShell,
   requestAndroidObsidianVaultSetup,
+  updateAndroidObsidianVaultSetupState,
 } from '@/renderer/utils/platform';
 
 describe('android Obsidian vault setup bridge', () => {
@@ -65,6 +66,8 @@ describe('android Obsidian vault setup bridge', () => {
       spaceId: 'space-1',
       spaceName: 'Team Space',
       suggestedFolderName: 'team-space',
+      vaultBindingId: 'vault_space_1',
+      landingNotePath: 'Home.md',
     });
 
     expect(requestMock).toHaveBeenCalledWith(
@@ -72,6 +75,8 @@ describe('android Obsidian vault setup bridge', () => {
         spaceId: 'space-1',
         spaceName: 'Team Space',
         suggestedFolderName: 'team-space',
+        vaultBindingId: 'vault_space_1',
+        landingNotePath: 'Home.md',
       })
     );
 
@@ -81,7 +86,11 @@ describe('android Obsidian vault setup bridge', () => {
           status: 'prepared-directory',
           spaceId: 'space-1',
           vaultName: 'team-space',
+          rootTreeUri: 'content://root/contextgo',
           spaceDirectoryUri: 'content://space/team-space',
+          vaultBindingId: 'vault_space_1',
+          replicaId: 'android_replica_1',
+          landingNotePath: 'Home.md',
         },
       })
     );
@@ -90,7 +99,52 @@ describe('android Obsidian vault setup bridge', () => {
       status: 'prepared-directory',
       spaceId: 'space-1',
       vaultName: 'team-space',
+      rootTreeUri: 'content://root/contextgo',
       spaceDirectoryUri: 'content://space/team-space',
+      vaultBindingId: 'vault_space_1',
+      replicaId: 'android_replica_1',
+      landingNotePath: 'Home.md',
     });
+  });
+
+  it('writes updated Android vault setup state back through the shell bridge', async () => {
+    vi.stubGlobal('navigator', {
+      userAgent: 'Mozilla/5.0 (Linux; Android 15) AppleWebKit ContextGoMobileShell/1.0',
+    });
+
+    const updateMock = vi.fn();
+    vi.stubGlobal('window', {
+      ContextGoMobileShell: {
+        updateObsidianVaultSetupState: updateMock,
+      },
+    });
+
+    await updateAndroidObsidianVaultSetupState({
+      status: 'registered-mobile-replica',
+      spaceId: 'space-1',
+      vaultName: 'team-space',
+      rootTreeUri: 'content://root/contextgo',
+      spaceDirectoryUri: 'content://space/team-space',
+      vaultBindingId: 'vault_space_1',
+      replicaId: 'android_replica_1',
+      landingNotePath: 'Home.md',
+      healthStatus: 'warn',
+      lastSyncedAt: '2026-04-16T00:00:00Z',
+    });
+
+    expect(updateMock).toHaveBeenCalledWith(
+      JSON.stringify({
+        status: 'registered-mobile-replica',
+        spaceId: 'space-1',
+        vaultName: 'team-space',
+        rootTreeUri: 'content://root/contextgo',
+        spaceDirectoryUri: 'content://space/team-space',
+        vaultBindingId: 'vault_space_1',
+        replicaId: 'android_replica_1',
+        landingNotePath: 'Home.md',
+        healthStatus: 'warn',
+        lastSyncedAt: '2026-04-16T00:00:00Z',
+      })
+    );
   });
 });

@@ -49,6 +49,15 @@ const hoisted = vi.hoisted(() => {
     devToolsStateChangedOnMock: vi.fn(() => vi.fn()),
     cloudGetStatusInvokeMock: vi.fn().mockResolvedValue({ success: false }),
     cloudListRemoteDevicesInvokeMock: vi.fn().mockResolvedValue({ success: false }),
+    cloudGetObsidianSyncStatusInvokeMock: vi.fn().mockResolvedValue({ success: false }),
+    cloudRegisterObsidianReplicaDraftInvokeMock: vi.fn().mockResolvedValue({
+      success: true,
+      data: {
+        vaultBindingId: 'vault_space-2',
+        replicaId: 'android_replica_1',
+        checkpoint: { appliedCursor: 0 },
+      },
+    }),
     cloudStatusChangedOnMock: vi.fn(() => vi.fn()),
     ensureDefaultSpaceInvokeMock: vi.fn().mockResolvedValue({ id: 'space-1', name: 'My Space' }),
     openVaultInvokeMock: vi.fn().mockResolvedValue({
@@ -68,6 +77,7 @@ const hoisted = vi.hoisted(() => {
       landingNotePath: 'Home.md',
     }),
     getAndroidObsidianVaultSetupStateMock: vi.fn().mockReturnValue(null),
+    updateAndroidObsidianVaultSetupStateMock: vi.fn().mockResolvedValue(undefined),
     openExternalUrlMock: vi.fn().mockResolvedValue(undefined),
     messageSuccessMock: vi.fn(),
     messageErrorMock: vi.fn(),
@@ -103,6 +113,10 @@ vi.mock('@/common', () => ({
   ipcBridge: {
     cloud: {
       getStatus: { invoke: (...args: unknown[]) => hoisted.cloudGetStatusInvokeMock(...args) },
+      getObsidianSyncStatus: { invoke: (...args: unknown[]) => hoisted.cloudGetObsidianSyncStatusInvokeMock(...args) },
+      registerObsidianReplicaDraft: {
+        invoke: (...args: unknown[]) => hoisted.cloudRegisterObsidianReplicaDraftInvokeMock(...args),
+      },
       ensureOfficialRemoteReady: {
         invoke: (...args: unknown[]) =>
           (
@@ -262,6 +276,7 @@ vi.mock('@renderer/utils/platform', () => ({
   isAndroidMobileShell: () => isAndroidMobileShellMock,
   getAndroidObsidianVaultSetupState: (...args: unknown[]) => hoisted.getAndroidObsidianVaultSetupStateMock(...args),
   requestAndroidObsidianVaultSetup: (...args: unknown[]) => hoisted.requestAndroidObsidianVaultSetupMock(...args),
+  updateAndroidObsidianVaultSetupState: (...args: unknown[]) => hoisted.updateAndroidObsidianVaultSetupStateMock(...args),
   openExternalUrl: (...args: unknown[]) => hoisted.openExternalUrlMock(...args),
 }));
 
@@ -458,9 +473,17 @@ describe('Sider', () => {
     vi.clearAllMocks();
     hoisted.cloudGetStatusInvokeMock.mockResolvedValue({ success: false });
     hoisted.cloudListRemoteDevicesInvokeMock.mockResolvedValue({ success: false });
-    (
-      globalThis as { __ensureOfficialRemoteReadyInvokeMock?: ReturnType<typeof vi.fn> }
-    ).__ensureOfficialRemoteReadyInvokeMock = vi.fn().mockResolvedValue({ success: false });
+    hoisted.cloudGetObsidianSyncStatusInvokeMock.mockResolvedValue({ success: false });
+    hoisted.cloudRegisterObsidianReplicaDraftInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        vaultBindingId: 'vault_space-2',
+        replicaId: 'android_replica_1',
+        checkpoint: { appliedCursor: 0 },
+      },
+    });
+    (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: ReturnType<typeof vi.fn> }).__ensureOfficialRemoteReadyInvokeMock =
+      vi.fn().mockResolvedValue({ success: false });
     hoisted.ensureDefaultSpaceInvokeMock.mockResolvedValue({ id: 'space-1', name: 'My Space' });
     hoisted.openVaultInvokeMock.mockResolvedValue({
       opened: true,
@@ -472,6 +495,7 @@ describe('Sider', () => {
     hoisted.navigateMock.mockReset();
     hoisted.getAndroidObsidianVaultSetupStateMock.mockReset();
     hoisted.getAndroidObsidianVaultSetupStateMock.mockReturnValue(null);
+    hoisted.updateAndroidObsidianVaultSetupStateMock.mockReset();
     isMobileShellWebViewMock = false;
     isAndroidMobileShellMock = false;
     hoisted.remoteAccessRef.current = null;
@@ -561,13 +585,14 @@ describe('Sider', () => {
     expect(selectorTrigger).toBeInTheDocument();
   });
 
-  it('renders the create space action before the switchable space list in the space popup', async () => {
+  it('renders the vault action and create space action before the switchable space list in the space popup', async () => {
     renderSider('/guid');
 
     const menuItems = screen.getAllByTestId(/menu-item-space:/);
-    expect(menuItems[0]).toHaveAttribute('data-testid', 'menu-item-space:create');
-    expect(menuItems[1]).toHaveAttribute('data-testid', 'menu-item-space:space-1');
-    expect(menuItems[2]).toHaveAttribute('data-testid', 'menu-item-space:space-2');
+    expect(menuItems[0]).toHaveAttribute('data-testid', 'menu-item-space:open-vault');
+    expect(menuItems[1]).toHaveAttribute('data-testid', 'menu-item-space:create');
+    expect(menuItems[2]).toHaveAttribute('data-testid', 'menu-item-space:space-1');
+    expect(menuItems[3]).toHaveAttribute('data-testid', 'menu-item-space:space-2');
   });
 
   it('prefers current desktop official remote readiness when rendering the current device status', async () => {
@@ -1163,6 +1188,26 @@ describe('Sider', () => {
   it('requests Android vault setup before opening the Obsidian chooser when running in the Android shell', async () => {
     isMobileShellWebViewMock = true;
     isAndroidMobileShellMock = true;
+    hoisted.cloudGetObsidianSyncStatusInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        vaultBindingId: 'vault_space-2',
+        spaceId: 'space-2',
+        riskLevel: 'normal',
+        replicas: [
+          {
+            replicaId: 'android_replica_1',
+            platform: 'mobile',
+            healthStatus: 'warn',
+            localReadyState: 'prepared-directory',
+            rootTreeUri: 'content://root/contextgo',
+            localDirectoryUri: 'content://space/team-space',
+            landingNotePath: 'Home.md',
+            lastSyncedAt: '2026-04-16T00:00:00Z',
+          },
+        ],
+      },
+    });
     hoisted.selectedSpaceStateRef.current = {
       ...hoisted.selectedSpaceStateRef.current!,
       selectedSpace: {
@@ -1184,6 +1229,28 @@ describe('Sider', () => {
         vaultBindingId: 'vault_space-2',
         landingNotePath: 'Home.md',
       });
+      expect(hoisted.cloudRegisterObsidianReplicaDraftInvokeMock).toHaveBeenCalledWith({
+        spaceId: 'space-2',
+        platform: 'mobile',
+        vaultFingerprint: 'content://space/team-space',
+        localReadyState: 'prepared-directory',
+        rootTreeUri: 'content://root/contextgo',
+        localDirectoryUri: 'content://space/team-space',
+        landingNotePath: 'Home.md',
+      });
+      expect(hoisted.cloudGetObsidianSyncStatusInvokeMock).toHaveBeenCalledWith({ spaceId: 'space-2' });
+      expect(hoisted.updateAndroidObsidianVaultSetupStateMock).toHaveBeenCalledWith({
+        status: 'registered-mobile-replica',
+        spaceId: 'space-2',
+        vaultName: 'team-space',
+        rootTreeUri: 'content://root/contextgo',
+        spaceDirectoryUri: 'content://space/team-space',
+        vaultBindingId: 'vault_space-2',
+        replicaId: 'android_replica_1',
+        landingNotePath: 'Home.md',
+        healthStatus: 'warn',
+        lastSyncedAt: '2026-04-16T00:00:00Z',
+      });
       expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith('obsidian://open?choose-vault');
       expect(hoisted.messageSuccessMock).toHaveBeenCalledWith('guid.vault.androidSetupPrepared');
     });
@@ -1194,7 +1261,7 @@ describe('Sider', () => {
     isMobileShellWebViewMock = true;
     isAndroidMobileShellMock = true;
     hoisted.getAndroidObsidianVaultSetupStateMock.mockReturnValue({
-      status: 'prepared-directory',
+      status: 'registered-mobile-replica',
       spaceId: 'space-2',
       vaultName: 'team-space',
       rootTreeUri: 'content://root/contextgo',
@@ -1202,6 +1269,8 @@ describe('Sider', () => {
       vaultBindingId: 'vault_space-2',
       replicaId: 'android_replica_1',
       landingNotePath: 'Home.md',
+      healthStatus: 'warn',
+      lastSyncedAt: '2026-04-16T00:00:00Z',
     });
     hoisted.selectedSpaceStateRef.current = {
       ...hoisted.selectedSpaceStateRef.current!,
@@ -1213,7 +1282,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    expect(screen.getAllByText('guid.vault.androidStatusPrepared').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('guid.vault.androidStatusRegistered').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByTestId('menu-item-device-switch'));
     expect(screen.getByText('guid.vault.mobileSetupAffordance')).toBeInTheDocument();
 
@@ -1222,7 +1291,7 @@ describe('Sider', () => {
     await waitFor(() => {
       expect(hoisted.requestAndroidObsidianVaultSetupMock).not.toHaveBeenCalled();
       expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith('obsidian://open?choose-vault');
-      expect(hoisted.messageSuccessMock).toHaveBeenCalledWith('guid.vault.androidSetupPrepared');
+      expect(hoisted.messageSuccessMock).toHaveBeenCalledWith('guid.vault.androidReplicaRegistered');
     });
   });
 

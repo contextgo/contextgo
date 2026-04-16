@@ -59,6 +59,7 @@ import {
   isMobileShellWebView,
   openExternalUrl,
   requestAndroidObsidianVaultSetup,
+  updateAndroidObsidianVaultSetupState,
 } from '@renderer/utils/platform';
 import {
   buildOfficialRemoteDevicesRoute,
@@ -157,26 +158,6 @@ const isOpenableRemoteDevice = (device: CloudRemoteDevice): boolean => {
   );
 };
 
-const isCurrentCloudDeviceReady = (cloudStatus: CloudStatus | null): boolean => {
-  return Boolean(
-    cloudStatus?.authenticated &&
-    (cloudStatus.officialRemoteReady === true ||
-      (cloudStatus.officialRemote.running === true && cloudStatus.officialRemote.browserEntryReady === true))
-  );
-};
-
-const shouldEnsureCurrentCloudDevice = (cloudStatus: CloudStatus | null): boolean => {
-  if (!cloudStatus?.authenticated || !cloudStatus.device || !cloudStatus.deviceTokenAvailable) {
-    return false;
-  }
-
-  if (cloudStatus.officialRemote?.needsAttention === true) {
-    return false;
-  }
-
-  return !isCurrentCloudDeviceReady(cloudStatus);
-};
-
 const buildSuggestedSpaceFolderName = (spaceName: string): string => {
   const normalized = spaceName
     .trim()
@@ -195,7 +176,7 @@ const shouldEnsureCurrentCloudDevice = (cloudStatus: CloudStatus | null): boolea
     return false;
   }
 
-  return !isCurrentCloudDeviceReady(cloudStatus);
+  return !isCurrentHostRuntimeReady(cloudStatus);
 };
 const getRemoteDeviceStatusKey = (
   device: CloudRemoteDevice,
@@ -423,6 +404,36 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           });
 
           if (setupResult.status === 'prepared-directory') {
+            const registerResult = await ipcBridge.cloud.registerObsidianReplicaDraft.invoke({
+              spaceId: targetSpace.id,
+              platform: 'mobile',
+              vaultFingerprint: setupResult.spaceDirectoryUri,
+              localReadyState: 'prepared-directory',
+              rootTreeUri: setupResult.rootTreeUri,
+              localDirectoryUri: setupResult.spaceDirectoryUri,
+              landingNotePath: setupResult.landingNotePath,
+            });
+            if (!registerResult.success || !registerResult.data) {
+              throw new Error(registerResult.msg || t('guid.vault.openFailed'));
+            }
+
+            const syncStatus = await ipcBridge.cloud.getObsidianSyncStatus.invoke({ spaceId: targetSpace.id });
+            const matchingReplica = syncStatus.success
+              ? syncStatus.data?.replicas.find((replica) => replica.replicaId === registerResult.data?.replicaId)
+              : null;
+
+            await updateAndroidObsidianVaultSetupState({
+              status: 'registered-mobile-replica',
+              spaceId: setupResult.spaceId,
+              vaultName: setupResult.vaultName,
+              rootTreeUri: setupResult.rootTreeUri,
+              spaceDirectoryUri: setupResult.spaceDirectoryUri,
+              vaultBindingId: registerResult.data.vaultBindingId,
+              replicaId: registerResult.data.replicaId,
+              landingNotePath: setupResult.landingNotePath,
+              healthStatus: matchingReplica?.healthStatus ?? 'warn',
+              lastSyncedAt: matchingReplica?.lastSyncedAt ?? undefined,
+            });
             if (vaultOpenIntent.target) {
               await openExternalUrl(vaultOpenIntent.target);
             }
@@ -448,6 +459,10 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
 
         if (vaultOpenIntent.target) {
           await openExternalUrl(vaultOpenIntent.target);
+        }
+        if (vaultOpenIntent.readiness === 'registered-mobile-replica') {
+          Message.success(t('guid.vault.androidReplicaRegistered'));
+          return;
         }
         if (vaultOpenIntent.readiness === 'prepared-directory') {
           Message.success(t('guid.vault.androidSetupPrepared'));
