@@ -44,6 +44,7 @@ type MaintenanceRunMetadata = {
   };
   currentTask?: string;
   scopeLabel?: string;
+  latestArtifactSummary?: string;
   artifactRelativePath?: string;
   artifactTitle?: string;
   artifactTargets?: string[];
@@ -405,6 +406,7 @@ export class ActivitySnapshotBuilder {
         governanceIdentity: snapshot.metadata.governanceIdentity,
         scopeLabel: snapshot.metadata.scopeLabel,
         maintenanceKind: snapshot.metadata.jobType,
+        latestArtifactSummary: snapshot.metadata.latestArtifactSummary,
         artifactRelativePath: snapshot.metadata.artifactRelativePath,
         artifactTitle: snapshot.metadata.artifactTitle,
         artifactTargets: snapshot.metadata.artifactTargets,
@@ -430,6 +432,7 @@ export class ActivitySnapshotBuilder {
         governanceIdentity: snapshot.metadata.governanceIdentity,
         scopeLabel: snapshot.metadata.scopeLabel,
         maintenanceKind: snapshot.metadata.jobType,
+        latestArtifactSummary: snapshot.metadata.latestArtifactSummary,
         artifactRelativePath: snapshot.metadata.artifactRelativePath,
         artifactTitle: snapshot.metadata.artifactTitle,
         artifactTargets: snapshot.metadata.artifactTargets,

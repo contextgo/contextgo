@@ -1586,6 +1586,7 @@ export interface IExtensionAgentActivityItem {
   governanceIdentity?: string;
   scopeLabel?: string;
   maintenanceKind?: string;
+  latestArtifactSummary?: string;
   artifactRelativePath?: string;
   artifactTitle?: string;
   artifactTargets?: string[];
@@ -1610,6 +1611,7 @@ export interface IExtensionSystemRunItem {
   governanceIdentity?: string;
   scopeLabel?: string;
   maintenanceKind?: string;
+  latestArtifactSummary?: string;
   artifactRelativePath?: string;
   artifactTitle?: string;
   artifactTargets?: string[];

@@ -113,6 +113,7 @@ describe('SystemRunsPage', () => {
         governanceIdentity: 'session_steward',
         scopeLabel: 'workspace-alpha',
         maintenanceKind: 'session_compaction',
+        latestArtifactSummary: 'Session working context refreshed.',
         artifactRelativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
         artifactTitle: 'Session working context',
         artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
@@ -130,6 +131,8 @@ describe('SystemRunsPage', () => {
 
     expect(await screen.findByText('Compressing repeated session signals')).toBeInTheDocument();
     expect(screen.getByText('Governance: session_steward')).toBeInTheDocument();
+    expect(screen.getByText('Source: hook')).toBeInTheDocument();
+    expect(screen.getByText('Artifact summary: Session working context refreshed.')).toBeInTheDocument();
     expect(
       screen.getByText('Artifacts: session_timeline · session_working_context · session_checkpoint')
     ).toBeInTheDocument();
