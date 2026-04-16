@@ -467,6 +467,7 @@ const SystemRunsPage: React.FC = () => {
                         </span>
                         <span className={styles.systemRunsEventText}>
                           <Tag size='small'>{formatRecentEventKind(event.kind)}</Tag>
+                          <span className='ml-6px text-t-tertiary'>{formatUpdateTime(event.at)}</span>
                           <span className='ml-6px'>{event.text}</span>
                         </span>
                       </div>
