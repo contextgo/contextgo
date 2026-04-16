@@ -1,15 +1,21 @@
 import React from 'react';
-import { WorkbenchHostContext, type WorkbenchKind } from './context';
+import { WorkbenchHostContext } from './context';
+import type { WorkbenchDefinition } from './types';
 
 type WorkbenchHostProps = {
-  workbenchKind: WorkbenchKind;
+  definition: WorkbenchDefinition;
   children: React.ReactNode;
 };
 
-const WorkbenchHost: React.FC<WorkbenchHostProps> = ({ workbenchKind, children }) => {
+const WorkbenchHost: React.FC<WorkbenchHostProps> = ({ definition, children }) => {
   return (
-    <WorkbenchHostContext.Provider value={{ workbenchKind }}>
-      <div className='workbench-host size-full min-h-0' data-workbench-kind={workbenchKind}>
+    <WorkbenchHostContext.Provider
+      value={{
+        definition,
+        workbenchKind: definition.kind,
+      }}
+    >
+      <div className='workbench-host size-full min-h-0' data-workbench-kind={definition.kind}>
         {children}
       </div>
     </WorkbenchHostContext.Provider>

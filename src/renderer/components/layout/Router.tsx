@@ -27,6 +27,8 @@ import {
   resolveAuthenticatedStartupPath,
   shouldPreferOfficialRemoteShell,
 } from '@renderer/utils/officialRemote';
+import { conversationCoworkWorkbench } from '@renderer/pages/WorkbenchHost/definitions';
+import type { WorkbenchDefinition } from '@renderer/pages/WorkbenchHost/types';
 
 type LazyRouteLoader = () => Promise<{ default: React.ComponentType }>;
 
@@ -235,13 +237,13 @@ const withRouteFallback = (loader: LazyRouteLoader, routePath: string) => (
 const renderWorkbenchRoute = (params: {
   loader: LazyRouteLoader;
   routePath: string;
-  workbenchKind: 'conversation-cowork';
+  definition: WorkbenchDefinition;
 }) => {
   const WorkbenchHost = React.lazy(loadWorkbenchHost);
 
   return (
     <Suspense fallback={<AppLoader />}>
-      <WorkbenchHost workbenchKind={params.workbenchKind}>
+      <WorkbenchHost definition={params.definition}>
         {withRouteFallback(params.loader, params.routePath)}
       </WorkbenchHost>
     </Suspense>
@@ -370,7 +372,7 @@ const RoutedPanels: React.FC<{
             renderWorkbenchRoute({
               loader: loadConversation,
               routePath: '/conversation/:id',
-              workbenchKind: 'conversation-cowork',
+              definition: conversationCoworkWorkbench,
             })
           }
         />
