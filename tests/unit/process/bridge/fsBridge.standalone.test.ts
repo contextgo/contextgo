@@ -85,6 +85,7 @@ vi.mock('@/common', () => ({
       removeCustomExternalPath: { provider: vi.fn() },
       searchSkillMarket: { provider: vi.fn() },
       installSkillMarketSkill: { provider: vi.fn() },
+      installSkillMarketSkillToWorkspace: { provider: vi.fn() },
       enableSkillsMarket: { provider: vi.fn() },
       disableSkillsMarket: { provider: vi.fn() },
     },
