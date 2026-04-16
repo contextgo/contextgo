@@ -39,6 +39,7 @@ import {
   getConfiguredCodexMcpProtocolVersion,
   setAppConfig,
 } from '@/common/utils/appConfig';
+import { getProjectRuntimeRoot } from '@process/services/runtime/ProjectRuntimePaths';
 
 const APP_CLIENT_NAME = getConfiguredAppClientName();
 const APP_CLIENT_VERSION = getConfiguredAppClientVersion();
@@ -147,6 +148,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
         id: data.conversation_id,
         cliPath: data.cliPath,
         workingDir: data.workspace || process.cwd(),
+        runtimeRoot: getProjectRuntimeRoot(data.workspace || process.cwd()),
         eventHandler,
         sessionManager,
         fileOperationHandler,

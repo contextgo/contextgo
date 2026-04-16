@@ -19,7 +19,11 @@ import { JSONRPC_VERSION } from '@/common/types/acpTypes';
  * - Windows: %APPDATA%\codex\config.toml or ~/.codex/config.toml
  * - macOS/Linux: ~/.codex/config.toml
  */
-export function getCodexConfigPath(): string {
+export function getCodexConfigPath(runtimeRoot?: string): string {
+  if (runtimeRoot) {
+    return join(runtimeRoot, 'codex', 'config.toml');
+  }
+
   if (process.platform === 'win32') {
     // Windows: try APPDATA first, then fallback to home directory
     const appData = process.env.APPDATA;
@@ -31,17 +35,17 @@ export function getCodexConfigPath(): string {
   return join(homedir(), '.codex', 'config.toml');
 }
 
-export function getCodexAuthPath(): string {
-  return join(dirname(getCodexConfigPath()), 'auth.json');
+export function getCodexAuthPath(runtimeRoot?: string): string {
+  return join(dirname(getCodexConfigPath(runtimeRoot)), 'auth.json');
 }
 
 /**
  * Read user's approval_policy setting from Codex config.toml
  * Returns the value if set, otherwise returns null
  */
-function readUserApprovalPolicyConfig(): string | null {
+function readUserApprovalPolicyConfig(runtimeRoot?: string): string | null {
   try {
-    const configPath = getCodexConfigPath();
+    const configPath = getCodexConfigPath(runtimeRoot);
     const content = readFileSync(configPath, 'utf-8');
     // Simple TOML parsing for top-level approval_policy
     // Supports: double-quoted, single-quoted, or unquoted values with optional inline comments
@@ -181,7 +185,12 @@ export class CodexConnection {
     }
   }
 
-  start(cliPath: string, cwd: string, args: string[] = [], options?: { yoloMode?: boolean }): Promise<void> {
+  start(
+    cliPath: string,
+    cwd: string,
+    args: string[] = [],
+    options?: { yoloMode?: boolean; runtimeRoot?: string }
+  ): Promise<void> {
     console.log(`[Codex-Startup] ===== Codex startup diagnostics =====`);
     console.log(`[Codex-Startup] cliPath=${cliPath}, cwd=${cwd}, platform=${process.platform}`);
     console.log(`[Codex-Startup] process.env.PATH (first 200): ${(process.env.PATH || '(empty)').substring(0, 200)}`);
@@ -235,7 +244,7 @@ export class CodexConnection {
       // layer (Plan / Auto Edit / Full Auto modes). Passing 'never' to CLI causes
       // a dual-approval conflict where both CLI and Manager try to approve,
       // leading to the CLI hanging on exec_approval_request events.
-      const userApprovalPolicy = readUserApprovalPolicyConfig();
+      const userApprovalPolicy = readUserApprovalPolicyConfig(options?.runtimeRoot);
       if (userApprovalPolicy && userApprovalPolicy !== 'never') {
         finalArgs = [...finalArgs, '-c', `approval_policy=${userApprovalPolicy}`];
       }

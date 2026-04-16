@@ -244,15 +244,21 @@ export function spawnNpxBackend(
 }
 
 /** Prepare clean env + resolve npx for Claude ACP bridge. */
-function prepareClaude(): NpxPrepareResult {
+function prepareClaude(extraEnv?: Record<string, string>): NpxPrepareResult {
   const cleanEnv = prepareCleanEnv();
+  if (extraEnv) {
+    Object.assign(cleanEnv, extraEnv);
+  }
   ensureMinNodeVersion(cleanEnv, 20, 10, 'Claude ACP bridge');
   return { cleanEnv, npxCommand: resolveNpxPath(cleanEnv) };
 }
 
 /** Prepare clean env + resolve npx + run diagnostics for Codex ACP bridge. */
-async function prepareCodex(): Promise<NpxPrepareResult> {
+async function prepareCodex(extraEnv?: Record<string, string>): Promise<NpxPrepareResult> {
   const cleanEnv = prepareCleanEnv();
+  if (extraEnv) {
+    Object.assign(cleanEnv, extraEnv);
+  }
   ensureMinNodeVersion(cleanEnv, 20, 10, 'Codex ACP bridge');
 
   const codexCommand = process.platform === 'win32' ? 'codex.cmd' : 'codex';
@@ -388,22 +394,30 @@ async function connectNpxBackend(config: {
 // ── Exported per-backend connect functions ───────────────────────────
 
 /** Connect to Claude ACP bridge via npx. */
-export function connectClaude(workingDir: string, hooks: NpxConnectHooks): Promise<void> {
+export function connectClaude(
+  workingDir: string,
+  hooks: NpxConnectHooks,
+  extraEnv?: Record<string, string>
+): Promise<void> {
   return connectNpxBackend({
     backend: 'claude',
     npxPackage: CLAUDE_ACP_NPX_PACKAGE,
-    prepareFn: prepareClaude,
+    prepareFn: () => prepareClaude(extraEnv),
     workingDir,
     ...hooks,
   });
 }
 
 /** Connect to Codex ACP bridge via npx. */
-export function connectCodex(workingDir: string, hooks: NpxConnectHooks): Promise<void> {
+export function connectCodex(
+  workingDir: string,
+  hooks: NpxConnectHooks,
+  extraEnv?: Record<string, string>
+): Promise<void> {
   return connectNpxBackend({
     backend: 'codex',
     npxPackage: CODEX_ACP_NPX_PACKAGE,
-    prepareFn: prepareCodex,
+    prepareFn: () => prepareCodex(extraEnv),
     workingDir,
     ...hooks,
   });

@@ -83,6 +83,7 @@ export interface AcpAgentConfig {
   customEnv?: Record<string, string>; // Custom environment variables (for custom backend)
   extra?: {
     workspace?: string;
+    runtimeRoot?: string;
     backend: AcpBackend;
     cliPath?: string;
     customWorkspace?: boolean;
@@ -109,6 +110,7 @@ export class AcpAgent {
   private readonly id: string;
   private extra: {
     workspace?: string;
+    runtimeRoot?: string;
     backend: AcpBackend;
     cliPath?: string;
     customWorkspace?: boolean;
@@ -169,6 +171,7 @@ export class AcpAgent {
     this.onAvailableCommandsUpdate = config.onAvailableCommandsUpdate;
     this.extra = config.extra || {
       workspace: config.workingDir,
+      runtimeRoot: undefined,
       backend: config.backend,
       cliPath: config.cliPath,
       customWorkspace: false, // Default to system workspace
@@ -324,7 +327,7 @@ export class AcpAgent {
       // explicitly setting the model from settings ensures correctness.
       // Uses session/set_model (direct CLI control) for consistency with runtime switching.
       if (this.extra.backend === 'claude') {
-        const configuredModel = getClaudeModel();
+        const configuredModel = getClaudeModel(this.extra.runtimeRoot);
         if (configuredModel) {
           try {
             const modelStart = Date.now();

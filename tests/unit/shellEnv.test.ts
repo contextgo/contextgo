@@ -234,6 +234,60 @@ describe('getEnhancedEnv', () => {
   });
 });
 
+describe('getProjectRuntimeEnv', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('overrides HOME and filters shell-global runtime auth vars', async () => {
+    vi.doMock('child_process', () => ({
+      execFileSync: vi.fn().mockImplementation(() => {
+        throw new Error('skip shell');
+      }),
+      execFile: vi.fn(),
+    }));
+
+    const originalHome = process.env.HOME;
+    const originalPath = process.env.PATH;
+    const originalCodexApiKey = process.env.CODEX_API_KEY;
+    const originalOpenAiApiKey = process.env.OPENAI_API_KEY;
+
+    process.env.HOME = '/Users/global-home';
+    process.env.PATH = '/usr/bin';
+    process.env.CODEX_API_KEY = 'global-codex-key';
+    process.env.OPENAI_API_KEY = 'global-openai-key';
+
+    const { getProjectRuntimeEnv } = await import('@process/utils/shellEnv');
+    const result = getProjectRuntimeEnv({
+      workspace: '/workspace/app',
+      runtimeRoot: '/workspace/app/.contextgo/runtime',
+      injectedEnv: {
+        OPENAI_API_KEY: 'project-openai-key',
+      },
+    });
+
+    expect(result.HOME).toBe('/workspace/app/.contextgo/runtime');
+    expect(result.XDG_CONFIG_HOME).toBe('/workspace/app/.contextgo/runtime');
+    expect(result.XDG_DATA_HOME).toBe('/workspace/app/.contextgo/runtime');
+    expect(result.OPENAI_API_KEY).toBe('project-openai-key');
+    expect(result.CODEX_API_KEY).toBeUndefined();
+    expect(result.PATH).toContain('/usr/bin');
+
+    process.env.HOME = originalHome;
+    process.env.PATH = originalPath;
+    if (originalCodexApiKey === undefined) {
+      delete process.env.CODEX_API_KEY;
+    } else {
+      process.env.CODEX_API_KEY = originalCodexApiKey;
+    }
+    if (originalOpenAiApiKey === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = originalOpenAiApiKey;
+    }
+  });
+});
+
 // -------------------------------------------------------------------
 // 3. Windows extra tool path detection
 //    getWindowsExtraToolPaths() is private, but its effect is visible

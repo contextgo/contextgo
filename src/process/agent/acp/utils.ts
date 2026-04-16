@@ -132,16 +132,20 @@ export interface ClaudeSettings {
  * - macOS/Linux: ~/.claude/settings.json
  * - Windows: %USERPROFILE%\.claude\settings.json
  */
-export function getClaudeSettingsPath(): string {
+export function getClaudeSettingsPath(runtimeRoot?: string): string {
+  if (runtimeRoot) {
+    return path.join(runtimeRoot, 'claude', 'settings.json');
+  }
+
   return path.join(os.homedir(), '.claude', 'settings.json');
 }
 
 /**
  * Read Claude settings from settings.json
  */
-export function readClaudeSettings(): ClaudeSettings | null {
+export function readClaudeSettings(runtimeRoot?: string): ClaudeSettings | null {
   try {
-    const settingsPath = getClaudeSettingsPath();
+    const settingsPath = getClaudeSettingsPath(runtimeRoot);
     if (!fs.existsSync(settingsPath)) {
       return null;
     }
@@ -155,8 +159,8 @@ export function readClaudeSettings(): ClaudeSettings | null {
 /**
  * Get ANTHROPIC_MODEL from Claude settings (under env object)
  */
-export function getClaudeModel(): string | null {
-  const settings = readClaudeSettings();
+export function getClaudeModel(runtimeRoot?: string): string | null {
+  const settings = readClaudeSettings(runtimeRoot);
   return settings?.env?.ANTHROPIC_MODEL ?? null;
 }
 
