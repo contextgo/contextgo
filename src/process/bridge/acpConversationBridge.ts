@@ -34,6 +34,7 @@ import path from 'node:path';
 import { safeExec, safeExecFile } from '@process/utils/safeExec';
 import { getEnhancedEnv } from '@process/utils/shellEnv';
 import { contextRuntimeService } from '@process/services/context/contextServiceSingleton';
+import { getProjectRuntimeRoot } from '@process/services/runtime/ProjectRuntimePaths';
 
 const refreshTrayMenuSafely = async (): Promise<void> => {
   try {
@@ -182,7 +183,7 @@ async function resolveRuntimeDisplayPath(cliPath?: string): Promise<string | und
   }
 }
 
-function resolveManagedRuntimeConfigEntries(backend: AcpBackend): ManagedRuntimeConfigEntry[] {
+function resolveManagedRuntimeConfigEntries(backend: AcpBackend, runtimeRoot?: string): ManagedRuntimeConfigEntry[] {
   const homeDir = os.homedir();
 
   switch (backend) {
@@ -192,26 +193,30 @@ function resolveManagedRuntimeConfigEntries(backend: AcpBackend): ManagedRuntime
       return [
         {
           kind: 'config',
-          path: getClaudeSettingsPath(),
-          exists: fs.existsSync(getClaudeSettingsPath()),
+          path: getClaudeSettingsPath(runtimeRoot),
+          exists: fs.existsSync(getClaudeSettingsPath(runtimeRoot)),
         },
       ];
     case 'codex':
       return [
         {
           kind: 'config',
-          path: getCodexConfigPath(),
-          exists: fs.existsSync(getCodexConfigPath()),
+          path: getCodexConfigPath(runtimeRoot),
+          exists: fs.existsSync(getCodexConfigPath(runtimeRoot)),
         },
         {
           kind: 'auth',
-          path: getCodexAuthPath(),
-          exists: fs.existsSync(getCodexAuthPath()),
+          path: getCodexAuthPath(runtimeRoot),
+          exists: fs.existsSync(getCodexAuthPath(runtimeRoot)),
         },
       ];
     case 'opencode': {
-      const configPath = path.join(homeDir, '.config', 'opencode', 'opencode.json');
-      const authPath = path.join(homeDir, '.local', 'share', 'opencode', 'auth.json');
+      const configPath = runtimeRoot
+        ? path.join(runtimeRoot, 'opencode', 'opencode.json')
+        : path.join(homeDir, '.config', 'opencode', 'opencode.json');
+      const authPath = runtimeRoot
+        ? path.join(runtimeRoot, 'opencode', 'auth.json')
+        : path.join(homeDir, '.local', 'share', 'opencode', 'auth.json');
       return [
         {
           kind: 'config',
@@ -402,9 +407,10 @@ export function initAcpConversationBridge(
     }
   });
 
-  ipcBridge.acpConversation.getManagedRuntimeConfigLocation.provider(async ({ backend }) => {
+  ipcBridge.acpConversation.getManagedRuntimeConfigLocation.provider(async ({ backend, workspace }) => {
     try {
-      const entries = resolveManagedRuntimeConfigEntries(backend);
+      const runtimeRoot = workspace ? getProjectRuntimeRoot(workspace) : undefined;
+      const entries = resolveManagedRuntimeConfigEntries(backend, runtimeRoot);
       if (entries.length === 0) {
         return { success: true, data: null };
       }

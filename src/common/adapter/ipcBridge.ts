@@ -832,7 +832,7 @@ export const acpConversation = {
   >('acp.install-managed-runtime'),
   getManagedRuntimeConfigLocation: bridge.buildProvider<
     IBridgeResponse<{ backend: AcpBackend; entries: import('../types/acpTypes').ManagedRuntimeConfigEntry[] } | null>,
-    { backend: AcpBackend }
+    { backend: AcpBackend; workspace?: string }
   >('acp.get-managed-runtime-config-location'),
   checkAgentHealth: bridge.buildProvider<
     IBridgeResponse<{ available: boolean; latency?: number; error?: string }>,

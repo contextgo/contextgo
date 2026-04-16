@@ -310,6 +310,35 @@ export function getEnhancedEnv(customEnv?: Record<string, string>): Record<strin
   } as Record<string, string>;
 }
 
+const PROJECT_RUNTIME_FILTERED_ENV_KEYS = new Set([
+  'CODEX_API_KEY',
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_AUTH_TOKEN',
+  'ANTHROPIC_BASE_URL',
+]);
+
+export function getProjectRuntimeEnv(input: {
+  workspace: string;
+  runtimeRoot: string;
+  injectedEnv?: Record<string, string>;
+}): Record<string, string> {
+  void input.workspace;
+
+  const baseEnv = getEnhancedEnv();
+  for (const key of PROJECT_RUNTIME_FILTERED_ENV_KEYS) {
+    delete baseEnv[key];
+  }
+
+  return {
+    ...baseEnv,
+    HOME: input.runtimeRoot,
+    XDG_CONFIG_HOME: input.runtimeRoot,
+    XDG_DATA_HOME: input.runtimeRoot,
+    ...input.injectedEnv,
+  };
+}
+
 /**
  * Scan well-known Node.js version manager directories to find a Node binary
  * that satisfies the minimum version requirement.

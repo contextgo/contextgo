@@ -121,8 +121,10 @@ vi.mock('../../src/process/agent/codex/connection/CodexConnection', () => ({
       stop: hoisted.codexStop,
     };
   }),
-  getCodexConfigPath: vi.fn(() => '/Users/tester/.codex/config.toml'),
-  getCodexAuthPath: vi.fn(() => '/Users/tester/.codex/auth.json'),
+  getCodexConfigPath: vi.fn((runtimeRoot?: string) =>
+    runtimeRoot ? `${runtimeRoot}/codex/config.toml` : '/Users/tester/.codex/config.toml'
+  ),
+  getCodexAuthPath: vi.fn((runtimeRoot?: string) => (runtimeRoot ? `${runtimeRoot}/codex/auth.json` : '/Users/tester/.codex/auth.json')),
 }));
 
 vi.mock('../../src/process/task/AcpAgentManager', () => ({ default: class AcpAgentManager {} }));
@@ -303,6 +305,35 @@ describe('acpConversationBridge', () => {
           {
             kind: 'auth',
             path: '/Users/tester/.codex/auth.json',
+            exists: false,
+          },
+        ],
+      },
+    });
+
+    existsSyncSpy.mockRestore();
+  });
+
+  it('returns project runtime config entries when a workspace is provided', async () => {
+    const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
+      return targetPath === '/tmp/project/.contextgo/runtime/codex/config.toml';
+    });
+
+    const result = await handlers['getManagedRuntimeConfigLocation']({ backend: 'codex', workspace: '/tmp/project' });
+
+    expect(result).toEqual({
+      success: true,
+      data: {
+        backend: 'codex',
+        entries: [
+          {
+            kind: 'config',
+            path: '/tmp/project/.contextgo/runtime/codex/config.toml',
+            exists: true,
+          },
+          {
+            kind: 'auth',
+            path: '/tmp/project/.contextgo/runtime/codex/auth.json',
             exists: false,
           },
         ],

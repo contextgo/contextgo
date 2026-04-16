@@ -39,6 +39,8 @@ import { hasNativeSkillSupport } from '@process/utils/initAgent';
 import { prepareFirstMessageWithSkillsIndex } from '@process/task/agentUtils';
 import { extractTextFromMessage } from './MessageMiddleware';
 import { stripThinkTags } from './ThinkTagDetector';
+import { getProjectRuntimeRoot } from '@process/services/runtime/ProjectRuntimePaths';
+import { getProjectRuntimeEnv } from '@process/utils/shellEnv';
 
 interface AcpAgentManagerData {
   workspace?: string;
@@ -256,6 +258,11 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
       let customArgs: string[] | undefined;
       let customEnv: Record<string, string> | undefined;
       let yoloMode: boolean | undefined;
+      const runtimeRoot = getProjectRuntimeRoot(data.workspace);
+      const runtimeEnv = getProjectRuntimeEnv({
+        workspace: data.workspace,
+        runtimeRoot,
+      });
 
       // 处理自定义后端：优先读 acp.customAgents；若未命中则尝试扩展贡献的 adapter
       // Handle custom backend: prefer acp.customAgents; fallback to extension-contributed adapters
@@ -295,7 +302,10 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
           // and lost npx package arguments when acpArgs was also set.
           cliPath = customAgentConfig.defaultCliPath.trim();
           customArgs = customAgentConfig.acpArgs;
-          customEnv = customAgentConfig.env;
+          customEnv = {
+            ...runtimeEnv,
+            ...(customAgentConfig.env || {}),
+          };
         }
       } else if (data.backend !== 'custom') {
         // Handle built-in backends: read from acp.config
@@ -340,6 +350,8 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         if (!cliPath && backendConfig?.cliCommand) {
           cliPath = backendConfig.cliCommand;
         }
+
+        customEnv = runtimeEnv;
       } else {
         // backend === 'custom' but no customAgentId - this is an invalid state
         // 自定义后端但缺少 customAgentId - 这是无效状态
@@ -355,6 +367,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         customEnv: customEnv,
         extra: {
           workspace: data.workspace,
+          runtimeRoot,
           backend: data.backend,
           cliPath: cliPath,
           customWorkspace: data.customWorkspace,
