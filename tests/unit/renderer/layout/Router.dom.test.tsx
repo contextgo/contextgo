@@ -234,8 +234,12 @@ describe('Router route switching', () => {
         capabilities: ['chat', 'preview', 'workspace', 'browser'],
         shellContract: {
           shellStyle: 'conversation',
-          titlebarSlot: 'conversation-primary',
-          toolbarSlot: 'conversation-toolbar',
+          titlebar: {
+            primarySlotId: 'app-titlebar-chat-slot',
+          },
+          toolbar: {
+            slotId: 'app-titlebar-toolbar-slot',
+          },
         },
       },
     });

@@ -24,6 +24,7 @@ import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useConversationShortcuts } from '@renderer/hooks/ui/useConversationShortcuts';
 import { isElectronDesktop, isMobileShellWebView } from '@renderer/utils/platform';
 import { computeCssSyncDecision, resolveCssByActiveTheme } from '@renderer/utils/theme/themeCssSync';
+import { getWorkbenchDefinitionForPath } from '@renderer/pages/WorkbenchHost/definitions';
 import '@renderer/styles/layout.css';
 
 const UpdateModal = React.lazy(() => import('@/renderer/components/settings/UpdateModal'));
@@ -163,6 +164,7 @@ const Layout: React.FC<{
   const isConversationDetailRoute = location.pathname.startsWith('/conversation/');
   const isMobileShellRuntime = !isElectronDesktop() && isMobileShellWebView();
   const workspaceAvailable = isConversationDetailRoute;
+  const activeWorkbenchDefinition = useMemo(() => getWorkbenchDefinitionForPath(location.pathname), [location.pathname]);
   const mobileTopChromeMode = useMemo(() => resolveMobileTopChromeMode(location.pathname), [location.pathname]);
   const collapsedRef = useRef(collapsed);
   const lastCssRef = useRef('');
@@ -620,6 +622,7 @@ const Layout: React.FC<{
           isMobile,
           siderCollapsed: collapsed,
           setSiderCollapsed: setCollapsed,
+          activeWorkbenchDefinition,
         }}
       >
         <div
