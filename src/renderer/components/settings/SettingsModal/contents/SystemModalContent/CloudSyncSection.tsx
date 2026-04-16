@@ -9,7 +9,7 @@ import InfermeshLogo from '@/renderer/assets/logos/brand/infermesh.png';
 import type { CloudAuthProviderId, CloudObsidianVaultBinding, CloudStatus } from '@/common/types/cloud';
 import { Alert, Avatar, Button, Message, Space, Spin, Tag, Typography } from '@arco-design/web-react';
 import { useSelectedSpace } from '@/renderer/hooks/context/useSelectedSpace';
-import { CheckOne, LinkCloud, Right } from '@icon-park/react';
+import { CheckOne, LinkCloud } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ObsidianSyncPanel from './ObsidianSyncPanel';

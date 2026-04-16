@@ -278,8 +278,6 @@ const OFFICIAL_REMOTE_READY_TIMEOUT_MS = 8_000;
 const OFFICIAL_REMOTE_READY_POLL_MS = 250;
 const OFFICIAL_REMOTE_DEMAND = 'official-remote';
 
-const isCloudRequestError = (error: unknown): error is CloudRequestError => error instanceof CloudRequestError;
-
 function sameUser(left?: CloudUser | null, right?: CloudUser | null): boolean {
   if (!left || !right) {
     return false;
@@ -604,6 +602,7 @@ export class CloudService {
     const candidateBaseUrls = Array.from(new Set([CLOUD_API_BASE_URL, CLOUD_AUTH_BASE_URL]));
     let lastError: Error | null = null;
 
+    /* eslint-disable no-await-in-loop -- Base URLs are tried sequentially as an ordered fallback. */
     for (const baseUrl of candidateBaseUrls) {
       try {
         const response = await authSession.fetch(`${baseUrl}/api/remote/devices`, {
@@ -628,6 +627,7 @@ export class CloudService {
         lastError = error instanceof Error ? error : new Error(String(error));
       }
     }
+    /* eslint-enable no-await-in-loop */
 
     throw lastError ?? new Error('Remote device list is unavailable');
   }
@@ -1219,6 +1219,7 @@ export class CloudService {
     const deadline = Date.now() + OFFICIAL_REMOTE_READY_TIMEOUT_MS;
     let lastStatus = await this.getStatus();
 
+    /* eslint-disable no-await-in-loop -- Official Remote readiness intentionally polls until timeout or success. */
     while (Date.now() < deadline) {
       if (isHostRuntimeOfficialRemoteReady(lastStatus)) {
         return lastStatus;
@@ -1231,6 +1232,7 @@ export class CloudService {
       await new Promise((resolve) => setTimeout(resolve, OFFICIAL_REMOTE_READY_POLL_MS));
       lastStatus = await this.getStatus();
     }
+    /* eslint-enable no-await-in-loop */
 
     return lastStatus;
   }
