@@ -74,7 +74,7 @@ interface ValidationStrategy {
 }
 
 type ResolvedRequestAuth = {
-  source: 'local' | 'cloud';
+  source: 'host-session' | 'cloud';
   user: TokenPayload;
   cloudUser?: CloudUser;
 };
@@ -91,7 +91,7 @@ async function resolveLocalRequestAuth(token: string): Promise<ResolvedRequestAu
   }
 
   return {
-    source: 'local',
+    source: 'host-session',
     user: {
       userId: user.id,
       username: user.username,

@@ -684,6 +684,42 @@ describe('CloudService desktop loopback login', () => {
     });
   });
 
+  it('projects headless-host mode and non-desktop client support in webui mode', async () => {
+    const originalArgv = [...process.argv];
+    process.argv = [...originalArgv, '--webui'];
+
+    try {
+      Object.assign(officialRemoteTunnelState, {
+        desired: true,
+        running: true,
+        browserEntryReady: true,
+        needsAttention: false,
+      });
+      processConfigState.set('cloud.user', fetchSessionUserResponse.user);
+      processConfigState.set('cloud.device', {
+        id: 'device-1',
+        userId: 'user-1',
+        deviceName: 'ContextGo on server-host',
+        platform: 'linux',
+        status: 'active',
+        createdAt: '2026-04-01T00:00:00Z',
+        updatedAt: '2026-04-01T00:00:00Z',
+      });
+      processConfigState.set('cloud.deviceToken', 'ctxdev_token');
+
+      const cloudService = await importCloudService();
+      const status = await cloudService.getStatus();
+
+      expect(status.hostRuntime).toMatchObject({
+        mode: 'headless-host',
+        platform: 'linux',
+        supportedClients: ['mobile-client', 'browser-client'],
+      });
+    } finally {
+      process.argv = originalArgv;
+    }
+  });
+
   it('opens browser login with loopback callback and consumes returned code', async () => {
     const cloudService = await importCloudService();
     let openedUrl = '';

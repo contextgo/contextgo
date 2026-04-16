@@ -9,6 +9,8 @@ const translations: Record<string, string> = {
   'login.pageTitle': 'ContextGo - Sign In',
   'login.brand': 'ContextGo',
   'login.subtitle': 'Welcome back, please sign in to your account',
+  'login.recoverySubtitle':
+    'This sign-in page is a local recovery path for the host. Official Remote remains the primary remote entry.',
   'login.username': 'Username',
   'login.usernamePlaceholder': 'Enter your username',
   'login.password': 'Password',
@@ -112,6 +114,33 @@ describe('LoginPage', () => {
       credentials: 'include',
       signal: expect.any(AbortSignal),
     });
+  });
+
+  it('shows the local recovery subtitle on the host login path', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          providers: [],
+        }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: LoginPage } = await import('../../../src/renderer/pages/login');
+    render(<LoginPage />);
+
+    expect(
+      await screen.findByText(
+        'This sign-in page is a local recovery path for the host. Official Remote remains the primary remote entry.'
+      )
+    ).toBeInTheDocument();
   });
 
   it('shows OAuth callback errors returned from the query string', async () => {

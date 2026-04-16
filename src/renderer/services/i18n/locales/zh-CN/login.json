@@ -2,6 +2,7 @@
   "pageTitle": "ContextGo - 登录",
   "brand": "ContextGo",
   "subtitle": "欢迎回来，请登录您的账户",
+  "recoverySubtitle": "这个登录页是主机本地恢复路径。远程访问的主入口仍然是 Official Remote。",
   "username": "用户名",
   "usernamePlaceholder": "请输入用户名",
   "password": "密码",

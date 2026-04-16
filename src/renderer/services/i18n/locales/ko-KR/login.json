@@ -2,6 +2,7 @@
   "pageTitle": "ContextGo - 로그인",
   "brand": "ContextGo",
   "subtitle": "다시 오신 것을 환영합니다. 계정에 로그인하세요",
+  "recoverySubtitle": "이 로그인 화면은 호스트의 로컬 복구 경로입니다. 원격 접근의 기본 진입점은 계속 Official Remote입니다.",
   "username": "사용자 이름",
   "usernamePlaceholder": "사용자 이름을 입력하세요",
   "password": "비밀번호",
