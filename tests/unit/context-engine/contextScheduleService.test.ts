@@ -338,6 +338,22 @@ describe('ContextScheduleService', () => {
     );
   });
 
+  it('keeps the richer space curator trigger copy for timer and manual distillation jobs', async () => {
+    const timerTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find(
+      (trigger) => trigger.id === 'timer.space-memory-distillation'
+    );
+    const manualTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find(
+      (trigger) => trigger.id === 'manual.space-memory-distillation'
+    );
+
+    expect(timerTrigger?.defaultReason).toBe(
+      'Periodically distill shared space memory and profile signals from recent project activity.'
+    );
+    expect(manualTrigger?.defaultReason).toBe(
+      'Manually distill shared space memory and profile signals from recent project activity.'
+    );
+  });
+
   it('hydrates workspace schedule declarations into the runtime store when listing conversation schedules', async () => {
     const { service, workspaceConfigs, runtimeStates } = createService();
     workspaceConfigs.set('/tmp/workspace', [

@@ -29,6 +29,13 @@
 - timer/manual project capability curation trigger 文案已切到 docs + proposals 语义
 - `Space Curator` 的 skill 装配、connector digestion 与 runtime console 仍待后续实现
 
+## Phase 3 状态
+
+- `Space Curator` job 已携带 `space_digest / profile_memory` artifact targets
+- `Space Curator` 已开始写出 space digest 与 profile-memory artifact
+- `connector_digest` 已开始输出 source-aware detail
+- runtime console 与完整的 temporal expiration policy 仍待后续实现
+
 ## 架构前提
 
 本文默认以下架构已经冻结：

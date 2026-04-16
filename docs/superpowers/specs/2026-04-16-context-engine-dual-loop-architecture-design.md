@@ -28,6 +28,12 @@
 - append-first 的 `AGENTS.md` / skill proposal artifacts 已开始写入 project `_context/proposals/`
 - direct source-file mutation 仍然不在当前范围内
 
+## Phase 3 状态
+
+- `Space Curator` 的 digest 与 profile-memory artifact 已进入实现
+- connector digest 已开始携带 source-aware detail
+- runtime console 与更完整的 temporal expiration automation 仍属于后续阶段
+
 ## 产品定位
 
 ContextGo 是一个 desktop-first、local-first、multi-agent 的工作系统。
