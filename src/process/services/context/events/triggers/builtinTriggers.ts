@@ -44,6 +44,18 @@ export const CONTEXT_ENGINE_BUILTIN_TRIGGERS: readonly ContextTriggerSpec[] = [
     defaultReason: 'Capture interruption signals before the session context drifts.',
   },
   {
+    id: 'lifecycle.delegation-completed',
+    kind: 'lifecycle',
+    source: 'lifecycle',
+    builder: 'session_compaction',
+    jobType: 'session_compaction',
+    scopeKind: 'conversation',
+    event: 'delegation.completed',
+    label: 'Delegation completed',
+    defaultPriority: 'medium',
+    defaultReason: 'Capture delegated execution evidence before session context drifts.',
+  },
+  {
     id: 'derived.project-promotion',
     kind: 'derived',
     source: 'derived',

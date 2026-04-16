@@ -53,6 +53,14 @@ export type ContextJobTrigger = {
   label?: string;
 };
 
+export type GovernanceLifecycleEnvelope = {
+  spaceId: string;
+  threadId: string;
+  projectSlug?: string;
+  occurredAt: string;
+  sourceSummary?: string;
+};
+
 export type SessionSignalKind =
   | 'user_interrupt'
   | 'repeated_request'

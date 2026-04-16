@@ -40,6 +40,7 @@ export type ContextTriggerDispatchInput = {
   projectSlug?: string;
   firedAt?: string;
   reason?: string;
+  sourceSummary?: string;
   priority?: ContextJobPriority;
   payload?: Readonly<Record<string, unknown>>;
   snapshot?: SessionCompactionSnapshot;
