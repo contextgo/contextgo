@@ -345,6 +345,7 @@ const SystemRunsPage: React.FC = () => {
                       })}
                     </div>
                   ) : null}
+                  {run.source ? <div className={styles.systemRunsDetailText}>{`Source: ${run.source}`}</div> : null}
                   {run.governanceIdentity ? (
                     <div className={styles.systemRunsDetailText}>{`Governance: ${run.governanceIdentity}`}</div>
                   ) : null}
@@ -352,6 +353,9 @@ const SystemRunsPage: React.FC = () => {
                     <div
                       className={styles.systemRunsDetailText}
                     >{`Artifacts: ${formatArtifactTargets(run.artifactTargets)}`}</div>
+                  ) : null}
+                  {run.latestArtifactSummary ? (
+                    <div className={styles.systemRunsDetailText}>{`Artifact summary: ${run.latestArtifactSummary}`}</div>
                   ) : null}
                   {run.artifactTitle ? (
                     <div className={styles.systemRunsDetailText}>
