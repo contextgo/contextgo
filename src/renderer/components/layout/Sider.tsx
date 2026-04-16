@@ -5,7 +5,8 @@ import type {
   CloudRemoteDevicesPayload,
   CloudStatus,
 } from '@/common/types/cloud';
-import type { SpaceProviderRef, SpaceVaultProviderRef } from '@/common/config/storage';
+import type { SpaceProviderRef } from '@/common/config/storage';
+import { buildObsidianVaultOpenIntent } from '@/common/utils/obsidianVaultOpen';
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { changeLanguage } from '@/renderer/services/i18n';
 import type { Theme } from '@/renderer/hooks/system/useTheme';
@@ -50,7 +51,17 @@ import { useConversationAgents } from '@renderer/pages/conversation/hooks/useCon
 import { useConversationTabs } from '@renderer/pages/conversation/hooks/ConversationTabsContext';
 import CreateGroupModal from '@renderer/pages/conversation/platforms/group/CreateGroupModal';
 import { emitter } from '@renderer/utils/emitter';
-import { isElectronDesktop, isMacOS, isMobileShellWebView, openExternalUrl } from '@renderer/utils/platform';
+import {
+  getAndroidObsidianVaultSetupState,
+  isAndroidMobileShell,
+  isElectronDesktop,
+  isMacOS,
+  isMobileShellWebView,
+  openExternalUrl,
+  registerAndBootstrapAndroidObsidianReplica,
+  requestAndroidObsidianVaultSetup,
+  updateAndroidObsidianVaultSetupState,
+} from '@renderer/utils/platform';
 import {
   buildOfficialRemoteDevicesRoute,
   getCurrentHostRuntimeStatusKey,
@@ -140,16 +151,6 @@ const resolveDevicePlatformVisual = (platform?: string): DevicePlatformVisual | 
   return null;
 };
 
-const isObsidianVaultProviderRef = (providerRef?: SpaceProviderRef): providerRef is SpaceVaultProviderRef => {
-  return providerRef != null && 'kind' in providerRef && providerRef.kind === 'obsidian-vault';
-};
-
-const buildObsidianVaultUri = (providerRef: SpaceVaultProviderRef): string => {
-  const encodedVaultName = encodeURIComponent(providerRef.vaultName);
-  const encodedFile = providerRef.landingNotePath ? `&file=${encodeURIComponent(providerRef.landingNotePath)}` : '';
-  return `obsidian://open?vault=${encodedVaultName}${encodedFile}`;
-};
-
 const isOpenableRemoteDevice = (device: CloudRemoteDevice): boolean => {
   return (
     device.status === 'active' &&
@@ -158,6 +159,25 @@ const isOpenableRemoteDevice = (device: CloudRemoteDevice): boolean => {
   );
 };
 
+const buildSuggestedSpaceFolderName = (spaceName: string): string => {
+  const normalized = spaceName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return normalized || 'contextgo-space';
+};
+const shouldEnsureCurrentCloudDevice = (cloudStatus: CloudStatus | null): boolean => {
+  if (!cloudStatus?.authenticated || !cloudStatus.device || !cloudStatus.deviceTokenAvailable) {
+    return false;
+  }
+
+  if (cloudStatus.officialRemote?.needsAttention === true) {
+    return false;
+  }
+
+  return !isCurrentHostRuntimeReady(cloudStatus);
+};
 const getRemoteDeviceStatusKey = (
   device: CloudRemoteDevice,
   cloudStatus: CloudStatus | null,
@@ -367,8 +387,101 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         await selectSpace(targetSpace.id);
       }
 
-      if (isMobileShellWebView() && isObsidianVaultProviderRef(targetSpace.providerRef)) {
-        await openExternalUrl(buildObsidianVaultUri(targetSpace.providerRef));
+      const vaultOpenIntent = buildObsidianVaultOpenIntent({
+        isMobileShell: isMobileShellWebView(),
+        providerRef: targetSpace.providerRef,
+        androidSetupState:
+          isAndroidMobileShell() && targetSpace.id ? getAndroidObsidianVaultSetupState(targetSpace.id) : null,
+      });
+      if (isMobileShellWebView()) {
+        if (vaultOpenIntent.readiness === 'needs-bind-in-obsidian' && isAndroidMobileShell()) {
+          const setupResult = await requestAndroidObsidianVaultSetup({
+            spaceId: targetSpace.id,
+            spaceName: targetSpace.name,
+            suggestedFolderName: buildSuggestedSpaceFolderName(targetSpace.name),
+            vaultBindingId: `vault_${targetSpace.id}`,
+            landingNotePath: 'Home.md',
+          });
+
+          if (setupResult.status === 'prepared-directory') {
+            let latestCloudStatus = cloudStatus;
+            if (!latestCloudStatus) {
+              const cloudStatusResult = await ipcBridge.cloud.getStatus.invoke();
+              latestCloudStatus = cloudStatusResult.success ? cloudStatusResult.data : null;
+            }
+            const apiBaseUrl = latestCloudStatus?.apiBaseUrl || 'https://api.contextgo.io';
+            const registeredState = await registerAndBootstrapAndroidObsidianReplica({
+              spaceId: targetSpace.id,
+              spaceName: targetSpace.name,
+              suggestedFolderName: buildSuggestedSpaceFolderName(targetSpace.name),
+              vaultBindingId: `vault_${targetSpace.id}`,
+              landingNotePath: 'Home.md',
+              apiBaseUrl,
+              rootTreeUri: setupResult.rootTreeUri,
+              spaceDirectoryUri: setupResult.spaceDirectoryUri,
+            });
+            if (registeredState.status !== 'registered-mobile-replica') {
+              throw new Error(
+                registeredState.status === 'error'
+                  ? registeredState.message || t('guid.vault.openFailed')
+                  : t('guid.vault.openFailed')
+              );
+            }
+
+            const syncStatus = await ipcBridge.cloud.getObsidianSyncStatus.invoke({ spaceId: targetSpace.id });
+            const matchingReplica = syncStatus.success
+              ? syncStatus.data?.replicas.find((replica) => replica.replicaId === registeredState.replicaId)
+              : null;
+
+            await updateAndroidObsidianVaultSetupState({
+              status: 'registered-mobile-replica',
+              spaceId: registeredState.spaceId,
+              vaultName: registeredState.vaultName,
+              rootTreeUri: registeredState.rootTreeUri,
+              spaceDirectoryUri: registeredState.spaceDirectoryUri,
+              vaultBindingId: registeredState.vaultBindingId,
+              replicaId: registeredState.replicaId,
+              landingNotePath: registeredState.landingNotePath,
+              healthStatus: matchingReplica?.healthStatus ?? registeredState.healthStatus,
+              lastSyncedAt: matchingReplica?.lastSyncedAt ?? registeredState.lastSyncedAt,
+            });
+            if (vaultOpenIntent.target) {
+              await openExternalUrl(vaultOpenIntent.target);
+            }
+            Message.success(t('guid.vault.androidReplicaRegistered'));
+            return;
+          }
+
+          if (setupResult.status === 'cancelled') {
+            Message.warning(t('guid.vault.androidSetupCancelled'));
+            return;
+          }
+
+          if (setupResult.status === 'error') {
+            throw new Error(setupResult.message || t('guid.vault.openFailed'));
+          }
+
+          if (vaultOpenIntent.target) {
+            await openExternalUrl(vaultOpenIntent.target);
+          }
+          Message.warning(t('guid.vault.mobileSetupRequired'));
+          return;
+        }
+
+        if (vaultOpenIntent.target) {
+          await openExternalUrl(vaultOpenIntent.target);
+        }
+        if (vaultOpenIntent.readiness === 'registered-mobile-replica') {
+          Message.success(t('guid.vault.androidReplicaRegistered'));
+          return;
+        }
+        if (vaultOpenIntent.readiness === 'prepared-directory') {
+          Message.success(t('guid.vault.androidSetupPrepared'));
+          return;
+        }
+        if (vaultOpenIntent.readiness === 'needs-bind-in-obsidian') {
+          Message.warning(t('guid.vault.mobileSetupRequired'));
+        }
         return;
       }
 
@@ -886,15 +999,30 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     },
   };
   const selectedSpaceName = selectedSpace?.name || (spacesLoading ? t('guid.space.loading') : t('guid.space.empty'));
+  const androidVaultSetupState =
+    isAndroidMobileShell() && selectedSpace?.id ? getAndroidObsidianVaultSetupState(selectedSpace.id) : null;
+  const vaultOpenIntent = buildObsidianVaultOpenIntent({
+    isMobileShell: isMobileShellWebView(),
+    providerRef: selectedSpace?.providerRef,
+    androidSetupState: androidVaultSetupState,
+  });
   const selectedSpaceMeta = spacesLoading
     ? t('guid.space.loading')
-    : selectedSpace
-      ? t('guid.space.selectorTitle')
-      : t('guid.space.empty');
+    : vaultOpenIntent.readinessKey
+      ? t(vaultOpenIntent.readinessKey)
+      : selectedSpace
+        ? t('guid.space.selectorTitle')
+        : t('guid.space.empty');
   const spaceMenu = (
     <Menu
       className='sider-user-menu'
       onClickMenuItem={(key) => {
+        if (key === 'space:open-vault') {
+          setSpaceMenuVisible(false);
+          void handleOpenSpaceVault();
+          return;
+        }
+
         if (key === 'space:create') {
           setSpaceMenuVisible(false);
           handleOpenCreateSpaceModal();
@@ -907,6 +1035,16 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         }
       }}
     >
+      <Menu.Item key='space:open-vault'>
+        <div className='sider-user-menu__row'>
+          <span className='sider-user-menu__icon'>
+            <FolderOpen theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />
+          </span>
+          <span className='sider-user-menu__row-text'>
+            {openingSpaceVault ? t('common.processing') : t(vaultOpenIntent.actionKey)}
+          </span>
+        </div>
+      </Menu.Item>
       <Menu.Item key='space:create'>
         <div className='sider-user-menu__row'>
           <span className='sider-user-menu__icon'>

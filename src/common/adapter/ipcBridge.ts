@@ -240,6 +240,27 @@ export const application = {
 
 export const cloud = {
   getStatus: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.get-status'),
+  getObsidianSyncStatus: bridge.buildProvider<IBridgeResponse<CloudObsidianVaultBinding | null>, { spaceId: string }>(
+    'cloud.get-obsidian-sync-status'
+  ),
+  registerObsidianReplicaDraft: bridge.buildProvider<
+    IBridgeResponse<{
+      vaultBindingId: string;
+      replicaId: string;
+      checkpoint: {
+        appliedCursor: number;
+      };
+    }>,
+    {
+      spaceId: string;
+      platform: 'mobile' | 'desktop';
+      vaultFingerprint: string;
+      localReadyState?: 'prepared-directory' | 'unprepared';
+      rootTreeUri?: string;
+      localDirectoryUri?: string;
+      landingNotePath?: string;
+    }
+  >('cloud.register-obsidian-replica-draft'),
   startLogin: bridge.buildProvider<IBridgeResponse<CloudStatus>, { provider: CloudAuthProviderId }>(
     'cloud.start-login'
   ),
@@ -248,9 +269,6 @@ export const cloud = {
   ),
   listRemoteDevices: bridge.buildProvider<IBridgeResponse<CloudRemoteDevicesPayload>, void>(
     'cloud.list-remote-devices'
-  ),
-  getObsidianSyncStatus: bridge.buildProvider<IBridgeResponse<CloudObsidianVaultBinding | null>, { spaceId: string }>(
-    'cloud.get-obsidian-sync-status'
   ),
   openInfermesh: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.open-infermesh'),
   logout: bridge.buildProvider<IBridgeResponse<CloudStatus>, void>('cloud.logout'),

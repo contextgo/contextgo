@@ -51,10 +51,20 @@
     "title": "Space Vault Aç",
     "description": "Seçili alan için ContextGo tarafından yönetilen Obsidian vaultunu aç.",
     "affordance": "Vault Aç",
+    "mobileAffordance": "Obsidian'da Aç",
+    "mobileSetupAffordance": "Obsidian'da Kur",
+    "mobileStatusReady": "Bu cihazda hazır",
+    "mobileStatusNeedsSetup": "Obsidian içinde bir kez bağlanması gerekiyor",
+    "androidStatusPrepared": "Android yerel Vault klasörü hazır",
+    "androidStatusRegistered": "Android mobil replica kaydedildi",
+    "androidSetupPrepared": "Android için yerel Vault klasörü hazırlandı. Bağlamayı Obsidian içinde tamamlayın.",
+    "androidReplicaRegistered": "Android mobil replica ContextGo Cloud'a kaydedildi.",
+    "androidSetupCancelled": "Android Vault kurulumu iptal edildi.",
     "statusReady": "Obsidian veya Finder’da aç",
     "openSuccess": "Space vault açıldı.",
     "openFailed": "Space vault açılamadı.",
-    "obsidianMissing": "Obsidian algılanmadı. Vault klasoru ve indirme sayfası sizin için açıldı."
+    "obsidianMissing": "Obsidian algılanmadı. Vault klasoru ve indirme sayfası sizin için açıldı.",
+    "mobileSetupRequired": "Önce bu cihazdaki Obsidian içinde bu Space için yerel bağlamayı tamamlayın."
   },
   "space": {
     "loading": "Space'ler yükleniyor...",

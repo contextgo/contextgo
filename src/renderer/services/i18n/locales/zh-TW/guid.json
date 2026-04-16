@@ -51,10 +51,20 @@
     "title": "打開空間 Vault",
     "description": "打開 ContextGo 為目前選中空間管理的 Obsidian Vault。",
     "affordance": "打開 Vault",
+    "mobileAffordance": "在 Obsidian 中打開",
+    "mobileSetupAffordance": "在 Obsidian 中完成綁定",
+    "mobileStatusReady": "目前裝置已就緒",
+    "mobileStatusNeedsSetup": "需要在 Obsidian 中完成一次綁定",
+    "androidStatusPrepared": "Android 本地 Vault 目錄已準備",
+    "androidStatusRegistered": "Android 行動副本已註冊",
+    "androidSetupPrepared": "已為 Android 裝置準備本地 Vault 目錄，請繼續在 Obsidian 中完成綁定。",
+    "androidReplicaRegistered": "Android 行動副本已註冊到 ContextGo Cloud。",
+    "androidSetupCancelled": "已取消 Android Vault 目錄準備。",
     "statusReady": "在 Obsidian 或 Finder 中打開",
     "openSuccess": "已打開空間 Vault。",
     "openFailed": "打開空間 Vault 失敗。",
-    "obsidianMissing": "未偵測到 Obsidian，已打開 Vault 資料夾，並在瀏覽器中開啟下載頁。"
+    "obsidianMissing": "未偵測到 Obsidian，已打開 Vault 資料夾，並在瀏覽器中開啟下載頁。",
+    "mobileSetupRequired": "請先在目前裝置上的 Obsidian 中完成這份 Space 的本地綁定。"
   },
   "space": {
     "loading": "正在載入空間...",
