@@ -4,17 +4,19 @@ import type { ProjectRuntimePolicy } from '@/common/types/projectRuntime';
 
 describe('ProjectRuntimeService', () => {
   it('returns project-managed model center state without reading global runtime files', async () => {
-    const readPolicy = vi.fn(async (): Promise<ProjectRuntimePolicy> => ({
-      version: 1,
-      mode: 'project_managed',
-      resolvedSource: 'model_center',
-      providerProtocol: 'openai',
-      baseUrl: 'https://model-center.internal/v1',
-      apiKeyRef: 'project-secret:runtime-primary',
-      defaultModel: 'gpt-5.4',
-      importedFrom: null,
-      lastImportedAt: null,
-    }));
+    const readPolicy = vi.fn(
+      async (): Promise<ProjectRuntimePolicy> => ({
+        version: 1,
+        mode: 'project_managed',
+        resolvedSource: 'model_center',
+        providerProtocol: 'openai',
+        baseUrl: 'https://model-center.internal/v1',
+        apiKeyRef: 'project-secret:runtime-primary',
+        defaultModel: 'gpt-5.4',
+        importedFrom: null,
+        lastImportedAt: null,
+      })
+    );
     const importLocalRuntime = vi.fn();
     const service = new ProjectRuntimeService({
       readPolicy,
@@ -91,5 +93,28 @@ describe('ProjectRuntimeService', () => {
     expect(writePolicy).toHaveBeenCalledTimes(1);
     expect(resolved.effectiveSource).toBe('model_center');
     expect(resolved.policy.resolvedSource).toBe('model_center');
+  });
+
+  it('creates a default auto policy when the project has no runtime policy yet', async () => {
+    const writePolicy = vi.fn();
+    const service = new ProjectRuntimeService({
+      readPolicy: async () => null,
+      writePolicy,
+      importLocalRuntime: vi.fn(),
+    });
+
+    const resolved = await service.resolve('/workspace/app');
+
+    expect(writePolicy).toHaveBeenCalledWith(
+      '/workspace/app',
+      expect.objectContaining({
+        version: 1,
+        mode: 'auto',
+        resolvedSource: 'model_center',
+        providerProtocol: 'openai',
+      })
+    );
+    expect(resolved.policy.mode).toBe('auto');
+    expect(resolved.effectiveSource).toBe('model_center');
   });
 });

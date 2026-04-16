@@ -607,7 +607,8 @@ describe('initAgent — skill support', () => {
       });
 
       expect(copyFileCalls).toContainEqual({
-        source: '/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills/test-driven-development/SKILL.md',
+        source:
+          '/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills/test-driven-development/SKILL.md',
         target: '/tmp/workspace/.contextgo/skills/test-driven-development/SKILL.md',
       });
     });
@@ -772,6 +773,22 @@ describe('initAgent — skill support', () => {
         target: '/tmp/workspace/.claude/skills/pptx',
         type: 'junction',
       });
+    });
+
+    it('writes a default project runtime policy during workspace bootstrap', async () => {
+      statResults['/mock/user/skills/pptx'] = true;
+      fileContents['/mock/user/skills/pptx/SKILL.md'] = '---\nname: pptx\ndescription: mock skill\n---\n';
+
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'codex',
+        enabledSkills: ['pptx'],
+      });
+
+      const runtimePolicyCall = writeFileCalls.find(
+        (call) => call.path === '/tmp/workspace/.contextgo/runtime/runtime.json'
+      );
+      expect(runtimePolicyCall).toBeDefined();
+      expect(runtimePolicyCall?.content).toContain('"mode": "auto"');
     });
 
     it('projects AGENTS.md into CLAUDE.md for Claude workspaces', async () => {
