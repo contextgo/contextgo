@@ -169,6 +169,52 @@ const authSessionFetch = vi.fn(async (url: string, init?: RequestInit) => {
     );
   }
 
+  if (url.includes('/api/obsidian-sync/spaces/')) {
+    return new Response(
+      JSON.stringify({
+        success: true,
+        binding: {
+          vaultBindingId: 'vault_space-1',
+          spaceId: 'space-1',
+          riskLevel: 'normal',
+          replicas: [
+            {
+              replicaId: 'android_replica_1',
+              platform: 'mobile',
+              healthStatus: 'warn',
+              localReadyState: 'prepared-directory',
+              rootTreeUri: 'content://root/contextgo',
+              localDirectoryUri: 'content://space/team-space',
+              landingNotePath: 'Home.md',
+              lastSyncedAt: '2026-04-16T00:00:00Z',
+            },
+          ],
+        },
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
+  if (url.endsWith('/api/obsidian-sync/replicas/register')) {
+    return new Response(
+      JSON.stringify({
+        success: true,
+        vaultBindingId: 'vault_space-1',
+        replicaId: 'android_replica_1',
+        checkpoint: {
+          appliedCursor: 0,
+        },
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
   throw new Error(`Unexpected fetch URL: ${url} ${init?.method ?? 'GET'}`);
 });
 
@@ -716,6 +762,50 @@ describe('CloudService desktop loopback login', () => {
     );
     expect(payload.selection.preferredDeviceId).toBe('device-1');
     expect(payload.devices[0]?.deviceName).toBe('ContextGo on dev-host');
+  });
+
+  it('registers an obsidian mobile replica draft through the authenticated cloud session', async () => {
+    const cloudService = await importCloudService();
+
+    processConfigState.set('cloud.deviceToken', 'ctxdev_token');
+
+    const payload = await cloudService.registerObsidianReplicaDraft({
+      spaceId: 'space-1',
+      platform: 'mobile',
+      vaultFingerprint: 'content://space/team-space',
+      localReadyState: 'prepared-directory',
+      rootTreeUri: 'content://root/contextgo',
+      localDirectoryUri: 'content://space/team-space',
+      landingNotePath: 'Home.md',
+    });
+
+    expect(authSessionFetch).toHaveBeenCalledWith(
+      'https://api.contextgo.test/api/obsidian-sync/replicas/register',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer ctxdev_token' }),
+      })
+    );
+    expect(payload.replicaId).toBe('android_replica_1');
+    expect(payload.vaultBindingId).toBe('vault_space-1');
+  });
+
+  it('reads obsidian sync status through the authenticated cloud session', async () => {
+    const cloudService = await importCloudService();
+
+    processConfigState.set('cloud.deviceToken', 'ctxdev_token');
+
+    const payload = await cloudService.getObsidianSyncStatus('space-1');
+
+    expect(authSessionFetch).toHaveBeenCalledWith(
+      'https://api.contextgo.test/api/obsidian-sync/spaces/space-1',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({ Authorization: 'Bearer ctxdev_token' }),
+      })
+    );
+    expect(payload?.replicas[0]?.localReadyState).toBe('prepared-directory');
+    expect(payload?.replicas[0]?.localDirectoryUri).toBe('content://space/team-space');
   });
 
   it('normalizes sparse remote device payloads from the primary api origin', async () => {

@@ -51,10 +51,20 @@
     "title": "Open Space Vault",
     "description": "Open the ContextGo-managed Obsidian vault for the selected space.",
     "affordance": "Open Vault",
+    "mobileAffordance": "Open in Obsidian",
+    "mobileSetupAffordance": "Set Up in Obsidian",
+    "mobileStatusReady": "Ready on this device",
+    "mobileStatusNeedsSetup": "Needs one-time Obsidian bind",
+    "androidStatusPrepared": "Android vault folder prepared",
+    "androidStatusRegistered": "Android mobile replica registered",
+    "androidSetupPrepared": "Android vault folder prepared. Finish binding it in Obsidian.",
+    "androidReplicaRegistered": "Android mobile replica registered with ContextGo Cloud.",
+    "androidSetupCancelled": "Android vault setup was cancelled.",
     "statusReady": "Open in Obsidian or Finder",
     "openSuccess": "Space vault opened.",
     "openFailed": "Failed to open the space vault.",
-    "obsidianMissing": "Obsidian was not detected. The vault folder and download page have been opened for you."
+    "obsidianMissing": "Obsidian was not detected. The vault folder and download page have been opened for you.",
+    "mobileSetupRequired": "Finish binding this Space in Obsidian on the current device first."
   },
   "space": {
     "loading": "Loading spaces...",

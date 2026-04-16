@@ -76,6 +76,14 @@ type ObsidianSyncStatusResponsePayload = {
   binding?: CloudObsidianVaultBinding | null;
 };
 
+type ObsidianReplicaRegisterResponsePayload = {
+  success?: boolean;
+  vaultBindingId?: string;
+  replicaId?: string;
+  checkpoint?: {
+    appliedCursor?: number;
+  };
+};
 type DesktopLoginResultWaiter = {
   promise: Promise<DeepLinkPayload>;
   cancel: () => void;
@@ -693,6 +701,71 @@ export class CloudService {
     const handoffUrl = await this.createInfermeshHandoffUrl(deviceToken.trim());
     await shell.openExternal(handoffUrl);
     return status;
+  }
+
+  public async registerObsidianReplicaDraft(input: {
+    spaceId: string;
+    platform: 'desktop' | 'mobile';
+    vaultFingerprint: string;
+    localReadyState?: 'prepared-directory' | 'unprepared';
+    rootTreeUri?: string;
+    localDirectoryUri?: string;
+    landingNotePath?: string;
+  }): Promise<{
+    vaultBindingId: string;
+    replicaId: string;
+    checkpoint: {
+      appliedCursor: number;
+    };
+  }> {
+    const authSession = await this.getAuthSession();
+    const deviceToken = await ProcessConfig.get(CLOUD_DEVICE_TOKEN_KEY);
+    if (typeof deviceToken !== 'string' || !deviceToken.trim()) {
+      throw new Error('Cloud device token is unavailable for Obsidian replica registration');
+    }
+
+    const response = await authSession.fetch(`${CLOUD_API_BASE_URL}/api/obsidian-sync/replicas/register`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${deviceToken.trim()}`,
+      },
+      body: JSON.stringify({
+        spaceId: input.spaceId,
+        platform: input.platform,
+        vaultFingerprint: input.vaultFingerprint,
+        localReadyState: input.localReadyState,
+        rootTreeUri: input.rootTreeUri,
+        localDirectoryUri: input.localDirectoryUri,
+        landingNotePath: input.landingNotePath,
+      }),
+    });
+
+    if (!response.ok) {
+      throw await readErrorResponse(response);
+    }
+
+    const payload = await parseJsonResponse<ObsidianReplicaRegisterResponsePayload | Record<string, unknown>>(response);
+    const checkpoint = isRecord(payload?.checkpoint) ? payload.checkpoint : null;
+    if (
+      !payload ||
+      !('success' in payload) ||
+      payload.success !== true ||
+      typeof payload.vaultBindingId !== 'string' ||
+      typeof payload.replicaId !== 'string' ||
+      typeof checkpoint?.appliedCursor !== 'number'
+    ) {
+      throw new Error('Obsidian replica register returned an invalid payload');
+    }
+
+    return {
+      vaultBindingId: payload.vaultBindingId,
+      replicaId: payload.replicaId,
+      checkpoint: {
+        appliedCursor: checkpoint.appliedCursor,
+      },
+    };
   }
 
   public async logout(): Promise<CloudStatus> {

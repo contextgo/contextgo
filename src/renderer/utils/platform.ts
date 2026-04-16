@@ -49,6 +49,144 @@ export const isMobileShellWebView = (): boolean => {
   return typeof navigator !== 'undefined' && /ContextGoMobileShell/i.test(navigator.userAgent);
 };
 
+export const isAndroidMobileShell = (): boolean => {
+  return isMobileShellWebView() && typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+};
+
+export type AndroidObsidianVaultSetupState =
+  | {
+      status: 'unprepared';
+      spaceId: string;
+    }
+  | {
+      status: 'prepared-directory';
+      spaceId: string;
+      vaultName: string;
+      rootTreeUri: string;
+      spaceDirectoryUri: string;
+      vaultBindingId: string;
+      replicaId: string;
+      landingNotePath: string;
+      healthStatus?: 'ok' | 'warn' | 'error';
+      lastSyncedAt?: string;
+    }
+  | {
+      status: 'registered-mobile-replica';
+      spaceId: string;
+      vaultName: string;
+      rootTreeUri: string;
+      spaceDirectoryUri: string;
+      vaultBindingId: string;
+      replicaId: string;
+      landingNotePath: string;
+      healthStatus: 'ok' | 'warn' | 'error';
+      lastSyncedAt?: string;
+    };
+
+export type AndroidObsidianVaultSetupResult =
+  | AndroidObsidianVaultSetupState
+  | {
+      status: 'cancelled' | 'error';
+      spaceId: string;
+      message?: string;
+    };
+
+const ANDROID_OBSIDIAN_VAULT_SETUP_EVENT = 'contextgo:android-obsidian-vault-setup-result';
+
+type AndroidMobileShellBridge = {
+  notifyReady?: () => void;
+  getObsidianVaultSetupState?: (spaceId: string) => string;
+  requestObsidianVaultSetup?: (requestJson: string) => void;
+  updateObsidianVaultSetupState?: (stateJson: string) => void;
+  registerAndBootstrapObsidianReplica?: (requestJson: string) => void;
+};
+
+function getAndroidMobileShellBridge(): AndroidMobileShellBridge | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return (window as typeof window & { ContextGoMobileShell?: AndroidMobileShellBridge }).ContextGoMobileShell ?? null;
+}
+
+export const getAndroidObsidianVaultSetupState = (spaceId: string): AndroidObsidianVaultSetupState | null => {
+  const bridge = getAndroidMobileShellBridge();
+  const raw = bridge?.getObsidianVaultSetupState?.(spaceId);
+  if (!raw) {
+    return null;
+  }
+
+  return JSON.parse(raw) as AndroidObsidianVaultSetupState;
+};
+
+export const requestAndroidObsidianVaultSetup = async (input: {
+  spaceId: string;
+  spaceName: string;
+  suggestedFolderName: string;
+  vaultBindingId: string;
+  landingNotePath: string;
+}): Promise<AndroidObsidianVaultSetupResult> => {
+  const bridge = getAndroidMobileShellBridge();
+  if (!bridge?.requestObsidianVaultSetup) {
+    throw new Error('Android Obsidian vault setup bridge is unavailable.');
+  }
+
+  return new Promise<AndroidObsidianVaultSetupResult>((resolve) => {
+    const listener = (event: Event) => {
+      const customEvent = event as CustomEvent<AndroidObsidianVaultSetupResult>;
+      if (!customEvent.detail || customEvent.detail.spaceId !== input.spaceId) {
+        return;
+      }
+
+      window.removeEventListener(ANDROID_OBSIDIAN_VAULT_SETUP_EVENT, listener as EventListener);
+      resolve(customEvent.detail);
+    };
+
+    window.addEventListener(ANDROID_OBSIDIAN_VAULT_SETUP_EVENT, listener as EventListener);
+    bridge.requestObsidianVaultSetup(JSON.stringify(input));
+  });
+};
+
+export const updateAndroidObsidianVaultSetupState = async (state: AndroidObsidianVaultSetupState): Promise<void> => {
+  const bridge = getAndroidMobileShellBridge();
+  if (!bridge?.updateObsidianVaultSetupState) {
+    throw new Error('Android Obsidian vault setup update bridge is unavailable.');
+  }
+
+  bridge.updateObsidianVaultSetupState(JSON.stringify(state));
+};
+
+export const registerAndBootstrapAndroidObsidianReplica = async (input: {
+  spaceId: string;
+  spaceName: string;
+  suggestedFolderName: string;
+  vaultBindingId: string;
+  landingNotePath: string;
+  apiBaseUrl: string;
+  rootTreeUri: string;
+  spaceDirectoryUri: string;
+}): Promise<AndroidObsidianVaultSetupResult> => {
+  const bridge = getAndroidMobileShellBridge();
+  if (!bridge?.registerAndBootstrapObsidianReplica) {
+    throw new Error('Android Obsidian replica register bridge is unavailable.');
+  }
+
+  return new Promise<AndroidObsidianVaultSetupResult>((resolve) => {
+    const listener = (event: Event) => {
+      const customEvent = event as CustomEvent<AndroidObsidianVaultSetupResult>;
+      if (!customEvent.detail || customEvent.detail.spaceId !== input.spaceId) {
+        return;
+      }
+
+      window.removeEventListener(ANDROID_OBSIDIAN_VAULT_SETUP_EVENT, listener as EventListener);
+      resolve(customEvent.detail);
+    };
+
+    window.addEventListener(ANDROID_OBSIDIAN_VAULT_SETUP_EVENT, listener as EventListener);
+    bridge.registerAndBootstrapObsidianReplica(JSON.stringify(input));
+  });
+};
+
 const ASSET_PROTOCOL_PREFIX = 'contextgo-asset://asset/';
 
 const shouldKeepAssetProtocolInElectron = (): boolean => {

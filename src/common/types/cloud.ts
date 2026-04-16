@@ -62,7 +62,7 @@ export type CloudObsidianReplica = {
   platform: 'desktop' | 'mobile';
   healthStatus: 'ok' | 'warn' | 'error';
   lastSyncedAt?: string | null;
-  localReadyState?: 'prepared-directory' | 'unprepared' | null;
+  localReadyState?: 'prepared-directory' | 'registered-mobile-replica' | 'unprepared' | null;
   rootTreeUri?: string | null;
   localDirectoryUri?: string | null;
   landingNotePath?: string | null;
