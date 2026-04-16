@@ -668,6 +668,54 @@ describe('SpaceVaultContextSyncService', () => {
     );
   });
 
+  it('writes profile memory distillation into the context-engine system directory', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    await fs.mkdir(vaultPath, { recursive: true });
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({
+      getSpace: vi.fn(async () => space),
+    } as any);
+
+    const artifact = await service.writeProfileMemoryDistillation({
+      spaceId: 'space-1',
+      summary: 'Team prefers minimal diffs and explicit validation.',
+      detail: 'Carry this preference into future project contexts.',
+      bullets: ['Observed across 3 project summaries.'],
+      timestamp: '2026-04-16T09:00:00.000Z',
+    });
+
+    expect(artifact).toEqual(
+      expect.objectContaining({
+        relativePath: expect.stringContaining('System/Context Engine'),
+        summary: 'Team prefers minimal diffs and explicit validation.',
+        spaceId: 'space-1',
+      })
+    );
+
+    const profilePath = path.join(vaultPath, artifact!.relativePath);
+    const profileContent = await fs.readFile(profilePath, 'utf8');
+    expect(profileContent).toContain('# Profile Memory');
+    expect(profileContent).toContain('Observed across 3 project summaries.');
+    expect(profileContent).toContain('Carry this preference into future project contexts.');
+  });
+
   it('sanitizes imported session titles so graph nodes stay readable', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
     tempDirs.push(root);

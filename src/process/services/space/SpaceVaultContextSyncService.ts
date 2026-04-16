@@ -12,6 +12,7 @@ import { ProjectCapabilityService } from './ProjectCapabilityService';
 import { SpaceServiceImpl } from './SpaceServiceImpl';
 import {
   CANVAS_DIR,
+  CONTEXT_ENGINE_SYSTEM_DIR,
   DEFAULT_SPACE_CANVAS_PATH,
   getConversationDocumentPaths,
   getOperationLogDailyRelativePath,
@@ -43,6 +44,10 @@ import {
 import { isSpaceVaultProviderRef } from './vaultBinding';
 import { SqliteSpaceRepository } from '@process/services/database/space/SqliteSpaceRepository';
 import { formatProjectCuratorProposal } from '@process/services/context/jobs/ProjectCuratorProposalFormatter';
+import {
+  formatConnectorDigestEntry,
+  formatSpaceCuratorProfileMemory,
+} from '@process/services/context/jobs/SpaceCuratorDistillationFormatter';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -230,6 +235,14 @@ type SpaceMemoryDistillationWriteInput = {
   spaceId: string;
   summary: string;
   detail?: string;
+  timestamp: string;
+};
+
+type ProfileMemoryDistillationWriteInput = {
+  spaceId: string;
+  summary: string;
+  detail?: string;
+  bullets: readonly string[];
   timestamp: string;
 };
 
@@ -2462,6 +2475,41 @@ export class SpaceVaultContextSyncService {
     };
   }
 
+  async writeProfileMemoryDistillation(input: ProfileMemoryDistillationWriteInput): Promise<
+    | {
+        title: string;
+        relativePath: string;
+        summary: string;
+        spaceId: string;
+      }
+    | undefined
+  > {
+    const space = await this.spaceService.getSpace(input.spaceId);
+    const providerRef = space?.providerRef;
+    if (!space || !isSpaceVaultProviderRef(providerRef)) {
+      return undefined;
+    }
+
+    await this.ensureBaseStructure(providerRef.vaultPath);
+    const title = 'Profile Memory';
+    const relativePath = path.posix.join(CONTEXT_ENGINE_SYSTEM_DIR, 'Profile Memory.md');
+    const absolutePath = path.join(providerRef.vaultPath, relativePath);
+    const body = formatSpaceCuratorProfileMemory({
+      title,
+      summary: input.summary,
+      bullets: input.bullets,
+      detail: input.detail,
+    });
+    await ensureFile(absolutePath, body);
+
+    return {
+      title,
+      relativePath,
+      summary: input.summary,
+      spaceId: input.spaceId,
+    };
+  }
+
   async writeConnectorDigest(input: ConnectorDigestWriteInput): Promise<
     | {
         title: string;
@@ -2482,11 +2530,11 @@ export class SpaceVaultContextSyncService {
     const absolutePath = path.join(providerRef.vaultPath, relativePath);
     const title = 'Connector Digest';
     const existing = (await readUtf8(absolutePath)) ?? [GENERATED_MARKER, '', `# ${title}`, ''].join('\n');
-    const entry = buildTimelineEventBlock({
-      timestamp: input.timestamp,
+    const entry = formatConnectorDigestEntry({
       title,
-      bullets: [input.summary],
-      body: input.detail,
+      summary: input.summary,
+      bullets: [],
+      detail: input.detail,
     });
     const next = `${existing.trimEnd()}\n\n${entry.trim()}\n`;
     await ensureFile(absolutePath, next);
