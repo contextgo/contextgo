@@ -611,7 +611,7 @@ describe('Sider', () => {
     expect(selectorTrigger).toBeInTheDocument();
   });
 
-  it('renders the vault action and create space action before the switchable space list in the space popup', async () => {
+  it('renders the vault action and create action before the switchable space list in the space popup', async () => {
     renderSider('/guid');
 
     const menuItems = screen.getAllByTestId(/menu-item-space:/);

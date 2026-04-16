@@ -942,7 +942,6 @@ private fun DocumentFile.findDirectory(name: String): DocumentFile? {
   return listFiles().firstOrNull { it.isDirectory && it.name == name }
 }
 
-<<<<<<< HEAD
 private data class ShellLoginPayload(
   val targetUrl: String,
   val loginCode: String?,
@@ -950,8 +949,8 @@ private data class ShellLoginPayload(
 ) {
   val shouldRecoverNatively: Boolean
     get() = !errorCode.isNullOrBlank() && loginCode.isNullOrBlank()
-||||||| parent of e7cd42ae (feat(space): complete android mobile replica bootstrap)
-=======
+}
+
 private fun HttpURLConnection.useJsonRequest(body: String): JSONObject {
   outputStream.use { output ->
     output.write(body.toByteArray())
@@ -967,7 +966,6 @@ private fun HttpURLConnection.useJsonRequest(body: String): JSONObject {
   }
 
   return JSONObject(responseText)
->>>>>>> e7cd42ae (feat(space): complete android mobile replica bootstrap)
 }
 
 private object ShellTargetResolver {

@@ -167,7 +167,6 @@ const buildSuggestedSpaceFolderName = (spaceName: string): string => {
     .replace(/^-+|-+$/g, '');
   return normalized || 'contextgo-space';
 };
-
 const shouldEnsureCurrentCloudDevice = (cloudStatus: CloudStatus | null): boolean => {
   if (!cloudStatus?.authenticated || !cloudStatus.device || !cloudStatus.deviceTokenAvailable) {
     return false;
