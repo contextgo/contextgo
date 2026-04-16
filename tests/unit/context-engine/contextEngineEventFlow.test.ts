@@ -603,6 +603,43 @@ describe('context engine event flow', () => {
     );
   });
 
+  it('routes delegation.completed through the lifecycle trigger contract', async () => {
+    const bus = new ContextEventBus();
+    const emittedJobs: ContextJob[] = [];
+    const router = new ContextTriggerRouter(bus, {
+      resolve: vi.fn(async () => ({ kind: 'space-vault-root', spaceId: 'space-1', vaultRoot: '/vault/space-1' })),
+    } as never);
+
+    router.register();
+    bus.on('context.job.queued', async (event) => {
+      emittedJobs.push(event.payload.job);
+    });
+
+    await (bus as any).emit('delegation.completed', {
+      spaceId: 'space-1',
+      threadId: 'thread-1',
+      projectSlug: 'workspace-abcd1234',
+      occurredAt: '2026-04-17T01:00:00.000Z',
+      sourceSummary: 'Planner delegate completed release validation synthesis.',
+      delegationSummary: 'Planner delegate completed release validation synthesis.',
+      snapshot: {
+        userTurns: 3,
+        assistantReplies: 2,
+        interruptions: 0,
+        recentSignals: [],
+      },
+    });
+
+    expect(emittedJobs).toHaveLength(1);
+    expect(emittedJobs[0]).toEqual(
+      expect.objectContaining({
+        type: 'session_compaction',
+        source: 'lifecycle',
+        governanceIdentity: 'session_steward',
+      })
+    );
+  });
+
   it('queues and runs project capability curation jobs for project-scoped triggers', async () => {
     const bus = new ContextEventBus();
     const emittedJobs: ContextJob[] = [];
