@@ -7,6 +7,7 @@ const norm = (p: string) => p.replace(/\\/g, '/');
 const {
   mkdirCalls,
   symlinkCalls,
+  copyFileCalls,
   writeFileCalls,
   fileContents,
   statResults,
@@ -16,6 +17,7 @@ const {
 } = vi.hoisted(() => {
   const mkdirCalls: string[] = [];
   const symlinkCalls: Array<{ source: string; target: string; type: string }> = [];
+  const copyFileCalls: Array<{ source: string; target: string }> = [];
   const writeFileCalls: Array<{ path: string; content: string }> = [];
   const fileContents: Record<string, string> = {};
   const statResults: Record<string, boolean> = {};
@@ -25,6 +27,7 @@ const {
   const resetAll = () => {
     mkdirCalls.length = 0;
     symlinkCalls.length = 0;
+    copyFileCalls.length = 0;
     writeFileCalls.length = 0;
     for (const key of Object.keys(fileContents)) delete fileContents[key];
     for (const key of Object.keys(statResults)) delete statResults[key];
@@ -35,6 +38,7 @@ const {
   return {
     mkdirCalls,
     symlinkCalls,
+    copyFileCalls,
     writeFileCalls,
     fileContents,
     statResults,
@@ -78,11 +82,12 @@ vi.mock('fs/promises', () => ({
         throw new Error(`ENOENT: ${dir}`);
       }
 
-      const childNames = new Set<string>();
+      const childEntries = new Map<string, 'file' | 'directory'>();
       const knownPaths = new Set([
         ...Object.keys(existsSyncResults),
         ...Object.keys(statResults),
         ...Object.keys(lstatResults),
+        ...Object.keys(fileContents),
       ]);
 
       for (const key of knownPaths) {
@@ -90,13 +95,14 @@ vi.mock('fs/promises', () => ({
 
         const relative = key.slice(normalizedDir.length + 1);
         if (!relative || relative.includes('/')) continue;
-        childNames.add(relative);
+        const entryType = fileContents[key] !== undefined ? 'file' : 'directory';
+        childEntries.set(relative, entryType);
       }
 
-      return Array.from(childNames).map((name) => ({
+      return Array.from(childEntries.entries()).map(([name, entryType]) => ({
         name,
-        isDirectory: () => true,
-        isFile: () => false,
+        isDirectory: () => entryType === 'directory',
+        isFile: () => entryType === 'file',
         isSymbolicLink: () => false,
       }));
     }),
@@ -141,6 +147,23 @@ vi.mock('fs/promises', () => ({
     }),
     symlink: vi.fn(async (source: string, target: string, type: string) => {
       symlinkCalls.push({ source: norm(source), target: norm(target), type });
+    }),
+    copyFile: vi.fn(async (source: string, target: string) => {
+      const normalizedSource = norm(source);
+      const normalizedTarget = norm(target);
+      const sourceContent =
+        fileContents[normalizedSource] ??
+        (normalizedSource.endsWith('/SKILL.md')
+          ? `---\nname: ${normalizedSource.split('/').slice(-2, -1)[0]}\ndescription: mock skill\n---\n`
+          : undefined);
+
+      if (sourceContent === undefined) {
+        throw new Error(`ENOENT: ${source}`);
+      }
+
+      copyFileCalls.push({ source: normalizedSource, target: normalizedTarget });
+      fileContents[normalizedTarget] = sourceContent;
+      existsSyncResults[normalizedTarget] = true;
     }),
   },
 }));
@@ -394,6 +417,8 @@ describe('initAgent — skill support', () => {
     it('should still project builtin auto skills when enabledSkills is empty', async () => {
       existsSyncResults['/mock/builtin-skills/_builtin'] = true;
       statResults['/mock/builtin-skills/_builtin/schedule'] = true;
+      fileContents['/mock/builtin-skills/_builtin/schedule/SKILL.md'] =
+        '---\nname: schedule\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
@@ -406,31 +431,32 @@ describe('initAgent — skill support', () => {
         target: '/tmp/workspace/.claude/skills',
         type: 'junction',
       });
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/builtin-skills/_builtin/schedule',
-        target: '/tmp/workspace/.contextgo/skills/schedule',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/builtin-skills/_builtin/schedule/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/schedule/SKILL.md',
       });
     });
 
     it('should still project builtin auto skills when enabledSkills is undefined', async () => {
       existsSyncResults['/mock/builtin-skills/_builtin'] = true;
       statResults['/mock/builtin-skills/_builtin/schedule'] = true;
+      fileContents['/mock/builtin-skills/_builtin/schedule/SKILL.md'] =
+        '---\nname: schedule\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
       });
 
       expect(mkdirCalls).toContain('/tmp/workspace/.contextgo/skills');
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/builtin-skills/_builtin/schedule',
-        target: '/tmp/workspace/.contextgo/skills/schedule',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/builtin-skills/_builtin/schedule/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/schedule/SKILL.md',
       });
     });
 
     it('should project opencode skills from .contextgo/skills', async () => {
       statResults['/mock/user/skills/pptx'] = true;
+      fileContents['/mock/user/skills/pptx/SKILL.md'] = '---\nname: pptx\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'opencode',
@@ -442,10 +468,9 @@ describe('initAgent — skill support', () => {
         target: '/tmp/workspace/.opencode/skills',
         type: 'junction',
       });
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/user/skills/pptx',
-        target: '/tmp/workspace/.contextgo/skills/pptx',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/user/skills/pptx/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/pptx/SKILL.md',
       });
     });
 
@@ -456,6 +481,7 @@ describe('initAgent — skill support', () => {
 
       existsSyncResults[presetSkillsRoot] = true;
       statResults[packagedSkillDir] = true;
+      fileContents[`${packagedSkillDir}/SKILL.md`] = '---\nname: agent-eval\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'codex',
@@ -467,16 +493,16 @@ describe('initAgent — skill support', () => {
         target: '/tmp/workspace/.codex/skills',
         type: 'junction',
       });
-      expect(symlinkCalls).toContainEqual({
-        source: packagedSkillDir,
-        target: '/tmp/workspace/.contextgo/skills/agent-eval',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: `${packagedSkillDir}/SKILL.md`,
+        target: '/tmp/workspace/.contextgo/skills/agent-eval/SKILL.md',
       });
     });
 
     it('should create symlink in correct dir for claude backend', async () => {
       const skillSource = '/mock/user/skills/pptx';
       statResults[skillSource] = true;
+      fileContents['/mock/user/skills/pptx/SKILL.md'] = '---\nname: pptx\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
@@ -490,15 +516,15 @@ describe('initAgent — skill support', () => {
         target: '/tmp/workspace/.claude/skills',
         type: 'junction',
       });
-      expect(symlinkCalls).toContainEqual({
-        source: skillSource,
-        target: '/tmp/workspace/.contextgo/skills/pptx',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/user/skills/pptx/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/pptx/SKILL.md',
       });
     });
 
     it('should project codex skills from .contextgo/skills', async () => {
       statResults['/mock/user/skills/pdf'] = true;
+      fileContents['/mock/user/skills/pdf/SKILL.md'] = '---\nname: pdf\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'codex',
@@ -510,9 +536,28 @@ describe('initAgent — skill support', () => {
         target: '/tmp/workspace/.codex/skills',
         type: 'junction',
       });
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/user/skills/pdf',
-        target: '/tmp/workspace/.contextgo/skills/pdf',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/user/skills/pdf/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/pdf/SKILL.md',
+      });
+    });
+
+    it('materializes enabled skills into project-owned state instead of linking user skill sources directly', async () => {
+      statResults['/mock/user/skills/pptx'] = true;
+      fileContents['/mock/user/skills/pptx/SKILL.md'] = '---\nname: pptx\ndescription: mock skill\n---\n';
+
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'codex',
+        enabledSkills: ['pptx'],
+      });
+
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/user/skills/pptx/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/pptx/SKILL.md',
+      });
+      expect(symlinkCalls).not.toContainEqual({
+        source: '/mock/user/skills/pptx',
+        target: '/tmp/workspace/.contextgo/skills/pptx',
         type: 'junction',
       });
     });
@@ -531,16 +576,16 @@ describe('initAgent — skill support', () => {
     it('should prefer builtin-skills/ over user skills/', async () => {
       existsSyncResults['/mock/builtin-skills/pptx'] = true;
       statResults['/mock/builtin-skills/pptx'] = true;
+      fileContents['/mock/builtin-skills/pptx/SKILL.md'] = '---\nname: pptx\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
         enabledSkills: ['pptx'],
       });
 
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/builtin-skills/pptx',
-        target: '/tmp/workspace/.contextgo/skills/pptx',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/builtin-skills/pptx/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/pptx/SKILL.md',
       });
     });
 
@@ -552,32 +597,35 @@ describe('initAgent — skill support', () => {
       statResults[
         '/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills/test-driven-development'
       ] = true;
+      fileContents[
+        '/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills/test-driven-development/SKILL.md'
+      ] = '---\nname: test-driven-development\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
         enabledSkills: ['test-driven-development'],
       });
 
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills/test-driven-development',
-        target: '/tmp/workspace/.contextgo/skills/test-driven-development',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/builtin-skills/engineering-pack/skills/workflow-execution-pack/skills/test-driven-development/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/test-driven-development/SKILL.md',
       });
     });
 
     it('should fall back to user skills/ when not in builtin-skills/', async () => {
       existsSyncResults['/mock/builtin-skills/custom-skill'] = false;
       statResults['/mock/user/skills/custom-skill'] = true;
+      fileContents['/mock/user/skills/custom-skill/SKILL.md'] =
+        '---\nname: custom-skill\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
         enabledSkills: ['custom-skill'],
       });
 
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/user/skills/custom-skill',
-        target: '/tmp/workspace/.contextgo/skills/custom-skill',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/user/skills/custom-skill/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/custom-skill/SKILL.md',
       });
     });
 
@@ -586,32 +634,36 @@ describe('initAgent — skill support', () => {
       statResults['/mock/builtin-skills/_builtin/schedule'] = true;
       statResults['/mock/builtin-skills/_builtin/contextgo-skills'] = true;
       statResults['/mock/user/skills/pptx'] = true;
+      fileContents['/mock/builtin-skills/_builtin/schedule/SKILL.md'] =
+        '---\nname: schedule\ndescription: mock skill\n---\n';
+      fileContents['/mock/builtin-skills/_builtin/contextgo-skills/SKILL.md'] =
+        '---\nname: contextgo-skills\ndescription: mock skill\n---\n';
+      fileContents['/mock/user/skills/pptx/SKILL.md'] = '---\nname: pptx\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
         enabledSkills: ['schedule', 'pptx'],
       });
 
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/builtin-skills/_builtin/schedule',
-        target: '/tmp/workspace/.contextgo/skills/schedule',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/builtin-skills/_builtin/schedule/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/schedule/SKILL.md',
       });
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/builtin-skills/_builtin/contextgo-skills',
-        target: '/tmp/workspace/.contextgo/skills/contextgo-skills',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/builtin-skills/_builtin/contextgo-skills/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/contextgo-skills/SKILL.md',
       });
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/user/skills/pptx',
-        target: '/tmp/workspace/.contextgo/skills/pptx',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/user/skills/pptx/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/pptx/SKILL.md',
       });
     });
 
     it('should auto-project workspace connector skills into managed runtime skills', async () => {
       existsSyncResults['/tmp/workspace/.connector/skills'] = true;
       statResults['/tmp/workspace/.connector/skills/github-ops'] = true;
+      fileContents['/tmp/workspace/.connector/skills/github-ops/SKILL.md'] =
+        '---\nname: github-ops\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'codex',
@@ -623,10 +675,9 @@ describe('initAgent — skill support', () => {
         target: '/tmp/workspace/.codex/skills',
         type: 'junction',
       });
-      expect(symlinkCalls).toContainEqual({
-        source: '/tmp/workspace/.connector/skills/github-ops',
-        target: '/tmp/workspace/.contextgo/skills/github-ops',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/tmp/workspace/.connector/skills/github-ops/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/github-ops/SKILL.md',
       });
     });
 
@@ -689,28 +740,32 @@ describe('initAgent — skill support', () => {
       statResults['/mock/user/skills/pptx'] = true;
       statResults['/mock/user/skills/pdf'] = true;
       statResults['/mock/user/skills/docx'] = true;
+      fileContents['/mock/user/skills/pptx/SKILL.md'] = '---\nname: pptx\ndescription: mock skill\n---\n';
+      fileContents['/mock/user/skills/pdf/SKILL.md'] = '---\nname: pdf\ndescription: mock skill\n---\n';
+      fileContents['/mock/user/skills/docx/SKILL.md'] = '---\nname: docx\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
         enabledSkills: ['pptx', 'pdf', 'docx'],
       });
 
-      expect(symlinkCalls).toHaveLength(4);
+      expect(symlinkCalls).toHaveLength(1);
+      expect(copyFileCalls).toHaveLength(3);
     });
 
     it('should project runtime entries per skill when native skills dir already exists as a real directory', async () => {
       statResults['/mock/user/skills/pptx'] = true;
       lstatResults['/tmp/workspace/.claude/skills'] = true;
+      fileContents['/mock/user/skills/pptx/SKILL.md'] = '---\nname: pptx\ndescription: mock skill\n---\n';
 
       await setupAssistantWorkspace('/tmp/workspace', {
         backend: 'claude',
         enabledSkills: ['pptx'],
       });
 
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/user/skills/pptx',
-        target: '/tmp/workspace/.contextgo/skills/pptx',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/user/skills/pptx/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/pptx/SKILL.md',
       });
       expect(symlinkCalls).toContainEqual({
         source: '/tmp/workspace/.contextgo/skills/pptx',
@@ -944,6 +999,7 @@ describe('initAgent — skill support', () => {
   describe('createAcpAgent', () => {
     it('bootstraps native skills in user-selected workspaces when explicitly enabled', async () => {
       statResults['/mock/user/skills/pdf'] = true;
+      fileContents['/mock/user/skills/pdf/SKILL.md'] = '---\nname: pdf\ndescription: mock skill\n---\n';
 
       const conversation = await createAcpAgent({
         type: 'acp',
@@ -966,10 +1022,9 @@ describe('initAgent — skill support', () => {
         target: '/tmp/project-workspace/.codex/skills',
         type: 'junction',
       });
-      expect(symlinkCalls).toContainEqual({
-        source: '/mock/user/skills/pdf',
-        target: '/tmp/project-workspace/.contextgo/skills/pdf',
-        type: 'junction',
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/user/skills/pdf/SKILL.md',
+        target: '/tmp/project-workspace/.contextgo/skills/pdf/SKILL.md',
       });
     });
 
