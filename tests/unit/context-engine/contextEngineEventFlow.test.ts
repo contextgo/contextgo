@@ -675,6 +675,68 @@ describe('context engine event flow', () => {
     expect(seen).toContain('project_capability_curation:completed');
   });
 
+  it('writes AGENTS and skill proposal artifacts for project capability curation jobs', async () => {
+    const { ProjectCapabilityCurationJobHandler } = await import(
+      '../../../src/process/services/context/jobs/ProjectCapabilityCurationJobHandler'
+    );
+
+    const vaultSyncService = {
+      curateProjectCapabilities: vi.fn(async () => ({
+        projectSlug: 'workspace-abcd1234',
+        noteTitle: 'workspace Capabilities',
+        relativePath: 'Projects/workspace/_context/Capabilities.md',
+        summary: 'Refreshed project capability mirror.',
+      })),
+      writeProjectCuratorProposal: vi
+        .fn()
+        .mockResolvedValueOnce({
+          title: 'AGENTS append proposal',
+          relativePath: 'Projects/workspace/_context/proposals/agents-append-proposal.md',
+          summary: 'Add a stable release-validation rule.',
+        })
+        .mockResolvedValueOnce({
+          title: 'Skill append proposal',
+          relativePath: 'Projects/workspace/_context/proposals/skill-append-proposal.md',
+          summary: 'Update release-validation skill guidance.',
+        }),
+    };
+
+    const handler = new ProjectCapabilityCurationJobHandler(vaultSyncService as never);
+    const artifact = await handler.run(
+      makeJob({
+        type: 'project_capability_curation',
+        governanceIdentity: 'project_curator',
+        projectSlug: 'workspace-abcd1234',
+        payload: {
+          summary: 'Refresh project capability mirror.',
+          artifactTargets: ['project_doc', 'project_rules', 'project_skill'],
+        },
+      })
+    );
+
+    expect(vaultSyncService.curateProjectCapabilities).toHaveBeenCalled();
+    expect(vaultSyncService.writeProjectCuratorProposal).toHaveBeenCalledTimes(2);
+    expect(vaultSyncService.writeProjectCuratorProposal).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        title: 'AGENTS append proposal',
+        proposalKind: 'project_rules',
+        targetPath: 'AGENTS.md',
+      })
+    );
+    expect(vaultSyncService.writeProjectCuratorProposal).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        title: 'Skill append proposal',
+        proposalKind: 'project_skill',
+        targetPath: 'skills/release-validation/SKILL.md',
+      })
+    );
+    expect(artifact?.summary).toContain('Refreshed project capability mirror.');
+    expect(artifact?.summary).toContain('Add a stable release-validation rule.');
+    expect(artifact?.summary).toContain('Update release-validation skill guidance.');
+  });
+
   it('writes operation logs for project capability curation jobs', async () => {
     const bus = new ContextEventBus();
     const vaultSyncService = {
