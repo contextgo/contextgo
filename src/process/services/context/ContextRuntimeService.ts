@@ -811,6 +811,28 @@ export class ContextRuntimeService {
     this.pendingTurns.delete(conversation.id);
   }
 
+  async captureDelegationCompletion(input: {
+    conversation: TChatConversation;
+    delegationSummary: string;
+    snapshot: SessionCompactionSnapshot;
+    occurredAt?: string;
+  }): Promise<void> {
+    const spaceId = input.conversation.extra?.spaceId;
+    if (!spaceId || !this.eventBus) {
+      return;
+    }
+
+    await this.eventBus.emit('delegation.completed', {
+      spaceId,
+      threadId: input.conversation.id,
+      projectSlug: resolveConversationProjectSlug(input.conversation),
+      occurredAt: input.occurredAt ?? new Date().toISOString(),
+      sourceSummary: input.delegationSummary,
+      delegationSummary: input.delegationSummary,
+      snapshot: input.snapshot,
+    });
+  }
+
   async removeConversationContext(
     conversation: TChatConversation,
     remainingConversations: readonly TChatConversation[]
