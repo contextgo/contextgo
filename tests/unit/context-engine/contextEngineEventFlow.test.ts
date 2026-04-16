@@ -793,6 +793,83 @@ describe('context engine event flow', () => {
     );
   });
 
+  it('writes both space digest and profile-memory artifacts for space memory distillation jobs', async () => {
+    const { SpaceMemoryDistillationJobHandler } = await import(
+      '../../../src/process/services/context/jobs/SpaceMemoryDistillationJobHandler'
+    );
+
+    const vaultSyncService = {
+      writeSpaceMemoryDistillation: vi.fn(async () => ({
+        title: 'Space Memory Distillation',
+        relativePath: 'System/Context Engine/Space Memory.md',
+        summary: 'Shared release patterns distilled.',
+        spaceId: 'space-1',
+      })),
+      writeProfileMemoryDistillation: vi.fn(async () => ({
+        title: 'Profile Memory',
+        relativePath: 'System/Context Engine/Profile Memory.md',
+        summary: 'Team prefers minimal diffs and explicit validation.',
+        spaceId: 'space-1',
+      })),
+    };
+
+    const handler = new SpaceMemoryDistillationJobHandler(vaultSyncService as never);
+    const artifact = await handler.run(
+      makeJob({
+        type: 'space_memory_distillation',
+        governanceIdentity: 'space_curator',
+        payload: {
+          summary: 'Shared release patterns distilled.',
+          profileSummary: 'Team prefers minimal diffs and explicit validation.',
+          profileBullets: ['Observed across 3 project summaries.'],
+          artifactTargets: ['space_digest', 'profile_memory'],
+        },
+      })
+    );
+
+    expect(vaultSyncService.writeSpaceMemoryDistillation).toHaveBeenCalled();
+    expect(vaultSyncService.writeProfileMemoryDistillation).toHaveBeenCalled();
+    expect(artifact?.summary).toContain('Shared release patterns distilled.');
+    expect(artifact?.summary).toContain('Team prefers minimal diffs and explicit validation.');
+  });
+
+  it('writes richer connector digest details from connector payload metadata', async () => {
+    const { ConnectorDigestJobHandler } = await import(
+      '../../../src/process/services/context/jobs/ConnectorDigestJobHandler'
+    );
+
+    const vaultSyncService = {
+      writeConnectorDigest: vi.fn(async () => ({
+        title: 'Connector Digest',
+        relativePath: 'System/Context Engine/Connector Digest.md',
+        summary: 'Digest newly ingested connector content into reusable context.',
+        spaceId: 'space-1',
+      })),
+    };
+
+    const handler = new ConnectorDigestJobHandler(vaultSyncService as never);
+    await handler.run(
+      makeJob({
+        type: 'connector_digest',
+        governanceIdentity: 'space_curator',
+        payload: {
+          summary: 'Digest newly ingested connector content into reusable context.',
+          connectorId: 'browser-activity',
+          title: 'Release checklist page',
+          canonicalUri: 'https://example.com/release-checklist',
+          sourceKind: 'web-resource',
+          artifactTargets: ['space_digest'],
+        },
+      })
+    );
+
+    expect(vaultSyncService.writeConnectorDigest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.stringContaining('browser-activity'),
+      })
+    );
+  });
+
   it('emits context.job.started before completion', async () => {
     const queue = new ContextJobQueue();
     queue.enqueue(makeJob());

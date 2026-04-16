@@ -101,7 +101,7 @@ export const CONTEXT_ENGINE_BUILTIN_TRIGGERS: readonly ContextTriggerSpec[] = [
     event: 'manual.space_memory_distillation',
     label: 'Manual space memory distillation',
     defaultPriority: 'medium',
-    defaultReason: 'Manually distill shared space memory from recent project activity.',
+    defaultReason: 'Manually distill shared space memory and profile signals from recent project activity.',
   },
   {
     id: 'manual.connector-digest',
@@ -150,7 +150,7 @@ export const CONTEXT_ENGINE_BUILTIN_TRIGGERS: readonly ContextTriggerSpec[] = [
     event: 'timer.space_memory_distillation',
     label: 'Space memory distillation',
     defaultPriority: 'high',
-    defaultReason: 'Periodically distill shared space memory from recent activity.',
+    defaultReason: 'Periodically distill shared space memory and profile signals from recent project activity.',
   },
   {
     id: 'timer.connector-digest',
