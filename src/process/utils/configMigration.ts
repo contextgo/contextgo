@@ -4,7 +4,8 @@ import path from 'path';
 import type { IConfigStorageRefer } from '@/common/config/storage';
 
 // Keys allowed to migrate from Electron config to server config.
-// UI-only keys (theme, language, webui.desktop.*) and caches (acp.cachedModels)
+// UI-only keys (theme, language, webui.desktop.*, host.runtime.localAccess.*)
+// and caches (acp.cachedModels)
 // are intentionally excluded.
 export const MIGRATABLE_KEYS: ReadonlyArray<keyof IConfigStorageRefer> = [
   'model.config',
