@@ -10,6 +10,11 @@
 
 ---
 
+## Implementation Status
+
+- Task 1 complete
+- Task 2 complete
+
 ## Scope Decomposition
 
 This plan covers only the first runtime-console observability slice.
@@ -182,7 +187,8 @@ systemRuns.push({
   triggerLabel: snapshot.metadata.trigger?.label,
   triggerEvent: snapshot.metadata.trigger?.event,
   executionBoundaryPath: snapshot.metadata.executionBoundary?.vaultRoot,
-  executionBoundaryLabel: snapshot.metadata.executionBoundary?.spaceName || snapshot.metadata.executionBoundary?.spaceId,
+  executionBoundaryLabel:
+    snapshot.metadata.executionBoundary?.spaceName || snapshot.metadata.executionBoundary?.spaceId,
   recentEvents: snapshot.events,
 });
 ```
@@ -311,12 +317,16 @@ function formatArtifactTargets(targets: readonly string[] | undefined): string {
 ```
 
 ```tsx
-{run.governanceIdentity ? (
-  <div className={styles.systemRunsDetailText}>{`Governance: ${run.governanceIdentity}`}</div>
-) : null}
-{run.artifactTargets && run.artifactTargets.length > 0 ? (
-  <div className={styles.systemRunsDetailText}>{`Artifacts: ${formatArtifactTargets(run.artifactTargets)}`}</div>
-) : null}
+{
+  run.governanceIdentity ? (
+    <div className={styles.systemRunsDetailText}>{`Governance: ${run.governanceIdentity}`}</div>
+  ) : null;
+}
+{
+  run.artifactTargets && run.artifactTargets.length > 0 ? (
+    <div className={styles.systemRunsDetailText}>{`Artifacts: ${formatArtifactTargets(run.artifactTargets)}`}</div>
+  ) : null;
+}
 ```
 
 - [ ] **Step 4: Re-run the System Runs DOM test to verify the runtime console now shows the richer details**
