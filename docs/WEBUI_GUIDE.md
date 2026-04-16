@@ -675,9 +675,8 @@ npm run --resetpass username
 
 ## Additional Resources
 
-- [Main README](../readme.md)
-- [中文说明](./readme/readme_ch.md)
-- [日本語ドキュメント](./readme/readme_jp.md)
+- [Main README (中文)](../readme.md)
+- [English README](../README_EN.md)
 - [GitHub Issues](https://github.com/contextgo/contextgo/issues)
 
 ---
