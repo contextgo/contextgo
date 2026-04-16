@@ -423,9 +423,14 @@ describe('context engine event flow', () => {
     };
     const vaultSyncService = {
       appendContextCheckpoint: vi.fn(async () => undefined),
-      writeSessionWorkingSet: vi.fn(async () => ({
-        relativePath: 'Projects/workspace/_context/sessions/thread-1/working-set.md',
-        title: 'Release Session Working Set',
+      appendSessionCheckpoint: vi.fn(async () => ({
+        relativePath: 'Projects/workspace/_context/sessions/thread-1/checkpoints/2026-04-08T00-03-00Z-session-compaction.md',
+        title: 'Session checkpoint',
+        summary: 'Current task: Ship the release safely.',
+      })),
+      writeSessionWorkingContext: vi.fn(async () => ({
+        relativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
+        title: 'Release Session Working Context',
       })),
     };
     const summarizer = {
@@ -452,8 +457,11 @@ describe('context engine event flow', () => {
         stableStrategies: ['Use the staged release checklist.'],
         failureModes: ['Long runs are being interrupted by the user.'],
         pendingConstraints: ['Do not widen the rollout without review.'],
-        workingSetTitle: 'Release Session Working Set',
-        workingSetRelativePath: 'Projects/workspace/_context/sessions/thread-1/working-set.md',
+        noteTitle: 'Session checkpoint',
+        relativePath:
+          'Projects/workspace/_context/sessions/thread-1/checkpoints/2026-04-08T00-03-00Z-session-compaction.md',
+        workingSetTitle: 'Release Session Working Context',
+        workingSetRelativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
         pressure: 58,
         promotedCount: 1,
         pendingReviewCount: 1,
@@ -473,15 +481,16 @@ describe('context engine event flow', () => {
         threadId: 'thread-1',
       })
     );
-    expect(vaultSyncService.writeSessionWorkingSet).toHaveBeenCalledWith(
+    expect(vaultSyncService.writeSessionWorkingContext).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceProfileKey: 'session.compaction.thread-1',
         currentTask: 'Ship the release safely.',
       })
     );
-    expect(vaultSyncService.appendContextCheckpoint).toHaveBeenCalledWith(
+    expect(vaultSyncService.appendSessionCheckpoint).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Session Compaction Updated',
+        title: 'Session checkpoint',
+        kind: 'session-compaction',
       })
     );
   });

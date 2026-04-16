@@ -27,7 +27,7 @@ type SupportedContextService = Pick<
 
 type SupportedVaultSyncService = Pick<
   SpaceVaultContextSyncService,
-  'appendContextCheckpoint' | 'writeSessionWorkingSet'
+  'appendContextCheckpoint' | 'appendSessionCheckpoint' | 'writeSessionWorkingContext'
 >;
 
 const SESSIONS_DIR = 'Sessions';
@@ -357,7 +357,7 @@ export class SessionCompactionJobHandler {
       conversationResult.success && conversationResult.data?.name ? conversationResult.data.name : job.threadId;
     const workingSetArtifact =
       conversationResult.success && conversationResult.data
-        ? await this.vaultSyncService.writeSessionWorkingSet({
+        ? await this.vaultSyncService.writeSessionWorkingContext({
             conversation: conversationResult.data,
             timestamp: now,
             currentTask: structured.currentTask,
@@ -367,6 +367,17 @@ export class SessionCompactionJobHandler {
             signalKinds,
             pressure: decision.pressure,
             sourceProfileKey: profile.key,
+          })
+        : undefined;
+    const sessionCheckpointArtifact =
+      conversationResult.success && conversationResult.data
+        ? await this.vaultSyncService.appendSessionCheckpoint({
+            conversation: conversationResult.data,
+            timestamp: now,
+            kind: 'session-compaction',
+            title: 'Session checkpoint',
+            summary,
+            detail,
           })
         : undefined;
     if (conversationResult.success && conversationResult.data) {
@@ -391,8 +402,8 @@ export class SessionCompactionJobHandler {
       profileKey: profile.key,
       summary,
       detail,
-      noteTitle: sessionNoteTitle,
-      relativePath: sessionRelativePath,
+      noteTitle: sessionCheckpointArtifact?.title ?? sessionNoteTitle,
+      relativePath: sessionCheckpointArtifact?.relativePath ?? sessionRelativePath,
       workingSetTitle: workingSetArtifact?.title,
       workingSetRelativePath: workingSetArtifact?.relativePath,
       currentTask: structured.currentTask,
