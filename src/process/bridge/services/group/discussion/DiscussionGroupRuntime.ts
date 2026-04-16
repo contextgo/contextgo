@@ -27,7 +27,9 @@ import {
 } from '../shared';
 import { normalizeStoredDiscussionOrchestration } from '../orchestration';
 import {
+  buildDiscussionFinalSynthesisContent,
   buildDiscussionRoundPrompt,
+  buildDiscussionRoundSummaryContent,
   normalizeGroupCollaboration,
   type DiscussionRoundSummary,
 } from './discussionHelpers';
@@ -55,6 +57,22 @@ const buildProjectedMessageMeta = (
     childConversationId,
     mode: orchestration.mode,
     round,
+  };
+};
+
+const buildDiscussionSummaryMeta = (
+  _conversation: GroupConversation,
+  orchestration: DiscussionGroupOrchestration,
+  round: number,
+  summaryKind: 'round' | 'final'
+): MessageGroupMeta => {
+  return {
+    kind: 'discussion',
+    participantId: summaryKind === 'final' ? 'group-final-summary' : `group-round-summary:${round}`,
+    participantName: summaryKind === 'final' ? 'Group Synthesis' : `Round ${round} Summary`,
+    mode: orchestration.mode,
+    round,
+    summaryKind,
   };
 };
 
@@ -118,7 +136,9 @@ export class DiscussionGroupRuntime {
       });
 
       let previousRoundSummariesByParticipant = new Map<string, DiscussionRoundSummary>();
+      let finalRoundSummaries: DiscussionRoundSummary[] = [];
 
+      /* eslint-disable no-await-in-loop -- Discussion turns and projected summaries must remain in deterministic group order. */
       for (let round = 1; round <= orchestration.rounds; round += 1) {
         this.throwIfCancelled(conversation.id);
         const currentRoundSummariesByParticipant = new Map<string, DiscussionRoundSummary>();
@@ -190,7 +210,55 @@ export class DiscussionGroupRuntime {
         }
 
         previousRoundSummariesByParticipant = currentRoundSummariesByParticipant;
+        finalRoundSummaries = [...currentRoundSummariesByParticipant.values()];
+
+        if (finalRoundSummaries.length > 0) {
+          await persistGroupProjectedMessage(
+            this.conversationService,
+            conversation,
+            {
+              id: uuid(),
+              type: 'text',
+              msg_id: `group-round-summary:${options.msgId}:${round}`,
+              conversation_id: conversation.id,
+              position: 'left',
+              content: {
+                content: buildDiscussionRoundSummaryContent({
+                  round,
+                  summaries: finalRoundSummaries,
+                }),
+                groupMeta: buildDiscussionSummaryMeta(conversation, orchestration, round, 'round'),
+              },
+              createdAt: Date.now(),
+            },
+            false
+          );
+        }
       }
+
+      if (finalRoundSummaries.length > 0) {
+        await persistGroupProjectedMessage(
+          this.conversationService,
+          conversation,
+          {
+            id: uuid(),
+            type: 'text',
+            msg_id: `group-final-summary:${options.msgId}`,
+            conversation_id: conversation.id,
+            position: 'left',
+            content: {
+              content: buildDiscussionFinalSynthesisContent({
+                userInput: options.input,
+                roundSummaries: finalRoundSummaries,
+              }),
+              groupMeta: buildDiscussionSummaryMeta(conversation, orchestration, orchestration.rounds, 'final'),
+            },
+            createdAt: Date.now(),
+          },
+          false
+        );
+      }
+      /* eslint-enable no-await-in-loop */
 
       await this.persistHarnessArtifactsSafe({
         conversation,
@@ -333,9 +401,11 @@ export class DiscussionGroupRuntime {
       });
     }
 
+    /* eslint-disable no-await-in-loop -- Group projected messages should preserve participant output order. */
     for (const message of projectedMessages) {
       await persistGroupProjectedMessage(this.conversationService, groupConversation, message, false);
     }
+    /* eslint-enable no-await-in-loop */
 
     return projectedMessages;
   }

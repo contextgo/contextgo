@@ -119,6 +119,8 @@
     "workspaceHint": "The group and all participant sessions will share this workspace. If left empty, a default temporary workspace will be created automatically.",
     "selectWorkspace": "Choose Folder",
     "selectWorkspaceFailed": "Failed to select workspace",
+    "fixedFlowLabel": "How Collaboration Works",
+    "fixedFlowHint": "Each run follows one fixed flow: every agent responds independently, then reacts after seeing the others, and the system closes with one group synthesis.",
     "collaborationLabel": "Collaboration Mode",
     "collaborationDiscussion": "Discussion",
     "collaborationHarness": "Planner / Generator / Evaluator",
@@ -145,7 +147,7 @@
     "participantsLabel": "Participants",
     "harnessAgentsLabel": "Harness Agents",
     "minimumParticipants": "Select at least two participants",
-    "minimumParticipantsHint": "Pick 2 or more participants to start a discussion group.",
+    "minimumParticipantsHint": "Pick 2 or more participants to start a group run.",
     "harnessParticipantsHint": "Harness mode requires exactly 3 participants, in Planner -> Generator -> Evaluator order.",
     "harnessRoleHint": "Harness slot #{{roleIndex}}",
     "harnessUsesDebate": "Harness mode always uses the two-round debate flow.",
@@ -169,6 +171,18 @@
       "flow": "Flow",
       "latestStep": "Latest Step",
       "repository": "Repository"
+    },
+    "overview": {
+      "title": "Group Overview",
+      "latestSpeaker": "Latest Speaker",
+      "latestRoundSummary": "Latest Round Summary",
+      "finalSynthesis": "Final Synthesis",
+      "pending": "The group has not produced a summary yet.",
+      "status": {
+        "idle": "Idle",
+        "running": "Running",
+        "finished": "Finished"
+      }
     },
     "noDescription": "No description",
     "sendPlaceholder": "Give the group a task...",

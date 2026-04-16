@@ -10,8 +10,8 @@ import FlexFullContainer from '@renderer/components/layout/FlexFullContainer';
 import MessageList from '@renderer/pages/conversation/Messages/MessageList';
 import { ConversationMessageStateProvider } from '@renderer/pages/conversation/Messages/hooks';
 import React from 'react';
+import GroupOverviewCard from './GroupOverviewCard';
 import GroupSendBox from './GroupSendBox';
-import HarnessRunSummaryCard from './HarnessRunSummaryCard';
 import { useGroupConversation } from './useGroupConversation';
 
 const GroupChat: React.FC<{
@@ -25,13 +25,7 @@ const GroupChat: React.FC<{
     <ConversationMessageStateProvider conversationId={conversationId}>
       <ConversationProvider value={{ conversationId, workspace, type: 'group' }}>
         <div className='flex-1 flex flex-col px-12px md:px-20px min-h-0'>
-          <HarnessRunSummaryCard
-            conversationId={conversationId}
-            workspace={workspace}
-            running={running}
-            collaboration={conversation.extra.collaboration}
-            orchestration={conversation.extra.orchestration}
-          />
+          <GroupOverviewCard conversation={conversation} running={running} />
           <FlexFullContainer>
             <MessageList className='flex-1' />
           </FlexFullContainer>
