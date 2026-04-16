@@ -1,99 +1,99 @@
-# Context Engine Dual-Loop Architecture Design
+# Context Engine 双循环架构设计
 
-Date: 2026-04-16
+日期：2026-04-16
 
-## Goal
+## 目标
 
-Freeze the architecture and boundary rules for ContextGo's next-stage Context Engine so that:
+冻结 ContextGo 下一阶段 Context Engine 的架构与边界规则，使其满足以下目标：
 
-- project-local context remains the real source of truth for agents working inside a project
-- background context governance becomes systematic instead of ad-hoc
-- session, project, and space context can evolve continuously without turning into a hidden black-box database
-- the product can move toward a native AI workbench for ordinary users
+- project 本地上下文继续作为 agent 在项目内工作的真实事实源
+- 后台上下文治理从零散增强升级为系统化机制
+- session、project、space 三层上下文能够持续演化，但不会退化成隐藏的黑盒数据库
+- 产品继续朝“面向普通人的原生 AI 工作台”方向推进
 
-This spec intentionally focuses on architecture constraints and data flow boundaries.
+本 spec 只聚焦于架构约束与数据流边界。
 
-It does **not** define the full implementation details of internal skill bundles, prompt templates, or job payload schemas. Those are follow-up design topics after this boundary is locked.
+它**不**定义内部 skill bundle、具体 prompt 文本或 job payload schema 的最终实现细节。这些属于边界冻结之后的后续细化话题。
 
-## Product Position
+## 产品定位
 
-ContextGo is a desktop-first, local-first, multi-agent work system.
+ContextGo 是一个 desktop-first、local-first、multi-agent 的工作系统。
 
-Its Context Engine should not behave like an isolated memory database beside the product. It should manage context through the vault-backed workspace layout already owned by ContextGo.
+它的 Context Engine 不应该表现成一个独立于产品之外的 memory database，而应该通过 ContextGo 已经拥有的 vault-backed workspace layout 来管理上下文。
 
-The user-facing project context must stay editable, inspectable, and versionable in normal project files.
+用户可见、agent 可直接消费的项目上下文，必须继续保持可编辑、可检查、可版本化。
 
-## Hard Source-Of-Truth Rule
+## 硬性事实源规则
 
-Project-local context is the final source of truth for project execution.
+项目本地上下文是 project 执行层的最终事实源。
 
-That means agents working inside a project should directly consume project files such as:
+这意味着在 project 内工作的 agent 应直接消费如下 project 文件面：
 
 - `AGENTS.md`
 - `docs/`
 - `skills/`
 - project working notes
-- project capability surfaces for hooks, commands, and schedules
+- project 维度的 hooks、commands、schedules 等 capability surface
 
-The Context Engine does not replace these files with a hidden engine-only truth.
+Context Engine 不能把这些文件替换成“只有 engine store 才知道”的隐藏真相。
 
-Instead:
+相反：
 
-- vault-backed project and session files hold project-visible context truth
-- the engine holds cross-boundary governance state, long-horizon memory, timing and expiration state, and promotion metadata
+- vault-backed 的 project/session 文件承载 project 可见的上下文事实
+- engine 持有跨边界治理状态、长周期记忆、时序与过期状态、promotion 元数据等更高层信息
 
-## Workspace Boundary
+## 工作区边界
 
-The core workspace boundary is:
+核心工作区边界定义如下：
 
 - `space -> vault root`
 - `project -> project root`
 - `session -> project-root session area`
 
-The Context Engine manages context through this vault-backed layout, not beside it.
+Context Engine 通过这套 vault-backed layout 管理上下文，而不是在旁边再建一套并行目录体系。
 
-### Space Scope
+### Space 作用域
 
-The vault root owns space-level context surfaces such as:
+vault root 承载 space 级上下文面，例如：
 
-- cross-project notes
+- 跨 project 笔记
 - space memory digests
-- user profile and long-horizon context projections
-- connector-derived space summaries
+- 用户画像与长周期上下文投影
+- connector 派生的 space summaries
 
-### Project Scope
+### Project 作用域
 
-The project root owns project execution context surfaces such as:
+project root 承载 project 执行上下文面，例如：
 
 - `AGENTS.md`
 - `docs/`
 - `skills/`
 - project working notes
-- capability review notes for hooks, commands, and schedules
+- hooks、commands、schedules 的 capability review notes
 
-### Session Scope
+### Session 作用域
 
-Session context lives under the project root as a project-scoped runtime context layer.
+session 上下文位于 project root 之下，是 project 维度的运行时上下文层。
 
-It owns:
+它承载：
 
 - session timeline
 - session working context
 - session checkpoints
 
-## Dual-Loop Architecture
+## 双循环架构
 
-The Context Engine runs as a single orchestration core with two formal loops.
+Context Engine 作为一个单一 orchestration core 运行，但正式分为两条主循环。
 
 ### Session Loop
 
-Purpose:
+目的：
 
-- capture what is happening now
-- keep current task context useful
-- prepare future injection for the next turns
+- 捕捉当前正在发生的任务事实
+- 保持当前任务上下文可继续工作
+- 为后续 turn 提供更好的注入素材
 
-Outputs:
+输出：
 
 - `session timeline`
 - `session working context`
@@ -101,43 +101,43 @@ Outputs:
 
 ### Project / Space Evolution Loop
 
-Purpose:
+目的：
 
-- detect stable signals from session work
-- evolve project context files
-- distill cross-session and cross-project memory
-- keep connector-derived context flowing into useful product surfaces
+- 从 session 工作中检测稳定信号
+- 演化 project 上下文文件
+- 提炼跨 session、跨 project 的长期上下文
+- 让 connector 派生上下文流入真正有用的产品表面
 
-Outputs:
+输出：
 
 - project docs updates
 - `AGENTS.md` proposals
 - skill update proposals
 - space-level digests
-- user profile and cross-project pattern memory
+- 用户画像与跨项目模式记忆
 
-## Runtime Structure
+## 运行时结构
 
-The runtime shape is:
+运行时整体形状是：
 
-- one `Context Orchestrator`
-- three fixed context-governance identities
-- many ordinary role assistants
+- 一个 `Context Orchestrator`
+- 三个固定治理身份
+- 多个普通角色助手
 
-The product must **not** expose a large set of background context assistants to users.
+产品层**不应**向用户暴露大量后台 context assistants。
 
-## Governance Identities
+## 固定治理身份
 
 ### 1. Session Steward
 
-Responsibilities:
+职责：
 
-- append session facts to timeline
-- rewrite session working context
-- generate stable checkpoints on key events
-- provide the nearest reusable context for runtime injection
+- 追加 session 事实到 timeline
+- 重写 session working context
+- 在关键事件上生成稳定 checkpoint
+- 为 runtime 注入提供最近可复用的 session 侧上下文
 
-Primary write scope:
+主要写入范围：
 
 - session timeline
 - session working context
@@ -145,85 +145,85 @@ Primary write scope:
 
 ### 2. Project Curator
 
-Responsibilities:
+职责：
 
-- lift stable session results into project docs
-- maintain project-level context quality
-- propose `AGENTS.md` updates
-- propose skill updates based on actual usage evidence
-- summarize project-level capability behavior
+- 将稳定的 session 结果提升为 project docs
+- 维护 project-level context 质量
+- 生成 `AGENTS.md` 更新提议
+- 基于真实使用证据生成 skill 更新提议
+- 汇总 project 级 capability 行为
 
-Primary write scope:
+主要写入范围：
 
 - project docs
 - project working notes
 - project capability review notes
 
-Proposal scope:
+主要 proposal 范围：
 
 - `AGENTS.md`
 - `skills/`
-- hooks / commands / schedules behavior proposals
+- hooks、commands、schedules 行为提议
 
 ### 3. Space Curator
 
-Responsibilities:
+职责：
 
-- maintain cross-session and cross-project memory
-- build user profile and long-horizon patterns
-- manage timing, staleness, and expiration state
-- digest connector-derived context into space-level context
+- 维护跨 session、跨 project 的上下文
+- 建立用户画像与长周期模式
+- 管理时序、陈旧度与过期状态
+- 将 connector 派生上下文消化为 space-level context
 
-Primary write scope:
+主要写入范围：
 
 - space-level docs
-- engine-held profile and long-horizon memory
+- engine-held 的 profile 与长周期记忆
 - connector digests
 
-Downstream proposal scope:
+向下游输出的 proposal 范围：
 
 - project-level promotion candidates
 
-## Internal Implementation Rule
+## 内部实现规则
 
-The implementation may use more than three internal assistant packages, skill bundles, or worker profiles.
+实现层可以存在多于三个的内部 assistant package、skill bundle 或 worker profile。
 
-However:
+但是：
 
-- product-visible governance identities stay fixed at three
-- internal helper agents are implementation detail only
-- non-user-facing context agents must not appear in the normal assistant catalog
+- 产品可见的治理身份始终固定为三个
+- 内部 helper agents 只是实现细节
+- 非用户任务对话型的 context agents 不能出现在主 assistant catalog 中
 
-User-visible control should be provided through a dedicated runtime console, not a large assistant list.
+用户可见的控制面应该是专门的 runtime console，而不是大批后台助手。
 
-## User-Facing Runtime Console
+## 用户可见的运行控制台
 
-The settings surface should expose a dedicated Context Engine runtime console showing:
+设置页应暴露一个单独的 Context Engine runtime console，用于展示：
 
-- whether Context Engine automation is enabled
-- recent context jobs
-- which governance identity ran each job
-- proposals, accepted updates, and rejected updates
-- failed jobs and retry state
-- schedule and hook activity
-- connector digestion activity
+- Context Engine automation 是否启用
+- 最近的 context jobs
+- 每个 job 由哪个治理身份执行
+- proposals、accepted updates、rejected updates
+- failed jobs 与 retry 状态
+- schedule 与 hook 活动
+- connector digestion 活动
 
-The user should see governance and control, not a zoo of background assistants.
+用户应看到的是“治理与控制”，而不是一堆后台 assistant。
 
-## Session Context Model
+## Session 上下文模型
 
-Session context uses a split-document model.
+session 使用双文档分离模型。
 
 ### Session Timeline
 
-Characteristics:
+特征：
 
 - append-only
-- time-ordered
-- factual, not optimized for prompt quality
-- suitable for archival and replay
+- 时间有序
+- 以事实为主，不以 prompt 可读性为主
+- 适合归档、追溯和回放
 
-Example event classes:
+典型事件类型：
 
 - user query started
 - assistant reply completed
@@ -234,72 +234,72 @@ Example event classes:
 
 ### Session Working Context
 
-Characteristics:
+特征：
 
-- continuously rewritten
-- optimized for current usefulness
-- combines active goal, constraints, pending work, and active references
-- not equal to "recent chat history"
+- 持续重写
+- 以“当前是否有用”为优化目标
+- 汇总 active goal、constraints、pending work、active references
+- 不等于“最近聊天记录”
 
-It is a moving attention window, not a pure time window.
+它是一个移动的注意力窗口，而不是纯时间窗口。
 
 ### Session Checkpoints
 
-Characteristics:
+特征：
 
-- generated at important boundaries
-- stable enough to feed project and space evolution
-- not rewritten after emission
+- 在重要边界生成
+- 稳定到足以输入 project 与 space 演化循环
+- 生成后不再重写
 
-Suggested checkpoint triggers:
+建议触发点：
 
 - interruption
 - strategy shift
 - compaction trigger
 - milestone reached
-- idle-interval boundary
-- explicit close or flush
+- idle interval boundary
+- 显式 close 或 flush
 
-## Automation Trigger Model
+## 自动化触发模型
 
-The orchestration core uses a mixed trigger model:
+编排内核使用混合触发模型：
 
-- hooks for near-real-time fact capture
-- schedules for periodic maintenance
-- commands for explicit user-triggered governance actions
-- typed context events for internal routing
+- hooks 负责近实时事实采集
+- schedules 负责周期维护
+- commands 负责用户显式触发的治理动作
+- typed context events 负责 engine 内部路由
 
-Three fixed identities are invoked by job type.
+三个固定身份只在被调度到对应 job 时运行。
 
-They are not permanently free-running background chats.
+它们不是永久常驻、自由活动的后台聊天助手。
 
-## Connector Context Rule
+## Connector 上下文规则
 
-Connector-derived context must enter the same flow system.
+connector 派生上下文必须进入同一套流动体系。
 
-Every connector input should be classified into one or more of:
+每个 connector 输入都应先被分类为：
 
 - session-relevant
 - project-relevant
 - space-relevant
 
-Connector raw material should not be dumped directly into prompts by default.
+默认情况下，connector raw material 不应直接进入 prompt。
 
-It should first be digested into:
+它应先被整理成：
 
-- session working context when immediately relevant
-- project docs or notes when project-stable
-- space-level digest or memory when cross-project durable
+- 当下直接相关时进入 session working context
+- 对项目长期有效时进入 project docs 或 notes
+- 具备跨项目长期价值时进入 space digest 或长期记忆
 
-## Writeback Levels
+## 写回等级
 
-All automated writeback is classified into four levels.
+所有自动写回分为四个等级。
 
-### Level 0: Fact Append
+### Level 0：事实追加
 
-Append-only, low risk, full automation.
+append-only、风险最低、默认全自动。
 
-Examples:
+示例：
 
 - session timeline
 - checkpoints
@@ -307,205 +307,192 @@ Examples:
 - connector raw digest log
 - skill usage log
 
-### Level 1: Working Context Rewrite
+### Level 1：工作上下文重写
 
-Rewritable, task-focused, fully automated.
+允许覆盖旧内容，但聚焦当前任务，默认全自动。
 
-Examples:
+示例：
 
 - session working context
 - project working notes
 - active task summaries
 
-### Level 2: Project Documentation Curation
+### Level 2：项目文档整理
 
-Stable project-facing docs, automatically writable with guardrails.
+面向长期 project 可消费上下文，可自动写，但必须受护栏约束。
 
-Examples:
+示例：
 
 - decision notes
 - workflow notes
 - connector integration notes
 - project memory digest docs
 
-### Level 3: Rule / Capability Surface Evolution
+### Level 3：规则 / 能力面演化
 
-Higher risk, proposal-first by default.
+风险更高，默认 proposal-first。
 
-Examples:
+示例：
 
 - `AGENTS.md`
 - `skills/`
-- hooks / commands / schedules behavior proposals
+- hooks、commands、schedules 行为提议
 
-## Special Rules For AGENTS.md
+## `AGENTS.md` 的特殊规则
 
-`AGENTS.md` is both:
+`AGENTS.md` 同时承担：
 
-- an execution entry
-- a project rule surface
-- a context index
+- 执行入口
+- 项目规则面
+- 上下文索引
 
-By default, only these proposal classes are allowed:
+默认只允许以下 proposal 类型：
 
-- index completion
-- stable rule addition
-- context entry routing changes
+- 索引补全
+- 稳定规则补充
+- 上下文入口路由调整
 
-Default disallowed automatic changes:
+默认不允许自动做的事情：
 
-- broad style rewrites
-- deleting existing rules
-- large structural reorganization
-- adding heavy persona text unrelated to project execution
+- 大范围风格重写
+- 删除已有规则
+- 大规模结构重排
+- 注入与项目执行无关的重人格内容
 
-## Special Rules For Skills
+## `skills/` 的特殊规则
 
-Skill evolution should start from evidence, not direct mutation.
+skill 演化必须从证据出发，而不是直接自由改写。
 
-Three output classes are allowed:
+允许的输出类型：
 
 - usage evidence note
 - skill patch proposal
 - new skill candidate
 
-Default automation should stop before direct mutation of formal skill content.
+默认自动化应止步于“证据”和“提议”，而不是直接改正式 skill 内容。
 
-## Injection Strategy
+## 注入策略
 
-Injection should assemble context in five layers.
+注入应按五层结构组装上下文。
 
-### Layer 1: Session Active Context
+### Layer 1：Session Active Context
 
-Includes:
+包含：
 
 - session working context
 - recent checkpoint conclusions
 - active constraints
 - pending work
 
-Priority:
+优先级：
 
-- highest
+- 最高
 
-### Layer 2: Project Core Context
+### Layer 2：Project Core Context
 
-Includes:
+包含：
 
-- relevant `AGENTS.md` guidance
-- relevant project docs
-- relevant skill summaries
+- 当前相关的 `AGENTS.md` guidance
+- 当前相关的 project docs
+- 当前相关的 skill summaries
 - project capability notes
 
-Priority:
+优先级：
 
-- second
+- 第二
 
-### Layer 3: Space / User Long-Horizon Context
+### Layer 3：Space / User Long-Horizon Context
 
-Includes:
+包含：
 
-- user profile
-- cross-project stable patterns
-- long-horizon preferences
+- 用户画像
+- 跨项目稳定模式
+- 长周期偏好
 
-Priority:
+优先级：
 
-- third
+- 第三
 
-### Layer 4: Connector-Derived Context
+### Layer 4：Connector-Derived Context
 
-Includes:
+包含：
 
-- current external context digests
-- connector summaries relevant to the task
+- 当前相关的外部上下文 digest
+- 与任务相关的 connector summaries
 
-Priority:
+优先级：
 
-- fourth, unless promoted by strong task relevance
+- 第四，除非被明确提升为任务关键
 
-### Layer 5: Skill / Capability Evidence
+### Layer 5：Skill / Capability Evidence
 
-Includes:
+包含：
 
-- concise hints about recommended skill usage
-- common failure reminders
-- command / schedule / hook context hints
+- 推荐使用某 skill 的短提示
+- 常见失败提醒
+- command / schedule / hook 的上下文提示
 
-Priority:
+优先级：
 
-- auxiliary only
+- 辅助层，不是主叙事层
 
-### Trimming Order
+### 裁剪顺序
 
-Trim in this order:
+预算不足时按以下顺序裁剪：
 
 1. connector-derived context
 2. space / user long-horizon context
-3. non-core project docs
+3. 非核心 project docs
 4. capability evidence
-5. session active context last
+5. 最后才裁 session active context
 
-This protects "what am I doing now?" and "what does this project require?" from being crowded out.
+这样可以保护“我当前在干什么”和“这个项目当前明确要求什么”不被噪声淹没。
 
-## Query Modes
+## 与现有 ContextGo 架构的关系
 
-Not every turn should load the full five-layer stack.
+这份设计是在 ContextGo 当前方向上继续细化，而不是另起一套模型。
 
-Define three runtime modes:
+它与以下方向一致：
 
-- `quick turn`
-  - minimal session + minimal project rules
-- `task turn`
-  - session + project + selective space
-- `deep work turn`
-  - full five-layer assembly with stronger connector and capability participation
-
-## Relationship To Existing ContextGo Architecture
-
-This design extends and sharpens current ContextGo direction rather than replacing it.
-
-It is consistent with:
-
-- `Space` as the product-level boundary
-- event-driven Context Engine maintenance
+- `Space` 作为产品层边界
+- 事件驱动的 Context Engine 维护路径
 - project-local vault surfaces
-- runtime-neutral capability ownership for skills, hooks, commands, and schedules
+- skills、hooks、commands、schedules 的 runtime-neutral capability ownership
 
-It rejects:
+它明确拒绝：
 
-- replacing `Space` with a filesystem-first product model
-- turning Context Engine into a user-facing catalog of many background assistants
-- letting hidden engine state replace project files as execution truth
+- 用 filesystem-first 产品模型替代 `Space`
+- 把 Context Engine 变成面对用户的一大堆后台 assistant
+- 用隐藏 engine state 取代 project 文件作为执行事实源
 
-## Non-Goals
+## 非目标
 
-This spec does not yet define:
+这份文档暂时不定义：
 
-- the detailed skill bundles loaded by each governance identity
-- concrete assistant package manifests for internal context-governance helpers
-- exact job payload schemas for each automation path
-- exact vault path naming for the new session files
-- approval UX details for Level 3 proposals
+- 每个治理身份最终使用哪些具体 packaged skills
+- internal governance helpers 的最终 package manifest
+- 每种自动化路径的精确 job payload schema
+- session 文件的最终 vault path 命名
+- Level 3 proposals 的最终审批 UI
 
-Those are follow-up design topics after this architecture boundary is accepted.
+这些属于边界被接受之后的后续设计话题。
 
-## Acceptance Criteria
+## 验收标准
 
-This architecture should be considered accepted when all of the following are true:
+当以下条件全部成立时，可以认为这份架构约束被接受：
 
-- project-local files remain the final project execution truth
-- the Context Engine operates through vault-backed directories instead of beside them
-- dual-loop behavior is explicitly modeled
-- governance identities are fixed at `Session Steward`, `Project Curator`, and `Space Curator`
-- users see a Context Engine runtime console instead of many background assistants
-- writeback levels are explicit
-- injection order is explicit
-- connector context is part of the same flow model
+- project-local files 仍是 project 执行层最终事实源
+- Context Engine 通过 vault-backed 目录工作，而不是在旁边另起一套
+- 双循环被明确建模
+- 三个固定治理身份被明确固定
+- 用户看到的是 runtime console，而不是很多后台 assistants
+- 写回等级明确
+- 注入顺序明确
+- connector context 进入同一套流动模型
 
-## Recommended Next Design Topic
+## 推荐的下一步设计
 
-After this spec is accepted, the next design should define:
+在这份 spec 被接受后，下一份设计应继续定义：
 
-- how `Session Steward`, `Project Curator`, and `Space Curator` load and switch skill bundles
-- how hooks, schedules, and commands map onto concrete context job types
+- `Session Steward / Project Curator / Space Curator` 的 skill 装配与切换协议
+- hooks、schedules、commands 如何映射到具体 context job types

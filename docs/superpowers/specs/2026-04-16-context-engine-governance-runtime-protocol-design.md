@@ -1,59 +1,59 @@
-# Context Engine Governance Runtime Protocol Design
+# Context Engine 治理运行时协议设计
 
-Date: 2026-04-16
+日期：2026-04-16
 
-## Goal
+## 目标
 
-Define the runtime protocol for how ContextGo's fixed governance identities are assembled, triggered, and observed.
+定义 ContextGo 固定治理身份的运行时协议，明确它们如何装配、触发和被观察。
 
-This spec builds on the already accepted dual-loop architecture and freezes:
+这份 spec 建立在已经接受的双循环架构之上，正式冻结以下内容：
 
-- how `Session Steward`, `Project Curator`, and `Space Curator` load skills
-- how hooks, schedules, and commands trigger governance work
-- how governance jobs are routed and observed
-- how internal implementation detail stays hidden behind stable product-visible identities
+- `Session Steward / Project Curator / Space Curator` 如何加载 skills
+- hooks、schedules、commands 如何触发治理工作
+- governance jobs 如何路由与被观察
+- 内部实现细分如何被稳定的产品层治理身份所吸收
 
-This spec does **not** define the exact prompt text or the final list of individual packaged skills. It defines the protocol and boundaries that those assets must follow.
+这份文档**不**定义最终 prompt 文本，也不定义每个身份最终加载哪些具体 packaged skills。它定义的是协议与边界，而不是最终素材清单。
 
-## Architectural Base
+## 架构前提
 
-This document assumes the following architecture is already fixed:
+本文默认以下架构已经冻结：
 
-- project-local files remain the final project execution truth
-- Context Engine operates through vault-backed project and space layout
-- session and project/space evolution run as a dual-loop system
-- governance identities are fixed at:
+- project-local files 继续作为项目执行的最终事实源
+- Context Engine 通过 vault-backed 的 project / space layout 工作
+- session 与 project/space 演化构成双循环系统
+- 治理身份固定为：
   - `Session Steward`
   - `Project Curator`
   - `Space Curator`
-- user-facing control is exposed through a runtime console instead of a large list of background assistants
+- 面向用户的控制入口是 runtime console，而不是一长串后台 assistant 列表
 
-## Runtime Model
+## 运行时模型
 
-The governance runtime has four layers:
+治理运行时共有四层：
 
 1. `Context Orchestrator`
-2. fixed governance identities
-3. internal skill bundles
-4. trigger surfaces (`hooks`, `schedules`, `commands`, and connector ingress)
+2. 固定治理身份
+3. 内部 skill bundles
+4. 触发面：`hooks`、`schedules`、`commands`、connector ingress
 
-Only the orchestrator routes work.
+只有 orchestrator 负责路由工作。
 
-Only the three fixed identities are product-visible governance roles.
+只有三个固定身份是产品可见的治理角色。
 
-Internal helper agents, worker profiles, or package variants may exist, but they remain implementation detail only.
+内部 helper agents、worker profiles、package variants 可以存在，但都只是实现细节。
 
-## Fixed Governance Identities
+## 固定治理身份
 
 ### Session Steward
 
-Purpose:
+目的：
 
-- manage current-session context quality
-- keep current task context reusable
-- supply the nearest session-side injection material
+- 管理当前 session 上下文质量
+- 保持当前任务上下文可继续工作
+- 提供最贴近 session 的注入素材
 
-Primary work products:
+主要工作产物：
 
 - session timeline
 - session working context
@@ -61,13 +61,13 @@ Primary work products:
 
 ### Project Curator
 
-Purpose:
+目的：
 
-- evolve project-local context files
-- turn stable session outputs into project documentation and proposals
-- track capability drift for project-owned skills, hooks, commands, and schedules
+- 演化项目本地上下文文件
+- 将稳定 session 结果提升为项目文档与提议
+- 跟踪 project-owned skills、hooks、commands、schedules 的 capability drift
 
-Primary work products:
+主要工作产物：
 
 - project docs updates
 - project working notes
@@ -77,50 +77,50 @@ Primary work products:
 
 ### Space Curator
 
-Purpose:
+目的：
 
-- maintain cross-session and cross-project context
-- digest connector-derived context into durable higher-level forms
-- manage profile, timing, staleness, and expiration state
+- 维护跨 session、跨 project 的上下文
+- 将 connector 派生上下文整理成更高层、更长期的形式
+- 管理 profile、时序、staleness、expiration 状态
 
-Primary work products:
+主要工作产物：
 
 - space-level docs
-- user profile projections
-- cross-project pattern summaries
+- 用户画像投影
+- 跨项目模式总结
 - connector digests
 - temporal memory governance state
 
-## Skill Assembly Protocol
+## Skill 装配协议
 
-Fixed governance identities do not rely on one giant prompt.
+固定治理身份不能依赖一整段巨大的静态提示词。
 
-They run through explicit skill assembly.
+它们必须通过显式 skill assembly 来运行。
 
-Every execution must be composed from the following four layers.
+每次治理执行都由以下四层装配而成。
 
-### Layer A: Identity Base Rules
+### Layer A：Identity Base Rules
 
-Stable rules defining:
+这是稳定的身份级规则，定义：
 
-- allowed write scope
-- proposal vs direct-write behavior
-- expected output style
-- forbidden targets
+- 允许写入的范围
+- proposal 与 direct-write 的默认行为
+- 预期输出风格
+- 明确禁止触碰的目标
 
-Examples:
+示例：
 
-- `Session Steward` cannot directly mutate project `AGENTS.md`
-- `Project Curator` defaults to proposal-first for `AGENTS.md` and `skills/`
-- `Space Curator` cannot directly overwrite active project session files
+- `Session Steward` 不能直接修改 project `AGENTS.md`
+- `Project Curator` 对 `AGENTS.md` 和 `skills/` 默认 proposal-first
+- `Space Curator` 不能直接覆盖活跃 project session 文件
 
-Identity base rules are long-lived and should change rarely.
+这层规则应该长期稳定，变化频率极低。
 
-### Layer B: Role Core Skills
+### Layer B：Role Core Skills
 
-Long-lived core skill bundles always loaded for a governance identity.
+这是随治理身份长期绑定的核心 skill 组。
 
-#### Session Steward core skills
+#### Session Steward 核心技能
 
 - `session-timeline-writer`
 - `session-working-context-rewriter`
@@ -129,7 +129,7 @@ Long-lived core skill bundles always loaded for a governance identity.
 - `task-state-summarizer`
 - `constraint-window-manager`
 
-#### Project Curator core skills
+#### Project Curator 核心技能
 
 - `project-doc-curation`
 - `project-decision-promoter`
@@ -138,7 +138,7 @@ Long-lived core skill bundles always loaded for a governance identity.
 - `capability-surface-mapper`
 - `project-context-patch-generator`
 
-#### Space Curator core skills
+#### Space Curator 核心技能
 
 - `user-profile-distillation`
 - `cross-project-pattern-synthesis`
@@ -147,13 +147,13 @@ Long-lived core skill bundles always loaded for a governance identity.
 - `space-context-promotion`
 - `expiration-and-staleness-manager`
 
-The exact implementation files may evolve, but the protocol assumes that each governance identity has a small stable core skill set.
+具体文件名后续可以演化，但协议上假定每个治理身份都会绑定一组稳定且较小的核心 skill。
 
-### Layer C: Job-Specific Skills
+### Layer C：Job-Specific Skills
 
-Additional skills are loaded based on job type.
+根据 job type 临时加载的附加技能。
 
-Examples:
+示例：
 
 - `session_compaction`
   - `compaction-summarizer`
@@ -173,19 +173,19 @@ Examples:
   - `connector-event-normalizer`
   - `external-context-classifier`
 
-Job-specific skill bundles must be explicit and deterministic.
+job-specific skill bundles 必须显式、确定、可重放。
 
-### Layer D: Contextual Augmentation Skills
+### Layer D：Contextual Augmentation Skills
 
-These are dynamically selected from durable project or space context.
+这是根据 durable project/space context 动态附加的 skill。
 
-Sources may include:
+来源可以包括：
 
-- project-scoped context skills in project `skills/`
-- space-promoted context skills
-- future engine-owned context skill packages derived from durable patterns
+- project 范围内的 context skills
+- space 层晋升出的 context skills
+- 未来 engine 自己维护的高层 context skill packages
 
-Contextual skills are loaded only when they match:
+这些 skill 只有在以下条件匹配时才会被装配：
 
 - project
 - space
@@ -194,50 +194,50 @@ Contextual skills are loaded only when they match:
 - recent signal kinds
 - job payload type
 
-Contextual augmentation must never be silent or opaque.
+Contextual augmentation 绝不能隐式发生。
 
-Each selection must be recorded as part of the job execution snapshot.
+每一次选择都必须记录到 job execution snapshot 中。
 
-## Skill Sources
+## Skill 来源
 
-Governance skill assembly may only use three source classes:
+治理 skill 装配只允许使用三类来源：
 
 1. `system packaged skills`
 2. `project-scoped context skills`
 3. `space-promoted context skills`
 
-The runtime must not silently scan arbitrary runtime-native directories and treat them as implicit governance skill sources.
+运行时不能静默扫描任意 runtime-native 目录，并把它们直接当作治理 skill 来源。
 
-The canonical ownership model remains:
+规范性的所有权模型仍然是：
 
-- project-local capability files for project truth
-- package-managed skills for reusable execution units
-- runtime-native projections as projections only
+- project-local capability files 持有 project truth
+- package-managed skills 承载可复用执行单元
+- runtime-native directories 只是 projection
 
-## Skill Selection Rules
+## Skill 选择规则
 
-Selection is a three-step process:
+装配过程分三步：
 
-1. load identity base rules and role core skills
-2. expand with job-specific skills
-3. augment with matching project or space context skills
+1. 加载 identity base rules 与 role core skills
+2. 根据 job type 加载 job-specific skills
+3. 根据当前 project / space / signals 决定是否追加 contextual augmentation skills
 
-The selection algorithm should optimize for:
+选择算法应优先优化：
 
 - determinism
-- small active skill sets
+- 小而稳定的 active skill set
 - explainability
 - bounded write scope
 
-The selection algorithm should avoid:
+选择算法应避免：
 
-- broad opportunistic overloading of all available skills
-- hidden prompt inflation
-- project contamination from unrelated space or global context
+- 贪心加载全部可用 skills
+- 隐式 prompt 膨胀
+- 将无关的 space/global context 污染进 project 运行面
 
-## Execution Snapshot Requirement
+## 执行快照要求
 
-Every governance job execution must record a snapshot containing:
+每次治理 job 执行都必须记录一份 snapshot，至少包含：
 
 - governance identity
 - job type
@@ -247,38 +247,38 @@ Every governance job execution must record a snapshot containing:
 - loaded contextual augmentation skills
 - contextual-selection rationale
 - write scope
-- whether the run produced direct writes or proposals
+- 最终产生 direct writes 还是 proposals
 
-This snapshot must be available to the runtime console.
+这份 snapshot 必须在 runtime console 中可见。
 
-## Trigger Protocol
+## 触发协议
 
-All governance activity starts from a trigger surface, but trigger surfaces are intentionally limited.
+所有治理活动都从触发面开始，但触发面必须被严格限制。
 
-Allowed trigger classes:
+允许的触发类型：
 
 - hooks
 - schedules
 - commands
 - connector ingress
 
-Trigger surfaces do not directly rewrite context files.
+触发面本身不直接重写上下文文件。
 
-They only produce normalized facts or explicit requests.
+它们只产生标准化事实或显式请求。
 
-The orchestrator translates those into typed context jobs.
+再由 orchestrator 将其转换成 typed context jobs。
 
-## Hook Protocol
+## Hooks 协议
 
-### Purpose
+### 目的
 
-Hooks capture near-real-time execution facts and emit lightweight governance signals.
+hooks 用于捕捉近实时执行事实，并发出轻量治理信号。
 
-### Allowed hook categories
+### 允许的 hook 类别
 
 #### Session lifecycle hooks
 
-Examples:
+示例：
 
 - turn started
 - turn completed
@@ -287,11 +287,11 @@ Examples:
 - tool finished
 - skill finished
 
-Default routing:
+默认路由：
 
 - `Session Steward`
 
-Typical emitted jobs:
+典型 job：
 
 - `session_fact_append`
 - `session_working_context_refresh`
@@ -300,18 +300,18 @@ Typical emitted jobs:
 
 #### Project capability hooks
 
-Examples:
+示例：
 
 - repeated skill invocation
 - repeated command use
 - repeated hook block or warning
 - repeated schedule success or failure
 
-Default routing:
+默认路由：
 
 - `Project Curator`
 
-Typical emitted jobs:
+典型 job：
 
 - `project_capability_curation`
 - `skill_usage_digest`
@@ -319,63 +319,61 @@ Typical emitted jobs:
 
 #### Connector ingress hooks
 
-Examples:
+示例：
 
 - external resource synced
 - external message ingested
 - repository activity captured
-- browser or clipboard import completed
+- browser / clipboard import completed
 
-The orchestrator must classify connector input into:
+orchestrator 必须先把 connector 输入分类为：
 
 - session-relevant
 - project-relevant
 - space-relevant
 
-The resulting job is then routed to:
+然后再路由给：
 
 - `Session Steward`
 - `Project Curator`
 - `Space Curator`
 
-depending on classified relevance.
+### hook 限制
 
-### Hook limitations
-
-Hooks may:
+hook 可以做：
 
 - capture facts
 - normalize small payloads
 - attach evidence references
 - enqueue jobs
 
-Hooks may not:
+hook 不能做：
 
-- directly rewrite docs
-- directly mutate `AGENTS.md`
-- directly mutate formal project skills
-- perform large summarization work
+- 直接重写 docs
+- 直接修改 `AGENTS.md`
+- 直接修改正式 skill 文件
+- 承担大型总结与重治理工作
 
-## Schedule Protocol
+## Schedules 协议
 
-### Purpose
+### 目的
 
-Schedules drive slow-loop distillation, maintenance, and expiration.
+schedules 负责慢循环、维护、蒸馏与过期治理。
 
-### Schedule classes
+### schedule 类别
 
 #### Short-cycle schedules
 
-Recommended cadence:
+建议频率：
 
-- every 5-15 minutes
-- or idle-window based
+- 每 5-15 分钟
+- 或按 idle window 触发
 
-Default routing:
+默认路由：
 
 - `Session Steward`
 
-Typical jobs:
+典型 job：
 
 - `session_working_context_refresh`
 - `session_checkpoint_create`
@@ -383,17 +381,17 @@ Typical jobs:
 
 #### Project maintenance schedules
 
-Recommended cadence:
+建议频率：
 
 - hourly
 - half-daily
 - daily
 
-Default routing:
+默认路由：
 
 - `Project Curator`
 
-Typical jobs:
+典型 job：
 
 - `project_doc_curation`
 - `project_promotion`
@@ -403,17 +401,17 @@ Typical jobs:
 
 #### Space distillation schedules
 
-Recommended cadence:
+建议频率：
 
 - nightly
 - daily
 - weekly
 
-Default routing:
+默认路由：
 
 - `Space Curator`
 
-Typical jobs:
+典型 job：
 
 - `space_memory_distillation`
 - `user_profile_refresh`
@@ -421,109 +419,111 @@ Typical jobs:
 - `connector_digest`
 - `temporal_memory_expiration`
 
-### Schedule limitations
+### schedule 限制
 
-Schedules should be used for:
+schedules 适合做：
 
 - consolidation
 - distillation
 - expiration
 - proposal batch generation
 
-Schedules should not be used for:
+schedules 不适合做：
 
-- ultra-low-latency turn injection
-- heavy project-truth mutation at arbitrary high frequency
-- operations requiring immediate conversational feedback
+- 超低延迟的 turn 注入
+- 高频重写 project truth files
+- 强依赖当前对话即时反馈的逻辑
 
-## Command Protocol
+## Commands 协议
 
-### Purpose
+### 目的
 
-Commands provide explicit user-triggered governance control.
+commands 是显式人工治理入口。
 
-Commands let users trigger governance without needing to understand internal hooks or schedules.
+它能让用户在不了解内部 hooks / schedules 的情况下，仍能主动触发治理动作。
 
-### Command classes
+### command 类别
 
 #### Session commands
 
-Examples:
+示例：
 
 - `/context-session-refresh`
 - `/context-session-checkpoint`
 - `/context-session-compact`
 
-Default routing:
+默认路由：
 
 - `Session Steward`
 
 #### Project commands
 
-Examples:
+示例：
 
 - `/context-project-curate`
 - `/context-project-propose-agents`
 - `/context-project-review-skills`
 
-Default routing:
+默认路由：
 
 - `Project Curator`
 
 #### Space commands
 
-Examples:
+示例：
 
 - `/context-space-distill`
 - `/context-space-profile-refresh`
 - `/context-space-digest-connectors`
 
-Default routing:
+默认路由：
 
 - `Space Curator`
 
-### Command limitations
+### command 限制
 
-Commands may:
+commands 可以：
 
-- force a governance run
-- specify target scope
-- specify conservative / standard / aggressive mode later if needed
-- return report, proposal, or update result
+- 强制触发一次治理执行
+- 指定 target scope
+- 未来再增加 conservative / standard / aggressive mode
+- 返回 report、proposal 或 update result
 
-Commands may not:
+commands 不应：
 
-- bypass writeback boundaries
-- bypass runtime-console history
-- invoke an arbitrary hidden background assistant outside the governance protocol
+- 绕过 writeback 边界
+- 绕过 runtime console 历史
+- 在协议外直接调用任意隐藏后台 assistant
 
-## Trigger-To-Job Conversion Rule
+## Trigger-To-Job 转换规则
 
-A hard protocol rule:
+一条硬规则：
 
-**triggers describe what happened; jobs describe what should be done**
+**trigger 描述“发生了什么”，job 描述“应该做什么”。**
 
-Examples:
+例如：
 
-- repeated skill failures do not directly mutate a skill file
-- they emit evidence
-- the orchestrator converts that into `project_capability_curation`
+- repeated skill failures 不能直接修改某个 skill 文件
+- 它只能先变成 evidence
+- 再由 orchestrator 转换为 `project_capability_curation`
 
-- accumulated connector imports do not directly rewrite profile
-- they emit digested relevance facts
-- the orchestrator converts that into `connector_digest` or `space_memory_distillation`
+再例如：
 
-This preserves:
+- accumulated connector imports 不能直接改 profile
+- 它只能先变成 relevance facts
+- 再被转换成 `connector_digest` 或 `space_memory_distillation`
 
-- stable trigger surfaces
-- evolvable job policy
-- clean governance identity boundaries
+这样可以保持：
 
-## Job Type Ownership
+- trigger surface 稳定
+- job policy 可演进
+- 三类治理身份边界清晰
 
-The default ownership map is:
+## Job 类型归属
 
-### Session Steward-owned jobs
+默认归属关系如下：
+
+### Session Steward 负责的 job
 
 - `session_fact_append`
 - `session_working_context_refresh`
@@ -531,7 +531,7 @@ The default ownership map is:
 - `session_compaction`
 - `session_injection_prepare`
 
-### Project Curator-owned jobs
+### Project Curator 负责的 job
 
 - `project_doc_curation`
 - `project_promotion`
@@ -539,7 +539,7 @@ The default ownership map is:
 - `agents_patch_proposal`
 - `skill_patch_proposal`
 
-### Space Curator-owned jobs
+### Space Curator 负责的 job
 
 - `space_memory_distillation`
 - `user_profile_refresh`
@@ -547,25 +547,25 @@ The default ownership map is:
 - `connector_digest`
 - `temporal_memory_expiration`
 
-## Runtime Console Requirements
+## Runtime Console 要求
 
-The runtime console must be able to answer, for every governance execution:
+runtime console 必须能够回答以下问题：
 
-- what triggered it
-- what job was created
-- which governance identity ran it
-- what skills were loaded
-- what files or surfaces were written
-- what outputs were proposals only
-- what failed and why
+- 是什么触发了这次治理执行
+- 产生了什么 job
+- 由哪个治理身份执行
+- 加载了哪些 skill
+- 写了哪些 surfaces
+- 哪些输出只是 proposal
+- 哪些失败了，为什么失败
 
-The runtime console is not optional decoration.
+runtime console 不是装饰性面板，而是治理自动化的 explainability 边界。
 
-It is the main explainability boundary for governance automation.
+## 与现有 ContextGo 运行时面的关系
 
-## Relationship To Existing ContextGo Runtime Surfaces
+这套协议应直接复用 ContextGo 已有能力，而不是另发明一套自动化模型。
 
-This protocol must compose with existing ContextGo product capabilities:
+它应与以下现有结构协同：
 
 - assistant packages
 - project-local `.contextgo` automation files
@@ -573,47 +573,45 @@ This protocol must compose with existing ContextGo product capabilities:
 - typed context events
 - queued context jobs
 
-The protocol should reuse those surfaces rather than inventing a second automation model.
+## 默认变更策略
 
-## Default Mutation Strategy
+当前阶段先采用简单策略：
 
-For now, project-level mutation stays simple:
+- project docs：默认允许自动写
+- `AGENTS.md`：append-first、增量 patch
+- `skills/`：append-first、增量 patch
 
-- project docs: default automatic write allowed
-- `AGENTS.md`: append-first, incremental patch strategy
-- `skills/`: append-first, incremental patch strategy
+这份 spec **刻意不**定义复杂的 `AGENTS.md / skills` 低风险自动通过分类体系。
 
-This spec intentionally avoids defining a detailed "low-risk auto-approve patch" taxonomy for `AGENTS.md` or `skills`.
+这部分如果后续需要，可以再加。
 
-That can be added later if needed.
+## 非目标
 
-## Non-Goals
+这份文档暂时不定义：
 
-This document does not yet define:
+- internal governance helpers 的最终 package IDs 或 manifest layout
+- 每个治理身份最终的 packaged skill 清单
+- 最终给用户暴露的 command 名称
+- proposal review 的最终审批 UI
+- session timeline / working context / checkpoints 的最终 vault path 命名
 
-- the exact package IDs or manifest layout for internal governance helpers
-- the final list of packaged skills per governance identity
-- the final command naming exposed to users
-- approval UX for proposal review
-- exact vault path naming for session timeline and checkpoint files
+## 验收标准
 
-## Acceptance Criteria
+当以下条件都成立时，可以认为这份运行时协议已被接受：
 
-This runtime protocol should be considered accepted when:
+- 三个治理身份保持固定
+- 内部实现可以细拆，但不改变产品层治理身份
+- skill assembly 是显式且分层的
+- hooks、schedules、commands 都统一通过 typed context jobs 路由
+- triggers 不直接改 project truth files
+- runtime console 可观察性是协议组成部分
+- project / space scoped context skills 可以参与治理，但不会变成隐式黑盒 prompt 状态
 
-- governance identities remain fixed at three
-- internal implementation can be finer-grained without changing product-visible identities
-- skill assembly is explicit and layered
-- hooks, schedules, and commands all route through typed context jobs
-- trigger surfaces do not directly rewrite project truth files
-- runtime console observability is part of the contract
-- project and space scoped context skills can augment governance execution without becoming implicit hidden prompt state
+## 推荐下一步
 
-## Recommended Next Step
+在这份协议被接受后，下一步实现规划应继续定义：
 
-After this protocol is accepted, the next implementation-oriented plan should define:
-
-- exact job schema additions
-- exact vault path layout for session timeline / working context / checkpoints
-- minimal packaged skills for each governance identity
-- first runtime console panels and event views
+- 精确的 job schema 增量
+- session timeline / working context / checkpoints 的具体 vault path layout
+- 三个治理身份的最小 packaged skill 集
+- runtime console 第一版面板与事件视图
