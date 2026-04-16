@@ -8,7 +8,7 @@ import { channel } from '@/common/adapter/ipcBridge';
 import type {
   IChannelActiveSessionEntry,
   IChannelBindingCatalog,
-  IChannelPublicationSnapshot,
+  IChannelPublicationCatalogRefreshResult,
 } from '@process/channels/types';
 import { Button, Empty, Message, Select, Spin, Tag } from '@arco-design/web-react';
 import { Refresh } from '@icon-park/react';
@@ -74,11 +74,11 @@ function formatOptionalRelativeTime(timestamp: number | undefined, locale: strin
 }
 
 function applyPublicationSnapshot(
-  snapshot: IChannelPublicationSnapshot,
+  snapshot: IChannelPublicationCatalogRefreshResult,
   setCatalog: React.Dispatch<React.SetStateAction<IChannelBindingCatalog>>,
   setSessions: React.Dispatch<React.SetStateAction<IChannelActiveSessionEntry[]>>
 ): void {
-  setCatalog(snapshot.catalog);
+  setCatalog(snapshot.bindingCatalog);
   setSessions(snapshot.activeSessions);
 }
 
@@ -102,7 +102,7 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const snapshotResult = await channel.refreshPublicationSnapshot.invoke(undefined);
+      const snapshotResult = await channel.refreshPublicationCatalog.invoke(undefined);
 
       if (!snapshotResult.success || !snapshotResult.data) {
         throw new Error(snapshotResult.msg || t('settings.activeSessions.loadFailed'));
@@ -110,10 +110,10 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
 
       applyPublicationSnapshot(snapshotResult.data, setCatalog, setSessions);
       setSelectedConnectorId((current) => {
-        if (current && snapshotResult.data.catalog.connectors.some((connector) => connector.id === current)) {
+        if (current && snapshotResult.data.bindingCatalog.connectors.some((connector) => connector.id === current)) {
           return current;
         }
-        return snapshotResult.data.catalog.connectors[0]?.id ?? '';
+        return snapshotResult.data.bindingCatalog.connectors[0]?.id ?? '';
       });
       setSelectedSource((current) => {
         if (current) {
