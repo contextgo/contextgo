@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.os.Build
 import android.webkit.JavascriptInterface
 import android.webkit.CookieManager
 import android.webkit.ValueCallback
@@ -20,8 +21,9 @@ import androidx.documentfile.provider.DocumentFile
 import io.contextgo.mobileshell.databinding.ActivityMainBinding
 import java.net.HttpURLConnection
 import java.net.URL
-import org.json.JSONObject
 import java.util.Locale
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
   private lateinit var binding: ActivityMainBinding
@@ -573,6 +575,180 @@ class MainActivity : AppCompatActivity() {
     return "android_$androidId"
   }
 
+  private fun registerAndBootstrapObsidianReplica(request: PendingObsidianReplicaRegistrationRequest) {
+    Thread {
+      try {
+        val deviceToken = ensureCloudMobileDeviceToken(request.apiBaseUrl)
+        val registerPayload =
+          postJson(
+            url = "${request.apiBaseUrl.removeSuffix("/")}/api/obsidian-sync/replicas/register",
+            body =
+              JSONObject()
+                .put("spaceId", request.spaceId)
+                .put("platform", "mobile")
+                .put("vaultFingerprint", request.spaceDirectoryUri)
+                .put("localReadyState", "prepared-directory")
+                .put("rootTreeUri", request.rootTreeUri)
+                .put("localDirectoryUri", request.spaceDirectoryUri)
+                .put("landingNotePath", request.landingNotePath),
+            bearerToken = deviceToken,
+          )
+
+        val vaultBindingId = registerPayload.optString("vaultBindingId").ifBlank { request.vaultBindingId }
+        val replicaId = registerPayload.optString("replicaId").ifBlank { error("Missing replicaId from Cloud register.") }
+
+        val pullPayload =
+          postJson(
+            url = "${request.apiBaseUrl.removeSuffix("/")}/api/obsidian-sync/batches/pull",
+            body =
+              JSONObject()
+                .put("vaultBindingId", vaultBindingId)
+                .put("replicaId", replicaId)
+                .put("afterCursor", 0),
+            bearerToken = deviceToken,
+          )
+
+        val batches = pullPayload.optJSONArray("batches") ?: JSONArray()
+        val latestCursor = applyObsidianPullBatchesToTree(request.spaceDirectoryUri, batches)
+
+        val payload =
+          JSONObject()
+            .put("status", "registered-mobile-replica")
+            .put("spaceId", request.spaceId)
+            .put("vaultName", request.suggestedFolderName)
+            .put("rootTreeUri", request.rootTreeUri)
+            .put("spaceDirectoryUri", request.spaceDirectoryUri)
+            .put("vaultBindingId", vaultBindingId)
+            .put("replicaId", replicaId)
+            .put("landingNotePath", request.landingNotePath)
+            .put("healthStatus", if (latestCursor > 0) "ok" else "warn")
+            .put("lastSyncedAt", isoNow())
+
+        preferences.edit().putString(obsidianVaultSetupKey(request.spaceId), payload.toString()).apply()
+        dispatchObsidianVaultSetupResult(payload)
+      } catch (error: Exception) {
+        dispatchObsidianVaultSetupResult(
+          JSONObject()
+            .put("status", "error")
+            .put("spaceId", request.spaceId)
+            .put("message", error.message ?: "Android mobile replica registration failed.")
+        )
+      }
+    }.start()
+  }
+
+  private fun ensureCloudMobileDeviceToken(apiBaseUrl: String): String {
+    val stored = preferences.getString(CLOUD_MOBILE_DEVICE_TOKEN_KEY, null)?.trim()
+    if (!stored.isNullOrBlank()) {
+      return stored
+    }
+
+    val cookieHeader = CookieManager.getInstance().getCookie(apiBaseUrl)?.takeIf { it.isNotBlank() }
+      ?: error("Cloud browser session cookie is unavailable for Android replica registration.")
+
+    val response =
+      postJson(
+        url = "${apiBaseUrl.removeSuffix("/")}/api/devices/register",
+        body =
+          JSONObject()
+            .put("deviceName", "ContextGo Mobile Shell on ${Build.MODEL}")
+            .put("platform", "android")
+            .put("deviceKind", "mobile-shell"),
+        cookieHeader = cookieHeader,
+      )
+
+    val token = response.optString("token").ifBlank { error("Cloud device registration did not return a device token.") }
+    preferences.edit().putString(CLOUD_MOBILE_DEVICE_TOKEN_KEY, token).apply()
+    return token
+  }
+
+  private fun postJson(
+    url: String,
+    body: JSONObject,
+    bearerToken: String? = null,
+    cookieHeader: String? = null,
+  ): JSONObject {
+    val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+      requestMethod = "POST"
+      connectTimeout = HTTP_TIMEOUT_MS
+      readTimeout = HTTP_TIMEOUT_MS
+      doOutput = true
+      setRequestProperty("Accept", "application/json")
+      setRequestProperty("Content-Type", "application/json")
+      if (!bearerToken.isNullOrBlank()) {
+        setRequestProperty("Authorization", "Bearer $bearerToken")
+      }
+      if (!cookieHeader.isNullOrBlank()) {
+        setRequestProperty("Cookie", cookieHeader)
+      }
+    }
+
+    return connection.useJsonRequest(body.toString())
+  }
+
+  private fun applyObsidianPullBatchesToTree(spaceDirectoryUri: String, batches: JSONArray): Int {
+    val root = DocumentFile.fromTreeUri(this, Uri.parse(spaceDirectoryUri))
+      ?: error("Prepared Android Space directory is unavailable.")
+    var latestCursor = 0
+
+    for (index in 0 until batches.length()) {
+      val batch = batches.optJSONObject(index) ?: continue
+      latestCursor = maxOf(latestCursor, batch.optInt("assignedCursor", 0))
+      val entries = batch.optJSONArray("entries") ?: continue
+      for (entryIndex in 0 until entries.length()) {
+        val entry = entries.optJSONObject(entryIndex) ?: continue
+        val fileClass = entry.optString("fileClass")
+        if (fileClass != "content" && fileClass != "obsidian-config" && fileClass != "workspace-state") {
+          continue
+        }
+
+        val relativePath = entry.optString("path").trim().trimStart('/', '\\')
+        if (relativePath.isBlank()) {
+          continue
+        }
+        val body = entry.optString("body", "")
+        writeTextFile(root, relativePath, body)
+      }
+    }
+
+    return latestCursor
+  }
+
+  private fun writeTextFile(root: DocumentFile, relativePath: String, body: String) {
+    val segments = relativePath.split('/').filter { it.isNotBlank() }
+    val fileName = segments.lastOrNull() ?: return
+    var currentDir = root
+    for (segment in segments.dropLast(1)) {
+      currentDir =
+        currentDir.findDirectory(segment)
+          ?: currentDir.createDirectory(segment)
+          ?: error("Failed to create Android replica subdirectory: $segment")
+    }
+
+    val existing = currentDir.findFile(fileName)
+    val targetFile =
+      existing
+        ?: currentDir.createFile(resolveDocumentMimeType(fileName), fileName)
+        ?: error("Failed to create Android replica file: $fileName")
+
+    contentResolver.openOutputStream(targetFile.uri, "wt")?.use { output ->
+      output.write(body.toByteArray())
+    } ?: error("Failed to open Android replica file for writing: $relativePath")
+  }
+
+  private fun resolveDocumentMimeType(fileName: String): String {
+    return when {
+      fileName.endsWith(".md", ignoreCase = true) -> "text/markdown"
+      fileName.endsWith(".json", ignoreCase = true) -> "application/json"
+      fileName.endsWith(".canvas", ignoreCase = true) -> "application/json"
+      else -> "text/plain"
+    }
+  }
+
+  private fun isoNow(): String {
+    return java.time.Instant.now().toString()
+  }
+
   private inner class StartupBridge {
     @JavascriptInterface
     fun notifyReady() {
@@ -602,6 +778,42 @@ class MainActivity : AppCompatActivity() {
           // Ignore malformed payloads from the WebView side and keep the previous state.
         }
       }
+    }
+
+    @JavascriptInterface
+    fun registerAndBootstrapObsidianReplica(requestJson: String) {
+      val request =
+        try {
+          val payload = JSONObject(requestJson)
+          PendingObsidianReplicaRegistrationRequest(
+            spaceId = payload.optString("spaceId").ifBlank { return },
+            spaceName = payload.optString("spaceName").ifBlank { "Space" },
+            suggestedFolderName = payload.optString("suggestedFolderName").ifBlank { "contextgo-space" },
+            vaultBindingId = payload.optString("vaultBindingId").ifBlank { "vault_default" },
+            landingNotePath = payload.optString("landingNotePath").ifBlank { "Home.md" },
+            apiBaseUrl = payload.optString("apiBaseUrl").ifBlank { "https://api.contextgo.io" },
+            rootTreeUri = payload.optString("rootTreeUri").ifBlank {
+              JSONObject(readObsidianVaultSetupState(payload.optString("spaceId"))).optString("rootTreeUri")
+            },
+            spaceDirectoryUri = payload.optString("spaceDirectoryUri").ifBlank {
+              JSONObject(readObsidianVaultSetupState(payload.optString("spaceId"))).optString("spaceDirectoryUri")
+            },
+          )
+        } catch (_: Exception) {
+          null
+        }
+
+      if (request == null || request.rootTreeUri.isBlank() || request.spaceDirectoryUri.isBlank()) {
+        dispatchObsidianVaultSetupResult(
+          JSONObject()
+            .put("status", "error")
+            .put("spaceId", "")
+            .put("message", "Invalid Android mobile replica registration payload.")
+        )
+        return
+      }
+
+      registerAndBootstrapObsidianReplica(request)
     }
 
     @JavascriptInterface
@@ -661,7 +873,9 @@ class MainActivity : AppCompatActivity() {
     const val TARGET_URL_KEY = "target_url"
     const val STARTUP_BRIDGE_NAME = "ContextGoMobileShell"
     const val CONTEXTGO_VAULTS_DIRECTORY_NAME = "ContextGo"
+    const val CLOUD_MOBILE_DEVICE_TOKEN_KEY = "cloud_mobile_device_token"
     const val ANDROID_OBSIDIAN_VAULT_SETUP_EVENT = "contextgo:android-obsidian-vault-setup-result"
+    const val HTTP_TIMEOUT_MS = 15_000
     const val STARTUP_OVERLAY_FALLBACK_DELAY_MS = 500L
     const val STARTUP_READY_OBSERVER_SCRIPT =
       """
@@ -708,6 +922,17 @@ class MainActivity : AppCompatActivity() {
     val landingNotePath: String,
   )
 
+  private data class PendingObsidianReplicaRegistrationRequest(
+    val spaceId: String,
+    val spaceName: String,
+    val suggestedFolderName: String,
+    val vaultBindingId: String,
+    val landingNotePath: String,
+    val apiBaseUrl: String,
+    val rootTreeUri: String,
+    val spaceDirectoryUri: String,
+  )
+
   private fun obsidianVaultSetupKey(spaceId: String): String {
     return "obsidian_vault_setup_$spaceId"
   }
@@ -717,6 +942,7 @@ private fun DocumentFile.findDirectory(name: String): DocumentFile? {
   return listFiles().firstOrNull { it.isDirectory && it.name == name }
 }
 
+<<<<<<< HEAD
 private data class ShellLoginPayload(
   val targetUrl: String,
   val loginCode: String?,
@@ -724,6 +950,24 @@ private data class ShellLoginPayload(
 ) {
   val shouldRecoverNatively: Boolean
     get() = !errorCode.isNullOrBlank() && loginCode.isNullOrBlank()
+||||||| parent of e7cd42ae (feat(space): complete android mobile replica bootstrap)
+=======
+private fun HttpURLConnection.useJsonRequest(body: String): JSONObject {
+  outputStream.use { output ->
+    output.write(body.toByteArray())
+  }
+
+  val responseCode = responseCode
+  val responseText =
+    (if (responseCode in 200..299) inputStream else errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+  disconnect()
+
+  if (responseCode !in 200..299) {
+    error("Android cloud request failed with status $responseCode: $responseText")
+  }
+
+  return JSONObject(responseText)
+>>>>>>> e7cd42ae (feat(space): complete android mobile replica bootstrap)
 }
 
 private object ShellTargetResolver {

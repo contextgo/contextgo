@@ -76,6 +76,18 @@ const hoisted = vi.hoisted(() => {
       replicaId: 'android_replica_1',
       landingNotePath: 'Home.md',
     }),
+    registerAndBootstrapAndroidObsidianReplicaMock: vi.fn().mockResolvedValue({
+      status: 'registered-mobile-replica',
+      spaceId: 'space-2',
+      vaultName: 'team-space',
+      rootTreeUri: 'content://root/contextgo',
+      spaceDirectoryUri: 'content://space/team-space',
+      vaultBindingId: 'vault_space-2',
+      replicaId: 'android_replica_1',
+      landingNotePath: 'Home.md',
+      healthStatus: 'warn',
+      lastSyncedAt: '2026-04-16T00:00:00Z',
+    }),
     getAndroidObsidianVaultSetupStateMock: vi.fn().mockReturnValue(null),
     updateAndroidObsidianVaultSetupStateMock: vi.fn().mockResolvedValue(undefined),
     openExternalUrlMock: vi.fn().mockResolvedValue(undefined),
@@ -276,6 +288,8 @@ vi.mock('@renderer/utils/platform', () => ({
   isAndroidMobileShell: () => isAndroidMobileShellMock,
   getAndroidObsidianVaultSetupState: (...args: unknown[]) => hoisted.getAndroidObsidianVaultSetupStateMock(...args),
   requestAndroidObsidianVaultSetup: (...args: unknown[]) => hoisted.requestAndroidObsidianVaultSetupMock(...args),
+  registerAndBootstrapAndroidObsidianReplica: (...args: unknown[]) =>
+    hoisted.registerAndBootstrapAndroidObsidianReplicaMock(...args),
   updateAndroidObsidianVaultSetupState: (...args: unknown[]) => hoisted.updateAndroidObsidianVaultSetupStateMock(...args),
   openExternalUrl: (...args: unknown[]) => hoisted.openExternalUrlMock(...args),
 }));
@@ -481,6 +495,18 @@ describe('Sider', () => {
         replicaId: 'android_replica_1',
         checkpoint: { appliedCursor: 0 },
       },
+    });
+    hoisted.registerAndBootstrapAndroidObsidianReplicaMock.mockResolvedValue({
+      status: 'registered-mobile-replica',
+      spaceId: 'space-2',
+      vaultName: 'team-space',
+      rootTreeUri: 'content://root/contextgo',
+      spaceDirectoryUri: 'content://space/team-space',
+      vaultBindingId: 'vault_space-2',
+      replicaId: 'android_replica_1',
+      landingNotePath: 'Home.md',
+      healthStatus: 'warn',
+      lastSyncedAt: '2026-04-16T00:00:00Z',
     });
     (globalThis as { __ensureOfficialRemoteReadyInvokeMock?: ReturnType<typeof vi.fn> }).__ensureOfficialRemoteReadyInvokeMock =
       vi.fn().mockResolvedValue({ success: false });
@@ -1188,6 +1214,37 @@ describe('Sider', () => {
   it('requests Android vault setup before opening the Obsidian chooser when running in the Android shell', async () => {
     isMobileShellWebViewMock = true;
     isAndroidMobileShellMock = true;
+    hoisted.cloudGetStatusInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        authenticated: true,
+        browserSessionExpired: false,
+        user: {
+          id: 'cloud-user-1',
+          email: 'dev@example.com',
+          username: 'dev-user',
+          displayName: 'Dev User',
+        },
+        device: {
+          id: 'device-mobile',
+          userId: 'cloud-user-1',
+          deviceName: 'Pixel 9',
+          platform: 'android',
+          status: 'active',
+          createdAt: '2026-04-16T00:00:00Z',
+          updatedAt: '2026-04-16T00:00:00Z',
+        },
+        deviceTokenAvailable: true,
+        officialRemoteReady: false,
+        officialRemote: {
+          desired: false,
+          running: false,
+        },
+        providers: ['github'],
+        authBaseUrl: 'https://auth.contextgo.test',
+        apiBaseUrl: 'https://api.contextgo.test',
+      },
+    });
     hoisted.cloudGetObsidianSyncStatusInvokeMock.mockResolvedValue({
       success: true,
       data: {
@@ -1229,14 +1286,15 @@ describe('Sider', () => {
         vaultBindingId: 'vault_space-2',
         landingNotePath: 'Home.md',
       });
-      expect(hoisted.cloudRegisterObsidianReplicaDraftInvokeMock).toHaveBeenCalledWith({
+      expect(hoisted.registerAndBootstrapAndroidObsidianReplicaMock).toHaveBeenCalledWith({
         spaceId: 'space-2',
-        platform: 'mobile',
-        vaultFingerprint: 'content://space/team-space',
-        localReadyState: 'prepared-directory',
-        rootTreeUri: 'content://root/contextgo',
-        localDirectoryUri: 'content://space/team-space',
+        spaceName: 'Team Space',
+        suggestedFolderName: 'team-space',
+        vaultBindingId: 'vault_space-2',
         landingNotePath: 'Home.md',
+        apiBaseUrl: 'https://api.contextgo.test',
+        rootTreeUri: 'content://root/contextgo',
+        spaceDirectoryUri: 'content://space/team-space',
       });
       expect(hoisted.cloudGetObsidianSyncStatusInvokeMock).toHaveBeenCalledWith({ spaceId: 'space-2' });
       expect(hoisted.updateAndroidObsidianVaultSetupStateMock).toHaveBeenCalledWith({
@@ -1252,7 +1310,7 @@ describe('Sider', () => {
         lastSyncedAt: '2026-04-16T00:00:00Z',
       });
       expect(hoisted.openExternalUrlMock).toHaveBeenCalledWith('obsidian://open?choose-vault');
-      expect(hoisted.messageSuccessMock).toHaveBeenCalledWith('guid.vault.androidSetupPrepared');
+      expect(hoisted.messageSuccessMock).toHaveBeenCalledWith('guid.vault.androidReplicaRegistered');
     });
     expect(hoisted.openVaultInvokeMock).not.toHaveBeenCalled();
   });

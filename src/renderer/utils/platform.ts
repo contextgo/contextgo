@@ -98,6 +98,7 @@ type AndroidMobileShellBridge = {
   getObsidianVaultSetupState?: (spaceId: string) => string;
   requestObsidianVaultSetup?: (requestJson: string) => void;
   updateObsidianVaultSetupState?: (stateJson: string) => void;
+  registerAndBootstrapObsidianReplica?: (requestJson: string) => void;
 };
 
 function getAndroidMobileShellBridge(): AndroidMobileShellBridge | null {
@@ -153,6 +154,37 @@ export const updateAndroidObsidianVaultSetupState = async (state: AndroidObsidia
   }
 
   bridge.updateObsidianVaultSetupState(JSON.stringify(state));
+};
+
+export const registerAndBootstrapAndroidObsidianReplica = async (input: {
+  spaceId: string;
+  spaceName: string;
+  suggestedFolderName: string;
+  vaultBindingId: string;
+  landingNotePath: string;
+  apiBaseUrl: string;
+  rootTreeUri: string;
+  spaceDirectoryUri: string;
+}): Promise<AndroidObsidianVaultSetupResult> => {
+  const bridge = getAndroidMobileShellBridge();
+  if (!bridge?.registerAndBootstrapObsidianReplica) {
+    throw new Error('Android Obsidian replica register bridge is unavailable.');
+  }
+
+  return new Promise<AndroidObsidianVaultSetupResult>((resolve) => {
+    const listener = (event: Event) => {
+      const customEvent = event as CustomEvent<AndroidObsidianVaultSetupResult>;
+      if (!customEvent.detail || customEvent.detail.spaceId !== input.spaceId) {
+        return;
+      }
+
+      window.removeEventListener(ANDROID_OBSIDIAN_VAULT_SETUP_EVENT, listener as EventListener);
+      resolve(customEvent.detail);
+    };
+
+    window.addEventListener(ANDROID_OBSIDIAN_VAULT_SETUP_EVENT, listener as EventListener);
+    bridge.registerAndBootstrapObsidianReplica(JSON.stringify(input));
+  });
 };
 
 const ASSET_PROTOCOL_PREFIX = 'contextgo-asset://asset/';

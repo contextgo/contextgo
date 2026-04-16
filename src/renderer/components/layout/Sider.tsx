@@ -58,6 +58,7 @@ import {
   isMacOS,
   isMobileShellWebView,
   openExternalUrl,
+  registerAndBootstrapAndroidObsidianReplica,
   requestAndroidObsidianVaultSetup,
   updateAndroidObsidianVaultSetupState,
 } from '@renderer/utils/platform';
@@ -404,40 +405,52 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           });
 
           if (setupResult.status === 'prepared-directory') {
-            const registerResult = await ipcBridge.cloud.registerObsidianReplicaDraft.invoke({
+            let latestCloudStatus = cloudStatus;
+            if (!latestCloudStatus) {
+              const cloudStatusResult = await ipcBridge.cloud.getStatus.invoke();
+              latestCloudStatus = cloudStatusResult.success ? cloudStatusResult.data : null;
+            }
+            const apiBaseUrl = latestCloudStatus?.apiBaseUrl || 'https://api.contextgo.io';
+            const registeredState = await registerAndBootstrapAndroidObsidianReplica({
               spaceId: targetSpace.id,
-              platform: 'mobile',
-              vaultFingerprint: setupResult.spaceDirectoryUri,
-              localReadyState: 'prepared-directory',
+              spaceName: targetSpace.name,
+              suggestedFolderName: buildSuggestedSpaceFolderName(targetSpace.name),
+              vaultBindingId: `vault_${targetSpace.id}`,
+              landingNotePath: 'Home.md',
+              apiBaseUrl,
               rootTreeUri: setupResult.rootTreeUri,
-              localDirectoryUri: setupResult.spaceDirectoryUri,
-              landingNotePath: setupResult.landingNotePath,
+              spaceDirectoryUri: setupResult.spaceDirectoryUri,
             });
-            if (!registerResult.success || !registerResult.data) {
-              throw new Error(registerResult.msg || t('guid.vault.openFailed'));
+            if (registeredState.status !== 'registered-mobile-replica') {
+              throw new Error(
+                registeredState.status === 'error'
+                  ? registeredState.message || t('guid.vault.openFailed')
+                  : t('guid.vault.openFailed')
+              );
             }
 
             const syncStatus = await ipcBridge.cloud.getObsidianSyncStatus.invoke({ spaceId: targetSpace.id });
-            const matchingReplica = syncStatus.success
-              ? syncStatus.data?.replicas.find((replica) => replica.replicaId === registerResult.data?.replicaId)
-              : null;
+            const matchingReplica =
+              syncStatus.success
+                ? syncStatus.data?.replicas.find((replica) => replica.replicaId === registeredState.replicaId)
+                : null;
 
             await updateAndroidObsidianVaultSetupState({
               status: 'registered-mobile-replica',
-              spaceId: setupResult.spaceId,
-              vaultName: setupResult.vaultName,
-              rootTreeUri: setupResult.rootTreeUri,
-              spaceDirectoryUri: setupResult.spaceDirectoryUri,
-              vaultBindingId: registerResult.data.vaultBindingId,
-              replicaId: registerResult.data.replicaId,
-              landingNotePath: setupResult.landingNotePath,
-              healthStatus: matchingReplica?.healthStatus ?? 'warn',
-              lastSyncedAt: matchingReplica?.lastSyncedAt ?? undefined,
+              spaceId: registeredState.spaceId,
+              vaultName: registeredState.vaultName,
+              rootTreeUri: registeredState.rootTreeUri,
+              spaceDirectoryUri: registeredState.spaceDirectoryUri,
+              vaultBindingId: registeredState.vaultBindingId,
+              replicaId: registeredState.replicaId,
+              landingNotePath: registeredState.landingNotePath,
+              healthStatus: matchingReplica?.healthStatus ?? registeredState.healthStatus,
+              lastSyncedAt: matchingReplica?.lastSyncedAt ?? registeredState.lastSyncedAt,
             });
             if (vaultOpenIntent.target) {
               await openExternalUrl(vaultOpenIntent.target);
             }
-            Message.success(t('guid.vault.androidSetupPrepared'));
+            Message.success(t('guid.vault.androidReplicaRegistered'));
             return;
           }
 
