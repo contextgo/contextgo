@@ -18,7 +18,8 @@ This design changes the default CI posture to **lightweight by default, expensiv
 ## Goals
 
 - Keep default PR automation limited to lightweight checks.
-- Require a maintainer action for expensive CI paths such as build tests, release packaging, AI review, E2E, and Homebrew verification.
+- Reduce workflow surface area to the small set of product-critical pipelines.
+- Require a maintainer action for expensive CI paths such as build tests, release packaging, and manual QA.
 - Make CI intent visible in workflow logic instead of relying on team memory.
 - Preserve the ability to run heavy workflows when they are genuinely needed.
 
@@ -39,13 +40,9 @@ This design changes the default CI posture to **lightweight by default, expensiv
 
 `build-and-release.yml` currently reacts to `push` on `main`. That means a normal merge can start release packaging minutes across multiple platforms without an explicit release decision.
 
-### 3. Scheduled verification spends minutes without a maintainer asking for it
+### 3. The workflow surface contains sidecar automation not central to product delivery
 
-`bump-homebrew.yml` runs daily on a cron schedule. This is not aligned with the new governance direction.
-
-### 4. Workflow documentation overstates automation
-
-The GPT workflow documentation still describes automatic PR triggering, which conflicts with the desired explicit-use governance model and increases the chance of future accidental re-expansion.
+AI review workflows, Homebrew verification, and dormant project automation all expand the maintenance surface without belonging to the core product-delivery path.
 
 ## Evaluated Approaches
 
@@ -63,9 +60,9 @@ Cons:
 - does not stop accidental workflow starts
 - still spends minutes on runs that should never have started
 
-### Approach B: Manual-only for everything expensive
+### Approach B: Manual-only for everything expensive, plus workflow consolidation
 
-Remove automatic triggers for release and scheduled work, and gate PR-expensive jobs behind explicit labels.
+Remove automatic triggers for release and scheduled work, gate PR-expensive jobs behind explicit labels, and collapse overlapping manual tooling flows.
 
 Pros:
 
@@ -122,13 +119,23 @@ The default platform scope should move from `all` to `linux-only`.
 
 The workflow should also gain a repository-level concurrency gate so duplicate manual release runs do not execute in parallel.
 
-### Scheduled Verification
+### Manual QA Consolidation
 
-`bump-homebrew.yml` should drop its cron schedule and remain manual-only. Verification should happen only when a maintainer wants to confirm Homebrew status around a release.
+`build-manual.yml` and `pr-e2e-artifacts.yml` should become a single `manual-qa.yml` workflow with explicit task inputs:
 
-### Other Heavy Manual Workflows
+- `build`
+- `e2e-artifacts`
+- `runner-health`
 
-Manual workflows that are already expensive, such as `pr-e2e-artifacts.yml` and `build-manual.yml`, should gain effective concurrency groups so repeated manual clicks do not create overlapping runs for the same purpose.
+This keeps the manual debugging surface available while reducing the number of entry points maintainers need to remember.
+
+### Sidecar Workflow Removal
+
+The following workflows should be removed from the main repository workflow surface:
+
+- AI review workflows
+- Homebrew verification workflow
+- dormant project automation workflow
 
 ### Documentation
 
@@ -136,7 +143,8 @@ Workflow documentation should explicitly describe:
 
 - the lightweight default PR path
 - the opt-in labels for heavier PR checks
-- the fact that GPT review, release packaging, E2E artifacts, and Homebrew verification are explicit-only execution paths
+- the reduced workflow surface after removing sidecar automation
+- the `manual-qa.yml` entry point for human-triggered debugging and validation
 
 ## Trigger Contract
 
@@ -155,10 +163,7 @@ Workflow documentation should explicitly describe:
 ### Manual only
 
 - release packaging
-- E2E artifact capture
-- Homebrew verification
-- GPT review workflows
-- manual per-platform build workflow
+- manual QA tasks (`build`, `e2e-artifacts`, `runner-health`)
 
 ## Verification Strategy
 
@@ -170,10 +175,10 @@ Workflow documentation should explicitly describe:
 
 - maintainers may forget the opt-in labels when they actually need heavier PR validation
 - release operations become slightly more manual
-- documentation can drift again if future workflow edits bypass the governance model
+- a combined manual QA workflow can grow broad if new tasks are added carelessly
 
 ## Risk Mitigation
 
 - encode the labels directly in workflow conditions
-- document the labels in workflow docs and CI setup docs
-- serialize expensive manual workflows with concurrency groups
+- document the labels and consolidated workflow surface in CI setup docs
+- keep the `manual-qa.yml` task list narrow and explicit

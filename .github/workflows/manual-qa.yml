@@ -1,4 +1,4 @@
-name: '🔨 Manual Build'
+name: '🧪 Manual QA'
 
 permissions:
   contents: write
@@ -7,13 +7,22 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      task:
+        description: 'Manual QA task to run'
+        required: true
+        type: choice
+        options:
+          - build
+          - e2e-artifacts
+          - runner-health
+        default: build
       branch:
-        description: 'Branch to build from'
+        description: 'Branch to use for build or runner validation'
         required: true
         default: 'main'
         type: string
       platform:
-        description: 'Platform to build'
+        description: 'Build platform (used only when task=build)'
         required: true
         type: choice
         options:
@@ -33,27 +42,22 @@ on:
           - hosted
         default: 'self-hosted'
       skip_code_quality:
-        description: 'Skip code quality checks (faster builds for debugging)'
-        required: false
-        type: boolean
-        default: false
-      runner_health_check:
-        description: 'Run minimal self-hosted runner diagnostics instead of the build pipeline'
+        description: 'Skip code quality checks when task=build'
         required: false
         type: boolean
         default: false
 
 concurrency:
-  group: build-manual-${{ inputs.branch }}-${{ inputs.platform }}-${{ inputs.runner_mode }}-${{ inputs.runner_health_check }}
+  group: manual-qa-${{ inputs.task }}-${{ inputs.branch }}-${{ inputs.platform }}-${{ inputs.runner_mode }}
   cancel-in-progress: true
 
 env:
   BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
 
 jobs:
-  prepare-matrix:
+  prepare-build-matrix:
     name: Prepare Build Matrix
-    if: ${{ !inputs.runner_health_check }}
+    if: ${{ inputs.task == 'build' }}
     runs-on: >-
       ${{
         fromJSON(
@@ -151,7 +155,7 @@ jobs:
           WINDOWS_ARM64=$(build_entry 'windows-arm64' "$WINDOWS_RUNNER" 'node scripts/build-with-builder.js arm64 --win --arm64' 'windows-build-arm64' 'arm64')
           LINUX=$(build_entry 'linux' "$LINUX_RUNNER" 'bun run dist:linux' 'linux-build' 'x64-arm64')
 
-          echo "control_runner=$CONTROL_RUNNER" >> $GITHUB_OUTPUT
+          echo "control_runner=$CONTROL_RUNNER" >> "$GITHUB_OUTPUT"
 
           if [ "$PLATFORM" = "all" ]; then
             MATRIX="{\"include\":[$MACOS_ARM64,$MACOS_X64,$WINDOWS_X64,$WINDOWS_ARM64,$LINUX]}"
@@ -165,21 +169,25 @@ jobs:
             MATRIX="{\"include\":[$WINDOWS_ARM64]}"
           elif [ "$PLATFORM" = "linux" ]; then
             MATRIX="{\"include\":[$LINUX]}"
+          else
+            echo "::error::Unsupported platform: $PLATFORM"
+            exit 1
           fi
 
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-          echo "Generated matrix for platform '$PLATFORM':"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Generated matrix for task '$PLATFORM':"
           echo "$MATRIX"
 
   build-pipeline:
-    needs: prepare-matrix
-    if: ${{ !inputs.runner_health_check }}
+    name: Build Pipeline
+    needs: prepare-build-matrix
+    if: ${{ inputs.task == 'build' }}
     uses: ./.github/workflows/_build-reusable.yml
     with:
-      matrix: ${{ needs.prepare-matrix.outputs.matrix }}
+      matrix: ${{ needs.prepare-build-matrix.outputs.matrix }}
       ref: ${{ inputs.branch }}
       skip_code_quality: ${{ inputs.skip_code_quality }}
-      control_runner: ${{ needs.prepare-matrix.outputs.control_runner }}
+      control_runner: ${{ needs.prepare-build-matrix.outputs.control_runner }}
       append_commit_hash: true
       upload_installers_only: true
       release_repository: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
@@ -187,7 +195,7 @@ jobs:
 
   runner-health-shell:
     name: Runner Health / Shell Smoke
-    if: ${{ inputs.runner_health_check }}
+    if: ${{ inputs.task == 'runner-health' }}
     runs-on: >-
       ${{
         fromJSON(
@@ -242,7 +250,7 @@ jobs:
 
   runner-health-checkout:
     name: Runner Health / Checkout Smoke
-    if: ${{ inputs.runner_health_check }}
+    if: ${{ inputs.task == 'runner-health' }}
     needs: runner-health-shell
     runs-on: >-
       ${{
@@ -275,3 +283,66 @@ jobs:
           git rev-parse HEAD
           test -f package.json
           ls -la . | sed -n '1,40p'
+
+  e2e-artifacts:
+    name: E2E Artifacts (Linux)
+    if: ${{ inputs.task == 'e2e-artifacts' }}
+    runs-on: >-
+      ${{
+        fromJSON(
+          inputs.runner_mode == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup just
+        uses: extractions/setup-just@v2
+
+      - name: Install dependencies
+        run: bun install --no-frozen-lockfile
+
+      - name: Run postinstall
+        run: npm run postinstall || true
+
+      - name: Install Linux display dependencies (E2E)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgbm-dev xvfb
+
+      - name: Run E2E tests (with screenshots)
+        run: xvfb-run --auto-servernum just e2e-test
+        env:
+          CI: true
+          E2E_DEV: '1'
+          E2E_SCREENSHOTS: '1'
+          CONTEXTGO_EXTENSIONS_PATH: ${{ github.workspace }}/examples
+
+      - name: Upload E2E report (self-contained with screenshots & traces)
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-report-linux-manual
+          path: |
+            tests/e2e/report/
+            tests/e2e/results/
+            tests/e2e/screenshots/
+          retention-days: 14
+          if-no-files-found: ignore
