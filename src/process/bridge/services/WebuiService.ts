@@ -27,11 +27,14 @@ type WebuiLocalAccessStartResult = {
 };
 
 /**
- * WebUI 服务层 - 封装所有 WebUI 相关的业务逻辑
- * WebUI Service Layer - Encapsulates all WebUI-related business logic
+ * Host runtime access service
+ *
+ * Encapsulates host-runtime access and compatibility WebUI bridge behaviors.
+ * The owning architecture is Host Runtime; the external `webui` bridge contract
+ * remains in place so existing desktop/browser clients do not break.
  */
 // eslint-disable-next-line typescript-eslint/no-extraneous-class
-export class WebuiService {
+export class HostRuntimeAccessService {
   private static webServerFunctionsLoaded = false;
   private static _getInitialAdminPassword: (() => string | null) | null = null;
   private static _clearInitialAdminPassword: (() => void) | null = null;
@@ -98,7 +101,7 @@ export class WebuiService {
     try {
       return await handler();
     } catch (error) {
-      console.error(`[WebUI Service] ${context} error:`, error);
+      console.error(`[HostRuntimeAccessService] ${context} error:`, error);
       return {
         success: false,
         msg: error instanceof Error ? error.message : `${context} failed`,
@@ -268,3 +271,5 @@ export class WebuiService {
     return newPassword;
   }
 }
+
+export const WebuiService = HostRuntimeAccessService;

@@ -65,12 +65,21 @@ export interface IConfigStorageRefer {
   language: string;
   theme: string;
   colorScheme: string;
+  /** @deprecated Use host.runtime.localAccess.enabled instead. */
   /** 桌面模式下是否自动启用 WebUI / Auto-enable WebUI in desktop mode */
   'webui.desktop.enabled'?: boolean;
+  /** @deprecated Use host.runtime.localAccess.allowRemote instead. */
   /** 桌面模式下是否允许远程访问 / Allow remote access in desktop mode */
   'webui.desktop.allowRemote'?: boolean;
+  /** @deprecated Use host.runtime.localAccess.port instead. */
   /** 桌面模式下 WebUI 端口 / WebUI port in desktop mode */
   'webui.desktop.port'?: number;
+  /** Host-runtime managed local browser entry enablement / Host Runtime 管理的本地访问开关 */
+  'host.runtime.localAccess.enabled'?: boolean;
+  /** Host-runtime managed LAN/self-hosted exposure preference / Host Runtime 管理的局域网与自托管暴露偏好 */
+  'host.runtime.localAccess.allowRemote'?: boolean;
+  /** Host-runtime managed preferred local access port / Host Runtime 管理的本地访问端口 */
+  'host.runtime.localAccess.port'?: number;
   customCss: string; // 自定义 CSS 样式
   'css.themes': ICssTheme[]; // 自定义 CSS 主题列表 / Custom CSS themes list
   'css.activeThemeId': string; // 当前激活的主题 ID / Currently active theme ID
