@@ -90,15 +90,23 @@ vi.mock('@renderer/pages/conversation', () => ({
 
 vi.mock('@renderer/pages/WorkbenchHost', () => ({
   default: ({
-    workbenchKind,
+    definition,
     children,
   }: {
-    workbenchKind: string;
+    definition: {
+      kind: string;
+      capabilities: string[];
+      shellContract: {
+        shellStyle: string;
+        titlebarSlot: string;
+        toolbarSlot: string;
+      };
+    };
     children?: React.ReactNode;
   }) => {
-    workbenchHostPropsSpy({ workbenchKind });
+    workbenchHostPropsSpy({ definition });
     return (
-      <div data-testid='workbench-host' data-workbench-kind={workbenchKind}>
+      <div data-testid='workbench-host' data-workbench-kind={definition.kind}>
         {children}
       </div>
     );
@@ -220,7 +228,17 @@ describe('Router route switching', () => {
 
     expect(await screen.findByTestId('workbench-host')).toHaveAttribute('data-workbench-kind', 'conversation-cowork');
     expect(await screen.findByTestId('conversation-page')).toHaveTextContent('alpha');
-    expect(workbenchHostPropsSpy).toHaveBeenCalledWith({ workbenchKind: 'conversation-cowork' });
+    expect(workbenchHostPropsSpy).toHaveBeenCalledWith({
+      definition: {
+        kind: 'conversation-cowork',
+        capabilities: ['chat', 'preview', 'workspace', 'browser'],
+        shellContract: {
+          shellStyle: 'conversation',
+          titlebarSlot: 'conversation-primary',
+          toolbarSlot: 'conversation-toolbar',
+        },
+      },
+    });
     expect(mountStats.mounts).toBe(1);
     expect(mountStats.unmounts).toBe(0);
 

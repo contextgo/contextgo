@@ -1,8 +1,8 @@
 import React from 'react';
-
-export type WorkbenchKind = 'conversation-cowork';
+import type { WorkbenchDefinition, WorkbenchKind } from './types';
 
 export type WorkbenchHostContextValue = {
+  definition: WorkbenchDefinition;
   workbenchKind: WorkbenchKind;
 };
 
