@@ -17,6 +17,19 @@ export type DiscussionRoundSummary = {
   content: string;
 };
 
+const normalizeSummaryLine = (value: string): string => {
+  return value.replace(/\s+/g, ' ').trim();
+};
+
+const takeSummaryExcerpt = (value: string, maxLength = 220): string => {
+  const normalized = normalizeSummaryLine(value);
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength).trimEnd()}...`;
+};
+
 export const normalizeDiscussionOrchestration = (
   orchestration?: Partial<DiscussionGroupOrchestration> & { mode?: DiscussionGroupMode }
 ): DiscussionGroupOrchestration => {
@@ -225,4 +238,47 @@ ${peerContext}
 - Keep your answer concise and decision-oriented.
 - Call out disagreements only when they materially affect the recommendation.
 - End with your final recommendation for the user.`;
+};
+
+export const buildDiscussionRoundSummaryContent = (options: {
+  round: number;
+  summaries: DiscussionRoundSummary[];
+}): string => {
+  const { round, summaries } = options;
+  const roundEntries = summaries
+    .map((summary) => `- **${summary.participantName}**: ${takeSummaryExcerpt(summary.content)}`)
+    .join('\n');
+
+  return [
+    `## Round ${round} Summary`,
+    '',
+    'This round collected the latest position from each participant.',
+    '',
+    roundEntries,
+    '',
+  ].join('\n');
+};
+
+export const buildDiscussionFinalSynthesisContent = (options: {
+  userInput: string;
+  roundSummaries: DiscussionRoundSummary[];
+}): string => {
+  const { userInput, roundSummaries } = options;
+  const participantViews = roundSummaries
+    .map((summary) => `- **${summary.participantName}**: ${takeSummaryExcerpt(summary.content)}`)
+    .join('\n');
+
+  return [
+    '## Group Synthesis',
+    '',
+    '### Task',
+    userInput.trim(),
+    '',
+    '### Final Participant Views',
+    participantViews || '- No participant responses were collected.',
+    '',
+    '### Next Step',
+    'Review the grouped viewpoints above and continue the conversation by asking the group to deepen, challenge, or execute one direction.',
+    '',
+  ].join('\n');
 };

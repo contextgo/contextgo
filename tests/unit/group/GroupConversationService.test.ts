@@ -433,6 +433,32 @@ describe('GroupConversationService discussion mode', () => {
         }),
       })
     );
+    expect(insertMessageMock).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        conversation_id: 'group-1',
+        position: 'left',
+        content: expect.objectContaining({
+          groupMeta: expect.objectContaining({
+            participantId: 'group-round-summary:1',
+            summaryKind: 'round',
+          }),
+        }),
+      })
+    );
+    expect(insertMessageMock).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        conversation_id: 'group-1',
+        position: 'left',
+        content: expect.objectContaining({
+          groupMeta: expect.objectContaining({
+            participantId: 'group-final-summary',
+            summaryKind: 'final',
+          }),
+        }),
+      })
+    );
   });
 });
 
