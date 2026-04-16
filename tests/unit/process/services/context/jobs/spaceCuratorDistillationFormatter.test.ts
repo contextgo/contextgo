@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { formatConnectorDigestEntry, formatSpaceCuratorProfileMemory } from '../../../../../../src/process/services/context/jobs/SpaceCuratorDistillationFormatter';
+import {
+  formatConnectorDigestEntry,
+  formatSpaceCuratorProfileMemory,
+} from '../../../../../../src/process/services/context/jobs/SpaceCuratorDistillationFormatter';
 
 describe('SpaceCuratorDistillationFormatter', () => {
   it('formats profile-memory distillation notes with stable profile bullets', () => {

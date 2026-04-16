@@ -794,9 +794,8 @@ describe('context engine event flow', () => {
   });
 
   it('writes both space digest and profile-memory artifacts for space memory distillation jobs', async () => {
-    const { SpaceMemoryDistillationJobHandler } = await import(
-      '../../../src/process/services/context/jobs/SpaceMemoryDistillationJobHandler'
-    );
+    const { SpaceMemoryDistillationJobHandler } =
+      await import('../../../src/process/services/context/jobs/SpaceMemoryDistillationJobHandler');
 
     const vaultSyncService = {
       writeSpaceMemoryDistillation: vi.fn(async () => ({
@@ -834,9 +833,8 @@ describe('context engine event flow', () => {
   });
 
   it('writes richer connector digest details from connector payload metadata', async () => {
-    const { ConnectorDigestJobHandler } = await import(
-      '../../../src/process/services/context/jobs/ConnectorDigestJobHandler'
-    );
+    const { ConnectorDigestJobHandler } =
+      await import('../../../src/process/services/context/jobs/ConnectorDigestJobHandler');
 
     const vaultSyncService = {
       writeConnectorDigest: vi.fn(async () => ({

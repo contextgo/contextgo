@@ -258,8 +258,8 @@ export function createPlannedContextJob(input: {
           : input.type === 'connector_digest'
             ? ['space_digest']
             : input.type === 'project_capability_curation'
-          ? ['project_doc', 'project_rules', 'project_skill']
-          : (input.payload as { artifactTargets?: string[] } | undefined)?.artifactTargets,
+              ? ['project_doc', 'project_rules', 'project_skill']
+              : (input.payload as { artifactTargets?: string[] } | undefined)?.artifactTargets,
     },
   });
 }
