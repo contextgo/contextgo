@@ -31,6 +31,45 @@ export type AgentPublicationObjectEntry = {
   currentSession?: IChannelActiveSessionEntry;
 };
 
+function getPublishObjectSourceRank(source?: IChannelAudienceEntry['objectSource']): number {
+  if (source === 'official-pull' || source === 'runtime-resolved') {
+    return 3;
+  }
+  if (source === 'inbound-learned') {
+    return 2;
+  }
+  if (source === 'manual') {
+    return 1;
+  }
+  return 0;
+}
+
+function getPublishObjectQualityRank(quality?: IChannelAudienceEntry['objectQuality']): number {
+  if (quality === 'resolved') {
+    return 3;
+  }
+  if (quality === 'inferred') {
+    return 2;
+  }
+  if (quality === 'fallback') {
+    return 1;
+  }
+  return 0;
+}
+
+function getPublishObjectSourceLabel(audience: IChannelAudienceEntry, t: TranslationFn): string | undefined {
+  if (audience.objectSource === 'official-pull' || audience.objectSource === 'runtime-resolved') {
+    return t('settings.channels.publication.optionSourceOfficial');
+  }
+  if (audience.objectSource === 'inbound-learned') {
+    return t('settings.channels.publication.optionSourceLearned');
+  }
+  if (audience.objectSource === 'manual') {
+    return t('settings.channels.publication.optionSourceManual');
+  }
+  return undefined;
+}
+
 type BuildAgentPublicationObjectsParams = {
   channelAccounts: IChannelAccount[];
   audiences: IChannelAudienceEntry[];
@@ -384,10 +423,31 @@ export function buildPublishObjectOptionLabel(params: {
     params.audience.objectKind ?? (params.audience.scopeType === 'remote_user' ? 'dm' : 'chat'),
     params.t
   );
+  const sourceLabel = getPublishObjectSourceLabel(params.audience, params.t);
   const details = [
+    sourceLabel,
     params.audience.parentObjectTitle,
     params.audience.objectSubtitle ?? params.audience.subtitle,
   ].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
 
   return [title, kindLabel, ...details].join(' · ');
+}
+
+export function comparePublishObjectAudiences(left: IChannelAudienceEntry, right: IChannelAudienceEntry): number {
+  const sourceDelta = getPublishObjectSourceRank(right.objectSource) - getPublishObjectSourceRank(left.objectSource);
+  if (sourceDelta !== 0) {
+    return sourceDelta;
+  }
+
+  const qualityDelta = getPublishObjectQualityRank(right.objectQuality) - getPublishObjectQualityRank(left.objectQuality);
+  if (qualityDelta !== 0) {
+    return qualityDelta;
+  }
+
+  const activityDelta = (right.lastActive ?? 0) - (left.lastActive ?? 0);
+  if (activityDelta !== 0) {
+    return activityDelta;
+  }
+
+  return (left.objectTitle ?? left.title).localeCompare(right.objectTitle ?? right.title);
 }

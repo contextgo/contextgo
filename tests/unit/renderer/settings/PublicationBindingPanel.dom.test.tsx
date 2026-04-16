@@ -56,6 +56,9 @@ const translations: Record<string, string> = {
   'settings.channels.publication.discoveryHintEmptyAction': 'Use manual fallback',
   'settings.channels.publication.discoveryHintEmptyHelp':
     'Use a target key directly, or let the target speak in IM first so ContextGo can learn it.',
+  'settings.channels.publication.optionSourceOfficial': 'Synced directory',
+  'settings.channels.publication.optionSourceLearned': 'Recent activity',
+  'settings.channels.publication.optionSourceManual': 'Manual target',
   'settings.channels.publication.scope.remoteUser': 'Specific user / DM',
   'settings.channels.publication.scope.remoteChat': 'Specific group / channel / topic',
   'settings.channels.publication.scopeKeyRemoteUserPlaceholder': 'Remote user key, for example: user_123456',
@@ -361,6 +364,7 @@ const catalogResponse = {
         objectKind: 'channel',
         objectTitle: 'Support room',
         objectSubtitle: 'Slack shared channel',
+        objectSource: 'official-pull',
         lastActive: 1500,
       },
     ],
@@ -581,6 +585,7 @@ describe('PublicationBindingPanel', () => {
     expect(
       screen.getByText('{{count}} objects are available from channel discovery for this instance.')
     ).toBeInTheDocument();
+    expect(screen.getByText('Support room · Channel · Synced directory · Slack shared channel')).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Select a publish object' }), {
       target: { value: 'slack://ws/team/channel/support' },
@@ -647,6 +652,28 @@ describe('PublicationBindingPanel', () => {
         screen.getByText('{{count}} objects are available from channel discovery for this instance.')
       ).toBeInTheDocument();
     });
+  });
+
+  it('sorts learned publish object options by quality before recency', async () => {
+    renderPanel();
+
+    await screen.findByText('Ops Agent');
+
+    fireEvent.click(screen.getByRole('button', { name: /Add publish object/i }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Select a channel instance' }), {
+      target: { value: 'connector-1' },
+    });
+
+    const optionTexts = screen
+      .getAllByRole('option')
+      .map((option) => option.textContent)
+      .filter((value): value is string => Boolean(value));
+
+    expect(optionTexts).toContain('Release topic · Topic · Recent activity · Core Ops Group · Topic root 2');
+    expect(optionTexts).toContain('Ops topic · Topic · Recent activity · Core Ops Group · Topic root 1');
+    expect(
+      optionTexts.indexOf('Release topic · Topic · Recent activity · Core Ops Group · Topic root 2')
+    ).toBeLessThan(optionTexts.indexOf('Ops topic · Topic · Recent activity · Core Ops Group · Topic root 1'));
   });
 
   it('deletes one published object from the selected agent', async () => {

@@ -24,6 +24,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import styles from '../ChannelModalContent.module.css';
 import {
   buildAgentPublicationObjects,
+  comparePublishObjectAudiences,
   buildPublishObjectOptionLabel,
   type AgentPublicationObjectEntry,
 } from './agentPublicationViewModel';
@@ -435,7 +436,7 @@ const PublicationBindingPanel: React.FC = () => {
 
           return audience.scopeType === 'remote_chat' || audience.scopeType === 'remote_user';
         })
-        .toSorted((left, right) => (right.lastActive ?? 0) - (left.lastActive ?? 0)),
+        .toSorted(comparePublishObjectAudiences),
     [catalog.audiences, editor.channelAccountId]
   );
 
