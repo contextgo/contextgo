@@ -90,7 +90,9 @@ const mockVaultSyncService = {
   appendAssistantTurnCompleted: vi.fn(),
   appendConversationStopped: vi.fn(),
   appendContextCheckpoint: vi.fn(),
+  appendSessionTimelineEvent: vi.fn(),
   readSessionWorkingSetSection: vi.fn(),
+  readSessionWorkingContextSection: vi.fn(),
   removeConversationContext: vi.fn(),
 };
 
@@ -209,6 +211,7 @@ describe('ContextRuntimeService', () => {
     mockContextService.saveMemory.mockResolvedValue(undefined);
     mockContextService.listProfiles.mockResolvedValue([]);
     mockVaultSyncService.readSessionWorkingSetSection.mockResolvedValue(undefined);
+    mockVaultSyncService.readSessionWorkingContextSection.mockResolvedValue(undefined);
   });
 
   it('registers a bound thread operation when a conversation has a space', async () => {
@@ -315,6 +318,13 @@ describe('ContextRuntimeService', () => {
         msgId: 'msg-1',
       })
     );
+    expect(mockVaultSyncService.appendSessionTimelineEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversation: expect.objectContaining({ id: 'conv-1' }),
+        title: 'User query',
+        body: 'We prefer release changes to stay minimal and verifiable.',
+      })
+    );
     expect(mockVaultSyncService.appendContextCheckpoint).toHaveBeenCalledWith(
       expect.objectContaining({
         conversation: expect.objectContaining({ id: 'conv-1' }),
@@ -326,10 +336,10 @@ describe('ContextRuntimeService', () => {
     expect(result.agentInput).toContain('read-only background data');
   });
 
-  it('mounts session working set into outgoing context when available', async () => {
-    mockVaultSyncService.readSessionWorkingSetSection.mockResolvedValue({
+  it('mounts session working context into outgoing context when available', async () => {
+    mockVaultSyncService.readSessionWorkingContextSection.mockResolvedValue({
       kind: 'profile',
-      id: 'session-working-set:conv-1',
+      id: 'session-working-context:conv-1',
       summary: 'Current Task\nShip the release with minimal, verifiable changes.',
       priority: 96,
       tokenCount: 18,
@@ -355,12 +365,15 @@ describe('ContextRuntimeService', () => {
       expect.objectContaining({
         mountedSections: expect.arrayContaining([
           expect.objectContaining({
-            id: 'session-working-set:conv-1',
+            id: 'session-working-context:conv-1',
             summary: 'Current Task\nShip the release with minimal, verifiable changes.',
           }),
         ]),
       })
     );
+    expect(mockVaultSyncService.readSessionWorkingContextSection).toHaveBeenCalledWith({
+      conversation: expect.objectContaining({ id: 'conv-1' }),
+    });
   });
 
   it('mounts session compaction summary into outgoing context when available', async () => {

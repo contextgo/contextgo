@@ -324,8 +324,9 @@ export class ContextRuntimeService {
       | 'appendUserTurnStarted'
       | 'appendAssistantTurnCompleted'
       | 'appendConversationStopped'
+      | 'appendSessionTimelineEvent'
       | 'appendContextCheckpoint'
-      | 'readSessionWorkingSetSection'
+      | 'readSessionWorkingContextSection'
       | 'removeConversationContext'
     > = new SpaceVaultContextSyncService(),
     private readonly eventBus?: Pick<ContextEventBus, 'emit'>,
@@ -398,7 +399,7 @@ export class ContextRuntimeService {
     const preparedAt = Date.now();
     const projectSlug = resolveConversationProjectSlug(input.conversation);
     const projectSnapshot = await this.loadProjectContextSnapshot(input.conversation, spaceId);
-    const sessionWorkingSetSection = await this.vaultSyncService.readSessionWorkingSetSection({
+    const sessionWorkingContextSection = await this.vaultSyncService.readSessionWorkingContextSection({
       conversation: input.conversation,
     });
 
@@ -430,7 +431,7 @@ export class ContextRuntimeService {
       budgetTokens: CONTEXT_BUDGET_TOKENS,
       threadSummary: buildThreadSummary([...recentMessages].toReversed()),
       mountedSections: [
-        ...(sessionWorkingSetSection ? [sessionWorkingSetSection] : []),
+        ...(sessionWorkingContextSection ? [sessionWorkingContextSection] : []),
         ...this.projectContextMirrorService.buildMountedSections(projectSnapshot),
       ],
       mountedProfiles: await this.getSessionCompactionMountedProfiles(spaceId, input.conversation.id),
@@ -472,6 +473,12 @@ export class ContextRuntimeService {
       userInput: input.userInput,
       preparedAt,
       msgId: input.msgId,
+    });
+    await this.vaultSyncService.appendSessionTimelineEvent({
+      conversation: input.conversation,
+      timestamp: new Date(preparedAt).toISOString(),
+      title: 'User query',
+      body: input.userInput,
     });
 
     await this.vaultSyncService.appendContextCheckpoint({
@@ -581,6 +588,12 @@ export class ContextRuntimeService {
       completedAt,
       assistantMessageId,
       preparedAt: pendingTurn?.preparedAt,
+    });
+    await this.vaultSyncService.appendSessionTimelineEvent({
+      conversation,
+      timestamp: new Date(completedAt).toISOString(),
+      title: 'Turn reply',
+      body: text,
     });
 
     const drafts = [
@@ -775,6 +788,12 @@ export class ContextRuntimeService {
       stoppedAt,
       reason,
       preparedAt: pendingTurn.preparedAt,
+    });
+    await this.vaultSyncService.appendSessionTimelineEvent({
+      conversation,
+      timestamp: new Date(stoppedAt).toISOString(),
+      title: 'User interruption',
+      body: reason,
     });
 
     await this.eventBus?.emit('session.interrupted', {
