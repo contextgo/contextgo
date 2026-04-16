@@ -8,7 +8,7 @@ import { channel } from '@/common/adapter/ipcBridge';
 import type {
   IChannelActiveSessionEntry,
   IChannelBindingCatalog,
-  IChannelPublicationCatalogRefreshResult,
+  IChannelPublicationSnapshot,
 } from '@process/channels/types';
 import { Button, Empty, Message, Select, Spin, Tag } from '@arco-design/web-react';
 import { Refresh } from '@icon-park/react';
@@ -73,12 +73,12 @@ function formatOptionalRelativeTime(timestamp: number | undefined, locale: strin
   return typeof timestamp === 'number' ? formatRelativeTime(timestamp, locale) : null;
 }
 
-function applyPublicationCatalogRefresh(
-  snapshot: IChannelPublicationCatalogRefreshResult,
+function applyPublicationSnapshot(
+  snapshot: IChannelPublicationSnapshot,
   setCatalog: React.Dispatch<React.SetStateAction<IChannelBindingCatalog>>,
   setSessions: React.Dispatch<React.SetStateAction<IChannelActiveSessionEntry[]>>
 ): void {
-  setCatalog(snapshot.bindingCatalog);
+  setCatalog(snapshot.catalog);
   setSessions(snapshot.activeSessions);
 }
 
@@ -102,17 +102,18 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await channel.refreshPublicationCatalog.invoke(undefined);
-      if (!result.success || !result.data) {
-        throw new Error(result.msg || t('settings.activeSessions.loadFailed'));
+      const snapshotResult = await channel.refreshPublicationSnapshot.invoke(undefined);
+
+      if (!snapshotResult.success || !snapshotResult.data) {
+        throw new Error(snapshotResult.msg || t('settings.activeSessions.loadFailed'));
       }
 
-      applyPublicationCatalogRefresh(result.data, setCatalog, setSessions);
+      applyPublicationSnapshot(snapshotResult.data, setCatalog, setSessions);
       setSelectedConnectorId((current) => {
-        if (current && result.data.bindingCatalog.connectors.some((connector) => connector.id === current)) {
+        if (current && snapshotResult.data.catalog.connectors.some((connector) => connector.id === current)) {
           return current;
         }
-        return result.data.bindingCatalog.connectors[0]?.id ?? '';
+        return snapshotResult.data.catalog.connectors[0]?.id ?? '';
       });
       setSelectedSource((current) => {
         if (current) {
@@ -121,7 +122,7 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
         if (sessionContinuationIntent?.sourceConversationId) {
           return `conversation:${sessionContinuationIntent.sourceConversationId}`;
         }
-        return result.data.activeSessions[0] ? `session:${result.data.activeSessions[0].id}` : '';
+        return snapshotResult.data.activeSessions[0] ? `session:${snapshotResult.data.activeSessions[0].id}` : '';
       });
     } catch (error) {
       Message.error(error instanceof Error ? error.message : t('settings.activeSessions.loadFailed'));

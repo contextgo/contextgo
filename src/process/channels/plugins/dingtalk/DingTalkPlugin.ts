@@ -9,7 +9,7 @@ import type { DWClientDownStream } from 'dingtalk-stream';
 import https from 'https';
 
 import type { BotInfo, IChannelPluginConfig, IUnifiedOutgoingMessage, PluginType } from '../../types';
-import { BasePlugin } from '../BasePlugin';
+import { BasePlugin, type ChannelPublishObjectDiscoveryProvider } from '../BasePlugin';
 import {
   DINGTALK_MESSAGE_LIMIT,
   encodeChatId,
@@ -124,7 +124,7 @@ function extractOpenConversationId(payload: unknown): string | undefined {
   );
 }
 
-export class DingTalkPlugin extends BasePlugin {
+export class DingTalkPlugin extends BasePlugin implements ChannelPublishObjectDiscoveryProvider {
   readonly type: PluginType = 'dingtalk';
 
   private client: DWClient | null = null;
@@ -278,6 +278,10 @@ export class DingTalkPlugin extends BasePlugin {
       id: this.clientId,
       displayName: 'ContextGo Assistant',
     };
+  }
+
+  override getPublishObjectDiscoveryProvider(): ChannelPublishObjectDiscoveryProvider {
+    return this;
   }
 
   private readDisplayCache<T>(

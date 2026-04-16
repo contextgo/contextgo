@@ -6,10 +6,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import {
-  normalizeManagedSlashCommandLibrary,
-  type ManagedSlashCommandRecord,
-} from '@/common/chat/slash/library';
+import { normalizeManagedSlashCommandLibrary, type ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import type { AgentPackageWorkspaceAutomationProfile } from '@/common/config/presets/agentPackageManifest';
 import type { TChatConversation } from '@/common/config/storage';
 import { findBuiltinAssistantPreset } from '@/common/config/presets/builtinAssistantDefaults';

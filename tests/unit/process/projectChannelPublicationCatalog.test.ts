@@ -7,7 +7,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   IChannelAudienceEntry,
   IChannelBinding,
@@ -530,5 +530,117 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
         }),
       }),
     ]);
+  });
+
+  it('resolves runtime publish object discovery during catalog refresh without bridge-side enrichment', async () => {
+    const workspace = await createTempWorkspace();
+    const service = new ProjectChannelPublicationService();
+
+    const connector: IConnectorInstance = {
+      id: 'connector-discord-rich',
+      platform: 'discord',
+      name: 'Discord',
+      enabled: true,
+      configured: true,
+      status: 'running',
+      legacyPluginId: 'discord-runtime-rich',
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+
+    const binding: IChannelBinding = {
+      id: 'binding-discord-thread-rich',
+      connectorId: 'connector-discord-rich',
+      channelAccountId: 'connector-discord-rich',
+      scopeType: 'remote_chat',
+      scopeKey: 'parent-channel:thread:thread-1',
+      agentProfileId: 'agent-profile-1',
+      priority: 10,
+      enabled: true,
+      temporary: false,
+      metadata: {
+        publishObject: {
+          nativeObjectType: 'thread',
+          nativeObjectId: 'thread-1',
+          parentNativeObjectId: 'parent-channel',
+          displayName: 'Thread thread-1',
+          discoverySource: 'manual',
+        },
+      },
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+
+    const remoteIdentity: IRemoteIdentity = {
+      id: 'remote-discord-thread-rich',
+      connectorId: 'connector-discord-rich',
+      channelAccountId: 'connector-discord-rich',
+      remoteUserId: 'discord-user-1',
+      remoteChatId: 'parent-channel:thread:thread-1',
+      platformChatId: 'parent-channel',
+      parentChatId: 'parent-channel',
+      threadId: 'thread-1',
+      remoteChatType: 'thread',
+      peerScope: 'thread',
+      displayName: 'Discord User 345678',
+      authorizedAt: 1000,
+      lastActive: 2000,
+      metadata: {
+        containerId: 'guild-1',
+        containerType: 'server',
+      },
+    };
+
+    const resolveDiscoveryProvider = vi.fn((runtimeId: string) =>
+      runtimeId === 'discord-runtime-rich'
+        ? {
+            getChatDisplayData: vi.fn(async (chatId: string) => {
+              if (chatId === 'thread-1') {
+                return {
+                  name: 'Incident follow-up',
+                  chatType: 'thread',
+                  parentTitle: 'incident-room',
+                  containerTitle: 'Ops Guild',
+                  source: 'official-pull',
+                };
+              }
+              if (chatId === 'parent-channel') {
+                return {
+                  name: 'incident-room',
+                  chatType: 'channel',
+                  containerTitle: 'Ops Guild',
+                  source: 'official-pull',
+                };
+              }
+              return null;
+            }),
+            getUserDisplayData: vi.fn(async () => null),
+          }
+        : null
+    );
+
+    const entries = await service.resolvePublishObjectCatalog(workspace, {
+      bindings: [binding],
+      remoteIdentities: [remoteIdentity],
+      channelAccounts: [connector],
+      resolveDiscoveryProvider,
+    });
+
+    expect(entries).toEqual([
+      expect.objectContaining({
+        channelAccountId: 'connector-discord-rich',
+        nativeObjectType: 'thread',
+        nativeObjectId: 'thread-1',
+        parentNativeObjectId: 'parent-channel',
+        displayProfile: expect.objectContaining({
+          title: 'Incident follow-up',
+          subtitle: 'In incident-room',
+          parentTitle: 'incident-room',
+          source: 'official-pull',
+          quality: 'resolved',
+        }),
+      }),
+    ]);
+    expect(resolveDiscoveryProvider).toHaveBeenCalledWith('discord-runtime-rich');
   });
 });

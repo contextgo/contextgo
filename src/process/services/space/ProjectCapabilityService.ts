@@ -236,7 +236,9 @@ const buildSkillCapability = async (
 };
 
 export class ProjectCapabilityService {
-  constructor(private readonly scheduleStore: JsonWorkspaceScheduleConfigStore = new JsonWorkspaceScheduleConfigStore()) {}
+  constructor(
+    private readonly scheduleStore: JsonWorkspaceScheduleConfigStore = new JsonWorkspaceScheduleConfigStore()
+  ) {}
 
   async readSnapshot(workspace: string): Promise<ProjectCapabilitySnapshot | undefined> {
     const workspacePath = resolveWorkspacePath(workspace);
@@ -380,16 +382,18 @@ export class ProjectCapabilityService {
     }
 
     return resolveManagedSlashCommands(normalizeManagedSlashCommandLibrary(parsed))
-      .map((command): ProjectCommandCapability => ({
-        kind: 'command',
-        id: command.id,
-        name: command.name,
-        description: command.description,
-        docKey: createDocKey(['command', command.id]),
-        commandType: 'project',
-        enabled: command.enabled !== false,
-        template: command.template,
-      }))
+      .map(
+        (command): ProjectCommandCapability => ({
+          kind: 'command',
+          id: command.id,
+          name: command.name,
+          description: command.description,
+          docKey: createDocKey(['command', command.id]),
+          commandType: 'project',
+          enabled: command.enabled !== false,
+          template: command.template,
+        })
+      )
       .toSorted((left, right) => left.name.localeCompare(right.name));
   }
 
@@ -405,27 +409,29 @@ export class ProjectCapabilityService {
     }
 
     return records
-      .map((record): ProjectScheduleCapability => ({
-        kind: 'schedule',
-        id: record.id,
-        name: record.name,
-        description: record.schedule.description,
-        docKey: createDocKey(['schedule', record.id]),
-        enabled: record.enabled,
-        scheduleKind: record.schedule.kind,
-        scheduleLabel:
-          record.schedule.kind === 'cron'
-            ? record.schedule.expr
-            : record.schedule.kind === 'every'
-              ? String(record.schedule.everyMs)
-              : String(record.schedule.atMs),
-        message: record.message,
-        conversationId: record.conversationId,
-        conversationTitle: record.conversationTitle,
-        agentType: record.agentType,
-        createdBy: record.createdBy,
-        spaceId: record.spaceId,
-      }))
+      .map(
+        (record): ProjectScheduleCapability => ({
+          kind: 'schedule',
+          id: record.id,
+          name: record.name,
+          description: record.schedule.description,
+          docKey: createDocKey(['schedule', record.id]),
+          enabled: record.enabled,
+          scheduleKind: record.schedule.kind,
+          scheduleLabel:
+            record.schedule.kind === 'cron'
+              ? record.schedule.expr
+              : record.schedule.kind === 'every'
+                ? String(record.schedule.everyMs)
+                : String(record.schedule.atMs),
+          message: record.message,
+          conversationId: record.conversationId,
+          conversationTitle: record.conversationTitle,
+          agentType: record.agentType,
+          createdBy: record.createdBy,
+          spaceId: record.spaceId,
+        })
+      )
       .toSorted((left, right) => left.name.localeCompare(right.name));
   }
 }

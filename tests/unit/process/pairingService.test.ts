@@ -6,28 +6,35 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { pairingRequestedEmit, userAuthorizedEmit, mockResolveConnectorInstance, mockInferRemoteChatType, mockDb, mockListAllConversations, mockReadCatalogForConversations } =
-  vi.hoisted(() => ({
-    pairingRequestedEmit: vi.fn(),
-    userAuthorizedEmit: vi.fn(),
-    mockResolveConnectorInstance: vi.fn(),
-    mockInferRemoteChatType: vi.fn(),
-    mockListAllConversations: vi.fn(),
-    mockReadCatalogForConversations: vi.fn(),
-    mockDb: {
-      getConnectorInstances: vi.fn(),
-      getPendingPairingRequests: vi.fn(),
-      createPairingRequest: vi.fn(),
-      getPairingRequestByCode: vi.fn(),
-      updatePairingRequestStatus: vi.fn(),
-      getRemoteIdentityByConnectorChat: vi.fn(),
-      getRemoteIdentityByConnectorPlatformChat: vi.fn(),
-      getLegacyChannelUserByPlatform: vi.fn(),
-      getChannelUsers: vi.fn(),
-      upsertRemoteIdentity: vi.fn(),
-      ensureChannelUserMirror: vi.fn(),
-    },
-  }));
+const {
+  pairingRequestedEmit,
+  userAuthorizedEmit,
+  mockResolveConnectorInstance,
+  mockInferRemoteChatType,
+  mockDb,
+  mockListAllConversations,
+  mockReadCatalogForConversations,
+} = vi.hoisted(() => ({
+  pairingRequestedEmit: vi.fn(),
+  userAuthorizedEmit: vi.fn(),
+  mockResolveConnectorInstance: vi.fn(),
+  mockInferRemoteChatType: vi.fn(),
+  mockListAllConversations: vi.fn(),
+  mockReadCatalogForConversations: vi.fn(),
+  mockDb: {
+    getConnectorInstances: vi.fn(),
+    getPendingPairingRequests: vi.fn(),
+    createPairingRequest: vi.fn(),
+    getPairingRequestByCode: vi.fn(),
+    updatePairingRequestStatus: vi.fn(),
+    getRemoteIdentityByConnectorChat: vi.fn(),
+    getRemoteIdentityByConnectorPlatformChat: vi.fn(),
+    getLegacyChannelUserByPlatform: vi.fn(),
+    getChannelUsers: vi.fn(),
+    upsertRemoteIdentity: vi.fn(),
+    ensureChannelUserMirror: vi.fn(),
+  },
+}));
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
   channel: {

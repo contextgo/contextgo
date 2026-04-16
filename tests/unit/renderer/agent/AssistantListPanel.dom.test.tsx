@@ -189,7 +189,11 @@ describe('AssistantListPanel', () => {
     );
 
     expect(screen.getByText('Available assistants')).toBeInTheDocument();
-    expect(screen.queryByText('Create and edit agents here, alongside the system-managed Context Engine agents that keep project memory flowing.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Create and edit agents here, alongside the system-managed Context Engine agents that keep project memory flowing.'
+      )
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Create Assistant' })).not.toBeInTheDocument();
   });
 });

@@ -257,7 +257,9 @@
   background: color-mix(in srgb, var(--bg-1) 94%, var(--fill-1) 6%);
   padding: 12px 14px;
   text-align: left;
-  transition: border-color 160ms ease, background-color 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
 }
 
 .itemButtonIndexed {

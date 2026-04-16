@@ -33,7 +33,8 @@ vi.mock('@process/services/i18n', () => ({
         'agent.contextEngine.operationLog.job.session_compaction.queued': 'Session context update queued',
         'agent.contextEngine.operationLog.job.session_compaction.completed': 'Session context updated',
         'agent.contextEngine.operationLog.job.project_capability_curation.queued': 'Project capability curation queued',
-        'agent.contextEngine.operationLog.job.project_capability_curation.completed': 'Project capability curation completed',
+        'agent.contextEngine.operationLog.job.project_capability_curation.completed':
+          'Project capability curation completed',
         'common.error': 'Error',
       };
 

@@ -210,13 +210,17 @@ for (const configPath of configPaths) {
 
 ```tsx
 // CustomAcpAgent.tsx
-{configLocation?.entries?.length ? (
-  <div>
-    {configLocation.entries.map((entry) => (
-      <div key={entry.path}>{entry.kind}: {entry.path}</div>
-    ))}
-  </div>
-) : null}
+{
+  configLocation?.entries?.length ? (
+    <div>
+      {configLocation.entries.map((entry) => (
+        <div key={entry.path}>
+          {entry.kind}: {entry.path}
+        </div>
+      ))}
+    </div>
+  ) : null;
+}
 ```
 
 - [ ] **Step 2: Run targeted runtime settings and bridge tests**

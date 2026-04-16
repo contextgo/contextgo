@@ -287,7 +287,9 @@ describe('ChannelModalContent', () => {
 
     expect(screen.getByText('publication panel')).toBeInTheDocument();
     expect(screen.getByText('Agent Publish')).toBeInTheDocument();
-    expect(screen.getByText('Review the current Agent and publish it into platform-native IM objects.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Review the current Agent and publish it into platform-native IM objects.')
+    ).toBeInTheDocument();
   });
 
   it('renders a connector-style two-column channel layout and switches the right detail pane', async () => {

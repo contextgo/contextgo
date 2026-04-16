@@ -1030,5 +1030,4 @@ describe('ExternalSessionDiscoveryService', () => {
       },
     ]);
   });
-
 });

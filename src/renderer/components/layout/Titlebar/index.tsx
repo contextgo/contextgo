@@ -515,9 +515,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   );
 
   const desktopRemoteHostChrome = (
-    <div className='app-titlebar__floating-host-chrome'>
-      {showWindowControls ? <WindowControls /> : null}
-    </div>
+    <div className='app-titlebar__floating-host-chrome'>{showWindowControls ? <WindowControls /> : null}</div>
   );
 
   const desktopStatusDock = (

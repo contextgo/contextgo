@@ -200,7 +200,8 @@ export const CONTEXT_ENGINE_SYSTEM_ASSISTANTS: readonly ContextEngineSystemAssis
       'zh-CN': '项目能力整理员',
     },
     descriptionI18n: {
-      'en-US': 'Keeps project-local skills, hooks, schedules, and commands mirrored into the vault as first-class context objects.',
+      'en-US':
+        'Keeps project-local skills, hooks, schedules, and commands mirrored into the vault as first-class context objects.',
       'zh-CN': '把项目本地的 skills、hooks、定时任务和 commands 镜像进 vault，形成一等上下文对象。',
     },
     runtimeSpec: createRuntimeSpec({
