@@ -94,7 +94,7 @@ describe('SystemRunsPage', () => {
 
   it('shows governance identity and artifact targets for recorded system runs', async () => {
     activityState.status = 'active';
-    activityState.activeMaintenanceCount = 1;
+    activityState.activeMaintenanceCount = 2;
     activityState.systemRuns = [
       {
         id: 'run-1',
@@ -132,14 +132,52 @@ describe('SystemRunsPage', () => {
           },
         ],
       },
+      {
+        id: 'run-2',
+        rootRunId: 'run-2',
+        backend: 'context-engine',
+        agentProfileId: 'profile-2',
+        agentName: 'Context Engine · Project Curator',
+        state: 'writing',
+        runtimeStatus: 'running',
+        lastActiveAt: new Date('2026-04-11T06:18:00Z').getTime(),
+        currentTask: 'Writing AGENTS append proposal',
+        systemManaged: true,
+        assistantId: 'system-context-engine-project-capability-curator',
+        systemOwner: 'context-engine',
+        systemRole: 'context-engine-project-capability-curator',
+        governanceIdentity: 'project_curator',
+        scopeLabel: 'workspace-alpha',
+        maintenanceKind: 'project_capability_curation',
+        latestArtifactSummary: 'Add a stable release-validation rule.',
+        artifactRelativePath: 'Projects/workspace/_context/proposals/agents-append-proposal.md',
+        artifactTitle: 'AGENTS append proposal',
+        artifactTargets: ['project_doc', 'project_rules', 'project_skill'],
+        reason: 'Refresh project docs and append-first proposals.',
+        source: 'timer',
+        triggerLabel: 'Project capability curation',
+        triggerEvent: 'timer.project_capability_curation',
+        executionBoundaryPath: '/vault/space-1',
+        executionBoundaryLabel: 'My Space',
+        recentEvents: [
+          {
+            conversationId: 'thread-2',
+            kind: 'message',
+            text: 'Queued AGENTS append proposal',
+            at: new Date('2026-04-11T06:18:00Z').getTime(),
+          },
+        ],
+      },
     ];
 
     render(<SystemRunsPage />);
 
     expect(await screen.findByText('Compressing repeated session signals')).toBeInTheDocument();
     expect(screen.getByText('session_steward · 1')).toBeInTheDocument();
+    expect(screen.getByText('project_curator · 1')).toBeInTheDocument();
     expect(screen.getByText('hook')).toBeInTheDocument();
     expect(screen.getAllByText('session-context').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('proposal').length).toBeGreaterThan(0);
     expect(screen.getByText('Governance: session_steward')).toBeInTheDocument();
     expect(screen.getByText('Source: hook')).toBeInTheDocument();
     expect(screen.getByText('Artifact kind: session-context')).toBeInTheDocument();
@@ -149,5 +187,9 @@ describe('SystemRunsPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('status')).toBeInTheDocument();
     expect(screen.getByText('Running session compaction')).toBeInTheDocument();
+    expect(screen.getByText('Artifact kind: proposal')).toBeInTheDocument();
+    expect(screen.getByText('Source: timer')).toBeInTheDocument();
+    expect(screen.getByText('Artifact summary: Add a stable release-validation rule.')).toBeInTheDocument();
+    expect(screen.getByText('Queued AGENTS append proposal')).toBeInTheDocument();
   });
 });
