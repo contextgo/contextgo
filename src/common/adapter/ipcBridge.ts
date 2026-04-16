@@ -1583,10 +1583,12 @@ export interface IExtensionAgentActivityItem {
   assistantId?: string;
   systemOwner?: string;
   systemRole?: string;
+  governanceIdentity?: string;
   scopeLabel?: string;
   maintenanceKind?: string;
   artifactRelativePath?: string;
   artifactTitle?: string;
+  artifactTargets?: string[];
   recentEvents: IExtensionAgentActivityEvent[];
 }
 
@@ -1605,10 +1607,12 @@ export interface IExtensionSystemRunItem {
   assistantId?: string;
   systemOwner?: string;
   systemRole?: string;
+  governanceIdentity?: string;
   scopeLabel?: string;
   maintenanceKind?: string;
   artifactRelativePath?: string;
   artifactTitle?: string;
+  artifactTargets?: string[];
   threadId?: string;
   projectSlug?: string;
   reason?: string;
