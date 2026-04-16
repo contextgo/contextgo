@@ -2,15 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const processConfigGetMock = vi.fn(async () => undefined);
 const processConfigSetMock = vi.fn(async () => undefined);
-const ensureForDemandMock = vi.fn();
-const releaseDemandMock = vi.fn(async () => undefined);
+const ensureLocalClientAccessMock = vi.fn();
+const stopLocalClientAccessMock = vi.fn(async () => undefined);
 const getCurrentInstanceMock = vi.fn();
 const getSystemUserMock = vi.fn(async () => ({
   id: 'system-default-user',
   username: 'admin',
 }));
 const getRuntimeStatusMock = vi.fn();
-const getDemandStateMock = vi.fn();
+const getLocalClientAccessStateMock = vi.fn();
 const getInitialAdminPasswordMock = vi.fn(() => null);
 const clearInitialAdminPasswordMock = vi.fn();
 
@@ -32,13 +32,13 @@ describe('WebuiService.getStatus', () => {
       },
     }));
 
-    vi.doMock('@process/services/host/HostBrowserEntryService', () => ({
-      getHostBrowserEntryService: () => ({
-        ensureForDemand: ensureForDemandMock,
+    vi.doMock('@process/services/host/HostRuntimeService', () => ({
+      getHostRuntimeService: () => ({
+        ensureLocalClientAccess: ensureLocalClientAccessMock,
         getCurrentInstance: getCurrentInstanceMock,
-        getDemandState: getDemandStateMock,
-        releaseDemand: releaseDemandMock,
+        getLocalClientAccessState: getLocalClientAccessStateMock,
         getRuntimeStatus: getRuntimeStatusMock,
+        stopLocalClientAccess: stopLocalClientAccessMock,
       }),
     }));
 
@@ -64,22 +64,11 @@ describe('WebuiService.getStatus', () => {
       port: 43123,
       running: true,
     });
-    getDemandStateMock.mockImplementation((demand: 'local-client' | 'official-remote') => {
-      if (demand === 'local-client') {
-        return {
-          active: true,
-          allowPortFallback: false,
-          allowRemote: true,
-          preferredPort: 43123,
-        };
-      }
-
-      return {
-        active: true,
-        allowPortFallback: true,
-        allowRemote: false,
-        preferredPort: 43123,
-      };
+    getLocalClientAccessStateMock.mockReturnValue({
+      active: true,
+      allowPortFallback: false,
+      allowRemote: true,
+      preferredPort: 43123,
     });
 
     const { WebuiService } = await import('@/process/bridge/services/WebuiService');
@@ -116,22 +105,11 @@ describe('WebuiService.getStatus', () => {
       port: 43123,
       running: true,
     });
-    getDemandStateMock.mockImplementation((demand: 'local-client' | 'official-remote') => {
-      if (demand === 'local-client') {
-        return {
-          active: false,
-          allowPortFallback: false,
-          allowRemote: false,
-          preferredPort: null,
-        };
-      }
-
-      return {
-        active: true,
-        allowPortFallback: true,
-        allowRemote: false,
-        preferredPort: 43123,
-      };
+    getLocalClientAccessStateMock.mockReturnValue({
+      active: false,
+      allowPortFallback: false,
+      allowRemote: false,
+      preferredPort: null,
     });
 
     const { WebuiService } = await import('@/process/bridge/services/WebuiService');
@@ -164,13 +142,13 @@ describe('WebuiService local access ownership', () => {
       },
     }));
 
-    vi.doMock('@process/services/host/HostBrowserEntryService', () => ({
-      getHostBrowserEntryService: () => ({
-        ensureForDemand: ensureForDemandMock,
+    vi.doMock('@process/services/host/HostRuntimeService', () => ({
+      getHostRuntimeService: () => ({
+        ensureLocalClientAccess: ensureLocalClientAccessMock,
         getCurrentInstance: getCurrentInstanceMock,
-        getDemandState: getDemandStateMock,
-        releaseDemand: releaseDemandMock,
+        getLocalClientAccessState: getLocalClientAccessStateMock,
         getRuntimeStatus: getRuntimeStatusMock,
+        stopLocalClientAccess: stopLocalClientAccessMock,
       }),
     }));
 
@@ -187,7 +165,7 @@ describe('WebuiService local access ownership', () => {
   });
 
   it('starts local access through HostBrowserEntryService and persists the resolved runtime port', async () => {
-    ensureForDemandMock.mockResolvedValue({
+    ensureLocalClientAccessMock.mockResolvedValue({
       allowRemote: true,
       port: 43123,
     });
@@ -199,7 +177,7 @@ describe('WebuiService local access ownership', () => {
       port: 43000,
     });
 
-    expect(ensureForDemandMock).toHaveBeenCalledWith('local-client', {
+    expect(ensureLocalClientAccessMock).toHaveBeenCalledWith({
       allowRemote: true,
       preferredPort: 43000,
       reason: 'webui.start',
@@ -227,6 +205,6 @@ describe('WebuiService local access ownership', () => {
 
     expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.enabled', false);
     expect(processConfigSetMock).toHaveBeenCalledWith('webui.desktop.port', 42111);
-    expect(releaseDemandMock).toHaveBeenCalledWith('local-client', 'Server shutting down');
+    expect(stopLocalClientAccessMock).toHaveBeenCalledWith('Server shutting down');
   });
 });

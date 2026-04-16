@@ -97,20 +97,21 @@ vi.mock('@/common/adapter/registry', () => ({
 }));
 
 vi.mock('@process/utils/initStorage', () => ({
+  getSkillsDir: vi.fn(() => '/tmp/contextgo-skills'),
   ProcessConfig: {
     get: vi.fn(async (key: string) => storage.get(key)),
   },
 }));
 
-const hostBrowserEntryServiceMock = {
+const hostRuntimeServiceMock = {
   getLocalBaseUrl: vi.fn(() =>
     hostRuntimeState.running && hostRuntimeState.port ? `http://127.0.0.1:${hostRuntimeState.port}` : null
   ),
   getRuntimeStatus: vi.fn(() => ({ ...hostRuntimeState })),
 };
 
-vi.mock('@process/services/host/HostBrowserEntryService', () => ({
-  getHostBrowserEntryService: () => hostBrowserEntryServiceMock,
+vi.mock('@process/services/host/HostRuntimeService', () => ({
+  getHostRuntimeService: () => hostRuntimeServiceMock,
 }));
 
 function flushPromises(): Promise<void> {

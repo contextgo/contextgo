@@ -40,11 +40,7 @@ import {
   CLOUD_AUTH_SESSION_PARTITION,
 } from './constants';
 import { getOfficialRemoteTunnelService } from './OfficialRemoteTunnelService';
-import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
-import {
-  getPreferredHostBrowserEntryPort,
-  rememberHostBrowserEntryPort,
-} from '@process/services/host/hostBrowserEntryPreferences';
+import { getHostRuntimeService } from '@process/services/host/HostRuntimeService';
 
 type SessionPayload = {
   authenticated?: boolean;
@@ -265,7 +261,6 @@ const CLOUD_LOGIN_LOOPBACK_HOST = '127.0.0.1';
 const CLOUD_LOGIN_LOOPBACK_PATH_PREFIX = '/contextgo-cloud-login';
 const OFFICIAL_REMOTE_READY_TIMEOUT_MS = 8_000;
 const OFFICIAL_REMOTE_READY_POLL_MS = 250;
-const OFFICIAL_REMOTE_DEMAND = 'official-remote';
 
 function sameUser(left?: CloudUser | null, right?: CloudUser | null): boolean {
   if (!left || !right) {
@@ -417,18 +412,11 @@ export class CloudService {
   private constructor() {}
 
   private async ensureOfficialRemoteHostBrowserEntry(reason: string): Promise<void> {
-    const preferredPort = await getPreferredHostBrowserEntryPort();
-    const instance = await getHostBrowserEntryService().ensureForDemand(OFFICIAL_REMOTE_DEMAND, {
-      preferredPort,
-      allowRemote: false,
-      reason,
-      allowPortFallback: true,
-    });
-    await rememberHostBrowserEntryPort(instance.port);
+    await getHostRuntimeService().ensureOfficialRemoteRuntime(reason);
   }
 
   private async releaseOfficialRemoteHostBrowserEntry(reason: string): Promise<void> {
-    await getHostBrowserEntryService().releaseDemand(OFFICIAL_REMOTE_DEMAND, reason);
+    await getHostRuntimeService().releaseOfficialRemoteRuntime(reason);
   }
 
   public initialize(): void {
@@ -479,7 +467,7 @@ export class CloudService {
     const officialRemote = this.officialRemoteTunnelService.getState();
     const officialRemoteReady =
       Boolean(deviceToken) && officialRemote.running === true && officialRemote.browserEntryReady === true;
-    const runtimeStatus = getHostBrowserEntryService().getRuntimeStatus();
+    const runtimeStatus = getHostRuntimeService().getRuntimeStatus();
     const runtimeMode = resolveHostRuntimeMode();
 
     const nextStatus: CloudStatus = {

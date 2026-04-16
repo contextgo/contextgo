@@ -6,8 +6,8 @@
 
 import { networkInterfaces } from 'os';
 import type { IWebUIStatus } from '@/common/adapter/ipcBridge';
-import { getHostBrowserEntryService } from '@process/services/host/HostBrowserEntryService';
 import { updateHostLocalClientAccessPreferences } from '@process/services/host/hostBrowserEntryPreferences';
+import { getHostRuntimeService } from '@process/services/host/HostRuntimeService';
 import { AuthService } from '@process/webserver/auth/service/AuthService';
 import { UserRepository } from '@process/webserver/auth/repository/UserRepository';
 import { AUTH_CONFIG, SERVER_CONFIG } from '@process/webserver/config/constants';
@@ -128,9 +128,9 @@ export class WebuiService {
 
     const [adminUser, runtimeStatus] = await Promise.all([
       UserRepository.getSystemUser(),
-      Promise.resolve(getHostBrowserEntryService().getRuntimeStatus()),
+      Promise.resolve(getHostRuntimeService().getRuntimeStatus()),
     ]);
-    const localClientDemand = getHostBrowserEntryService().getDemandState('local-client');
+    const localClientDemand = getHostRuntimeService().getLocalClientAccessState();
     const running = runtimeStatus.running;
     const port = runtimeStatus.port ?? SERVER_CONFIG.DEFAULT_PORT;
     const allowRemote = runtimeStatus.allowRemote;
@@ -166,7 +166,7 @@ export class WebuiService {
 
     const requestedPort = options.port ?? SERVER_CONFIG.DEFAULT_PORT;
     const allowRemote = options.allowRemote ?? false;
-    const instance = await getHostBrowserEntryService().ensureForDemand('local-client', {
+    const instance = await getHostRuntimeService().ensureLocalClientAccess({
       preferredPort: requestedPort,
       allowRemote,
       reason: 'webui.start',
@@ -189,12 +189,12 @@ export class WebuiService {
   }
 
   static async stopLocalAccess(): Promise<void> {
-    const currentInstance = getHostBrowserEntryService().getCurrentInstance();
+    const currentInstance = getHostRuntimeService().getCurrentInstance();
     await this.updateLocalAccessPreferences({
       enabled: false,
       port: currentInstance?.port ?? SERVER_CONFIG.DEFAULT_PORT,
     });
-    await getHostBrowserEntryService().releaseDemand('local-client', 'Server shutting down');
+    await getHostRuntimeService().stopLocalClientAccess('Server shutting down');
   }
 
   /**
