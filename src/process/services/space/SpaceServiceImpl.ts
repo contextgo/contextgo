@@ -19,7 +19,7 @@ import type { ISpaceRepository } from '@process/services/database/space/ISpaceRe
 import type { ISpaceService } from './ISpaceService';
 import { ensureSpaceVaultBinding, isSpaceVaultProviderRef } from './vaultBinding';
 
-const DEFAULT_SPACE_NAME = 'My Space';
+const DEFAULT_SPACE_NAME = 'Default Space';
 const DEFAULT_SPACE_ENGINE: SpaceEngine = 'vault';
 const DEFAULT_ROLE_CAPABILITIES: Record<SpaceMemberRole, SpaceCapability[]> = {
   owner: ['content.edit', 'agent.run', 'memory.review', 'members.manage', 'context.view', 'workflow.reuse'],

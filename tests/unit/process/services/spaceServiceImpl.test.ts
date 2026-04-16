@@ -91,14 +91,19 @@ describe('SpaceServiceImpl', () => {
 
     const result = await service.ensureDefaultSpace();
 
-    expect(result.name).toBe('My Space');
+    expect(result.name).toBe('Default Space');
     expect(result.engine).toBe('vault');
     expect(result.isDefault).toBe(true);
     expect(result.providerRef).toEqual(createVaultProviderRef(result));
     expect(repo.createSpace).toHaveBeenCalledWith(
-      expect.objectContaining({ id: result.id, name: 'My Space', engine: 'vault', providerRef: result.providerRef })
+      expect.objectContaining({
+        id: result.id,
+        name: 'Default Space',
+        engine: 'vault',
+        providerRef: result.providerRef,
+      })
     );
-    expect(syncSpaceVaultMock).toHaveBeenCalledWith(expect.objectContaining({ id: result.id, name: 'My Space' }));
+    expect(syncSpaceVaultMock).toHaveBeenCalledWith(expect.objectContaining({ id: result.id, name: 'Default Space' }));
   });
 
   it('opens the bound vault through Obsidian.app before falling back to uri handlers', async () => {
