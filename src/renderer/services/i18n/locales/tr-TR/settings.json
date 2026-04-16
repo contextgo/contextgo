@@ -494,6 +494,7 @@
   "systemRuns": "Sistem Çalıştırmaları",
   "systemRunsDesc": "Context Engine oturumlarını ve çalıştırmalarını salt okunur olarak gösterir. Tetik yolu, yürütme sınırı ve çıktılar burada görünür.",
   "systemRunsCount": "{{count}} çalıştırma",
+  "systemRunsIdentityCount": "{{identity}} · {{count}}",
   "systemRunsActiveNow": "Şu anda aktif",
   "systemRunsEmpty": "Henüz sistem çalıştırması yok.",
   "systemRunsBoundary": "Yürütme sınırı: {{path}}",

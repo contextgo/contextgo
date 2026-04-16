@@ -2650,6 +2650,7 @@ export type I18nKey =
   | 'settings.systemRunsEmptyDescription'
   | 'settings.systemRunsEmptyTitle'
   | 'settings.systemRunsGovernance'
+  | 'settings.systemRunsIdentityCount'
   | 'settings.systemRunsLastChecked'
   | 'settings.systemRunsReason'
   | 'settings.systemRunsSource'
