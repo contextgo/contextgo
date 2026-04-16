@@ -223,7 +223,7 @@ describe('useAutoScroll - scroll to bottom on message send (#977)', () => {
     expect(result.current.handleFollowOutput(false)).toBe(false);
   });
 
-  it('should briefly suppress followOutput after the user manually settles at the bottom', () => {
+  it('should keep followOutput suppressed long enough after the user manually settles at the bottom', () => {
     const { result } = renderHook(({ messages, itemCount }) => useAutoScroll({ messages, itemCount }), {
       initialProps: { messages: [], itemCount: 0 },
     });
@@ -242,7 +242,13 @@ describe('useAutoScroll - scroll to bottom on message send (#977)', () => {
     expect(result.current.handleFollowOutput(true)).toBe(false);
 
     act(() => {
-      vi.advanceTimersByTime(260);
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(result.current.handleFollowOutput(true)).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(600);
     });
 
     expect(result.current.handleFollowOutput(true)).toBe('auto');

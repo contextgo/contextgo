@@ -10,6 +10,9 @@ const messageApiMock = {
   error: vi.fn(),
   warning: vi.fn(),
 };
+const translationMockState = {
+  unstableIdentity: false,
+};
 
 const tMock = (key: string, options?: Record<string, unknown> & { defaultValue?: string }) => {
   const template = options?.defaultValue ?? key;
@@ -18,7 +21,7 @@ const tMock = (key: string, options?: Record<string, unknown> & { defaultValue?:
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: tMock,
+    t: translationMockState.unstableIdentity ? (...args: Parameters<typeof tMock>) => tMock(...args) : tMock,
   }),
 }));
 
@@ -103,6 +106,7 @@ import ProjectSkillMarketModal from '@/renderer/pages/conversation/ProjectSkillM
 describe('ProjectSkillMarketModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    translationMockState.unstableIdentity = false;
     messageApiMock.success.mockReset();
     messageApiMock.error.mockReset();
     messageApiMock.warning.mockReset();
@@ -213,6 +217,20 @@ describe('ProjectSkillMarketModal', () => {
     await waitFor(() => {
       expect(listAvailableSkillsInvokeMock).toHaveBeenCalledTimes(2);
       expect(screen.getAllByText('Installed').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('does not repeatedly reload when translation hook identity changes across renders', async () => {
+    translationMockState.unstableIdentity = true;
+
+    render(<ProjectSkillMarketModal visible={true} workspacePath='/tmp/workspace' onClose={() => undefined} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Market Skill')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(searchSkillMarketInvokeMock).toHaveBeenCalledTimes(1);
     });
   });
 });

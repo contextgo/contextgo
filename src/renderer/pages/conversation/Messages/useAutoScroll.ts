@@ -17,7 +17,7 @@ import type { TMessage } from '@/common/chat/chatLib';
 const PROGRAMMATIC_SCROLL_GUARD_MS = 150;
 // After a user manually reaches the bottom, briefly suppress followOutput so
 // Virtuoso and native touchpad momentum do not fight over the final position.
-const MANUAL_BOTTOM_SETTLE_MS = 250;
+const MANUAL_BOTTOM_SETTLE_MS = 900;
 
 interface UseAutoScrollOptions {
   /** Message list for detecting new messages */
