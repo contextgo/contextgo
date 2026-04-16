@@ -82,6 +82,23 @@ function formatArtifactTargets(targets: readonly string[] | undefined): string {
   return targets.join(' · ');
 }
 
+function resolveArtifactKindLabel(run: IExtensionSystemRunItem): string | undefined {
+  const targets = run.artifactTargets ?? [];
+  if (targets.includes('project_rules') || targets.includes('project_skill')) {
+    return 'proposal';
+  }
+  if (targets.includes('space_digest') || targets.includes('profile_memory')) {
+    return 'space-distillation';
+  }
+  if (targets.includes('session_working_context') || targets.includes('session_checkpoint')) {
+    return 'session-context';
+  }
+  if (targets.includes('project_doc')) {
+    return 'project-context';
+  }
+  return undefined;
+}
+
 function resolveDefinitionGovernanceIdentity(jobType: string): string {
   if (jobType === 'session_compaction' || jobType === 'session_pattern_detection') {
     return 'session_steward';
@@ -264,10 +281,18 @@ const SystemRunsPage: React.FC = () => {
                                 defaultValue: `Boundary: ${boundaryLabel}`,
                               })}
                             </div>
-                            <div className={styles.systemAgentMetaItem}>{`Governance: ${governanceIdentity}`}</div>
-                            <div
-                              className={styles.systemAgentMetaItem}
-                            >{`Artifacts: ${formatArtifactTargets(artifactTargets)}`}</div>
+                            <div className={styles.systemAgentMetaItem}>
+                              {t('settings.systemRunsGovernance', {
+                                identity: governanceIdentity,
+                                defaultValue: `Governance: ${governanceIdentity}`,
+                              })}
+                            </div>
+                            <div className={styles.systemAgentMetaItem}>
+                              {t('settings.systemRunsArtifacts', {
+                                artifacts: formatArtifactTargets(artifactTargets),
+                                defaultValue: `Artifacts: ${formatArtifactTargets(artifactTargets)}`,
+                              })}
+                            </div>
                             <div className={styles.systemAgentMetaItem}>
                               {t('settings.systemRunsLastChecked', {
                                 time: lastCheckedLabel,
@@ -345,17 +370,45 @@ const SystemRunsPage: React.FC = () => {
                       })}
                     </div>
                   ) : null}
-                  {run.source ? <div className={styles.systemRunsDetailText}>{`Source: ${run.source}`}</div> : null}
+                  {run.source ? (
+                    <div className={styles.systemRunsDetailText}>
+                      {t('settings.systemRunsSource', {
+                        source: run.source,
+                        defaultValue: `Source: ${run.source}`,
+                      })}
+                    </div>
+                  ) : null}
                   {run.governanceIdentity ? (
-                    <div className={styles.systemRunsDetailText}>{`Governance: ${run.governanceIdentity}`}</div>
+                    <div className={styles.systemRunsDetailText}>
+                      {t('settings.systemRunsGovernance', {
+                        identity: run.governanceIdentity,
+                        defaultValue: `Governance: ${run.governanceIdentity}`,
+                      })}
+                    </div>
+                  ) : null}
+                  {resolveArtifactKindLabel(run) ? (
+                    <div className={styles.systemRunsDetailText}>
+                      {t('settings.systemRunsArtifactKind', {
+                        kind: resolveArtifactKindLabel(run),
+                        defaultValue: `Artifact kind: ${resolveArtifactKindLabel(run)}`,
+                      })}
+                    </div>
                   ) : null}
                   {run.artifactTargets && run.artifactTargets.length > 0 ? (
-                    <div
-                      className={styles.systemRunsDetailText}
-                    >{`Artifacts: ${formatArtifactTargets(run.artifactTargets)}`}</div>
+                    <div className={styles.systemRunsDetailText}>
+                      {t('settings.systemRunsArtifacts', {
+                        artifacts: formatArtifactTargets(run.artifactTargets),
+                        defaultValue: `Artifacts: ${formatArtifactTargets(run.artifactTargets)}`,
+                      })}
+                    </div>
                   ) : null}
                   {run.latestArtifactSummary ? (
-                    <div className={styles.systemRunsDetailText}>{`Artifact summary: ${run.latestArtifactSummary}`}</div>
+                    <div className={styles.systemRunsDetailText}>
+                      {t('settings.systemRunsArtifactSummary', {
+                        summary: run.latestArtifactSummary,
+                        defaultValue: `Artifact summary: ${run.latestArtifactSummary}`,
+                      })}
+                    </div>
                   ) : null}
                   {run.artifactTitle ? (
                     <div className={styles.systemRunsDetailText}>
