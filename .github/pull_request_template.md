@@ -6,9 +6,15 @@
 
 ## Related Issues
 
-<!-- Link to related issues using "Closes #123" or "Fixes #123" -->
+<!--
+Use GitHub auto-close keywords only after replacing the placeholder below.
+Examples:
+- Closes #<issue-number>
+- Refs #<issue-number>
+Delete unused lines instead of leaving placeholder text behind.
+-->
 
-- Closes #
+- Closes #<issue-number>
 
 ## Type of Change
 
