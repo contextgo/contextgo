@@ -16,6 +16,18 @@ export type ContextJobStatus = 'queued' | 'running' | 'completed' | 'failed' | '
 
 export type ContextJobPriority = 'low' | 'medium' | 'high';
 
+export type ContextGovernanceIdentity = 'session_steward' | 'project_curator' | 'space_curator';
+
+export type ContextArtifactTarget =
+  | 'session_timeline'
+  | 'session_working_context'
+  | 'session_checkpoint'
+  | 'project_doc'
+  | 'project_rules'
+  | 'project_skill'
+  | 'space_digest'
+  | 'profile_memory';
+
 export type ContextJobSource =
   | 'runtime-hook'
   | 'conversation-lifecycle'
@@ -41,6 +53,14 @@ export type ContextJobTrigger = {
   label?: string;
 };
 
+export type GovernanceLifecycleEnvelope = {
+  spaceId: string;
+  threadId: string;
+  projectSlug?: string;
+  occurredAt: string;
+  sourceSummary?: string;
+};
+
 export type SessionSignalKind =
   | 'user_interrupt'
   | 'repeated_request'
@@ -64,6 +84,7 @@ export type ContextJob = {
   type: ContextJobType;
   status: ContextJobStatus;
   priority: ContextJobPriority;
+  governanceIdentity: ContextGovernanceIdentity;
   spaceId: string;
   threadId?: string;
   projectSlug?: string;

@@ -85,6 +85,25 @@ export class ContextTriggerRouter {
       });
     });
 
+    this.bus.on('delegation.completed', async (event) => {
+      if (!event.payload.spaceId || !event.payload.threadId || !event.payload.snapshot) {
+        return;
+      }
+
+      await this.dispatchTrigger({
+        triggerId: 'lifecycle.delegation-completed',
+        spaceId: event.payload.spaceId,
+        threadId: event.payload.threadId,
+        projectSlug: event.payload.projectSlug,
+        snapshot: event.payload.snapshot,
+        sourceSummary: event.payload.sourceSummary,
+        reason: event.payload.sourceSummary ?? event.payload.delegationSummary,
+        firedAt: event.payload.occurredAt,
+        triggerEvent: 'delegation.completed',
+        triggerLabel: 'Delegation completed',
+      });
+    });
+
     this.bus.on('connector.source.ingested', async (event) => {
       await this.dispatchTrigger({
         triggerId: 'connector.connector-digest',
@@ -211,7 +230,7 @@ export class ContextTriggerRouter {
           label: trigger.label,
         }),
       triggeredAt: input.firedAt,
-      reason: input.reason ?? trigger.defaultReason,
+      reason: input.reason ?? input.sourceSummary ?? trigger.defaultReason,
       payload: input.payload,
     });
     await this.bus.emit('context.job.queued', { job });

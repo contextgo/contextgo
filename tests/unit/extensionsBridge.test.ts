@@ -237,11 +237,14 @@ describe('ActivitySnapshotBuilder', () => {
               assistantId: 'system-context-engine-session-compactor',
               systemOwner: 'context-engine',
               systemRole: 'context-engine-session-compactor',
+              governanceIdentity: 'session_steward',
               jobType: 'session_compaction',
+              latestArtifactSummary: 'Session working context refreshed.',
               currentTask: 'Compressing repeated session signals',
               scopeLabel: 'workspace-alpha',
               artifactRelativePath: 'Sessions/thread-1.md',
               artifactTitle: 'Release Session',
+              artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
               events: [
                 {
                   kind: 'status',
@@ -270,10 +273,13 @@ describe('ActivitySnapshotBuilder', () => {
           assistantId: 'system-context-engine-session-compactor',
           systemOwner: 'context-engine',
           systemRole: 'context-engine-session-compactor',
+          governanceIdentity: 'session_steward',
           scopeLabel: 'workspace-alpha',
           maintenanceKind: 'session_compaction',
+          latestArtifactSummary: 'Session working context refreshed.',
           artifactRelativePath: 'Sessions/thread-1.md',
           artifactTitle: 'Release Session',
+          artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
           currentTask: 'Compressing repeated session signals',
         }),
       ])

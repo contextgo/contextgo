@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ContextScheduleService } from '../../../src/process/services/context/events/schedule/ContextScheduleService';
+import { CONTEXT_ENGINE_BUILTIN_TRIGGERS } from '../../../src/process/services/context/events/triggers/builtinTriggers';
 import type {
   ContextSchedule,
   ContextSchedulePatch,
@@ -319,6 +320,38 @@ describe('ContextScheduleService', () => {
     );
     expect(updated.state.runCount).toBe(1);
     expect(updated.state.lastStatus).toBe('ok');
+  });
+
+  it('keeps the richer project curator trigger copy for timer and manual capability curation', async () => {
+    const timerTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find(
+      (trigger) => trigger.id === 'timer.project-capability-curation'
+    );
+    const manualTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find(
+      (trigger) => trigger.id === 'manual.project-capability-curation'
+    );
+
+    expect(timerTrigger?.defaultReason).toBe(
+      'Periodically refresh project docs and append-first proposals from local automation evidence.'
+    );
+    expect(manualTrigger?.defaultReason).toBe(
+      'Manually refresh project docs, AGENTS append proposals, and skill proposals from local automation evidence.'
+    );
+  });
+
+  it('keeps the richer space curator trigger copy for timer and manual distillation jobs', async () => {
+    const timerTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find(
+      (trigger) => trigger.id === 'timer.space-memory-distillation'
+    );
+    const manualTrigger = CONTEXT_ENGINE_BUILTIN_TRIGGERS.find(
+      (trigger) => trigger.id === 'manual.space-memory-distillation'
+    );
+
+    expect(timerTrigger?.defaultReason).toBe(
+      'Periodically distill shared space memory and profile signals from recent project activity.'
+    );
+    expect(manualTrigger?.defaultReason).toBe(
+      'Manually distill shared space memory and profile signals from recent project activity.'
+    );
   });
 
   it('hydrates workspace schedule declarations into the runtime store when listing conversation schedules', async () => {

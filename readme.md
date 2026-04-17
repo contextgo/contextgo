@@ -1,566 +1,217 @@
 <p align="center">
-  <img src="./resources/contextgo-banner-1.png" alt="ContextGo - Cowork with AI Agents" width="100%">
+  <img src="./resources/contextgo_readme_header_0807.png" alt="ContextGo" width="100%">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/contextgo/contextgo?style=flat-square&color=32CD32" alt="Version">
-  &nbsp;
-  <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="License">
-  &nbsp;
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-6C757D?style=flat-square&logo=linux&logoColor=white" alt="Platform">
+  <img src="./resources/contextgo_logo_no_border.png" alt="ContextGo Logo" width="120">
 </p>
 
 <p align="center">
-  <a href="https://trendshift.io/repositories/15423" target="_blank">
-    <img src="https://trendshift.io/api/badge/repositories/15423" alt="GitHub Trending" height="80">
-  </a>
+  <strong>下一代 AI 原生工作台</strong><br>
+  让顶尖大模型、Code Agent、项目上下文、连接器和远程协作真正进入同一个工作系统。
+</p>
+
+<p align="center">
+  <a href="./README_EN.md">English</a> ·
+  <a href="https://github.com/contextgo/contextgo/releases">下载发行版</a> ·
+  <a href="https://contextgo.io">官方网站</a>
 </p>
 
 ---
 
-<p align="center">
-  <strong>A free, open-source, Cowork app with AI Agents</strong><br>
-  <em>Built-in Agent | Zero Setup | Any API Key | Multi-Agents | Remote Access | Cross-Platform | 24/7 Automation</em>
-</p>
+## ContextGo 是什么
 
-<p align="center">
-  <a href="https://github.com/contextgo/contextgo/releases">
-    <img src="https://img.shields.io/badge/⬇️%20Download%20Now-Latest%20Release-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Download Latest Release" height="50">
-  </a>
-</p>
+ContextGo 不是另一个聊天壳，也不是把 API 包成一个消息框的桌面工具。
 
-<p align="center">
-  <strong>English</strong> | <a href="./docs/readme/readme_ch.md">简体中文</a> | <a href="./docs/readme/readme_tw.md">繁體中文</a> | <a href="./docs/readme/readme_jp.md">日本語</a> | <a href="./docs/readme/readme_ko.md">한국어</a> | <a href="./docs/readme/readme_es.md">Español</a> | <a href="./docs/readme/readme_pt.md">Português</a> | <a href="./docs/readme/readme_tr.md">Türkçe</a> | <a href="https://contextgo.io" target="_blank">Official Website</a>
-</p>
+它是一套面向真实工作的 AI 原生工作台，用来解决一件更难的事：**怎么稳定地驾驭 Agent，让它在项目里持续干活，而不是在几轮对话之后失控、遗忘、污染上下文，或者脱离你的真实工作流。**
 
-<p align="center">
-  <strong>💬 Community:</strong> <a href="https://discord.gg/2QAwJn7Egx" target="_blank">Discord (English)</a> | <a href="./resources/wx-4.png" target="_blank">微信 (中文群)</a> | <a href="https://twitter.com/ContextGo" target="_blank">Twitter</a>
-</p>
+对普通用户来说，ContextGo 是一个可以真正帮你做事的下一代 AGI 助手。
+
+对开发者和团队来说，ContextGo 是一套把 `project`、`Agent harness`、上下文治理、连接器、远程访问和多端产品层组织在一起的完整系统。
+
+一句话概括：
+
+> **Code Agent 不止 code。给它稳定的 harness、上下文和连接器，它就可以 build anything。**
 
 ---
 
-## 📋 Quick Navigation
+## 它解决什么问题
 
-<p align="center">
+今天的大模型已经很强，但真正进入长期工作时，常见问题仍然没有被解决：
 
-[✨ Cowork in Action](#-cowork-in-action) ·
-[🤔 Why Choose ContextGo?](#-why-choose-contextgo-over-claude-cowork) ·
-[🚀 Quick Start](#-quick-start) ·
-[💬 Community](#-community--support)
+- Agent 能推理，但缺少一套稳定的驾驭机制，长任务容易偏航
+- 项目知识、人的偏好、成功模式和失败模式没有被持续沉淀
+- AI 和原有软件、IM、文档、浏览器、本地文件之间仍然割裂
+- 跨设备、跨会话、跨项目使用 Agent 的摩擦很高
+- 普通人真正关心的是“它能不能帮我干活”，而不是背后用了哪家模型
 
-</p>
-
----
-
-## Cowork — AI Agents That Work Alongside You
-
-**ContextGo is more than a chat client.** It's a Cowork platform where AI agents work alongside you on your computer — reading files, writing code, browsing the web, and automating tasks. You see everything the agent does, and you're always in control.
-
-|                                 | Traditional AI Chat Clients | **ContextGo (Cowork)**                                                                       |
-| :------------------------------ | :-------------------------- | :------------------------------------------------------------------------------------------- |
-| AI can operate on your files    | Limited or No               | **Yes — built-in agent with full file access**                                               |
-| AI can execute multi-step tasks | Limited                     | **Yes — autonomous with your approval**                                                      |
-| Remote access from phone        | Rarely                      | **WebUI + Telegram / Lark / DingTalk**                                                       |
-| Scheduled automation            | No                          | **Cron — 24/7 unattended**                                                                   |
-| Multiple AI Agents at once      | No                          | **Claude Code, Codex, OpenClaw, Qwen Code, and 12+ more — auto-detected, unified interface** |
-| Price                           | Free / Paid                 | **Free & Open Source**                                                                       |
-
-<p align="center">
-  <img src="./resources/offica-ai BANNER-function.png" alt="ContextGo Cowork Platform" width="800">
-</p>
+ContextGo 的产品核心，就是把这些问题收敛成一个可持续运行的工作系统。
 
 ---
 
-## Built-in Agent — Install & Go, Zero Configuration
+## 核心抽象
 
-ContextGo ships with a complete AI agent engine. Unlike tools that require you to install CLI agents separately, **ContextGo works the moment you install it**.
+### 1. Harness Agent
 
-- **No CLI tools to install** — the agent engine is built in
-- **No complex setup** — sign in with Google or paste any API key
-- **Full agent capabilities** — file read/write, web search, automation workflows
-- **Ready-to-use assistants** — 11+ built-in professional assistants (Cowork, PPTX Generator, PDF to PPT, 3D Game, UI/UX Pro Max, and more) ready to use immediately
+Harness Agent 是 ContextGo 的狭义 Agent 定语。
 
-<p align="center">
-  <img src="./resources/build-in agents.png" alt="Built-in Agents" width="800">
-</p>
+它的重点不在“又造了一个模型”，而在于：**如何给顶尖大模型加上一套约束、披露和治理机制，让长时间的人机协作或纯 Agent 工作保持有序。**
 
----
+这套机制通常围绕几个稳定对象展开：
 
-## Multi-Agent Mode — Already Have CLI Agents? Bring Them In
+- `project`：所有工作都基于项目目录展开
+- `AGENTS.md`：规则入口与渐进式披露的起点
+- `docs/`：更深层的背景、规范和领域文档
+- `skills/`：任务型可执行上下文
+- `hooks`、`commands`、`schedules`：自动化切面与快捷能力
 
-If you already use Claude Code, Codex, or Qwen Code, ContextGo auto-detects them and lets you Cowork with all of them — alongside the built-in agent.
+模型本身负责推理和函数调用，Harness 负责让它更长时间地、在真实项目里可控地工作。
 
-**Supported Agents:** Built-in Agent (zero setup) • Claude Code • Codex • Qwen Code • Goose AI • OpenClaw • Augment Code • iFlow CLI • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder CLI • Mistral Vibe • Nanobot and more
+### 2. Agent Group
 
-<p align="center">
-  <img src="./resources/multi-agent支持openclaw.gif" alt="Multi-Agent Cowork" width="800">
-</p>
+单个 Agent 已经能工作很久，但不是所有问题都适合一个 Agent 单线程解决。
 
-- **Auto Detection** — automatically recognizes installed CLI tools
-- **Unified Interface** — one Cowork platform for all your AI agents
-- **Parallel Sessions** — run multiple agents simultaneously with independent context
-- **Unified collaboration workspace** — manage built-in and external CLI agents in one place with consistent sessions and context
+ContextGo 的 Agent Group 更接近一种简单高效的协作机制，而不是复杂编排系统：
 
----
+- 计划者只负责方向对齐
+- 生成者持续产出
+- 评估者持续判断
+- 多个 Agent 也可以并行调研、交叉验证、赛马式产出
 
-## Any API Key, Full Cowork Agent Power
+重点不是把编排做重，而是让多个被 harness 强化过的 Agent 在关键节点形成更高质量的判断。
 
-Other AI apps give you a chatbox with your API key. **ContextGo gives you a full Cowork agent.**
+### 3. Context Engine
 
-| Your API Key                            | What You Get                 |
-| :-------------------------------------- | :--------------------------- |
-| Gemini API Key (or Google login — free) | Gemini-powered Cowork Agent  |
-| OpenAI API Key                          | GPT-powered Cowork Agent     |
-| Anthropic API Key                       | Claude-powered Cowork Agent  |
-| Ollama / LM Studio (local)              | Local model Cowork Agent     |
-| NewAPI Gateway                          | Unified access to 20+ models |
+Context Engine 是 ContextGo 的上下文稳定器。
 
-Same agent capabilities — file read/write, web search, tool use — regardless of which model powers it. ContextGo supports **20+ AI platforms** including cloud services and local deployments.
+它是 local-first 的上下文引擎，用来持续组织、提炼、更新和治理 Agent 工作过程中产生的高价值信号。它不是简单的聊天记录存档，也不是只有向量检索的传统 RAG。
 
-<p align="center">
-  <img src="./resources/llm_newapi.png" alt="Multi-Model Support" width="800">
-</p>
+它负责的事情包括：
 
-<details>
-<summary><strong>🔍 View All 20+ Supported Platforms ▶️</strong></summary>
+- 从会话里抽取长期有效的偏好、风格、成功模式和失败模式
+- 对项目上下文做熵增治理，减少脏上下文污染
+- 支持跨 session、跨 project 的逻辑上下文空间 `context space`
+- 在你不工作时继续整理和压缩上下文，反哺后续 Agent 工作
 
-<br>
+### 4. Context Connector
 
-**Comprehensive Platform Support:**
+真正聪明的 Agent，不只是“会回答”，而是**能接入你的现有工作流，也能回到你的现有工作流。**
 
-- **Official Platforms** — Gemini, Gemini (Vertex AI), Anthropic (Claude), OpenAI
-- **Cloud Providers** — AWS Bedrock, New API (unified AI model gateway)
-- **Chinese Platforms** — Dashscope (Qwen), Zhipu, Moonshot (Kimi), Qianfan (Baidu), Hunyuan (Tencent), Lingyi, ModelScope, InfiniAI, Ctyun, StepFun
-- **International Platforms** — DeepSeek, MiniMax, OpenRouter, SiliconFlow, xAI, Ark (Volcengine), Poe
-- **Local Models** — Ollama, LM Studio (via Custom platform with local API endpoint)
+Context Connector 就是这层打通能力：
 
-ContextGo also supports [NewAPI](https://github.com/QuantumNous/new-api) gateway service — a unified AI model hub that aggregates and distributes various LLMs. Flexibly switch between different models in the same interface to meet various task requirements.
+- 接入知识来源、文档、浏览器、本地文件和外部产品
+- 连接 Feishu、Telegram、Slack、微信、钉钉等工作渠道
+- 让 Agent 既能消费上下文，也能把结果重新发布回原有流程
 
-</details>
+它解决的是“上下文打通”和“软件能力打通”，让你的工作台尽量收敛到 ContextGo，而不是在多个产品之间来回复制粘贴。
 
----
+### 5. Host / Client
 
-## Extensible Assistants & Skills
+ContextGo 默认采用 `Host Runtime + Client Shell` 模型：
 
-_Extensible assistant system with 12 built-in professional assistants and custom skill support. Create and manage your own assistants and skills._
+- `Host` 是真正执行运行时、工具、浏览器、文件和复杂任务的设备
+- `Client` 是远程访问和控制端，可以是桌面、浏览器或手机
 
-- **Create Custom Assistants** — Define your own assistants with custom rules and capabilities
-- **Manage Skills** — Create, enable, and disable skills for any assistant to extend AI capabilities
+这意味着：
 
-<p align="center">
-  <img src="./resources/assistants_skills.png" alt="AI Assistants & Skills Ecosystem" width="800">
-</p>
-
-<details>
-<summary><strong>🔍 View Assistant Details and Custom Skills ▶️</strong></summary>
-
-<br>
-
-ContextGo includes **12 professional assistants** with predefined capabilities, extendable through custom skills:
-
-- **🤝 Cowork** — Autonomous task execution (file operations, document processing, workflow planning)
-- **📊 PPTX Generator** — Generate PPTX presentations
-- **📄 PDF to PPT** — Convert PDF to PPT
-- **🎮 3D Game** — Single-file 3D game generation
-- **🎨 UI/UX Pro Max** — Professional UI/UX design (57 styles, 95 color palettes)
-- **📋 Planning with Files** — File-based planning for complex tasks (Manus-style persistent markdown planning)
-- **🧭 HUMAN 3.0 Coach** — Personal development coach
-- **📣 Social Job Publisher** — Job posting and publishing
-- **🦞 moltbook** — Zero-deployment AI agent social networking
-- **📈 Beautiful Mermaid** — Flowcharts, sequence diagrams, and more
-- **🔧 OpenClaw Setup** — Setup and configuration assistant for OpenClaw integration
-- **📖 Story Roleplay** — Immersive story roleplay with character cards and world info (SillyTavern compatible)
-
-**Custom Skills**: Create skills in the `skills/` directory, enable/disable skills for assistants to extend AI capabilities. Built-in skills include `pptx`, `docx`, `pdf`, `xlsx`, `mermaid`, and more.
-
-> 💡 Each assistant is defined by a markdown file. Check the `assistant/` directory for examples.
-
-</details>
+- 桌面仍然是第一执行主机
+- 手机是天然的远程控制端
+- 远程体验复用同一套 WebUI / server runtime
+- 未来 Host 可以运行在 macOS、Windows、Linux，甚至云端机器
 
 ---
 
-## Cowork from Anywhere
+## 你可以用 ContextGo 做什么
 
-_Your 24/7 AI assistant — access ContextGo from any device, anywhere._
-
-- **WebUI Mode** — access via browser from phone, tablet, or any computer. Supports LAN, cross-network, and server deployment. QR code or password login.
-
-- **Chat Platform Integration**
-  - **Telegram** — Cowork with your AI agent directly from Telegram
-  - **Lark (Feishu)** — Cowork through Feishu bots for enterprise collaboration
-  - **DingTalk** — AI Card streaming with automatic fallback
-  - **Slack** and more platforms coming soon
-
-> **Setup:** ContextGo Settings → WebUI Settings → Channel, configure the Bot Token.
-
-<p align="center">
-  <img src="./resources/webui-remote.gif" alt="WebUI remote access demo" width="800">
-</p>
-
-<p align="center"><em>Remote control &amp; monitor your agent — Claude, Gemini, Codex. Use from browser or phone, same as Claude Code remote.</em></p>
-
-> [Remote Internet Access Tutorial](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md#remote-access)
-
-## ✨ Cowork in Action
-
-### **Scheduled Tasks — Cowork on Autopilot**
-
-_Set it up once, the AI agent runs automatically on schedule — truly 24/7 unattended operation._
-
-- **Natural Language** — tell the agent what to do, just like chatting
-- **Flexible Scheduling** — daily, weekly, monthly, or custom cron expressions
-- **Use Cases:** scheduled data aggregation, report generation, file organization, reminders
-
-<p align="center">
-  <img src="./resources/alart-task.png" alt="Scheduled Tasks" width="800">
-</p>
-
-<details>
-<summary><strong>🔍 View Scheduled Task Details ▶️</strong></summary>
-
-<br>
-
-- **Conversation-Bound** — Each scheduled task is bound to a conversation, maintaining context and history
-- **Automatic Execution** — Tasks run automatically at scheduled times, sending messages to the conversation
-- **Easy Management** — Create, modify, enable/disable, delete, and view scheduled tasks anytime
-
-**Real-World Examples:**
-
-- Daily weather report generation
-- Weekly sales data aggregation
-- Monthly backup file organization
-- Custom reminder notifications
-
-</details>
+- 在一个项目里长期协作开发软件，而不是只做一次性问答
+- 把 Agent 接入文档、浏览器、本地文件、云端服务和发布渠道
+- 让 Agent 持续做调研、分析、整理、产出和回流
+- 在桌面开始任务，在手机或浏览器上远程发起、监督和接管
+- 构建自己的 Agent 助手、技能组合和自动化能力
+- 让你的 Agent 越用越懂你，而不是每次都从零开始
 
 ---
 
-### **Preview Panel — Instantly View AI-Generated Results**
+## 产品层是什么样子
 
-_10+ formats: PDF, Word, Excel, PPT, code, Markdown, images, HTML, Diff — view everything without switching apps._
+ContextGo 在产品层不是一堆抽象概念，而是一套可直接使用的工作台：
 
-- **Instant Preview** — after the agent generates files, view results immediately without switching apps
-- **Real-time Tracking + Editable** — automatically tracks file changes; supports live editing of Markdown, code, HTML
-- **Multi-Tab Support** — open multiple files simultaneously, each in its own tab
-- **Version History** — view and restore historical versions of files (Git-based)
+- 内置 Agent 与 Agent Package
+- 可组合的 skills、hooks、commands、schedules
+- 项目级 harness 初始化能力
+- 多端访问与远程控制
+- 可回到 IM / 业务渠道的发布与交互能力
+- 逐步接入更多本地工具、浏览器操作和外部产品能力
 
-<p align="center">
-  <img src="./resources/preview.gif" alt="Preview Panel" width="800">
-</p>
-
-<details>
-<summary><strong>🔍 View Complete Format List ▶️</strong></summary>
-
-<br>
-
-**Supported Preview Formats:**
-
-- **Documents** — PDF, Word (`.doc`, `.docx`, `.odt`), Excel (`.xls`, `.xlsx`, `.ods`, `.csv`), PowerPoint (`.ppt`, `.pptx`, `.odp`)
-- **Code** — JavaScript, TypeScript, Python, Java, Go, Rust, C/C++, CSS, JSON, XML, YAML, Shell scripts, and 30+ programming languages
-- **Markup** — Markdown (`.md`, `.markdown`), HTML (`.html`, `.htm`)
-- **Images** — PNG, JPG, JPEG, GIF, SVG, WebP, BMP, ICO, TIFF, AVIF
-- **Other** — Diff files (`.diff`, `.patch`)
-
-</details>
+它既服务开发者，也服务不懂底层技术、但只想让 Agent 真的替自己做事的人。
 
 ---
 
-### **Smart File Management — Automated File Operations**
+## ContextGo 项目矩阵
 
-_Batch renaming, automatic organization, smart classification, file merging — the Cowork agent handles it for you._
-
-<p align="center">
-  <img src="./resources/sort_out_folder.gif" alt="Smart File Management" width="800">
-</p>
-
-<details>
-<summary><strong>🔍 View File Management Features Details ▶️</strong></summary>
-
-<br>
-
-- **Auto Organize** — Intelligently identify content and auto-classify, keeping folders tidy
-- **Efficient Batch** — One-click rename, merge files, say goodbye to tedious manual tasks
-- **Automated Execution** — AI agents can independently execute file operations, read/write files, and complete tasks automatically
-
-**Use Cases:**
-
-- Organize messy download folders by file type
-- Batch rename photos with meaningful names
-- Merge multiple documents into one
-- Auto-classify files by content
-
-</details>
+| 仓库 | 角色 |
+| --- | --- |
+| [`contextgo`](https://github.com/contextgo/contextgo) | 主产品与主品牌仓库，承载桌面端、WebUI、mobile shell、Agent Package、Context Engine 等核心产品能力 |
+| [`connector`](https://github.com/contextgo/connector) | ContextGo 的连接与执行边界层，负责外部产品、本地资源、浏览器和受控操作的接入 |
+| [`skillmarket`](https://github.com/contextgo/skillmarket) | ContextGo 的技能发现、镜像、精选、组合与分发基础设施 |
+| [`contextgo-releases`](https://github.com/contextgo/contextgo-releases) | 公共发行与分发出口，承载安装包、版本清单、更新元数据和公开内容导出 |
 
 ---
 
-### **Excel Data Processing — AI-Powered Analysis**
+## 快速开始
 
-_Deeply analyze Excel data, automatically beautify reports, and generate insights — all powered by AI agents._
+### 作为用户
 
-<p align="center">
-  <img src="./resources/generate_xlsx.gif" alt="Excel Processing" width="800">
-</p>
+1. 前往 [Releases](https://github.com/contextgo/contextgo/releases) 下载适合你平台的版本
+2. 启动 ContextGo，选择本地 Host 或远程访问路径
+3. 在项目目录中开始你的 Agent 工作流
 
-<details>
-<summary><strong>🔍 View Excel Processing Features ▶️</strong></summary>
-
-<br>
-
-- **Smart Analysis** — AI analyzes data patterns and generates insights
-- **Auto Formatting** — Automatically beautify Excel reports with professional styling
-- **Data Transformation** — Convert, merge, and restructure data with natural language commands
-- **Report Generation** — Create comprehensive reports from raw data
-
-**Use Cases:**
-
-- Analyze sales data and generate monthly reports
-- Clean and format messy Excel files
-- Merge multiple spreadsheets intelligently
-- Create data visualizations and charts
-
-</details>
-
-### **Document Generation — PPT, Word, Markdown**
-
-_Automatically generate professional documents — presentations, reports, and more — with AI agents._
-
-<p align="center">
-  <img src="./resources/file_generation_preview.png" alt="Document Generation" width="800">
-</p>
-
-<details>
-<summary><strong>🔍 View Document Generation Features ▶️</strong></summary>
-
-<br>
-
-- **PPTX Generator** — Create professional presentations from outlines or topics
-- **Word Documents** — Generate formatted Word documents with proper structure
-- **Markdown Files** — Create and format Markdown documents for documentation
-- **PDF Conversion** — Convert between various document formats
-
-**Use Cases:**
-
-- Generate quarterly business presentations
-- Create technical documentation
-- Convert PDF to editable formats
-- Auto-format research papers
-
-</details>
-
-### **Personalized Interface Customization**
-
-_Customize with your own CSS code, make your interface match your preferences_
-
-<p align="center">
-  <img src="./resources/css with skin.gif" alt="CSS Customization" width="800">
-</p>
-
-- ✅ **Fully Customizable** — Freely customize interface colors, styles, layout through CSS code, create your exclusive experience
-
----
-
-### **Multi-Task Parallel Processing**
-
-_Open multiple conversations, tasks don't get mixed up, independent memory, double efficiency_
-
-<p align="center">
-  <img src="./resources/multichat-side-by-side.gif" alt="Multi-Task Parallel" width="800">
-</p>
-
-- ✅ **Independent Context** — Each conversation maintains its own context and history
-- ✅ **Parallel Execution** — Run multiple tasks simultaneously without interference
-- ✅ **Smart Management** — Easy switching between conversations with visual indicators
-
----
-
-## 🤔 Why Choose ContextGo Over Claude Cowork?
-
-<details>
-<summary><strong>Click to see detailed comparison</strong></summary>
-
-<br>
-
-ContextGo is a **free and open-source Multi-AI Agent Desktop**. Compared to Claude Cowork which only runs on macOS and is locked to Claude, ContextGo is its full-model, cross-platform enhanced version.
-
-| Dimension     | Claude Cowork | ContextGo                                        |
-| :------------ | :------------ | :----------------------------------------------- |
-| OS            | macOS Only    | macOS / Windows / Linux                          |
-| Model Support | Claude Only   | Gemini, Claude, DeepSeek, OpenAI, Ollama, ...    |
-| Interaction   | Desktop GUI   | Desktop GUI + WebUI + Telegram / Lark / DingTalk |
-| Automation    | Manual only   | Cron scheduled tasks — 24/7 unattended           |
-| Cost          | $100/month    | Free & Open Source                               |
-
-Deep AI Office Scenario Support:
-
-- **File Management**: Intelligently organize local folders and batch rename with one click.
-- **Data Processing**: Deeply analyze and automatically beautify Excel reports.
-- **Document Generation**: Automatically write and format PPT, Word, and Markdown documents.
-- **Instant Preview**: Built-in 10+ format preview panels, AI collaboration results instantly visible.
-
-</details>
-
----
-
-## Quick Q&A
-
-<details>
-<summary><strong>Q: Do I need to install Gemini CLI or Claude Code first?</strong></summary>
-A: <strong>No.</strong> ContextGo has a built-in AI agent that works immediately after installation. Just sign in with Google or enter any API key. If you also have CLI tools like Claude Code or Gemini CLI installed, ContextGo will auto-detect and integrate them for even more capabilities.
-</details>
-
-<details>
-<summary><strong>Q: What can I do with ContextGo?</strong></summary>
-A: ContextGo is your <strong>private Cowork workspace</strong>. The built-in agent can batch organize folders, process Excel data, generate documents, and search the web. With Multi-Agent Mode, you can also leverage Claude Code, Codex, and other powerful CLI agents through the same interface.
-</details>
-
-<details>
-<summary><strong>Q: Is it free?</strong></summary>
-A: ContextGo is completely free and open source. You can sign in with Google to use Gemini for free, or use API keys from any provider you prefer.
-</details>
-
-<details>
-<summary><strong>Q: Is my data secure?</strong></summary>
-A: All data is stored locally in a SQLite database. Nothing is uploaded to any server.
-</details>
-
----
-
-## See How People Use ContextGo
-
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=yUU5E-U5B3M" target="_blank">
-    <img src="https://img.youtube.com/vi/yUU5E-U5B3M/maxresdefault.jpg" alt="WorldofAI Review" width="400">
-  </a>
-  &nbsp;&nbsp;
-  <a href="https://www.youtube.com/watch?v=enQnkKfth10" target="_blank">
-    <img src="https://img.youtube.com/vi/enQnkKfth10/maxresdefault.jpg" alt="Julian Goldie SEO Review" width="400">
-  </a>
-</p>
-<p align="center">
-  <em>WorldofAI (200K subscribers)</em> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <em>Julian Goldie SEO (318K subscribers)</em>
-</p>
-
-### Community Articles
-
-- [Open-source free Cowork, full model integration + autonomous file operations](https://mp.weixin.qq.com/s/F3f-CCsVPaK3lK00jXhOOg) — Open Source AI Project Landing
-- [Making ordinary people use Claude Code like an APP](https://mp.weixin.qq.com/s/TsMojSbkUUFvsd-HQCazZg) — Lazy Cat Loves Fishing
-- [5500 Stars: How Open Source Breaks Anthropic's AI Tool Moat](https://mp.weixin.qq.com/s/saEk49cYV6MqBgw19Lw6Gw) — AI Silicon Moment
-
-> **Made a video about ContextGo?** [Let us know on X](https://x.com/ContextGo) and we'll feature it here!
-
----
-
-## 🚀 Quick Start
-
-### System Requirements
-
-- **macOS**: 10.15 or higher
-- **Windows**: Windows 10 or higher
-- **Linux**: Ubuntu 18.04+ / Debian 10+ / Fedora 32+
-- **Memory**: 4GB+ recommended
-- **Storage**: 500MB+ available space
-
-### Install
-
-<p>
-  <a href="https://github.com/contextgo/contextgo/releases">
-    <img src="https://img.shields.io/badge/Download-Latest%20Release-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Download Latest Release" height="50">
-  </a>
-</p>
+### 作为开发者
 
 ```bash
-# macOS via Homebrew
-# Download the latest installer from the Releases page above.
+bun install
+bun run start
 ```
 
-### Get Started in 3 Steps
+常用开发命令：
 
-1. **Install** ContextGo
-2. **Sign in** with Google account or enter any API key
-3. **Start Coworking** — the built-in AI agent is ready to go
-
-### 📖 Detailed Guides
-
-<details>
-<summary><strong>📖 Expand to View Complete Usage Guide</strong></summary>
-
-<br>
-
-**🚀 Quick Start**
-
-- [📖 Complete Installation Guide](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-start) — Detailed steps from download to configuration
-- [⚙️ LLM Configuration Guide](https://github.com/contextgo/contextgo/blob/main/readme.md#any-api-key-full-cowork-agent-power) — Multi-platform AI model configuration
-- [🤖 Multi-Agent Mode Setup](https://github.com/contextgo/contextgo/blob/main/readme.md#multi-agent-mode--already-have-cli-agents-bring-them-in) — Integrate terminal AI agents
-- [🌐 WebUI Configuration Guide](https://github.com/contextgo/contextgo/blob/main/docs/WEBUI_GUIDE.md) — Complete WebUI setup and configuration tutorial
-
-**🎯 Use Cases**
-
-- [📁 File Management](https://github.com/contextgo/contextgo/blob/main/readme.md#smart-file-management--automated-file-operations) — Smart file organization
-- [📊 Excel Processing](https://github.com/contextgo/contextgo/blob/main/readme.md#excel-data-processing--ai-powered-analysis) — AI-driven data processing
-- [🎨 Image Generation](https://github.com/contextgo/contextgo/blob/main/readme.md#ai-image-generation--editing) — AI image creation
-- [📚 More Use Cases](https://github.com/contextgo/contextgo/blob/main/readme.md#cowork-in-action)
-
-**❓ Support & Help**
-
-- [❓ FAQ](https://github.com/contextgo/contextgo/blob/main/readme.md#quick-qa) — Questions and troubleshooting
-- [🔧 Configuration & Usage Tutorials](https://github.com/contextgo/contextgo/tree/main/docs) — Complete configuration documentation
-
-</details>
+```bash
+bun run webui
+bun run test
+bun run lint:fix
+bun run format
+bunx tsc --noEmit
+```
 
 ---
 
-## 💬 Community & Support
+## 技术与产品架构入口
 
-**Your ideas matter!** We value every suggestion and feedback.
+如果你希望深入理解当前产品模型，建议从这些文档开始：
 
-<p align="center">
-  <a href="https://x.com/ContextGo" target="_blank">
-    <img src="./resources/contactus-x.png" alt="Contact Us on X" width="600">
-  </a>
-</p>
-
-- [GitHub Discussions](https://github.com/contextgo/contextgo/discussions) — share ideas and exchange tips
-- [Report Issues](https://github.com/contextgo/contextgo/issues) — bugs and feature requests
-- [Release Updates](https://github.com/contextgo/contextgo/releases) — get the latest version
-- [Discord Community](https://discord.gg/2QAwJn7Egx) — English community
-- [WeChat Group](./resources/wx-4.png) — Chinese community
-
-### Contributing
-
-1. Fork this project
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- [架构概览](./docs/tech/architecture.md)
+- [Context Engine 事件架构](./docs/tech/context-engine-event-architecture.md)
+- [Space 产品模型](./docs/tech/space-model.md)
+- [移动端 / 远程访问模型](./docs/tech/mobile-remote-control.md)
+- [Release / Distribution 标准](./docs/tech/release-distribution-standards.md)
+- [Agent Package 架构](./docs/tech/agent-package-architecture.md)
 
 ---
 
-## License
+## 开源状态
 
-This project is licensed under [Apache-2.0](LICENSE).
+ContextGo 正在把 Agent 产品化、上下文化和连接化这三件事同时往前推。
+
+这意味着它既是一个可直接使用的产品，也是一套持续演进的开源工程系统。部分能力已经稳定，部分能力仍在快速变化，但整体方向很明确：
+
+- Agent 不应该只是聊天
+- 上下文不应该只是历史记录
+- 软件不应该只为人类界面设计，也应该对 Agent 友好
 
 ---
 
-## Contributors
+## 社区
 
-<p align="center">
-  <a href="https://github.com/contextgo/contextgo/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=contextgo/contextgo&max=50" alt="Contributors" />
-  </a>
-</p>
-
-## Star History
-
-<p align="center">
-  <a href="https://www.star-history.com/#contextgo/contextgo&Date" target="_blank">
-    <img src="https://api.star-history.com/svg?repos=contextgo/contextgo&type=Date" alt="Star History" width="600">
-  </a>
-</p>
-
-<div align="center">
-
-**If you like it, give us a star**
-
-[Report Bug](https://github.com/contextgo/contextgo/issues) · [Request Feature](https://github.com/contextgo/contextgo/issues)
-
-</div>
+- 官网: <https://contextgo.io>
+- GitHub: <https://github.com/contextgo/contextgo>
+- Releases: <https://github.com/contextgo/contextgo/releases>

@@ -108,10 +108,7 @@ Expected: FAIL because `ContextJob` does not yet expose `governanceIdentity`, an
 - [ ] **Step 3: Add governance identity and session artifact target metadata to the context job model**
 
 ```ts
-export type ContextGovernanceIdentity =
-  | 'session_steward'
-  | 'project_curator'
-  | 'space_curator';
+export type ContextGovernanceIdentity = 'session_steward' | 'project_curator' | 'space_curator';
 
 export type ContextArtifactTarget =
   | 'session_timeline'

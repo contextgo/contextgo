@@ -158,10 +158,23 @@ describe('context engine event flow', () => {
       projectSlug: 'workspace-abcd1234',
       interruptedAt: Date.parse('2026-04-08T00:00:00.000Z'),
       snapshot: {
-        userTurns: 1,
-        assistantReplies: 0,
+        userTurns: 3,
+        assistantReplies: 2,
         interruptions: 1,
-        recentSignals: [],
+        recentSignals: [
+          {
+            kind: 'user_interrupt',
+            summary: 'User stopped the previous run.',
+            score: 0.8,
+            occurredAt: '2026-04-08T00:00:00.000Z',
+          },
+          {
+            kind: 'repeated_request',
+            summary: 'User repeated the release ask.',
+            score: 0.8,
+            occurredAt: '2026-04-08T00:01:00.000Z',
+          },
+        ],
       },
     });
 
@@ -423,9 +436,15 @@ describe('context engine event flow', () => {
     };
     const vaultSyncService = {
       appendContextCheckpoint: vi.fn(async () => undefined),
-      writeSessionWorkingSet: vi.fn(async () => ({
-        relativePath: 'Projects/workspace/_context/sessions/thread-1/working-set.md',
-        title: 'Release Session Working Set',
+      appendSessionCheckpoint: vi.fn(async () => ({
+        relativePath:
+          'Projects/workspace/_context/sessions/thread-1/checkpoints/2026-04-08T00-03-00Z-session-compaction.md',
+        title: 'Session checkpoint',
+        summary: 'Current task: Ship the release safely.',
+      })),
+      writeSessionWorkingContext: vi.fn(async () => ({
+        relativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
+        title: 'Release Session Working Context',
       })),
     };
     const summarizer = {
@@ -452,8 +471,11 @@ describe('context engine event flow', () => {
         stableStrategies: ['Use the staged release checklist.'],
         failureModes: ['Long runs are being interrupted by the user.'],
         pendingConstraints: ['Do not widen the rollout without review.'],
-        workingSetTitle: 'Release Session Working Set',
-        workingSetRelativePath: 'Projects/workspace/_context/sessions/thread-1/working-set.md',
+        noteTitle: 'Session checkpoint',
+        relativePath:
+          'Projects/workspace/_context/sessions/thread-1/checkpoints/2026-04-08T00-03-00Z-session-compaction.md',
+        workingSetTitle: 'Release Session Working Context',
+        workingSetRelativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
         pressure: 58,
         promotedCount: 1,
         pendingReviewCount: 1,
@@ -473,15 +495,16 @@ describe('context engine event flow', () => {
         threadId: 'thread-1',
       })
     );
-    expect(vaultSyncService.writeSessionWorkingSet).toHaveBeenCalledWith(
+    expect(vaultSyncService.writeSessionWorkingContext).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceProfileKey: 'session.compaction.thread-1',
         currentTask: 'Ship the release safely.',
       })
     );
-    expect(vaultSyncService.appendContextCheckpoint).toHaveBeenCalledWith(
+    expect(vaultSyncService.appendSessionCheckpoint).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Session Compaction Updated',
+        title: 'Session checkpoint',
+        kind: 'session-compaction',
       })
     );
   });
@@ -546,7 +569,11 @@ describe('context engine event flow', () => {
   it('queues project promotion after a successful session compaction artifact', async () => {
     const bus = new ContextEventBus();
     const emittedJobs: ContextJob[] = [];
+    const router = new ContextTriggerRouter(bus, {
+      resolve: vi.fn(async () => ({ kind: 'space-vault-root', spaceId: 'space-1', vaultRoot: '/vault/space-1' })),
+    } as never);
 
+    router.register();
     registerContextJobProjector(bus);
     bus.on('context.job.queued', async (event) => {
       emittedJobs.push(event.payload.job);
@@ -589,6 +616,82 @@ describe('context engine event flow', () => {
       expect.objectContaining({
         projectSlug: 'workspace-abcd1234',
         threadId: 'thread-1',
+      })
+    );
+  });
+
+  it('keeps governance routing on the trigger router after projector reduction', async () => {
+    const bus = new ContextEventBus();
+    const emittedJobs: ContextJob[] = [];
+    const router = new ContextTriggerRouter(bus, {
+      resolve: vi.fn(async () => ({ kind: 'space-vault-root', spaceId: 'space-1', vaultRoot: '/vault/space-1' })),
+    } as never);
+
+    router.register();
+    registerContextJobProjector(bus);
+    bus.on('context.job.queued', async (event) => {
+      emittedJobs.push(event.payload.job);
+    });
+
+    await (bus as any).emit('delegation.completed', {
+      spaceId: 'space-1',
+      threadId: 'thread-1',
+      projectSlug: 'workspace-abcd1234',
+      occurredAt: '2026-04-17T01:00:00.000Z',
+      sourceSummary: 'Planner delegate completed release validation synthesis.',
+      delegationSummary: 'Planner delegate completed release validation synthesis.',
+      snapshot: {
+        userTurns: 1,
+        assistantReplies: 2,
+        interruptions: 0,
+        recentSignals: [
+          {
+            kind: 'strategy_shift',
+            summary: 'Planner delegate converged on a narrower rollout path.',
+            score: 0.8,
+            occurredAt: '2026-04-08T00:00:00.000Z',
+          },
+        ],
+      },
+    });
+
+    expect(emittedJobs).toHaveLength(1);
+    expect(emittedJobs[0]?.source).toBe('lifecycle');
+  });
+
+  it('routes delegation.completed through the lifecycle trigger contract', async () => {
+    const bus = new ContextEventBus();
+    const emittedJobs: ContextJob[] = [];
+    const router = new ContextTriggerRouter(bus, {
+      resolve: vi.fn(async () => ({ kind: 'space-vault-root', spaceId: 'space-1', vaultRoot: '/vault/space-1' })),
+    } as never);
+
+    router.register();
+    bus.on('context.job.queued', async (event) => {
+      emittedJobs.push(event.payload.job);
+    });
+
+    await (bus as any).emit('delegation.completed', {
+      spaceId: 'space-1',
+      threadId: 'thread-1',
+      projectSlug: 'workspace-abcd1234',
+      occurredAt: '2026-04-17T01:00:00.000Z',
+      sourceSummary: 'Planner delegate completed release validation synthesis.',
+      delegationSummary: 'Planner delegate completed release validation synthesis.',
+      snapshot: {
+        userTurns: 3,
+        assistantReplies: 2,
+        interruptions: 0,
+        recentSignals: [],
+      },
+    });
+
+    expect(emittedJobs).toHaveLength(1);
+    expect(emittedJobs[0]).toEqual(
+      expect.objectContaining({
+        type: 'session_compaction',
+        source: 'lifecycle',
+        governanceIdentity: 'session_steward',
       })
     );
   });
@@ -665,6 +768,67 @@ describe('context engine event flow', () => {
     expect(seen).toContain('project_capability_curation:completed');
   });
 
+  it('writes AGENTS and skill proposal artifacts for project capability curation jobs', async () => {
+    const { ProjectCapabilityCurationJobHandler } =
+      await import('../../../src/process/services/context/jobs/ProjectCapabilityCurationJobHandler');
+
+    const vaultSyncService = {
+      curateProjectCapabilities: vi.fn(async () => ({
+        projectSlug: 'workspace-abcd1234',
+        noteTitle: 'workspace Capabilities',
+        relativePath: 'Projects/workspace/_context/Capabilities.md',
+        summary: 'Refreshed project capability mirror.',
+      })),
+      writeProjectCuratorProposal: vi
+        .fn()
+        .mockResolvedValueOnce({
+          title: 'AGENTS append proposal',
+          relativePath: 'Projects/workspace/_context/proposals/agents-append-proposal.md',
+          summary: 'Add a stable release-validation rule.',
+        })
+        .mockResolvedValueOnce({
+          title: 'Skill append proposal',
+          relativePath: 'Projects/workspace/_context/proposals/skill-append-proposal.md',
+          summary: 'Update release-validation skill guidance.',
+        }),
+    };
+
+    const handler = new ProjectCapabilityCurationJobHandler(vaultSyncService as never);
+    const artifact = await handler.run(
+      makeJob({
+        type: 'project_capability_curation',
+        governanceIdentity: 'project_curator',
+        projectSlug: 'workspace-abcd1234',
+        payload: {
+          summary: 'Refresh project capability mirror.',
+          artifactTargets: ['project_doc', 'project_rules', 'project_skill'],
+        },
+      })
+    );
+
+    expect(vaultSyncService.curateProjectCapabilities).toHaveBeenCalled();
+    expect(vaultSyncService.writeProjectCuratorProposal).toHaveBeenCalledTimes(2);
+    expect(vaultSyncService.writeProjectCuratorProposal).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        title: 'AGENTS append proposal',
+        proposalKind: 'project_rules',
+        targetPath: 'AGENTS.md',
+      })
+    );
+    expect(vaultSyncService.writeProjectCuratorProposal).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        title: 'Skill append proposal',
+        proposalKind: 'project_skill',
+        targetPath: 'skills/release-validation/SKILL.md',
+      })
+    );
+    expect(artifact?.summary).toContain('Refreshed project capability mirror.');
+    expect(artifact?.summary).toContain('Add a stable release-validation rule.');
+    expect(artifact?.summary).toContain('Update release-validation skill guidance.');
+  });
+
   it('writes operation logs for project capability curation jobs', async () => {
     const bus = new ContextEventBus();
     const vaultSyncService = {
@@ -718,6 +882,81 @@ describe('context engine event flow', () => {
       expect.objectContaining({
         title: 'Project capability curation completed',
         bullets: ['Refreshed project capability mirror.'],
+      })
+    );
+  });
+
+  it('writes both space digest and profile-memory artifacts for space memory distillation jobs', async () => {
+    const { SpaceMemoryDistillationJobHandler } =
+      await import('../../../src/process/services/context/jobs/SpaceMemoryDistillationJobHandler');
+
+    const vaultSyncService = {
+      writeSpaceMemoryDistillation: vi.fn(async () => ({
+        title: 'Space Memory Distillation',
+        relativePath: 'System/Context Engine/Space Memory.md',
+        summary: 'Shared release patterns distilled.',
+        spaceId: 'space-1',
+      })),
+      writeProfileMemoryDistillation: vi.fn(async () => ({
+        title: 'Profile Memory',
+        relativePath: 'System/Context Engine/Profile Memory.md',
+        summary: 'Team prefers minimal diffs and explicit validation.',
+        spaceId: 'space-1',
+      })),
+    };
+
+    const handler = new SpaceMemoryDistillationJobHandler(vaultSyncService as never);
+    const artifact = await handler.run(
+      makeJob({
+        type: 'space_memory_distillation',
+        governanceIdentity: 'space_curator',
+        payload: {
+          summary: 'Shared release patterns distilled.',
+          profileSummary: 'Team prefers minimal diffs and explicit validation.',
+          profileBullets: ['Observed across 3 project summaries.'],
+          artifactTargets: ['space_digest', 'profile_memory'],
+        },
+      })
+    );
+
+    expect(vaultSyncService.writeSpaceMemoryDistillation).toHaveBeenCalled();
+    expect(vaultSyncService.writeProfileMemoryDistillation).toHaveBeenCalled();
+    expect(artifact?.summary).toContain('Shared release patterns distilled.');
+    expect(artifact?.summary).toContain('Team prefers minimal diffs and explicit validation.');
+  });
+
+  it('writes richer connector digest details from connector payload metadata', async () => {
+    const { ConnectorDigestJobHandler } =
+      await import('../../../src/process/services/context/jobs/ConnectorDigestJobHandler');
+
+    const vaultSyncService = {
+      writeConnectorDigest: vi.fn(async () => ({
+        title: 'Connector Digest',
+        relativePath: 'System/Context Engine/Connector Digest.md',
+        summary: 'Digest newly ingested connector content into reusable context.',
+        spaceId: 'space-1',
+      })),
+    };
+
+    const handler = new ConnectorDigestJobHandler(vaultSyncService as never);
+    await handler.run(
+      makeJob({
+        type: 'connector_digest',
+        governanceIdentity: 'space_curator',
+        payload: {
+          summary: 'Digest newly ingested connector content into reusable context.',
+          connectorId: 'browser-activity',
+          title: 'Release checklist page',
+          canonicalUri: 'https://example.com/release-checklist',
+          sourceKind: 'web-resource',
+          artifactTargets: ['space_digest'],
+        },
+      })
+    );
+
+    expect(vaultSyncService.writeConnectorDigest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.stringContaining('browser-activity'),
       })
     );
   });

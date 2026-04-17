@@ -1,0 +1,20 @@
+{
+  "name": "contextgo-docs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "docusaurus start --host 0.0.0.0 --port 3002",
+    "build": "docusaurus build",
+    "serve": "docusaurus serve",
+    "clear": "docusaurus clear"
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.0",
+    "@docusaurus/faster": "3.10.0",
+    "@docusaurus/preset-classic": "3.10.0",
+    "prism-react-renderer": "2.4.1",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "webpackbar": "7.0.0"
+  }
+}

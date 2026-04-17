@@ -88,7 +88,8 @@ Keeping both under one repository still gives a single maintenance surface witho
 - iOS simulator build: passed with `xcodebuild -project mobile-shell/ios/ContextGo.xcodeproj -scheme ContextGo -destination 'id=88D8275A-21B1-4B7D-AF87-3871965664BC' CODE_SIGNING_ALLOWED=NO build`
 - iOS simulator install + launch: passed with `xcrun simctl install` and `xcrun simctl launch io.contextgo.ios`
 - iOS stable tag packaging now supports signed `xcarchive` plus optional exported `ipa` workflow artifacts through `.github/workflows/build-and-release.yml` when `RELEASE_BUILD_IOS_SHELL=true` and the signing secrets are configured
-- iOS TestFlight automation supports App Store Connect API key based archive, export, and upload flows when release variables and secrets are configured
+- iOS TestFlight automation now lives in the dedicated `.github/workflows/ios-testflight.yml` workflow, which auto-runs after a successful `Build and Release` on `main` when `ENABLE_IOS_TESTFLIGHT_RELEASES=true` or `ENABLE_IOS_SHELL_RELEASES=true`, and also supports manual dispatch
+- the supported TestFlight CI path is manual signing via uploaded `p12 + mobileprovision` plus an App Store Connect upload API key; optional Team API key inputs are documented as a future provisioning path
 - `bun run mobile-shell:android:tasks`: passed and enumerates Gradle tasks
 - Android full assemble: passed and produced a debug APK
 - Android stable tag packaging is now wired into `.github/workflows/build-and-release.yml` and emits canonical `ContextGo-<version>-android-universal.apk` / `.aab` assets when `RELEASE_BUILD_ANDROID_SHELL=true` and Android signing secrets are configured

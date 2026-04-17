@@ -5,7 +5,7 @@
  */
 
 import { Button, Empty, Tag, Typography } from '@arco-design/web-react';
-import { Right, Robot } from '@icon-park/react';
+import { Robot } from '@icon-park/react';
 import classNames from 'classnames';
 import type { IExtensionSystemRunItem } from '@/common/adapter/ipcBridge';
 import {
@@ -74,11 +74,109 @@ function resolveExecutionBoundaryLabel(
   });
 }
 
+function formatArtifactTargets(targets: readonly string[] | undefined): string {
+  if (!targets || targets.length === 0) {
+    return '--';
+  }
+
+  return targets.join(' · ');
+}
+
+function formatRecentEventKind(kind: string): string {
+  return kind;
+}
+
+function resolveRunEventQualifier(run: IExtensionSystemRunItem): string | undefined {
+  return resolveArtifactKindLabel(run) ?? run.source;
+}
+
+type SystemRunDetailRow = {
+  key: string;
+  value?: string;
+};
+
+function renderDetailGroup(title: string, rows: SystemRunDetailRow[]): React.ReactNode {
+  const visibleRows = rows.filter((row) => row.value);
+  if (visibleRows.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className={styles.systemRunsMetaGroup}>
+      <div className={styles.systemRunsMetaGroupTitle}>{title}</div>
+      <div className={styles.systemRunsMetaGroupBody}>
+        {visibleRows.map((row) => (
+          <div key={row.key} className={styles.systemRunsDetailText}>
+            {row.value}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function resolveArtifactKindLabel(run: IExtensionSystemRunItem): string | undefined {
+  const targets = run.artifactTargets ?? [];
+  if (targets.includes('project_rules') || targets.includes('project_skill')) {
+    return 'proposal';
+  }
+  if (targets.includes('space_digest') || targets.includes('profile_memory')) {
+    return 'space-distillation';
+  }
+  if (targets.includes('session_working_context') || targets.includes('session_checkpoint')) {
+    return 'session-context';
+  }
+  if (targets.includes('project_doc')) {
+    return 'project-context';
+  }
+  return undefined;
+}
+
+function resolveDefinitionGovernanceIdentity(jobType: string): string {
+  if (jobType === 'session_compaction' || jobType === 'session_pattern_detection') {
+    return 'session_steward';
+  }
+  if (jobType === 'project_promotion' || jobType === 'project_capability_curation') {
+    return 'project_curator';
+  }
+  return 'space_curator';
+}
+
+function resolveDefinitionArtifactTargets(jobType: string): string[] {
+  if (jobType === 'session_compaction') {
+    return ['session_timeline', 'session_working_context', 'session_checkpoint'];
+  }
+  if (jobType === 'session_pattern_detection') {
+    return ['space_digest'];
+  }
+  if (jobType === 'project_promotion') {
+    return ['project_doc'];
+  }
+  if (jobType === 'project_capability_curation') {
+    return ['project_doc', 'project_rules', 'project_skill'];
+  }
+  if (jobType === 'space_memory_distillation') {
+    return ['space_digest', 'profile_memory'];
+  }
+  return ['space_digest'];
+}
+
 const SystemRunsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { status, systemRuns, activeMaintenanceCount, lastCheckedAt } = useContextEngineActivity();
   const lastCheckedLabel = lastCheckedAt ? formatUpdateTime(lastCheckedAt) : '--';
+  const governanceSummary = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const run of systemRuns) {
+      const identity = run.governanceIdentity;
+      if (!identity) {
+        continue;
+      }
+      counts.set(identity, (counts.get(identity) ?? 0) + 1);
+    }
+    return [...counts.entries()];
+  }, [systemRuns]);
 
   return (
     <SettingsPageWrapper>
@@ -132,6 +230,22 @@ const SystemRunsPage: React.FC = () => {
           </div>
         </section>
 
+        {governanceSummary.length > 0 ? (
+          <section className='rounded-20px border border-border-2 bg-fill-1 px-16px py-12px'>
+            <div className='flex flex-wrap items-center gap-8px'>
+              {governanceSummary.map(([identity, count]) => (
+                <Tag key={identity} size='small'>
+                  {t('settings.systemRunsIdentityCount', {
+                    identity,
+                    count,
+                    defaultValue: `${identity} · ${count}`,
+                  })}
+                </Tag>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {systemRuns.length === 0 ? (
           <>
             <section className='rounded-24px border border-dashed border-border-2 bg-fill-1 p-32px'>
@@ -176,6 +290,8 @@ const SystemRunsPage: React.FC = () => {
                     resolveTriggerKindLabel(kind, t)
                   );
                   const boundaryLabel = resolveExecutionBoundaryLabel(assistant.runtimeSpec.executionBoundary, t);
+                  const governanceIdentity = resolveDefinitionGovernanceIdentity(assistant.jobType);
+                  const artifactTargets = resolveDefinitionArtifactTargets(assistant.jobType);
                   const isPlanned = assistant.deliveryStatus === 'planned';
                   const runtimeStatusTone = isPlanned
                     ? SYSTEM_AGENT_STATUS_TAG_COLOR.planned
@@ -226,6 +342,18 @@ const SystemRunsPage: React.FC = () => {
                               })}
                             </div>
                             <div className={styles.systemAgentMetaItem}>
+                              {t('settings.systemRunsGovernance', {
+                                identity: governanceIdentity,
+                                defaultValue: `Governance: ${governanceIdentity}`,
+                              })}
+                            </div>
+                            <div className={styles.systemAgentMetaItem}>
+                              {t('settings.systemRunsArtifacts', {
+                                artifacts: formatArtifactTargets(artifactTargets),
+                                defaultValue: `Artifacts: ${formatArtifactTargets(artifactTargets)}`,
+                              })}
+                            </div>
+                            <div className={styles.systemAgentMetaItem}>
                               {t('settings.systemRunsLastChecked', {
                                 time: lastCheckedLabel,
                                 defaultValue: `Last checked: ${lastCheckedLabel}`,
@@ -242,95 +370,173 @@ const SystemRunsPage: React.FC = () => {
           </>
         ) : (
           <section className='grid gap-12px'>
-            {systemRuns.map((run) => (
-              <article key={run.id} className='rounded-20px border border-border-2 bg-fill-1 p-16px shadow-sm'>
-                <div className='flex flex-wrap items-start justify-between gap-12px'>
-                  <div className='min-w-0 flex-1'>
-                    <div className='flex flex-wrap items-center gap-8px'>
-                      <div className='truncate text-14px font-600 leading-6 text-t-primary'>
-                        {resolveRunTitle(run, i18n.language)}
-                      </div>
-                      <Tag color={RUN_STATE_TAG_COLOR[run.state]} size='small'>
-                        {t(`agent.contextEngine.state.${run.state}`, { defaultValue: run.state })}
-                      </Tag>
-                      {run.maintenanceKind ? <Tag size='small'>{run.maintenanceKind}</Tag> : null}
-                    </div>
-                    <div className='mt-6px text-13px leading-6 text-t-primary'>
-                      {run.currentTask || t('agent.contextEngine.taskFallback', { defaultValue: 'No summary yet' })}
-                    </div>
-                  </div>
-                  <div className='text-12px text-t-secondary'>
-                    {t('agent.contextEngine.updatedAt', {
-                      time: formatUpdateTime(run.lastActiveAt),
-                      defaultValue: `Updated ${formatUpdateTime(run.lastActiveAt)}`,
-                    })}
-                  </div>
-                </div>
-
-                <div
-                  className={
-                    'mt-12px rounded-16px bg-fill-2 p-12px text-12px leading-5 text-t-secondary ' +
-                    styles.systemRunsDetails
-                  }
-                >
-                  {run.scopeLabel ? (
-                    <div className={styles.systemRunsDetailText}>
-                      {t('agent.contextEngine.scope', { scope: run.scopeLabel })}
-                    </div>
-                  ) : null}
-                  {run.executionBoundaryPath ? (
-                    <div className={styles.systemRunsDetailText}>
-                      {t('settings.systemRunsBoundary', {
+            {systemRuns.map((run) => {
+              const artifactKind = resolveArtifactKindLabel(run);
+              const eventQualifier = resolveRunEventQualifier(run);
+              const routingRows: SystemRunDetailRow[] = [
+                {
+                  key: 'scope',
+                  value: run.scopeLabel ? t('agent.contextEngine.scope', { scope: run.scopeLabel }) : undefined,
+                },
+                {
+                  key: 'boundary',
+                  value: run.executionBoundaryPath
+                    ? t('settings.systemRunsBoundary', {
                         path: run.executionBoundaryPath,
                         defaultValue: `Boundary: ${run.executionBoundaryPath}`,
-                      })}
-                    </div>
-                  ) : null}
-                  {run.triggerLabel || run.triggerEvent ? (
-                    <div className={styles.systemRunsDetailText}>
-                      {t('settings.systemRunsTrigger', {
-                        trigger: run.triggerLabel || run.triggerEvent || '--',
-                        defaultValue: `Trigger: ${run.triggerLabel || run.triggerEvent || '--'}`,
-                      })}
-                    </div>
-                  ) : null}
-                  {run.reason ? (
-                    <div className={styles.systemRunsDetailText}>
-                      {t('settings.systemRunsReason', {
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'trigger',
+                  value:
+                    run.triggerLabel || run.triggerEvent
+                      ? t('settings.systemRunsTrigger', {
+                          trigger: run.triggerLabel || run.triggerEvent || '--',
+                          defaultValue: `Trigger: ${run.triggerLabel || run.triggerEvent || '--'}`,
+                        })
+                      : undefined,
+                },
+                {
+                  key: 'reason',
+                  value: run.reason
+                    ? t('settings.systemRunsReason', {
                         reason: run.reason,
                         defaultValue: `Reason: ${run.reason}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'source',
+                  value: run.source
+                    ? t('settings.systemRunsSource', {
+                        source: run.source,
+                        defaultValue: `Source: ${run.source}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'governance',
+                  value: run.governanceIdentity
+                    ? t('settings.systemRunsGovernance', {
+                        identity: run.governanceIdentity,
+                        defaultValue: `Governance: ${run.governanceIdentity}`,
+                      })
+                    : undefined,
+                },
+              ];
+              const artifactRows: SystemRunDetailRow[] = [
+                {
+                  key: 'kind',
+                  value: artifactKind
+                    ? t('settings.systemRunsArtifactKind', {
+                        kind: artifactKind,
+                        defaultValue: `Artifact kind: ${artifactKind}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'targets',
+                  value:
+                    run.artifactTargets && run.artifactTargets.length > 0
+                      ? t('settings.systemRunsArtifacts', {
+                          artifacts: formatArtifactTargets(run.artifactTargets),
+                          defaultValue: `Artifacts: ${formatArtifactTargets(run.artifactTargets)}`,
+                        })
+                      : undefined,
+                },
+                {
+                  key: 'summary',
+                  value: run.latestArtifactSummary
+                    ? t('settings.systemRunsArtifactSummary', {
+                        summary: run.latestArtifactSummary,
+                        defaultValue: `Artifact summary: ${run.latestArtifactSummary}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'title',
+                  value: run.artifactTitle ? t('agent.contextEngine.artifactTitle', { title: run.artifactTitle }) : undefined,
+                },
+                {
+                  key: 'path',
+                  value: run.artifactRelativePath
+                    ? t('agent.contextEngine.artifactPath', { path: run.artifactRelativePath })
+                    : undefined,
+                },
+              ];
+
+              return (
+                <article
+                  key={run.id}
+                  data-testid={`system-run-${run.id}`}
+                  className={classNames(
+                    'rounded-20px border border-border-2 bg-fill-1 p-16px shadow-sm',
+                    styles.systemRunsCard
+                  )}
+                >
+                  <div className='flex flex-wrap items-start justify-between gap-12px'>
+                    <div className='min-w-0 flex-1'>
+                      <div className='flex flex-wrap items-center gap-8px'>
+                        <div className='truncate text-14px font-600 leading-6 text-t-primary'>
+                          {resolveRunTitle(run, i18n.language)}
+                        </div>
+                        <Tag color={RUN_STATE_TAG_COLOR[run.state]} size='small'>
+                          {t(`agent.contextEngine.state.${run.state}`, { defaultValue: run.state })}
+                        </Tag>
+                        {run.maintenanceKind ? <Tag size='small'>{run.maintenanceKind}</Tag> : null}
+                        {run.source ? <Tag size='small'>{run.source}</Tag> : null}
+                        {artifactKind ? <Tag size='small'>{artifactKind}</Tag> : null}
+                      </div>
+                      <div className='mt-6px text-13px leading-6 text-t-primary'>
+                        {run.currentTask || t('agent.contextEngine.taskFallback', { defaultValue: 'No summary yet' })}
+                      </div>
+                    </div>
+                    <div className='text-12px text-t-secondary'>
+                      {t('agent.contextEngine.updatedAt', {
+                        time: formatUpdateTime(run.lastActiveAt),
+                        defaultValue: `Updated ${formatUpdateTime(run.lastActiveAt)}`,
                       })}
                     </div>
-                  ) : null}
-                  {run.artifactTitle ? (
-                    <div className={styles.systemRunsDetailText}>
-                      {t('agent.contextEngine.artifactTitle', { title: run.artifactTitle })}
-                    </div>
-                  ) : null}
-                  {run.artifactRelativePath ? (
-                    <div className={styles.systemRunsDetailText}>
-                      {t('agent.contextEngine.artifactPath', { path: run.artifactRelativePath })}
-                    </div>
-                  ) : null}
-                </div>
-
-                {run.recentEvents.length > 0 ? (
-                  <div className='mt-12px grid gap-6px'>
-                    {run.recentEvents.slice(0, 4).map((event, index) => (
-                      <div
-                        key={`${run.id}-${index}-${event.at}`}
-                        className={'text-12px leading-5 text-t-secondary ' + styles.systemRunsEventRow}
-                      >
-                        <span className={styles.systemRunsEventIcon}>
-                          <Right theme='outline' size={12} />
-                        </span>
-                        <span className={styles.systemRunsEventText}>{event.text}</span>
-                      </div>
-                    ))}
                   </div>
-                ) : null}
-              </article>
-            ))}
+
+                  <div className={classNames('mt-12px', styles.systemRunsMetaGrid)}>
+                    {renderDetailGroup(t('settings.systemRunsRoutingTitle', { defaultValue: 'Routing' }), routingRows)}
+                    {renderDetailGroup(t('settings.systemRunsArtifactTitle', { defaultValue: 'Artifact' }), artifactRows)}
+                  </div>
+
+                  {run.recentEvents.length > 0 ? (
+                    <div
+                      data-testid={`system-run-event-stream-${run.id}`}
+                      className={classNames('mt-12px', styles.systemRunsEventStream)}
+                    >
+                      {run.recentEvents.slice(0, 4).map((event, index) => (
+                        <div
+                          key={`${run.id}-${index}-${event.at}`}
+                          className={classNames('text-12px leading-5 text-t-secondary', styles.systemRunsEventRow)}
+                        >
+                          <span className={styles.systemRunsEventTimestamp}>{formatUpdateTime(event.at)}</span>
+                          <span data-testid={`system-run-event-kind-${run.id}-${index}`}>
+                            <Tag size='small'>{formatRecentEventKind(event.kind)}</Tag>
+                          </span>
+                          {eventQualifier ? (
+                            <span
+                              data-testid={`system-run-event-qualifier-${run.id}-${index}`}
+                              className={classNames(styles.systemRunsEventQualifier, {
+                                [styles.systemRunsEventQualifierArtifact]: Boolean(artifactKind),
+                              })}
+                            >
+                              {eventQualifier}
+                            </span>
+                          ) : null}
+                          <span className={styles.systemRunsEventMessage}>{event.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
           </section>
         )}
 

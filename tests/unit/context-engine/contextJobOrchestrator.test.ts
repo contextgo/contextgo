@@ -3,6 +3,7 @@ import {
   ContextJobOrchestrator,
   buildPromotionCandidateFromSummary,
   collectSessionSignalKinds,
+  createPlannedContextJob,
 } from '../../../src/process/services/context/ContextJobOrchestrator';
 
 function makeSignal(kind: Parameters<typeof collectSessionSignalKinds>[0][number]['kind'], summary: string) {
@@ -41,6 +42,12 @@ describe('ContextJobOrchestrator', () => {
     expect(job?.type).toBe('session_compaction');
     expect(job?.priority).toBe('high');
     expect(job?.projectSlug).toBe('repo-1');
+    expect(job?.governanceIdentity).toBe('session_steward');
+    expect(job?.payload).toEqual(
+      expect.objectContaining({
+        artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+      })
+    );
   });
 
   it('does not queue compaction when the session is still too small and quiet', () => {
@@ -88,6 +95,76 @@ describe('ContextJobOrchestrator', () => {
     expect(weakJob).toBeUndefined();
     expect(strongJob?.type).toBe('project_promotion');
     expect(strongJob?.priority).toBe('high');
+    expect(strongJob?.governanceIdentity).toBe('project_curator');
+    expect(strongJob?.payload).toEqual(
+      expect.objectContaining({
+        artifactTargets: ['project_doc'],
+      })
+    );
+  });
+
+  it('creates project capability curation jobs as Project Curator work with rule and skill targets', () => {
+    const job = createPlannedContextJob({
+      type: 'project_capability_curation',
+      priority: 'medium',
+      spaceId: 'space-1',
+      projectSlug: 'repo-1',
+      source: 'timer',
+      triggerEvent: 'timer.project_capability_curation',
+      reason: 'Refresh project capability mirror.',
+      payload: {
+        summary: 'Refresh project capability mirror.',
+      },
+    });
+
+    expect(job.governanceIdentity).toBe('project_curator');
+    expect(job.payload).toEqual(
+      expect.objectContaining({
+        artifactTargets: ['project_doc', 'project_rules', 'project_skill'],
+      })
+    );
+  });
+
+  it('creates space memory distillation jobs as Space Curator work with digest and profile targets', () => {
+    const job = createPlannedContextJob({
+      type: 'space_memory_distillation',
+      priority: 'high',
+      spaceId: 'space-1',
+      source: 'timer',
+      triggerEvent: 'timer.space_memory_distillation',
+      reason: 'Distill shared space memory from recent project activity.',
+      payload: {
+        summary: 'Distill shared space memory from recent project activity.',
+      },
+    });
+
+    expect(job.governanceIdentity).toBe('space_curator');
+    expect(job.payload).toEqual(
+      expect.objectContaining({
+        artifactTargets: ['space_digest', 'profile_memory'],
+      })
+    );
+  });
+
+  it('creates connector digest jobs as Space Curator work with digest targets', () => {
+    const job = createPlannedContextJob({
+      type: 'connector_digest',
+      priority: 'medium',
+      spaceId: 'space-1',
+      source: 'connector',
+      triggerEvent: 'connector.source.ingested',
+      reason: 'Digest newly ingested connector content into reusable context.',
+      payload: {
+        summary: 'Digest newly ingested connector content into reusable context.',
+      },
+    });
+
+    expect(job.governanceIdentity).toBe('space_curator');
+    expect(job.payload).toEqual(
+      expect.objectContaining({
+        artifactTargets: ['space_digest'],
+      })
+    );
   });
 
   it('collects unique signal kinds for downstream hooks', () => {
