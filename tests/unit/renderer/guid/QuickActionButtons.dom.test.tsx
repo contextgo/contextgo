@@ -15,14 +15,17 @@ vi.mock('react-i18next', () => ({
       (
         ({
           'guid.externalSessions.title': 'Continue external sessions',
+          'guid.externalSessions.titleVariants.continueWork': 'Continue outside work',
+          'guid.externalSessions.titleVariants.resumeProgress': 'Pick up unfinished work',
+          'guid.externalSessions.titleVariants.bringBack': 'Bring outside progress back',
           'guid.externalSessions.loading': 'Scanning external sessions...',
-          'guid.externalSessions.loadingShort': 'Scanning',
+          'guid.externalSessions.loadingShort': 'Preparing',
           'guid.externalSessions.loadFailed': 'Failed to scan external sessions.',
-          'guid.externalSessions.loadFailedShort': 'Scan failed',
+          'guid.externalSessions.loadFailedShort': 'Try again',
           'guid.externalSessions.import': 'Take over',
           'guid.externalSessions.open': 'Open',
           'guid.externalSessions.emptyState': 'No external sessions are waiting yet.',
-          'guid.externalSessions.emptyStateShort': 'None yet',
+          'guid.externalSessions.emptyStateShort': 'Nothing pending',
           'guid.externalSessions.readyCount': String(options?.count ?? '0') + ' sessions ready',
           'guid.externalSessions.readyCountShort': String(options?.count ?? '0') + ' ready',
         }) as Record<string, string>
@@ -69,6 +72,7 @@ const desktopLayoutValue: LayoutContextValue = {
 describe('QuickActionButtons', () => {
   it('renders mobile quick actions for external sessions only', async () => {
     const openExternalSessionsMock = vi.fn();
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
 
     render(
       <LayoutContext.Provider value={mobileLayoutValue}>
@@ -84,16 +88,18 @@ describe('QuickActionButtons', () => {
       expect(screen.getByText('2 ready')).toBeInTheDocument();
     });
     expect(screen.queryByText('Official Remote')).not.toBeInTheDocument();
-    expect(screen.getByText('Continue external sessions')).toBeInTheDocument();
+    expect(screen.getByText('Continue outside work')).toBeInTheDocument();
     expect(screen.getByTestId('right-icon')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /Continue external sessions/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Continue outside work/i }));
     expect(openExternalSessionsMock).toHaveBeenCalledTimes(1);
     expect(listExternalSessionsInvokeMock).toHaveBeenCalledTimes(1);
+    randomSpy.mockRestore();
   });
 
   it('uses the compact status copy for the desktop hover pill', async () => {
     const openExternalSessionsMock = vi.fn();
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
 
     render(
       <LayoutContext.Provider value={desktopLayoutValue}>
@@ -109,7 +115,8 @@ describe('QuickActionButtons', () => {
       expect(listExternalSessionsInvokeMock).toHaveBeenCalledTimes(1);
     });
 
-    expect(screen.getByText('Continue external sessions · 2 ready')).toBeInTheDocument();
-    expect(screen.queryByText('Continue external sessions · 2 sessions ready')).not.toBeInTheDocument();
+    expect(screen.getByText('Continue outside work · 2 ready')).toBeInTheDocument();
+    expect(screen.queryByText('Continue outside work · 2 sessions ready')).not.toBeInTheDocument();
+    randomSpy.mockRestore();
   });
 });

@@ -9,21 +9,26 @@
   "sendFailedWithReason": "发送消息失败：{{reason}}",
   "externalSessions": {
     "title": "接管外部会话",
+    "titleVariants": {
+      "continueWork": "继续外部任务",
+      "resumeProgress": "接着上次的进度",
+      "bringBack": "把外部进度带回来"
+    },
     "description": "在 ContextGo 之外启动、且尚未被接管的 CLI 会话会出现在这里。",
     "filters": {
       "all": "全部"
     },
     "refresh": "刷新",
     "loading": "正在扫描外部会话...",
-    "loadingShort": "扫描中",
+    "loadingShort": "准备中",
     "updatedAt": "最近更新于 {{time}}",
     "import": "接管使用",
     "loadFailed": "扫描外部会话失败。",
-    "loadFailedShort": "扫描失败",
+    "loadFailedShort": "稍后再试",
     "importFailed": "接管所选外部会话失败。",
-    "readyCountShort": "{{count}} 个待接管",
+    "readyCountShort": "{{count}} 项可继续",
     "emptyState": "暂无待接管的外部会话。",
-    "emptyStateShort": "暂无待接管",
+    "emptyStateShort": "暂无可继续内容",
     "providers": {
       "claude": "Claude",
       "codex": "Codex",

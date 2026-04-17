@@ -157,6 +157,7 @@ const ROUTE_PRELOADERS: Array<{ match: (routePath: string) => boolean; loaders: 
 ];
 
 const preloadSettled = new Set<string>();
+const preloadPromises = new Map<string, Promise<void>>();
 
 const normalizePreloadPath = (routePath: string): string => {
   const trimmed = normalizeStableHashRoute(routePath);
@@ -168,21 +169,34 @@ const collectPreloaders = (routePath: string): RouteLoader[] => {
   return ROUTE_PRELOADERS.filter((entry) => entry.match(normalized)).flatMap((entry) => entry.loaders);
 };
 
-export function preloadRoutePath(routePath: string): void {
+export function preloadRoutePath(routePath: string): Promise<void> {
   const normalized = normalizePreloadPath(routePath);
   if (preloadSettled.has(normalized)) {
-    return;
+    return Promise.resolve();
+  }
+
+  const inFlight = preloadPromises.get(normalized);
+  if (inFlight) {
+    return inFlight;
   }
 
   const loaders = collectPreloaders(normalized);
   if (loaders.length === 0) {
-    return;
+    return Promise.resolve();
   }
 
-  preloadSettled.add(normalized);
-  void Promise.all(loaders.map((loader) => loader())).catch(() => {
-    preloadSettled.delete(normalized);
-  });
+  const preloadPromise = Promise.all(loaders.map((loader) => loader()))
+    .then(() => {
+      preloadPromises.delete(normalized);
+      preloadSettled.add(normalized);
+    })
+    .catch((error) => {
+      preloadPromises.delete(normalized);
+      throw error;
+    });
+
+  preloadPromises.set(normalized, preloadPromise);
+  return preloadPromise;
 }
 
 export function warmCriticalRendererRoutes(): void {

@@ -1,17 +1,28 @@
 {
   "welcome": {
-    "title": "Hi、今日の予定は何ですか？",
-    "placeholder": "メッセージの送信、ファイルの追加、フォルダーの追加、またはスケジュールタスクの作成...",
-    "uploadFile": "ファイルを追加",
+    "title": "まず何を前に進めますか？",
+    "titleVariants": {
+      "focus": "まず何を前に進めますか？",
+      "workbench": "やることをここに持ってきて、そのまま進めましょう。",
+      "momentum": "ここはあなたの AI ネイティブなワークベンチです。"
+    },
+    "placeholder": "進めたいことをそのまま書いてください。すぐ始められます...",
+    "placeholderVariants": {
+      "start": "やりたいことをひと言で書けば、そのまま始められます...",
+      "goal": "目指す結果を教えてください。一緒に前へ進めます...",
+      "anything": "仕事、執筆、調査、整理まで、まとめてここで進められます...",
+      "brief": "タスク、アイデア、悩みを投げてください。すぐ動きます..."
+    },
+    "uploadFile": "資料を追加",
     "linkFolder": "フォルダを追加",
     "newConversation": "新しいチャット",
     "multiAgentModeEnabled": "マルチエージェントモードに入ります",
     "selectModel": "モデルを選択",
     "useCliModel": "モデルを選択",
     "modelSwitchNotSupported": "初回接続後に利用可能なモデルリストが表示されます。まずメッセージを送信して接続し、利用可能なモデルを読み込んでください。",
-    "specifyWorkspace": "フォルダーでチャット",
-    "currentWorkspace": "現在のワークスペース",
-    "clearWorkspace": "フォルダーを解除",
+    "specifyWorkspace": "ワークスペースを関連付け",
+    "currentWorkspace": "関連付け済みワークスペース",
+    "clearWorkspace": "ワークスペースを解除",
     "openFolder": "Open Folder",
     "none": "None",
     "quickActionsTitle": "ContextGo で何ができる？",

@@ -9,6 +9,8 @@ const mockPrepareConversationPublicationInvoke = vi.fn();
 const mockGetAssociateConversationInvoke = vi.fn();
 const mockConversationWarmupInvoke = vi.fn();
 const emitterEmitMock = vi.fn();
+const projectAutomationModalRenderMock = vi.fn();
+const projectSkillMarketModalRenderMock = vi.fn();
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
   channel: {
@@ -71,22 +73,26 @@ vi.mock('@/renderer/hooks/agent/usePresetAssistantInfo', () => ({
 
 vi.mock('@/renderer/pages/schedule/components/ProjectAutomationModal', () => ({
   __esModule: true,
-  default: ({ visible, conversation }: { visible: boolean; conversation: TChatConversation; onClose: () => void }) =>
-    visible ? (
+  default: (props: { visible: boolean; conversation: TChatConversation; onClose: () => void }) => {
+    projectAutomationModalRenderMock(props);
+    return props.visible ? (
       <div data-testid='project-automation-modal'>
-        <div>{conversation.id}</div>
+        <div>{props.conversation.id}</div>
       </div>
-    ) : null,
+    ) : null;
+  },
 }));
 
 vi.mock('@/renderer/pages/conversation/ProjectSkillMarketModal', () => ({
   __esModule: true,
-  default: ({ visible, workspacePath }: { visible: boolean; workspacePath: string; onClose: () => void }) =>
-    visible ? (
+  default: (props: { visible: boolean; workspacePath: string; onClose: () => void }) => {
+    projectSkillMarketModalRenderMock(props);
+    return props.visible ? (
       <div data-testid='project-skill-market-modal'>
-        <div>{workspacePath}</div>
+        <div>{props.workspacePath}</div>
       </div>
-    ) : null,
+    ) : null;
+  },
 }));
 
 vi.mock('@/renderer/pages/conversation/components/ChatLayout', () => ({
@@ -241,6 +247,8 @@ const createConversation = (type: TChatConversation['type'], id: string): TChatC
 describe('ChatConversation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    projectAutomationModalRenderMock.mockClear();
+    projectSkillMarketModalRenderMock.mockClear();
     mockConversationWarmupInvoke.mockResolvedValue(undefined);
     mockGetAssociateConversationInvoke.mockResolvedValue([]);
     mockPrepareConversationPublicationInvoke.mockResolvedValue({
@@ -453,6 +461,15 @@ describe('ChatConversation', () => {
     render(<ChatConversation conversation={conversation} />);
 
     expect(screen.queryByRole('button', { name: 'conversation.workspace.skillMarket.action' })).not.toBeInTheDocument();
+  });
+
+  it('does not render hidden project modals before the user opens them', () => {
+    const conversation = createConversation('acp', 'acp-no-hidden-modals');
+
+    render(<ChatConversation conversation={conversation} />);
+
+    expect(projectAutomationModalRenderMock).not.toHaveBeenCalled();
+    expect(projectSkillMarketModalRenderMock).not.toHaveBeenCalled();
   });
 
   it('opens the project automation modal from the header entry', async () => {

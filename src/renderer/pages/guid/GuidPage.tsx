@@ -17,6 +17,7 @@ import GuidModelSelector from './components/GuidModelSelector';
 import MentionDropdown, { MentionSelectorBadge } from './components/MentionDropdown';
 import QuickActionButtons from './components/QuickActionButtons';
 import { resolveDisplayedAgentPillKey } from './utils/resolveDisplayedAgentPillKey';
+import { selectGuidCopyVariant } from './utils/welcomeCopy';
 import { useGuidAgentSelection } from './hooks/useGuidAgentSelection';
 import { useGuidInput } from './hooks/useGuidInput';
 import { useGuidMention } from './hooks/useGuidMention';
@@ -25,7 +26,7 @@ import { useGuidSend } from './hooks/useGuidSend';
 import { useTypewriterPlaceholder } from './hooks/useTypewriterPlaceholder';
 import { useSelectedSpaceId } from '@/renderer/hooks/context/useSelectedSpace';
 import { ConfigProvider, Message } from '@arco-design/web-react';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { GuidLocationState } from './types';
@@ -251,8 +252,27 @@ const GuidPage: React.FC = () => {
     ]
   );
 
+  const welcomeCopySeed = useMemo(() => Math.random(), []);
+  const welcomeTitle = selectGuidCopyVariant(
+    [
+      t('conversation.welcome.titleVariants.focus'),
+      t('conversation.welcome.titleVariants.workbench'),
+      t('conversation.welcome.titleVariants.momentum'),
+    ],
+    welcomeCopySeed
+  );
+  const welcomePlaceholder = selectGuidCopyVariant(
+    [
+      t('conversation.welcome.placeholderVariants.start'),
+      t('conversation.welcome.placeholderVariants.goal'),
+      t('conversation.welcome.placeholderVariants.anything'),
+      t('conversation.welcome.placeholderVariants.brief'),
+    ],
+    (welcomeCopySeed + 0.37) % 1
+  );
+
   // Typewriter placeholder
-  const typewriterPlaceholder = useTypewriterPlaceholder(t('conversation.welcome.placeholder'));
+  const typewriterPlaceholder = useTypewriterPlaceholder(welcomePlaceholder || t('conversation.welcome.placeholder'));
 
   // Determine if model selector should be in Gemini mode
   const isGeminiMode = agentSelection.selectedAgent === 'gemini';
@@ -318,7 +338,9 @@ const GuidPage: React.FC = () => {
           }}
         />
         <div className={styles.guidLayout}>
-          <p className='text-2xl font-semibold mb-6 text-0 text-center'>{t('conversation.welcome.title')}</p>
+          <p className='text-2xl font-semibold mb-6 text-0 text-center'>
+            {welcomeTitle || t('conversation.welcome.title')}
+          </p>
 
           {agentSelection.availableAgents === undefined ? (
             <AgentPillBarSkeleton />
@@ -338,7 +360,7 @@ const GuidPage: React.FC = () => {
             onPaste={guidInput.onPaste}
             onFocus={guidInput.handleTextareaFocus}
             onBlur={guidInput.handleTextareaBlur}
-            placeholder={`${mention.selectedAgentLabel}, ${typewriterPlaceholder || t('conversation.welcome.placeholder')}`}
+            placeholder={`${mention.selectedAgentLabel}, ${typewriterPlaceholder || welcomePlaceholder || t('conversation.welcome.placeholder')}`}
             isInputActive={guidInput.isInputFocused}
             isFileDragging={guidInput.isFileDragging}
             activeBorderColor={activeBorderColor}

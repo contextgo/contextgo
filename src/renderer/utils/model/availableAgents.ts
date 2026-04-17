@@ -9,24 +9,50 @@ import type { AvailableAgent } from './agentTypes';
 
 export const AVAILABLE_AGENTS_SWR_KEY = 'acp.agents.available';
 
-export const PRODUCT_VISIBLE_RUNTIME_BACKENDS = ['gemini', 'claude', 'codex', 'opencode'] as const;
+export const PRODUCT_VISIBLE_RUNTIME_BACKENDS = ['codex', 'claude', 'gemini', 'opencode'] as const;
 
-export const PRODUCT_VISIBLE_PRESET_AGENT_TYPES = ['gemini', 'claude', 'codex', 'opencode'] as const;
+export const PRODUCT_VISIBLE_PRESET_AGENT_TYPES = ['codex', 'claude', 'gemini', 'opencode'] as const;
 
 const PRODUCT_VISIBLE_RUNTIME_BACKEND_SET = new Set<string>(PRODUCT_VISIBLE_RUNTIME_BACKENDS);
+const PRODUCT_VISIBLE_RUNTIME_BACKEND_PRIORITY = new Map<string, number>(
+  PRODUCT_VISIBLE_RUNTIME_BACKENDS.map((backend, index) => [backend, index])
+);
 
 export function isProductVisibleRuntimeBackend(backend: string): boolean {
   return PRODUCT_VISIBLE_RUNTIME_BACKEND_SET.has(backend);
 }
 
-export function filterAvailableAgentsForUi(availableAgents: AvailableAgent[]): AvailableAgent[] {
-  return availableAgents.filter((agent) => {
-    if (agent.backend === 'custom') {
-      return true;
-    }
+export function sortAvailableAgentsForUi(availableAgents: AvailableAgent[]): AvailableAgent[] {
+  return availableAgents
+    .map((agent, index) => ({
+      agent,
+      index,
+      priority:
+        agent.isPreset === true ? Number.POSITIVE_INFINITY : PRODUCT_VISIBLE_RUNTIME_BACKEND_PRIORITY.get(agent.backend),
+    }))
+    .toSorted((left, right) => {
+      const leftPriority = left.priority ?? Number.POSITIVE_INFINITY;
+      const rightPriority = right.priority ?? Number.POSITIVE_INFINITY;
 
-    return isProductVisibleRuntimeBackend(agent.backend);
-  });
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority;
+      }
+
+      return left.index - right.index;
+    })
+    .map(({ agent }) => agent);
+}
+
+export function filterAvailableAgentsForUi(availableAgents: AvailableAgent[]): AvailableAgent[] {
+  return sortAvailableAgentsForUi(
+    availableAgents.filter((agent) => {
+      if (agent.backend === 'custom') {
+        return true;
+      }
+
+      return isProductVisibleRuntimeBackend(agent.backend);
+    })
+  );
 }
 
 export function splitConversationDropdownAgents(availableAgents: AvailableAgent[]): {

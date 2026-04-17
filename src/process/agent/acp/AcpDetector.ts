@@ -108,7 +108,7 @@ class AcpDetector {
 
     detected.unshift({
       backend: 'gemini',
-      name: 'Gemini CLI',
+      name: 'Gemini',
       cliPath: undefined,
       acpArgs: undefined,
     });

@@ -9,6 +9,11 @@
   "sendFailedWithReason": "訊息傳送失敗：{{reason}}",
   "externalSessions": {
     "title": "接管外部會話",
+    "titleVariants": {
+      "continueWork": "繼續外部任務",
+      "resumeProgress": "接著上次的進度",
+      "bringBack": "把外部進度帶回來"
+    },
     "description": "在 ContextGo 外啟動且尚未接管的 CLI 會話會顯示在這裡。",
     "filters": {
       "all": "全部"
@@ -26,11 +31,11 @@
       "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
     },
-    "loadingShort": "掃描中",
-    "loadFailedShort": "掃描失敗",
+    "loadingShort": "準備中",
+    "loadFailedShort": "稍後再試",
     "readyCount": "{{count}} 個待接管會話",
-    "readyCountShort": "{{count}} 個待接管",
-    "emptyStateShort": "暫無",
+    "readyCountShort": "{{count}} 項可繼續",
+    "emptyStateShort": "暫無可繼續內容",
     "open": "打開",
     "emptyState": "暫無待接管的外部會話。"
   },

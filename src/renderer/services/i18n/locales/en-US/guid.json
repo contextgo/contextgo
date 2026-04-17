@@ -9,21 +9,26 @@
   "sendFailedWithReason": "Failed to send the message: {{reason}}",
   "externalSessions": {
     "title": "Continue external sessions",
+    "titleVariants": {
+      "continueWork": "Continue outside work",
+      "resumeProgress": "Pick up unfinished work",
+      "bringBack": "Bring outside progress back"
+    },
     "description": "New CLI sessions created outside ContextGo will appear here when they have not been taken over yet.",
     "filters": {
       "all": "All"
     },
     "refresh": "Refresh",
     "loading": "Scanning external sessions...",
-    "loadingShort": "Scanning",
+    "loadingShort": "Preparing",
     "updatedAt": "Updated {{time}}",
     "import": "Take over",
     "loadFailed": "Failed to scan external sessions.",
-    "loadFailedShort": "Scan failed",
+    "loadFailedShort": "Try again",
     "importFailed": "Failed to take over the selected external session.",
     "readyCountShort": "{{count}} ready",
     "emptyState": "No external sessions are waiting yet.",
-    "emptyStateShort": "None yet",
+    "emptyStateShort": "Nothing pending",
     "providers": {
       "claude": "Claude",
       "codex": "Codex",

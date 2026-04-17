@@ -9,6 +9,11 @@
   "sendFailedWithReason": "メッセージの送信に失敗しました: {{reason}}",
   "externalSessions": {
     "title": "外部 Session を引き継ぐ",
+    "titleVariants": {
+      "continueWork": "外部タスクを続ける",
+      "resumeProgress": "途中の作業を再開する",
+      "bringBack": "外の進捗をここへ戻す"
+    },
     "description": "ContextGo の外で開始され、まだ引き継がれていない CLI セッションがここに表示されます。",
     "filters": {
       "all": "すべて"
@@ -26,11 +31,11 @@
       "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
     },
-    "loadingShort": "スキャン中",
-    "loadFailedShort": "スキャン失敗",
+    "loadingShort": "準備中",
+    "loadFailedShort": "後で再試行",
     "readyCount": "{{count}} 件のセッションを引き継げます",
-    "readyCountShort": "{{count}} 件待機中",
-    "emptyStateShort": "まだありません",
+    "readyCountShort": "{{count}} 件続行可能",
+    "emptyStateShort": "続けられるものはまだありません",
     "open": "開く",
     "emptyState": "まだ引き継げる外部 Session はありません。"
   },

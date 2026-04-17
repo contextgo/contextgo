@@ -1,17 +1,28 @@
 {
   "welcome": {
-    "title": "Hi，今天有什么安排？",
-    "placeholder": "发消息、上传文件、打开文件夹或创建定时任务...",
-    "uploadFile": "上传文件",
+    "title": "今天想先推进什么？",
+    "titleVariants": {
+      "focus": "今天想先推进什么？",
+      "workbench": "把任务交给我，我们直接开工。",
+      "momentum": "这里是你的 AI 原生工作台。"
+    },
+    "placeholder": "把想做的事告诉我，我们直接开始...",
+    "placeholderVariants": {
+      "start": "想做什么，直接说一句就行...",
+      "goal": "告诉我你的目标，我来陪你推进...",
+      "anything": "工作、创作、研究、整理，都可以交给我...",
+      "brief": "把需求、想法或问题发过来，我们马上开始..."
+    },
+    "uploadFile": "添加资料",
     "linkFolder": "打开文件夹",
     "newConversation": "新会话",
     "multiAgentModeEnabled": "已进入多智能体模式",
     "selectModel": "选择模型",
     "useCliModel": "选择模型",
     "modelSwitchNotSupported": "首次连接后将显示可用模型列表。请先发送消息以连接并加载可用模型。",
-    "specifyWorkspace": "关联文件夹对话",
-    "currentWorkspace": "当前工作空间",
-    "clearWorkspace": "移除已选文件夹",
+    "specifyWorkspace": "关联工作区",
+    "currentWorkspace": "已关联工作区",
+    "clearWorkspace": "移除工作区",
     "openFolder": "打开文件夹",
     "none": "无",
     "quickActionsTitle": "ContextGo 能做什么？",

@@ -56,6 +56,12 @@ body,
   min-width: var(--app-min-width); /* prevent layout collapse on very small screens */
 }
 
+html,
+body,
+#root {
+  background-color: var(--bg-1);
+}
+
 .loading {
   animation: loading 1s linear infinite;
 }

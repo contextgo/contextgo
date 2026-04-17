@@ -36,6 +36,11 @@ const MOBILE_SIDER_MAX_WIDTH = 420;
 const MOBILE_SIDER_EDGE_SWIPE_ZONE = 28;
 const MOBILE_SIDER_GESTURE_TRIGGER_RATIO = 0.35;
 const MOBILE_SIDER_GESTURE_MIN_DISTANCE = 72;
+const REMOUNT_DIAG_TAG = '[RemountDiag]';
+
+const logRemountDiag = (scope: string, phase: string, payload: Record<string, unknown>) => {
+  console.log(`${REMOUNT_DIAG_TAG}[${scope}] ${phase} ${JSON.stringify(payload)}`);
+};
 
 type MobileTopChromeMode = 'home' | 'conversation' | 'settings' | 'default';
 
@@ -176,6 +181,42 @@ const Layout: React.FC<{
   const [mobileSiderTranslateX, setMobileSiderTranslateX] = useState<number | null>(null);
   const [isDraggingMobileSider, setIsDraggingMobileSider] = useState(false);
   const [remoteAccessTarget, setRemoteAccessTarget] = useState(createDefaultRemoteAccessTarget);
+
+  useEffect(() => {
+    logRemountDiag('Layout', 'mount', {
+      pathname: location.pathname,
+      search: location.search,
+      hash: location.hash,
+    });
+
+    return () => {
+      logRemountDiag('Layout', 'unmount', {
+        pathname: location.pathname,
+        search: location.search,
+        hash: location.hash,
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    logRemountDiag('Layout', 'route-state', {
+      pathname: location.pathname,
+      search: location.search,
+      hash: location.hash,
+      isMobile,
+      collapsed,
+      workbenchKind: activeWorkbenchDefinition?.kind ?? null,
+      remoteMode: remoteAccessTarget.mode,
+    });
+  }, [
+    activeWorkbenchDefinition?.kind,
+    collapsed,
+    isMobile,
+    location.hash,
+    location.pathname,
+    location.search,
+    remoteAccessTarget.mode,
+  ]);
 
   const updateCollapsed = useCallback((nextCollapsed: boolean, options?: { persist?: boolean }) => {
     setCollapsedState((current) => {

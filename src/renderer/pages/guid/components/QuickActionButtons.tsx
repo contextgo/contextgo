@@ -6,9 +6,10 @@
 
 import { acpConversation } from '@/common/adapter/ipcBridge';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
+import { selectGuidCopyVariant } from '@/renderer/pages/guid/utils/welcomeCopy';
 import { Button } from '@arco-design/web-react';
 import { Download, Right } from '@icon-park/react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import styles from '../index.module.css';
 
@@ -35,6 +36,7 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
   const { t } = useTranslation();
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
+  const quickActionCopySeed = useMemo(() => Math.random(), []);
   const [hoveredQuickAction, setHoveredQuickAction] = useState<'external' | null>(null);
   const [externalSessionsQuickStatus, setExternalSessionsQuickStatus] = useState<ExternalSessionsQuickStatus>(
     externalSessionsCache ? (externalSessionsCache.count > 0 ? 'ready' : 'empty') : 'checking'
@@ -133,9 +135,18 @@ const QuickActionButtons: React.FC<QuickActionButtonsProps> = ({
               defaultValue: 'None yet',
             });
 
-  const externalSessionsTitleLabel = t('guid.externalSessions.title', {
-    defaultValue: 'Continue external sessions',
-  });
+  const externalSessionsTitleLabel =
+    selectGuidCopyVariant(
+      [
+        t('guid.externalSessions.titleVariants.continueWork'),
+        t('guid.externalSessions.titleVariants.resumeProgress'),
+        t('guid.externalSessions.titleVariants.bringBack'),
+      ],
+      quickActionCopySeed
+    ) ||
+    t('guid.externalSessions.title', {
+      defaultValue: 'Continue external sessions',
+    });
 
   const externalSessionsIconColor =
     externalSessionsQuickStatus === 'ready'

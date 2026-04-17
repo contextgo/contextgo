@@ -8,12 +8,30 @@ import ChatConversation from './components/ChatConversation';
 import { usePreviewActions } from '@/renderer/pages/conversation/Preview';
 import { useConversationTabs } from './hooks/ConversationTabsContext';
 
+const REMOUNT_DIAG_TAG = '[RemountDiag]';
+
+const logRemountDiag = (scope: string, phase: string, payload: Record<string, unknown>) => {
+  console.log(`${REMOUNT_DIAG_TAG}[${scope}] ${phase} ${JSON.stringify(payload)}`);
+};
+
 const ChatConversationIndex: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { closePreview } = usePreviewActions();
   const { closeTab, openTabsForConversations } = useConversationTabs();
   const previousConversationIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    logRemountDiag('ChatConversationIndex', 'mount', {
+      routeConversationId: id ?? null,
+    });
+
+    return () => {
+      logRemountDiag('ChatConversationIndex', 'unmount', {
+        routeConversationId: id ?? null,
+      });
+    };
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -31,6 +49,15 @@ const ChatConversationIndex: React.FC = () => {
   const { data, isLoading } = useSWR(`conversation/${id}`, () => {
     return ipcBridge.conversation.get.invoke({ id });
   });
+
+  useEffect(() => {
+    logRemountDiag('ChatConversationIndex', 'data-state', {
+      routeConversationId: id ?? null,
+      isLoading,
+      loadedConversationId: data?.id ?? null,
+      loadedConversationType: data?.type ?? null,
+    });
+  }, [data?.id, data?.type, id, isLoading]);
 
   // 当会话数据加载完成后，自动打开 tab
   // Automatically open tab when conversation data is loaded
