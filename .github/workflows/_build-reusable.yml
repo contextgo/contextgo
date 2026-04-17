@@ -339,23 +339,34 @@ jobs:
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'temp-keychain-password' }}
         run: |
-          if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
+          set -euo pipefail
+
+          KEYCHAIN_PATH="${RUNNER_TEMP}/contextgo-build.keychain-db"
+          CERTIFICATE_PATH="${RUNNER_TEMP}/contextgo-build-certificate.p12"
+
+          if [ -n "${BUILD_CERTIFICATE_BASE64:-}" ]; then
             echo "Installing code signing certificate..."
 
+            rm -f "${CERTIFICATE_PATH}"
+            security delete-keychain "${KEYCHAIN_PATH}" 2>/dev/null || true
+
             # Create certificate file
-            echo $BUILD_CERTIFICATE_BASE64 | base64 --decode > certificate.p12
+            printf '%s' "${BUILD_CERTIFICATE_BASE64}" | base64 --decode > "${CERTIFICATE_PATH}"
 
             # Create temporary keychain
-            security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-            security default-keychain -s build.keychain
-            security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+            security create-keychain -p "$KEYCHAIN_PASSWORD" "${KEYCHAIN_PATH}"
+            security list-keychains -d user -s "${KEYCHAIN_PATH}"
+            security default-keychain -s "${KEYCHAIN_PATH}"
+            security unlock-keychain -p "$KEYCHAIN_PASSWORD" "${KEYCHAIN_PATH}"
+            security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
 
             # Import certificate
-            security import certificate.p12 -k build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
-            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+            security import "${CERTIFICATE_PATH}" -k "${KEYCHAIN_PATH}" -P "$P12_PASSWORD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "${KEYCHAIN_PATH}"
+            security find-identity -v -p codesigning "${KEYCHAIN_PATH}"
 
             # Clean up certificate file
-            rm certificate.p12
+            rm -f "${CERTIFICATE_PATH}"
 
             echo "Certificate imported successfully"
           else
@@ -629,8 +640,9 @@ jobs:
       - name: Clean up keychain (macOS only)
         if: startsWith(matrix.platform, 'macos') && always()
         run: |
-          if security list-keychains | grep -q build.keychain; then
-            security delete-keychain build.keychain
+          KEYCHAIN_PATH="${RUNNER_TEMP}/contextgo-build.keychain-db"
+          if [ -f "${KEYCHAIN_PATH}" ]; then
+            security delete-keychain "${KEYCHAIN_PATH}"
             echo "Temporary keychain deleted"
           fi
 
