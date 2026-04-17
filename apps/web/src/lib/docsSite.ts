@@ -1,4 +1,5 @@
 const DEFAULT_DOCS_SITE_URL = 'https://docs.contextgo.io';
+type DocsSitePathInput = string | string[] | undefined;
 
 const LEGACY_DOC_PATHS: Record<string, string> = {
   'quick-start': 'start-here/quick-start',
@@ -16,12 +17,21 @@ const LEGACY_DOC_PATHS: Record<string, string> = {
   'updates-and-troubleshooting': 'manage/troubleshooting',
 };
 
-const normalizePath = (value?: string): string => value?.replace(/^\/+|\/+$/g, '') ?? '';
+const normalizePath = (value?: DocsSitePathInput): string => {
+  if (Array.isArray(value)) {
+    return value
+      .map((segment) => segment.replace(/^\/+|\/+$/g, ''))
+      .filter(Boolean)
+      .join('/');
+  }
+
+  return value?.replace(/^\/+|\/+$/g, '') ?? '';
+};
 
 export const getDocsSiteBaseUrl = (): string =>
   (process.env.NEXT_PUBLIC_DOCS_SITE_URL || DEFAULT_DOCS_SITE_URL).replace(/\/+$/g, '');
 
-export const resolveDocsSitePath = (legacySlug?: string): string => {
+export const resolveDocsSitePath = (legacySlug?: DocsSitePathInput): string => {
   const normalized = normalizePath(legacySlug);
 
   if (!normalized) {
@@ -31,7 +41,7 @@ export const resolveDocsSitePath = (legacySlug?: string): string => {
   return LEGACY_DOC_PATHS[normalized] || normalized;
 };
 
-export const getDocsSiteUrl = (legacySlug?: string): string => {
+export const getDocsSiteUrl = (legacySlug?: DocsSitePathInput): string => {
   const baseUrl = getDocsSiteBaseUrl();
   const path = resolveDocsSitePath(legacySlug);
   return path ? `${baseUrl}/${path}` : baseUrl;
