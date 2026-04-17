@@ -244,6 +244,8 @@ function configureMacSigningEnv() {
     return;
   }
 
+  const normalizeMacIdentity = (value) => value.replace(/^Developer ID Application:\s*/i, '').trim();
+
   const explicitIdentity =
     process.env.CSC_NAME?.trim() ||
     process.env.identity?.trim() ||
@@ -251,11 +253,20 @@ function configureMacSigningEnv() {
     process.env.CSC_LINK?.trim();
 
   if (explicitIdentity) {
-    process.env.CSC_NAME = explicitIdentity;
-    process.env.identity = explicitIdentity;
+    const normalizedIdentity = /^Developer ID Application:\s*/i.test(explicitIdentity)
+      ? normalizeMacIdentity(explicitIdentity)
+      : explicitIdentity;
+
+    process.env.CSC_NAME = normalizedIdentity;
+    process.env.identity = normalizedIdentity;
     process.env.CSC_IDENTITY_AUTO_DISCOVERY = process.env.CSC_IDENTITY_AUTO_DISCOVERY || 'false';
 
-    console.log(`🔐 Using explicit macOS signing identity: ${explicitIdentity}`);
+    if (normalizedIdentity !== explicitIdentity) {
+      console.log(`🔐 Normalized macOS signing identity for electron-builder: ${normalizedIdentity}`);
+    } else {
+      console.log(`🔐 Using explicit macOS signing identity: ${normalizedIdentity}`);
+    }
+
     if (/Apple Development:/i.test(explicitIdentity)) {
       console.log(
         '⚠️  Apple Development identity is only suitable for local validation. Public releases should use Developer ID Application.'
