@@ -5,14 +5,19 @@
  */
 
 import {
+  type AssemblyTrace,
   type AssembleContextPackInput,
   type AssembleContextPackResult,
+  type ContextAssemblyOverlays,
   type ContextEngineDependencies,
   type EvaluateCompactionInput,
   type EvaluatePromotionInput,
   type IContextService,
   type IngestSourceInput,
   type IngestSourceResult,
+  type MountedStateTrace,
+  type RetrievalCollectionTrace,
+  type RetrievalTrace,
   type RetrieveContextInput,
   type RetrieveContextResult,
   type RetrievedChunk,
@@ -30,6 +35,7 @@ import type {
   ContextTier,
   DocumentSnapshot,
   MemoryEntry,
+  ProfileSegment,
   SourceRecord,
 } from './domain';
 import type { ContextOperation, ContextOperationType } from './operations';
@@ -157,6 +163,92 @@ function scoreProjectAffinity(
 
 function dedupe<T>(items: readonly T[]): T[] {
   return [...new Set(items)];
+}
+
+function buildRetrievalTrace(input: {
+  request: RetrieveContextInput;
+  memories: readonly RetrievedMemory[];
+  chunks: readonly RetrievedChunk[];
+  profiles: readonly ProfileSegment[];
+  sources: readonly SourceRecord[];
+  allMemoryIds: readonly string[];
+  allProfileIds: readonly string[];
+  allSourceIds: readonly string[];
+  allChunkIds: readonly string[];
+}): RetrievalTrace {
+  const keptEvidenceIds = [
+    ...input.memories.map((item) => item.memory.id),
+    ...input.chunks.map((item) => item.chunk.id),
+    ...input.profiles.map((item) => item.id),
+    ...input.sources.map((item) => item.id),
+  ];
+  const keptSet = new Set(keptEvidenceIds);
+
+  const droppedEvidenceIds = [
+    ...input.allMemoryIds.filter((id) => !keptSet.has(id)),
+    ...input.allChunkIds.filter((id) => !keptSet.has(id)),
+    ...input.allProfileIds.filter((id) => !keptSet.has(id)),
+    ...input.allSourceIds.filter((id) => !keptSet.has(id)),
+  ];
+
+  const collectionCandidates: RetrievalCollectionTrace[] = [
+    {
+      collection: 'memories',
+      candidateCount: input.allMemoryIds.length,
+      selectedCount: input.memories.length,
+    },
+    {
+      collection: 'chunks',
+      candidateCount: input.allChunkIds.length,
+      selectedCount: input.chunks.length,
+    },
+    {
+      collection: 'profiles',
+      candidateCount: input.allProfileIds.length,
+      selectedCount: input.profiles.length,
+    },
+    {
+      collection: 'sources',
+      candidateCount: input.allSourceIds.length,
+      selectedCount: input.sources.length,
+    },
+  ];
+
+  return {
+    scope: {
+      spaceId: input.request.spaceId,
+      threadId: input.request.threadId,
+      projectSlug: input.request.projectSlug,
+    },
+    selectedCollections: collectionCandidates
+      .filter((item) => item.selectedCount > 0)
+      .map((item) => item.collection),
+    keptEvidenceIds,
+    droppedEvidenceIds,
+    collectionCandidates,
+  };
+}
+
+function resolveMountedState(input: AssembleContextPackInput): MountedStateTrace {
+  const overlays = resolveAssemblyOverlays(input);
+  return (
+    input.mountedState ?? {
+      mode: 'frozen-snapshot',
+      mountedSectionIds: (overlays.mountedSections ?? []).map((section) => section.id),
+      mountedProfileIds: (overlays.mountedProfiles ?? []).map((profile) => profile.id),
+    }
+  );
+}
+
+function resolveAssemblyOverlays(input: AssembleContextPackInput): ContextAssemblyOverlays {
+  return (
+    input.overlays ?? {
+      threadSummary: input.threadSummary,
+      mountedSections: input.mountedSections,
+      mountedProfiles: input.mountedProfiles,
+      pinnedInstructions: input.pinnedInstructions,
+    }
+  );
 }
 
 function makeOperation(
@@ -449,25 +541,41 @@ export class ContextEngineService implements IContextService {
       profiles,
       sources,
       totalEstimatedTokens,
+      trace: buildRetrievalTrace({
+        request: input,
+        memories,
+        chunks,
+        profiles,
+        sources,
+        allMemoryIds: allMemories.filter((memory) => memory.state === 'accepted').map((memory) => memory.id),
+        allProfileIds: allProfiles.filter((profile) => profile.state === 'active').map((profile) => profile.id),
+        allSourceIds: activeSources.map((source) => source.id),
+        allChunkIds: [...chunkById.keys()],
+      }),
     };
   }
 
   async assemble(input: AssembleContextPackInput): Promise<AssembleContextPackResult> {
     const sections: ContextPackSection[] = [];
+    const overlays = resolveAssemblyOverlays(input);
+    const mountedState = resolveMountedState(input);
+    const pinnedInstructionIds: string[] = [];
 
-    if (input.threadSummary) {
-      sections.push(buildSection('thread-state', input.threadSummary, 100, `thread-${input.threadId ?? 'space'}`));
+    if (overlays.threadSummary) {
+      sections.push(buildSection('thread-state', overlays.threadSummary, 100, `thread-${input.threadId ?? 'space'}`));
     }
-    for (const mountedSection of input.mountedSections ?? []) {
+    for (const mountedSection of overlays.mountedSections ?? []) {
       sections.push({ ...mountedSection });
     }
-    for (const profile of input.mountedProfiles ?? []) {
+    for (const profile of overlays.mountedProfiles ?? []) {
       sections.push(
         buildSection('compaction', profile.summary, 88 + Math.round(profile.confidence * 4), `compaction-${profile.id}`)
       );
     }
-    for (const [index, instruction] of (input.pinnedInstructions ?? []).entries()) {
-      sections.push(buildSection('instruction', instruction, 110 - index, `instruction-${index}`));
+    for (const [index, instruction] of (overlays.pinnedInstructions ?? []).entries()) {
+      const id = `instruction-${index}`;
+      pinnedInstructionIds.push(id);
+      sections.push(buildSection('instruction', instruction, 110 - index, id));
     }
 
     for (const profile of input.retrieval.profiles) {
@@ -549,9 +657,20 @@ export class ContextEngineService implements IContextService {
     };
     await this.deps.operations.append(operation);
 
+    const trace: AssemblyTrace = {
+      mountedSectionIds: mountedState.mountedSectionIds,
+      mountedProfileIds: mountedState.mountedProfileIds,
+      pinnedInstructionIds,
+      keptSectionIds: keptSections.map((section) => section.id),
+      droppedSectionIds: omittedEntityIds,
+      budgetTokens: input.budgetTokens,
+      mountedState,
+    };
+
     return {
       pack,
       omittedEntityIds,
+      trace,
     };
   }
 

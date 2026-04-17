@@ -402,6 +402,8 @@ export class ContextRuntimeService {
     const sessionWorkingContextSection = await this.vaultSyncService.readSessionWorkingContextSection({
       conversation: input.conversation,
     });
+    const projectMountedSections = this.projectContextMirrorService.buildMountedSections(projectSnapshot);
+    const mountedProfiles = await this.getSessionCompactionMountedProfiles(spaceId, input.conversation.id);
 
     const db = await getDatabase();
     const recentMessages = db.getConversationMessages(
@@ -429,13 +431,23 @@ export class ContextRuntimeService {
       threadId: input.conversation.id,
       retrieval,
       budgetTokens: CONTEXT_BUDGET_TOKENS,
-      threadSummary: buildThreadSummary([...recentMessages].toReversed()),
-      mountedSections: [
-        ...(sessionWorkingContextSection ? [sessionWorkingContextSection] : []),
-        ...this.projectContextMirrorService.buildMountedSections(projectSnapshot),
-      ],
-      mountedProfiles: await this.getSessionCompactionMountedProfiles(spaceId, input.conversation.id),
-      pinnedInstructions: ['Prefer space-consistent answers and reuse approved workflows when relevant.'],
+      overlays: {
+        threadSummary: buildThreadSummary([...recentMessages].toReversed()),
+        mountedSections: [
+          ...(sessionWorkingContextSection ? [sessionWorkingContextSection] : []),
+          ...projectMountedSections,
+        ],
+        mountedProfiles,
+        pinnedInstructions: ['Prefer space-consistent answers and reuse approved workflows when relevant.'],
+      },
+      mountedState: {
+        mode: 'frozen-snapshot',
+        mountedSectionIds: [
+          ...(sessionWorkingContextSection ? [sessionWorkingContextSection.id] : []),
+          ...projectMountedSections.map((section) => section.id),
+        ],
+        mountedProfileIds: mountedProfiles.map((profile) => profile.id),
+      },
     });
 
     const contextBlock = buildContextPackPrompt(assembled.pack);

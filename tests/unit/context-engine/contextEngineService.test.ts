@@ -205,6 +205,63 @@ describe('ContextEngineService', () => {
     expect(result.memories.map((item) => item.memory.id)).toEqual(['memory-2']);
   });
 
+  it('returns a retrieval trace with scope, selected collections, and dropped evidence', async () => {
+    const dependencies = createInMemoryContextEngineDependencies({
+      sources: [makeSource('source-1', 'Debugging notes')],
+      memories: [
+        makeMemory({
+          id: 'memory-1',
+          summary: 'Debug the failing test before widening the change.',
+          detail: 'Reproduce the failure with the narrowest spec first.',
+        }),
+        makeMemory({
+          id: 'memory-2',
+          summary: 'Debug the test output before changing setup.',
+        }),
+      ],
+      profiles: [
+        makeProfile({
+          id: 'profile-1',
+          summary: 'Prefer narrow failing tests before broader validation.',
+          memoryIds: ['memory-1'],
+        }),
+      ],
+    });
+    const service = new ContextEngineService(dependencies);
+
+    const result = await service.retrieve({
+      spaceId: SPACE_ID,
+      threadId: 'thread-1',
+      projectSlug: 'project-a',
+      query: 'debug failing test',
+      budgetTokens: 300,
+      memoryLimit: 1,
+    });
+
+    expect(result.memories.map((item) => item.memory.id)).toEqual(['memory-1']);
+    expect(result.trace).toEqual(
+      expect.objectContaining({
+        scope: {
+          spaceId: SPACE_ID,
+          threadId: 'thread-1',
+          projectSlug: 'project-a',
+        },
+        selectedCollections: expect.arrayContaining(['memories', 'profiles', 'sources']),
+        keptEvidenceIds: expect.arrayContaining(['memory-1', 'profile-1', 'source-1']),
+        droppedEvidenceIds: ['memory-2'],
+      })
+    );
+    expect(result.trace.collectionCandidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          collection: 'memories',
+          candidateCount: 2,
+          selectedCount: 1,
+        }),
+      ])
+    );
+  });
+
   it('supports vector-backed retrieval for memories and chunks', async () => {
     const vectorIndex = new InMemoryVectorIndexProvider();
     await vectorIndex.upsert([
@@ -387,12 +444,31 @@ describe('ContextEngineService', () => {
           summary: 'Session compaction summary for current thread.',
         }),
       ],
+      mountedState: {
+        mode: 'frozen-snapshot',
+        mountedSectionIds: ['mounted-project'],
+        mountedProfileIds: ['profile-compact-1'],
+      },
     });
 
     expect(result.pack.sections[0]).toEqual(
       expect.objectContaining({
         id: 'mounted-project',
         kind: 'profile',
+      })
+    );
+    expect(result.trace).toEqual(
+      expect.objectContaining({
+        mountedSectionIds: ['mounted-project'],
+        mountedProfileIds: ['profile-compact-1'],
+        pinnedInstructionIds: [],
+        keptSectionIds: expect.arrayContaining(['mounted-project']),
+        budgetTokens: 120,
+        mountedState: {
+          mode: 'frozen-snapshot',
+          mountedSectionIds: ['mounted-project'],
+          mountedProfileIds: ['profile-compact-1'],
+        },
       })
     );
   });

@@ -68,6 +68,37 @@ export type RetrievedChunk = {
   vectorHits?: readonly VectorSearchHit[];
 };
 
+export type RetrievalCollectionTrace = {
+  collection: 'memories' | 'chunks' | 'profiles' | 'sources';
+  candidateCount: number;
+  selectedCount: number;
+};
+
+export type RetrievalTrace = {
+  scope: {
+    spaceId: SpaceId;
+    threadId?: ThreadId;
+    projectSlug?: string;
+  };
+  selectedCollections: readonly string[];
+  keptEvidenceIds: readonly string[];
+  droppedEvidenceIds: readonly string[];
+  collectionCandidates: readonly RetrievalCollectionTrace[];
+};
+
+export type MountedStateTrace = {
+  mode: 'frozen-snapshot';
+  mountedSectionIds: readonly string[];
+  mountedProfileIds: readonly string[];
+};
+
+export type ContextAssemblyOverlays = {
+  threadSummary?: string;
+  mountedSections?: ContextPack['sections'];
+  mountedProfiles?: readonly ProfileSegment[];
+  pinnedInstructions?: readonly string[];
+};
+
 export type RetrieveContextInput = {
   spaceId: SpaceId;
   threadId?: ThreadId;
@@ -89,6 +120,17 @@ export type RetrieveContextResult = {
   profiles: readonly ProfileSegment[];
   sources: readonly SourceRecord[];
   totalEstimatedTokens: number;
+  trace: RetrievalTrace;
+};
+
+export type AssemblyTrace = {
+  mountedSectionIds: readonly string[];
+  mountedProfileIds: readonly string[];
+  pinnedInstructionIds: readonly string[];
+  keptSectionIds: readonly string[];
+  droppedSectionIds: readonly string[];
+  budgetTokens: number;
+  mountedState: MountedStateTrace;
 };
 
 export type AssembleContextPackInput = {
@@ -96,6 +138,8 @@ export type AssembleContextPackInput = {
   threadId?: ThreadId;
   retrieval: RetrieveContextResult;
   budgetTokens: number;
+  overlays?: ContextAssemblyOverlays;
+  mountedState?: MountedStateTrace;
   threadSummary?: string;
   mountedSections?: ContextPack['sections'];
   mountedProfiles?: readonly ProfileSegment[];
@@ -105,6 +149,7 @@ export type AssembleContextPackInput = {
 export type AssembleContextPackResult = {
   pack: ContextPack;
   omittedEntityIds: readonly string[];
+  trace: AssemblyTrace;
 };
 
 export type EvaluatePromotionInput = {
