@@ -1044,6 +1044,92 @@ const MOTION_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
   },
 ] as const;
 
+const VISUAL_ARTIFACT_RUNNER_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the visual artifact request, classify the input shape, target artifact type, and audience before drafting.',
+    templateOverride:
+      'Restate the artifact request, identify the input shape (brief, report, PDF, structured data, theme override), the target artifact type (deck, PDF, infographic, handout), and the audience constraints, then propose the shortest credible execution path before generating the artifact.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify the produced artifact against pre-export and post-export QC checks, and surface any blocked failures or theme drift.',
+    templateOverride:
+      'Verify the produced visual artifact end to end using the artifact-qc skill. Re-run pre-export checks (font, image, overflow, hierarchy, theme tokens), refresh build-notes.md, assets.json, and failures.json, and call out any blocked failures, warnings, or theme drift before the artifact is shipped.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'var-deck-from-brief',
+    enabled: true,
+    name: 'deck-from-brief',
+    description: 'Turn a brief into a deck artifact with normalized inputs, recipe, theme, build note, and QC.',
+    template:
+      'Use the `deck-from-brief` skill for this request. Normalize the brief, choose the smallest deck recipe that still expresses every key message, apply the theme, default to the pptx-static export mode, and produce the artifact alongside build-notes.md, assets.json, and failures.json. Hand off to morph-ppt only when narrative motion is explicitly required.',
+  },
+  {
+    type: 'custom',
+    id: 'var-deck-from-pdf',
+    enabled: true,
+    name: 'deck-from-pdf',
+    description: 'Convert a PDF into a deck, choosing summary distillation or visual reconstruction with QC.',
+    template:
+      'Use the `pdf-to-deck` skill for this request. Classify the PDF as summary distillation or visual reconstruction first, record the decision in build-notes.md, extract content with citations, choose the recipe and theme, default to the pptx-static export mode, and produce the artifact alongside build-notes.md, assets.json, and failures.json.',
+  },
+  {
+    type: 'custom',
+    id: 'var-artifact-infographic',
+    enabled: true,
+    name: 'artifact-infographic',
+    description: 'Turn a report or structured data input into an infographic with chart-family discipline.',
+    template:
+      'Use the `report-to-infographic` skill for this request. Detect the dominant data shape, choose the matching infographic recipe, apply the theme, default to the infographic export mode, run pre-export QC with attention to chart overflow and label legibility, and emit build-notes.md, assets.json, and failures.json.',
+  },
+  {
+    type: 'custom',
+    id: 'var-artifact-theme',
+    enabled: true,
+    name: 'artifact-theme',
+    description: 'Apply or refresh a visual theme on an existing artifact spec without changing its recipe.',
+    template:
+      'Use the `deck-theme-apply` skill for this request. Validate the existing artifact spec carries a recipe, resolve the new theme tokens, apply them without touching content, re-run pre-export QC, re-export in the original mode, and update build-notes.md, assets.json, and failures.json with the prior theme id, the new theme id, and any QC findings introduced by the theme change.',
+  },
+  {
+    type: 'custom',
+    id: 'var-artifact-qc',
+    enabled: true,
+    name: 'artifact-qc',
+    description: 'Run pre-export and post-export QC on a produced artifact and report blocked failures and drift.',
+    template:
+      'Use the `artifact-qc` skill for this request. Inspect the artifact, run the relevant pre-export and post-export checks from the visual-artifact-runner package, refresh build-notes.md, assets.json, and failures.json, and return a concise QC report listing block failures, warnings, and any theme or recipe drift.',
+  },
+] as const;
+
 const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
   AgentPackageWorkspaceAutomationProfile,
   WorkspaceAutomationProfileDefinition
@@ -1096,6 +1182,11 @@ const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
   'motion-studio': {
     label: 'Motion Studio',
     commandSeeds: MOTION_STUDIO_COMMAND_SEEDS,
+    scheduleSeed: EMPTY_SCHEDULE_SEED,
+  },
+  'visual-artifact-runner': {
+    label: 'Visual Artifact Runner',
+    commandSeeds: VISUAL_ARTIFACT_RUNNER_COMMAND_SEEDS,
     scheduleSeed: EMPTY_SCHEDULE_SEED,
   },
 };

@@ -11,7 +11,8 @@ export type AgentPackageWorkspaceAutomationProfile =
   | 'design-director'
   | 'figma-closed-loop'
   | 'marketing-creative-studio'
-  | 'motion-studio';
+  | 'motion-studio'
+  | 'visual-artifact-runner';
 
 export type AgentPackageWorkspaceSkillBootstrapStrategy = 'enabled-skills' | 'packaged-skills';
 export type AgentPackageRuntimeId = 'gemini' | 'claude' | 'codex' | 'opencode';
@@ -146,6 +147,7 @@ const WORKSPACE_AUTOMATION_PROFILES = new Set<AgentPackageWorkspaceAutomationPro
   'figma-closed-loop',
   'marketing-creative-studio',
   'motion-studio',
+  'visual-artifact-runner',
 ]);
 
 const AGENT_PACKAGE_RUNTIME_IDS = new Set<AgentPackageRuntimeId>(['gemini', 'claude', 'codex', 'opencode']);

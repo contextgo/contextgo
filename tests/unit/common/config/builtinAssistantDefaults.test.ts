@@ -23,6 +23,9 @@ const MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEn
   'builtin-marketing-creative-studio'
 )!;
 const MOTION_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-motion-studio')!;
+const VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-visual-artifact-runner'
+)!;
 const STARTUP_STRATEGIST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-startup-strategist')!;
 const OFFICE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-office-analyst')!;
 const FINANCE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-finance-analyst')!;
@@ -46,8 +49,11 @@ describe('builtinAssistantDefaults', () => {
       (assistant) => assistant.id === 'builtin-marketing-creative-studio'
     );
     const motionAssistant = assistants.find((assistant) => assistant.id === 'builtin-motion-studio');
+    const visualArtifactRunnerAssistant = assistants.find(
+      (assistant) => assistant.id === 'builtin-visual-artifact-runner'
+    );
 
-    expect(assistants).toHaveLength(12);
+    expect(assistants).toHaveLength(13);
     expect(assistants.map((assistant) => assistant.id)).toEqual([
       'builtin-morph-ppt',
       'builtin-startup-strategist',
@@ -55,6 +61,7 @@ describe('builtinAssistantDefaults', () => {
       'builtin-figma-closed-loop',
       'builtin-marketing-creative-studio',
       'builtin-motion-studio',
+      'builtin-visual-artifact-runner',
       'builtin-pm-workbench',
       'builtin-office-analyst',
       'builtin-finance-analyst',
@@ -189,6 +196,34 @@ describe('builtinAssistantDefaults', () => {
         'motion-poster-builder',
         'motion-render-ops',
         'motion-qc',
+      ])
+    );
+    expect(visualArtifactRunnerAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Visual Artifacts',
+          'zh-CN': '视觉产物',
+        },
+        harnessTagI18n: {
+          'en-US': 'Visual Artifact Runner',
+          'zh-CN': 'Visual Artifact Runner',
+        },
+      })
+    );
+    expect(visualArtifactRunnerAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'deck-from-brief',
+        'deck-from-report',
+        'pdf-to-deck',
+        'report-to-infographic',
+        'deck-theme-apply',
+        'artifact-qc',
       ])
     );
     expect(startupAssistant).toEqual(
@@ -415,6 +450,9 @@ describe('builtinAssistantDefaults', () => {
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-motion-studio', undefined)).toEqual([
       ...MOTION_STUDIO_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-visual-artifact-runner', undefined)).toEqual([
+      ...VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS,
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-startup-strategist', undefined)).toEqual([
       ...STARTUP_STRATEGIST_DEFAULT_SKILLS,
