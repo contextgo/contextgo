@@ -116,6 +116,13 @@ const RECOMMENDATION_PROFILES: RecommendationProfile[] = [
     reasons: ['Best fit for campaign creative production, brand consistency, and multi-channel asset variants.'],
   },
   {
+    presetId: 'motion-studio',
+    keywords: ['motion', 'video', 'storyboard', 'scene', 'render', 'cutdown', 'animation', 'subtitle', 'caption', 'qc'],
+    styles: ['create', 'execute'],
+    recurrence: ['frequent', 'continuous'],
+    reasons: ['Best fit for storyboard planning, code-driven rendering, and motion QC workflows.'],
+  },
+  {
     presetId: 'startup-strategist',
     keywords: ['startup', 'gtm', 'icp', 'founder', 'market', 'beachhead', 'value proposition'],
     styles: ['analyze', 'create'],

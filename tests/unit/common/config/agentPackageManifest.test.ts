@@ -196,6 +196,16 @@ describe('agent-package manifests', () => {
         expectedTargets: ['AGENTS.md', 'docs/brand/README.md', 'docs/campaigns/README.md', 'docs/assets/README.md'],
       },
       {
+        resourceDir: 'src/process/resources/assistant/creative/motion-studio',
+        expectedTargets: [
+          'AGENTS.md',
+          'docs/storyboards/README.md',
+          'docs/scenes/README.md',
+          'docs/renders/README.md',
+          'docs/qc/README.md',
+        ],
+      },
+      {
         resourceDir: 'src/process/resources/assistant/startup/startup-strategist',
         expectedTargets: ['AGENTS.md', 'docs/ideas/README.md', 'docs/market/README.md', 'docs/strategy/README.md'],
       },

@@ -80,6 +80,9 @@ That compatibility is acceptable during migration, but all new built-in assistan
   - package root: `src/process/resources/assistant/creative/marketing-creative-studio`
   - skill source: `src/process/resources/skills/marketing-creative-studio-pack`
   - workspace automation: `.contextgo/commands.json`, `.contextgo/hooks/`, `.contextgo/hooks.json`, `.contextgo/schedules.json`
+- `motion-studio`
+  - package root: `src/process/resources/assistant/creative/motion-studio`
+  - skill source: `src/process/resources/skills/motion-studio-pack`
 - `pm-workbench`
   - package root: `src/process/resources/assistant/product/pm-workbench`
   - skill source: `src/process/resources/skills/pm-workbench-pack`
