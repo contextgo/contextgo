@@ -59,13 +59,13 @@ function getPublishObjectQualityRank(quality?: IChannelAudienceEntry['objectQual
 
 function getPublishObjectSourceLabel(audience: IChannelAudienceEntry, t: TranslationFn): string | undefined {
   if (audience.objectSource === 'official-pull' || audience.objectSource === 'runtime-resolved') {
-    return t('settings.channels.publication.optionSourceOfficial');
+    return t('settings.channels.publication.optionSourceOfficial', { defaultValue: 'Synced directory' });
   }
   if (audience.objectSource === 'inbound-learned') {
-    return t('settings.channels.publication.optionSourceLearned');
+    return t('settings.channels.publication.optionSourceLearned', { defaultValue: 'Recent activity' });
   }
   if (audience.objectSource === 'manual') {
-    return t('settings.channels.publication.optionSourceManual');
+    return t('settings.channels.publication.optionSourceManual', { defaultValue: 'Manual target' });
   }
   return undefined;
 }
@@ -439,7 +439,8 @@ export function comparePublishObjectAudiences(left: IChannelAudienceEntry, right
     return sourceDelta;
   }
 
-  const qualityDelta = getPublishObjectQualityRank(right.objectQuality) - getPublishObjectQualityRank(left.objectQuality);
+  const qualityDelta =
+    getPublishObjectQualityRank(right.objectQuality) - getPublishObjectQualityRank(left.objectQuality);
   if (qualityDelta !== 0) {
     return qualityDelta;
   }

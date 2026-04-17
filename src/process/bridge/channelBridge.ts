@@ -27,6 +27,7 @@ import type {
   IChannelBinding,
   IChannelControlLease,
   IChannelBindingCatalog,
+  IChannelPublicationCapabilitySummary,
   IChannelPublicationDiscoverySummary,
   IChannelPublicationEntry,
   IChannelPublicationUpsertInput,
@@ -862,6 +863,30 @@ function buildPublicationDiscoverySummaries(params: {
   });
 }
 
+function buildPublicationCapabilitySummaries(params: {
+  connectors: IConnectorInstance[];
+}): IChannelPublicationCapabilitySummary[] {
+  return params.connectors.flatMap((connector) => {
+    if (!isBuiltinChannelType(connector.platform)) {
+      return [];
+    }
+
+    const builtinChannel = getBuiltinChannel(connector.platform);
+    if (!builtinChannel) {
+      return [];
+    }
+
+    return [
+      {
+        channelAccountId: connector.id,
+        integrationModel: builtinChannel.integrationModel,
+        discoveryMode: builtinChannel.discoveryMode,
+        actionSurfaces: [...builtinChannel.actionSurfaces],
+      },
+    ];
+  });
+}
+
 function normalizePublicationScopeKey(
   scopeType: IChannelPublicationUpsertInput['scopeType'],
   scopeKey: string
@@ -999,6 +1024,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       connectors,
       audiences,
     });
+    const capabilitySummaries = buildPublicationCapabilitySummaries({
+      connectors,
+    });
     const publications = buildPublicationEntries({
       connectors,
       bindings: params.publicationCatalog.bindings,
@@ -1020,6 +1048,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         discoverySummaries: params.channelAccountId
           ? discoverySummaries.filter((summary) => summary.channelAccountId === params.channelAccountId)
           : discoverySummaries,
+        capabilitySummaries: params.channelAccountId
+          ? capabilitySummaries.filter((summary) => summary.channelAccountId === params.channelAccountId)
+          : capabilitySummaries,
         publishObjects,
         publications: params.channelAccountId
           ? publications.filter((publication) => publication.channelAccountId === params.channelAccountId)
@@ -1097,6 +1128,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       connectors,
       audiences: catalogAudiences,
     });
+    const capabilitySummaries = buildPublicationCapabilitySummaries({
+      connectors,
+    });
     const publications = buildPublicationEntries({
       connectors,
       bindings: publicationCatalog.bindings,
@@ -1113,6 +1147,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       discoverySummaries: channelAccountId
         ? discoverySummaries.filter((summary) => summary.channelAccountId === channelAccountId)
         : discoverySummaries,
+      capabilitySummaries: channelAccountId
+        ? capabilitySummaries.filter((summary) => summary.channelAccountId === channelAccountId)
+        : capabilitySummaries,
       publishObjects: catalogPublishObjects,
       publications: channelAccountId
         ? publications.filter((publication) => publication.channelAccountId === channelAccountId)

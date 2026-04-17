@@ -29,7 +29,8 @@ const translations: Record<string, string> = {
   'settings.channels.dingtalkTitle': 'DingTalk',
   'settings.channels.dingtalkDesc': 'Chat with ContextGo assistant via DingTalk',
   'settings.channels.weixinTitle': 'WeChat',
-  'settings.channels.weixinDesc': 'Chat with ContextGo assistant via WeChat',
+  'settings.channels.weixinDesc':
+    'Bridge a personal WeChat account into ContextGo. This is not a standard official bot platform.',
   'settings.channels.publication.enabled': 'Enabled',
   'settings.channels.publication.disabled': 'Disabled',
   'settings.channels.notConfigured': 'Not configured',
@@ -148,7 +149,15 @@ vi.mock('@icon-park/react', () => ({
 vi.mock('@arco-design/web-react', async () => {
   const ReactModule = await import('react');
 
-  const Tabs = ({ activeTab, onChange, children }: any) => {
+  const Tabs = ({
+    activeTab,
+    onChange,
+    children,
+  }: {
+    activeTab?: string;
+    onChange?: (value: string) => void;
+    children?: React.ReactNode;
+  }) => {
     const items = ReactModule.Children.toArray(children) as React.ReactElement[];
 
     return (
@@ -169,7 +178,15 @@ vi.mock('@arco-design/web-react', async () => {
   Tabs.TabPane = (_props: { title: React.ReactNode }) => null;
 
   return {
-    Button: ({ children, onClick, className }: any) => (
+    Button: ({
+      children,
+      onClick,
+      className,
+    }: {
+      children?: React.ReactNode;
+      onClick?: () => void;
+      className?: string;
+    }) => (
       <button type='button' onClick={onClick} className={className}>
         {children}
       </button>
@@ -183,7 +200,15 @@ vi.mock('@arco-design/web-react', async () => {
       warning: vi.fn(),
     },
     Select: () => null,
-    Switch: ({ checked, onChange, disabled }: any) => (
+    Switch: ({
+      checked,
+      onChange,
+      disabled,
+    }: {
+      checked?: boolean;
+      onChange?: (nextValue: boolean) => void;
+      disabled?: boolean;
+    }) => (
       <button
         type='button'
         aria-label='switch'
@@ -202,16 +227,20 @@ vi.mock('@arco-design/web-react', async () => {
 import ChannelModalContent from '@/renderer/components/settings/SettingsModal/contents/channels/ChannelModalContent';
 
 function renderSessionsPage(state?: Record<string, unknown>) {
+  const initialEntries: React.ComponentProps<typeof MemoryRouter>['initialEntries'] = [
+    { pathname: '/settings/agent-publish', state },
+  ];
   return render(
-    <MemoryRouter initialEntries={[{ pathname: '/settings/agent-publish', state } as any]}>
+    <MemoryRouter initialEntries={initialEntries}>
       <ChannelModalContent mode='sessions' />
     </MemoryRouter>
   );
 }
 
 function renderChannelsPage() {
+  const initialEntries: React.ComponentProps<typeof MemoryRouter>['initialEntries'] = [{ pathname: '/settings/channels' }];
   return render(
-    <MemoryRouter initialEntries={[{ pathname: '/settings/channels' } as any]}>
+    <MemoryRouter initialEntries={initialEntries}>
       <ChannelModalContent mode='channels' />
     </MemoryRouter>
   );

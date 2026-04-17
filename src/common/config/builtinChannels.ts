@@ -11,6 +11,11 @@ type BuiltinChannelDefinition = {
   defaultModelConfigKey: string;
   agentConfigKey: string;
   usesActionButtons: boolean;
+  integrationModel: 'official-bot-platform' | 'bridge-limited';
+  discoveryMode: 'official-pull' | 'learned-manual' | 'mixed';
+  actionSurfaces: Array<
+    'native-command-entry' | 'menu-entry' | 'message-action-buttons' | 'card-action-callbacks' | 'thread-aware-reply'
+  >;
 };
 
 export const BUILTIN_CHANNELS = {
@@ -21,6 +26,9 @@ export const BUILTIN_CHANNELS = {
     defaultModelConfigKey: 'assistant.telegram.defaultModel',
     agentConfigKey: 'assistant.telegram.agent',
     usesActionButtons: false,
+    integrationModel: 'official-bot-platform',
+    discoveryMode: 'learned-manual',
+    actionSurfaces: ['native-command-entry', 'message-action-buttons', 'thread-aware-reply'],
   },
   slack: {
     pluginId: 'slack_default',
@@ -29,6 +37,9 @@ export const BUILTIN_CHANNELS = {
     defaultModelConfigKey: 'assistant.slack.defaultModel',
     agentConfigKey: 'assistant.slack.agent',
     usesActionButtons: true,
+    integrationModel: 'official-bot-platform',
+    discoveryMode: 'official-pull',
+    actionSurfaces: ['native-command-entry', 'message-action-buttons', 'thread-aware-reply'],
   },
   discord: {
     pluginId: 'discord_default',
@@ -37,6 +48,9 @@ export const BUILTIN_CHANNELS = {
     defaultModelConfigKey: 'assistant.discord.defaultModel',
     agentConfigKey: 'assistant.discord.agent',
     usesActionButtons: true,
+    integrationModel: 'official-bot-platform',
+    discoveryMode: 'official-pull',
+    actionSurfaces: ['native-command-entry', 'message-action-buttons', 'thread-aware-reply'],
   },
   lark: {
     pluginId: 'lark_default',
@@ -45,6 +59,9 @@ export const BUILTIN_CHANNELS = {
     defaultModelConfigKey: 'assistant.lark.defaultModel',
     agentConfigKey: 'assistant.lark.agent',
     usesActionButtons: false,
+    integrationModel: 'official-bot-platform',
+    discoveryMode: 'official-pull',
+    actionSurfaces: ['menu-entry', 'card-action-callbacks', 'thread-aware-reply'],
   },
   dingtalk: {
     pluginId: 'dingtalk_default',
@@ -53,6 +70,9 @@ export const BUILTIN_CHANNELS = {
     defaultModelConfigKey: 'assistant.dingtalk.defaultModel',
     agentConfigKey: 'assistant.dingtalk.agent',
     usesActionButtons: false,
+    integrationModel: 'official-bot-platform',
+    discoveryMode: 'mixed',
+    actionSurfaces: ['menu-entry', 'card-action-callbacks'],
   },
   weixin: {
     pluginId: 'weixin_default',
@@ -61,6 +81,9 @@ export const BUILTIN_CHANNELS = {
     defaultModelConfigKey: 'assistant.weixin.defaultModel',
     agentConfigKey: 'assistant.weixin.agent',
     usesActionButtons: false,
+    integrationModel: 'bridge-limited',
+    discoveryMode: 'learned-manual',
+    actionSurfaces: [],
   },
 } as const satisfies Record<string, BuiltinChannelDefinition>;
 
