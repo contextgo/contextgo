@@ -46,7 +46,7 @@ export class ContextServiceImpl extends ContextEngineService {
   }
 
   async appendOperation(operation: ContextOperation): Promise<void> {
-    await this.deps.operations.append(operation);
+    await this.provider.operations.append(operation);
   }
 
   async appendSystemOperation(params: {
@@ -75,7 +75,7 @@ export class ContextServiceImpl extends ContextEngineService {
     memory: MemoryEntry,
     options?: { operationType?: ContextOperationType; threadId?: string }
   ): Promise<void> {
-    await this.deps.memories.save(memory);
+    await this.provider.memories.save(memory);
     await this.indexMemory(memory, options?.threadId);
 
     if (options?.operationType) {
@@ -99,7 +99,7 @@ export class ContextServiceImpl extends ContextEngineService {
     candidate: MemoryCandidateEntry,
     options?: { operationType?: ContextOperationType; threadId?: string }
   ): Promise<void> {
-    await this.deps.candidates.save(candidate);
+    await this.provider.candidates.save(candidate);
 
     if (options?.operationType) {
       await this.appendSystemOperation({
@@ -123,7 +123,7 @@ export class ContextServiceImpl extends ContextEngineService {
     profile: ProfileSegment,
     options?: { operationType?: ContextOperationType; threadId?: string }
   ): Promise<void> {
-    await this.deps.profiles.save(profile);
+    await this.provider.profiles.save(profile);
 
     if (options?.operationType) {
       await this.appendSystemOperation({
@@ -147,7 +147,7 @@ export class ContextServiceImpl extends ContextEngineService {
     keyPrefix?: string;
     state?: ProfileSegment['state'];
   }): Promise<ProfileSegment[]> {
-    const profiles = await this.deps.profiles.listBySpace(input.spaceId);
+    const profiles = await this.provider.profiles.listBySpace(input.spaceId);
     return profiles.filter((profile) => {
       if (input.keyPrefix && !profile.key.startsWith(input.keyPrefix)) {
         return false;
@@ -165,7 +165,7 @@ export class ContextServiceImpl extends ContextEngineService {
     state?: MemoryCandidateEntry['state'];
     reviewStatus?: MemoryCandidateEntry['reviewStatus'];
   }): Promise<MemoryCandidateEntry[]> {
-    const candidates = await this.deps.candidates.listBySpace(input.spaceId);
+    const candidates = await this.provider.candidates.listBySpace(input.spaceId);
     return candidates.filter((candidate) => {
       if (input.threadId && candidate.threadId !== input.threadId) {
         return false;
@@ -184,7 +184,7 @@ export class ContextServiceImpl extends ContextEngineService {
     candidateId: string,
     reviewerId = 'human-reviewer'
   ): Promise<MemoryCandidateEntry | undefined> {
-    const candidate = await this.deps.candidates.getById(candidateId);
+    const candidate = await this.provider.candidates.getById(candidateId);
     if (!candidate) {
       return undefined;
     }
@@ -246,7 +246,7 @@ export class ContextServiceImpl extends ContextEngineService {
     destination: MemoryCandidateEntry['destination'],
     reviewerId = 'human-reviewer'
   ): Promise<MemoryCandidateEntry | undefined> {
-    const candidate = await this.deps.candidates.getById(candidateId);
+    const candidate = await this.provider.candidates.getById(candidateId);
     if (!candidate) {
       return undefined;
     }
@@ -278,7 +278,7 @@ export class ContextServiceImpl extends ContextEngineService {
     candidateId: string,
     reviewerId = 'human-reviewer'
   ): Promise<MemoryCandidateEntry | undefined> {
-    const candidate = await this.deps.candidates.getById(candidateId);
+    const candidate = await this.provider.candidates.getById(candidateId);
     if (!candidate) {
       return undefined;
     }
@@ -309,8 +309,8 @@ export class ContextServiceImpl extends ContextEngineService {
       metadata?: Readonly<Record<string, string | number | boolean>>;
     }
   ): Promise<void> {
-    await this.deps.chunks.saveMany(chunks);
-    if (this.deps.vectorIndex && chunks.length > 0) {
+    await this.provider.chunks.saveMany(chunks);
+    if (this.provider.vectorIndex && chunks.length > 0) {
       const documents: VectorIndexDocument[] = chunks.map((chunk) => ({
         id: `chunk-${chunk.id}`,
         entityId: chunk.id,
@@ -321,7 +321,7 @@ export class ContextServiceImpl extends ContextEngineService {
         text: chunk.text,
         metadata: options?.metadata,
       }));
-      await this.deps.vectorIndex.upsert(documents);
+      await this.provider.vectorIndex.upsert(documents);
     }
   }
 
@@ -340,11 +340,11 @@ export class ContextServiceImpl extends ContextEngineService {
     vectorMetadata?: Readonly<Record<string, string | number | boolean>>;
   }): Promise<{ snapshot: DocumentSnapshot; chunks: readonly ChunkRecord[] }> {
     const documentId = input.documentId ?? createId('doc');
-    const existingChunks = await this.deps.chunks.listByDocument(documentId);
-    if (this.deps.vectorIndex && existingChunks.length > 0) {
-      await this.deps.vectorIndex.deleteByEntityIds(existingChunks.map((chunk) => chunk.id));
+    const existingChunks = await this.provider.chunks.listByDocument(documentId);
+    if (this.provider.vectorIndex && existingChunks.length > 0) {
+      await this.provider.vectorIndex.deleteByEntityIds(existingChunks.map((chunk) => chunk.id));
     }
-    await this.deps.chunks.deleteByDocument(documentId);
+    await this.provider.chunks.deleteByDocument(documentId);
 
     const snapshot: DocumentSnapshot = {
       id: documentId,
@@ -358,7 +358,7 @@ export class ContextServiceImpl extends ContextEngineService {
       status: 'active',
       createdAt: ISO_NOW(),
     };
-    await this.deps.documents.save(snapshot);
+    await this.provider.documents.save(snapshot);
 
     const chunks = this.textChunkingService.buildChunks({
       spaceId: input.spaceId,
@@ -391,12 +391,12 @@ export class ContextServiceImpl extends ContextEngineService {
   }
 
   async listSources(spaceId: string): Promise<SourceRecord[]> {
-    const sources = await this.deps.sources.listBySpace(spaceId);
+    const sources = await this.provider.sources.listBySpace(spaceId);
     return [...sources];
   }
 
   async archiveSource(sourceId: string, threadId?: string): Promise<void> {
-    const source = await this.deps.sources.getById(sourceId);
+    const source = await this.provider.sources.getById(sourceId);
     if (!source || source.status === 'archived') {
       return;
     }
@@ -406,7 +406,7 @@ export class ContextServiceImpl extends ContextEngineService {
       status: 'archived',
       updatedAt: ISO_NOW(),
     };
-    await this.deps.sources.upsert(archivedSource);
+    await this.provider.sources.upsert(archivedSource);
     await this.appendSystemOperation({
       spaceId: source.spaceId,
       threadId,
@@ -421,7 +421,7 @@ export class ContextServiceImpl extends ContextEngineService {
   }
 
   private async indexMemory(memory: MemoryEntry, threadId?: string): Promise<void> {
-    if (!this.deps.vectorIndex) {
+    if (!this.provider.vectorIndex) {
       return;
     }
 
@@ -440,6 +440,6 @@ export class ContextServiceImpl extends ContextEngineService {
       },
     };
 
-    await this.deps.vectorIndex.upsert([document]);
+    await this.provider.vectorIndex.upsert([document]);
   }
 }
