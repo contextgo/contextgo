@@ -32,6 +32,8 @@ import GeminiModelSelector from '../platforms/gemini/GeminiModelSelector';
 import { useGeminiModelSelection } from '../platforms/gemini/useGeminiModelSelection';
 import { usePreviewContext } from '../Preview';
 import { renderConversationHeaderAddons } from '../platforms/conversationHeaderAddons';
+import ConversationCapabilitySurface from './ConversationCapabilitySurface';
+import { getConversationCapabilityState } from './getConversationCapabilityState';
 // import SkillRuleGenerator from './components/SkillRuleGenerator'; // Temporarily hidden
 
 type PublicationIntent = {
@@ -441,8 +443,12 @@ const ChatConversation: React.FC<{
   conversation?: TChatConversation;
 }> = ({ conversation }) => {
   const { t } = useTranslation();
-  const { openPreview } = usePreviewContext();
+  const { activeTab: activePreviewTab, openPreview } = usePreviewContext();
   const workspaceEnabled = Boolean(conversation?.extra?.workspace);
+  const capabilityState = useMemo(
+    () => (conversation ? getConversationCapabilityState(conversation, activePreviewTab) : null),
+    [activePreviewTab, conversation]
+  );
 
   const isGeminiConversation = conversation?.type === 'gemini';
   const isGroupConversation = conversation?.type === 'group';
@@ -536,6 +542,20 @@ const ChatConversation: React.FC<{
     () => (
       <div className='flex items-center gap-8px'>
         {conversation ? (
+          <ConversationCapabilitySurface
+            title='Workspace'
+            value={capabilityState?.workspace.available ? capabilityState.workspace.label : undefined}
+            emptyLabel='No workspace linked'
+          />
+        ) : null}
+        {conversation ? (
+          <ConversationCapabilitySurface
+            title='Preview'
+            value={capabilityState?.preview.open ? capabilityState.preview.label : undefined}
+            emptyLabel='No active preview'
+          />
+        ) : null}
+        {conversation ? (
           <div className='shrink-0'>
             <PublishAgentEntryButton conversation={conversation} />
           </div>
@@ -560,7 +580,7 @@ const ChatConversation: React.FC<{
           : null}
       </div>
     ),
-    [conversation, openPreview]
+    [activePreviewTab, capabilityState, conversation, openPreview]
   );
 
   if (conversation && conversation.type === 'gemini') {
