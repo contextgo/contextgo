@@ -85,6 +85,8 @@ export class ContextJobOrchestrator {
     triggerEvent?: string;
     triggerLabel?: string;
     triggeredAt?: string;
+    reasonOverride?: string;
+    lifecycleSummary?: string;
   }): ContextJob | undefined {
     const decision = this.decideSessionCompaction({
       spaceId: input.spaceId,
@@ -109,10 +111,11 @@ export class ContextJobOrchestrator {
       triggerEvent: input.triggerEvent,
       triggerLabel: input.triggerLabel,
       triggeredAt: input.triggeredAt,
-      reason: decision.reason,
+      reason: input.reasonOverride ?? decision.reason,
       payload: {
         snapshot: input.snapshot,
         artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+        lifecycleSummary: input.lifecycleSummary,
       },
     });
   }

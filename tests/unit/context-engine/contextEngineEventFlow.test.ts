@@ -692,6 +692,45 @@ describe('context engine event flow', () => {
         type: 'session_compaction',
         source: 'lifecycle',
         governanceIdentity: 'session_steward',
+        reason: 'Planner delegate completed release validation synthesis.',
+        payload: expect.objectContaining({
+          lifecycleSummary: 'Planner delegate completed release validation synthesis.',
+        }),
+      })
+    );
+  });
+
+  it('preserves explicit manual compaction reason through the stewardship contract', async () => {
+    const bus = new ContextEventBus();
+    const router = new ContextTriggerRouter(bus, {
+      resolve: vi.fn(async () => ({ kind: 'space-vault-root', spaceId: 'space-1', vaultRoot: '/vault/space-1' })),
+    } as never);
+
+    router.register();
+
+    const queued = await router.queueManualJob({
+      triggerId: 'manual.session-compaction',
+      spaceId: 'space-1',
+      threadId: 'thread-1',
+      projectSlug: 'workspace-abcd1234',
+      reason: 'Manually compact before handing off the release task.',
+      snapshot: {
+        userTurns: 3,
+        assistantReplies: 2,
+        interruptions: 0,
+        recentSignals: [],
+      },
+      firedAt: '2026-04-17T01:30:00.000Z',
+    });
+
+    expect(queued).toEqual(
+      expect.objectContaining({
+        type: 'session_compaction',
+        source: 'manual',
+        reason: 'Manually compact before handing off the release task.',
+        payload: expect.objectContaining({
+          lifecycleSummary: 'Manually compact before handing off the release task.',
+        }),
       })
     );
   });
