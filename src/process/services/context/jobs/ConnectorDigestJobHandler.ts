@@ -20,12 +20,16 @@ export class ConnectorDigestJobHandler {
     const summary = typeof job.payload.summary === 'string' ? job.payload.summary : job.reason;
     const bullets = [
       typeof job.payload.connectorId === 'string' ? `Connector: ${job.payload.connectorId}` : undefined,
+      typeof job.payload.sourceRecordId === 'string' ? `Source record: ${job.payload.sourceRecordId}` : undefined,
       typeof job.payload.sourceKind === 'string' ? `Source kind: ${job.payload.sourceKind}` : undefined,
       typeof job.payload.title === 'string' ? `Title: ${job.payload.title}` : undefined,
       typeof job.payload.canonicalUri === 'string' ? `URI: ${job.payload.canonicalUri}` : undefined,
+      typeof job.payload.ingestMode === 'string' ? `Ingest mode: ${job.payload.ingestMode}` : undefined,
+      typeof job.payload.replayFromCursor === 'string' ? `Replay cursor: ${job.payload.replayFromCursor}` : undefined,
     ].filter((value): value is string => Boolean(value));
     const detailParts = [
       typeof job.payload.summary === 'string' ? job.payload.summary : undefined,
+      typeof job.payload.provenanceSummary === 'string' ? job.payload.provenanceSummary : undefined,
       ...bullets,
       job.type === 'session_pattern_detection' ? 'Session pattern detection completed.' : undefined,
     ].filter((value): value is string => Boolean(value));

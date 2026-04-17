@@ -118,6 +118,7 @@ describe('SystemRunsPage', () => {
         artifactTitle: 'Session working context',
         artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
         reason: 'Session compaction triggered by repeated requests.',
+        lifecycleSummary: 'Planner delegate completed release validation synthesis.',
         source: 'hook',
         triggerLabel: 'Context window prepared',
         triggerEvent: 'context.window.prepared',
@@ -182,6 +183,9 @@ describe('SystemRunsPage', () => {
     expect(screen.getByText('Source: hook')).toBeInTheDocument();
     expect(screen.getByText('Artifact kind: session-context')).toBeInTheDocument();
     expect(screen.getByText('Artifact summary: Session working context refreshed.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Lifecycle summary: Planner delegate completed release validation synthesis.')
+    ).toBeInTheDocument();
     expect(
       screen.getByText('Artifacts: session_timeline · session_working_context · session_checkpoint')
     ).toBeInTheDocument();
@@ -305,6 +309,46 @@ describe('SystemRunsPage', () => {
           },
         ],
       },
+      {
+        id: 'run-4',
+        rootRunId: 'run-4',
+        backend: 'context-engine',
+        agentProfileId: 'profile-4',
+        agentName: 'Context Engine · Connector Digest Curator',
+        state: 'researching',
+        runtimeStatus: 'running',
+        lastActiveAt: new Date('2026-04-11T06:38:00Z').getTime(),
+        currentTask: 'Digesting connector provenance',
+        systemManaged: true,
+        assistantId: 'system-context-engine-connector-digester',
+        systemOwner: 'context-engine',
+        systemRole: 'context-engine-connector-digester',
+        governanceIdentity: 'space_curator',
+        scopeLabel: 'workspace-alpha',
+        maintenanceKind: 'connector_digest',
+        latestArtifactSummary: 'Captured browser activity from example.com: Release checklist page',
+        artifactRelativePath: 'System/Context Engine/connector-digest.md',
+        artifactTitle: 'Connector Digest',
+        artifactTargets: ['space_digest'],
+        reason: 'Digest newly ingested connector content into reusable context.',
+        source: 'connector',
+        triggerLabel: 'Connector source ingested',
+        triggerEvent: 'connector.source.ingested',
+        executionBoundaryPath: '/vault/space-1',
+        executionBoundaryLabel: 'My Space',
+        provenanceSummary: 'Merged 3 newly ingested browser records.',
+        sourceRecordId: 'source-1',
+        ingestMode: 'incremental',
+        replayFromCursor: 'cursor-42',
+        recentEvents: [
+          {
+            conversationId: 'thread-4',
+            kind: 'message',
+            text: 'Merged 3 newly ingested browser records.',
+            at: new Date('2026-04-11T06:38:00Z').getTime(),
+          },
+        ],
+      },
     ];
 
     render(<SystemRunsPage />);
@@ -312,6 +356,7 @@ describe('SystemRunsPage', () => {
     const proposalRun = await screen.findByTestId('system-run-run-2');
     const sessionRun = screen.getByTestId('system-run-run-1');
     const distillationRun = screen.getByTestId('system-run-run-3');
+    const connectorRun = screen.getByTestId('system-run-run-4');
 
     expect(within(proposalRun).getByText('Routing')).toBeInTheDocument();
     expect(within(proposalRun).getByText('Artifact')).toBeInTheDocument();
@@ -319,9 +364,17 @@ describe('SystemRunsPage', () => {
     expect(within(proposalRun).getByTestId('system-run-event-qualifier-run-2-0')).toHaveTextContent('proposal');
     expect(within(sessionRun).getByTestId('system-run-event-qualifier-run-1-0')).toHaveTextContent('session-context');
     expect(within(sessionRun).getByTestId('system-run-event-kind-run-1-0')).toHaveTextContent('status');
-    expect(within(distillationRun).getByText('Artifact summary: Merged repeated space-level signals.')).toBeInTheDocument();
+    expect(
+      within(distillationRun).getByText('Artifact summary: Merged repeated space-level signals.')
+    ).toBeInTheDocument();
     expect(within(distillationRun).getByTestId('system-run-event-qualifier-run-3-0')).toHaveTextContent(
       'space-distillation'
     );
+    expect(within(connectorRun).getByText('Source record: source-1')).toBeInTheDocument();
+    expect(within(connectorRun).getByText('Ingest mode: incremental')).toBeInTheDocument();
+    expect(within(connectorRun).getByText('Replay cursor: cursor-42')).toBeInTheDocument();
+    expect(
+      within(connectorRun).getByText('Provenance summary: Merged 3 newly ingested browser records.')
+    ).toBeInTheDocument();
   });
 });

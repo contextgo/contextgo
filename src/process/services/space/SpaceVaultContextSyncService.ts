@@ -59,6 +59,8 @@ const MAX_SOURCE_DOC_BYTES = 256 * 1024;
 const SESSION_EXCERPT_LIMIT = 2000;
 const SESSION_SUMMARY_EXCERPT_LIMIT = 160;
 const SESSION_RECENT_EVENT_LIMIT = 5;
+const SESSION_COMPACTION_OPERATION = 'session_compaction';
+const SESSION_ARTIFACT_TRIAD = ['session_timeline', 'session_working_context', 'session_checkpoint'] as const;
 const EXCLUDED_DIRECTORIES = new Set([
   '.git',
   '.obsidian',
@@ -191,7 +193,7 @@ type SessionCheckpointWriteInput = {
   title: string;
   summary: string;
   detail?: string;
-};
+} & SessionCompactionProvenanceInput;
 
 type SessionWorkingSetWriteInput = {
   conversation: TChatConversation;
@@ -202,7 +204,19 @@ type SessionWorkingSetWriteInput = {
   pendingConstraints: readonly string[];
   signalKinds: readonly string[];
   pressure: number;
+} & SessionCompactionProvenanceInput;
+
+type SessionCompactionProvenanceInput = {
   sourceProfileKey?: string;
+  compactionJobId?: string;
+  lifecycleSummary?: string;
+  artifactTargets?: readonly string[];
+  sessionTimelineRelativePath?: string;
+  sessionTimelineTitle?: string;
+  workingContextRelativePath?: string;
+  workingContextTitle?: string;
+  checkpointRelativePath?: string;
+  checkpointTitle?: string;
 };
 
 type OperationLogEntryInput = {
@@ -349,6 +363,65 @@ const getSourceDocNoteTitle = (sourceTitle: string, _relativePath: string): stri
 const toWikiLink = (relativePath: string, alias?: string): string => {
   const target = stripMarkdownExtension(toPosixRelativePath(relativePath));
   return alias ? `[[${target}|${alias}]]` : `[[${target}]]`;
+};
+
+const isSessionArtifactTarget = (value: string): value is (typeof SESSION_ARTIFACT_TRIAD)[number] => {
+  return (SESSION_ARTIFACT_TRIAD as readonly string[]).includes(value);
+};
+
+const normalizeSessionArtifactTargets = (targets: readonly string[] | undefined): string[] => {
+  const normalized = (targets ?? []).filter((target): target is (typeof SESSION_ARTIFACT_TRIAD)[number] =>
+    isSessionArtifactTarget(target)
+  );
+  if (normalized.length === 0) {
+    return [...SESSION_ARTIFACT_TRIAD];
+  }
+
+  return SESSION_ARTIFACT_TRIAD.filter((target) => normalized.includes(target));
+};
+
+const hasCompactionProvenance = (input: SessionCompactionProvenanceInput): boolean => {
+  return Boolean(
+    input.sourceProfileKey ||
+    input.compactionJobId ||
+    input.lifecycleSummary ||
+    input.artifactTargets?.length ||
+    input.sessionTimelineRelativePath ||
+    input.workingContextRelativePath ||
+    input.checkpointRelativePath
+  );
+};
+
+const buildCompactionProvenanceLines = (input: SessionCompactionProvenanceInput): string[] => {
+  const lines = [`- Operation: \`${SESSION_COMPACTION_OPERATION}\``];
+
+  if (input.sourceProfileKey) {
+    lines.push(`- Source profile: \`${input.sourceProfileKey}\``);
+  }
+  if (input.compactionJobId) {
+    lines.push(`- Compaction job: \`${input.compactionJobId}\``);
+  }
+
+  lines.push(
+    `- Artifact targets: ${normalizeSessionArtifactTargets(input.artifactTargets)
+      .map((target) => `\`${target}\``)
+      .join(', ')}`
+  );
+
+  if (input.lifecycleSummary) {
+    lines.push(`- Handoff summary: ${input.lifecycleSummary}`);
+  }
+  if (input.sessionTimelineRelativePath) {
+    lines.push(`- Session timeline: ${toWikiLink(input.sessionTimelineRelativePath, input.sessionTimelineTitle)}`);
+  }
+  if (input.workingContextRelativePath) {
+    lines.push(`- Session working context: ${toWikiLink(input.workingContextRelativePath, input.workingContextTitle)}`);
+  }
+  if (input.checkpointRelativePath) {
+    lines.push(`- Session checkpoint: ${toWikiLink(input.checkpointRelativePath, input.checkpointTitle)}`);
+  }
+
+  return lines;
 };
 
 const sanitizeSessionTitle = (value: string | undefined, fallback: string): string => {
@@ -1433,33 +1506,49 @@ const buildSessionWorkingSetDocument = (input: {
     .join('\n');
 };
 
-const buildSessionWorkingContextDocument = (input: {
-  conversation: TChatConversation;
-  project: ProjectContext | undefined;
-  space: TSpace;
-  updatedAt: string;
-  currentTask?: string;
-  stableStrategies: readonly string[];
-  failureModes: readonly string[];
-  pendingConstraints: readonly string[];
-  signalKinds: readonly string[];
-  pressure: number;
-  sourceProfileKey?: string;
-}): string => {
+const buildSessionWorkingContextDocument = (
+  input: {
+    conversation: TChatConversation;
+    project: ProjectContext | undefined;
+    space: TSpace;
+    updatedAt: string;
+    currentTask?: string;
+    stableStrategies: readonly string[];
+    failureModes: readonly string[];
+    pendingConstraints: readonly string[];
+    signalKinds: readonly string[];
+    pressure: number;
+  } & SessionCompactionProvenanceInput
+): string => {
   const sessionTitle = sanitizeSessionTitle(input.conversation.name, input.conversation.id);
+  const sessionNoteTitle = getSessionNoteTitle(sessionTitle, input.conversation.id);
   const paths = getConversationDocumentPaths(input.conversation.id, input.project?.folderName);
-
+  const provenance = {
+    sourceProfileKey: input.sourceProfileKey,
+    compactionJobId: input.compactionJobId,
+    lifecycleSummary: input.lifecycleSummary,
+    artifactTargets: input.artifactTargets,
+    sessionTimelineRelativePath: input.sessionTimelineRelativePath ?? paths.sessionRelativePath,
+    sessionTimelineTitle: input.sessionTimelineTitle ?? sessionNoteTitle,
+    workingContextRelativePath: input.workingContextRelativePath,
+    workingContextTitle: input.workingContextTitle,
+    checkpointRelativePath: input.checkpointRelativePath,
+    checkpointTitle: input.checkpointTitle,
+  };
+  const shouldRenderProvenance = hasCompactionProvenance(provenance);
+  const provenanceLines = shouldRenderProvenance ? buildCompactionProvenanceLines(provenance) : [];
   return [
     buildSessionWorkingContextFrontmatter(input.conversation, input.project, input.updatedAt),
     GENERATED_MARKER,
     `# ${getSessionWorkingContextTitle(sessionTitle)}`,
     '',
-    `- Session doc: ${toWikiLink(paths.sessionRelativePath, getSessionNoteTitle(sessionTitle, input.conversation.id))}`,
+    `- Session doc: ${toWikiLink(paths.sessionRelativePath, sessionNoteTitle)}`,
     `- Space doc: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(input.space.name))}`,
     `- Project doc: ${input.project ? toWikiLink(input.project.relativePath, getProjectNoteTitle(input.project.name)) : 'Unbound'}`,
     `- Updated at: ${input.updatedAt}`,
     input.sourceProfileKey ? `- Source profile: \`${input.sourceProfileKey}\`` : '',
     '',
+    ...(shouldRenderProvenance ? ['## Compaction Provenance', '', ...provenanceLines, ''] : []),
     '## Current Task',
     '',
     input.currentTask || 'No active task distilled yet.',
@@ -2322,6 +2411,15 @@ export class SpaceVaultContextSyncService {
       signalKinds: input.signalKinds,
       pressure: input.pressure,
       sourceProfileKey: input.sourceProfileKey,
+      compactionJobId: input.compactionJobId,
+      lifecycleSummary: input.lifecycleSummary,
+      artifactTargets: input.artifactTargets,
+      sessionTimelineRelativePath: input.sessionTimelineRelativePath,
+      sessionTimelineTitle: input.sessionTimelineTitle,
+      workingContextRelativePath: input.workingContextRelativePath,
+      workingContextTitle: input.workingContextTitle,
+      checkpointRelativePath: input.checkpointRelativePath,
+      checkpointTitle: input.checkpointTitle,
     });
 
     await ensureFile(absolutePath, nextDocument);
@@ -2345,7 +2443,23 @@ export class SpaceVaultContextSyncService {
       input.kind
     );
     const absolutePath = path.join(target.vaultPath, relativePath);
-    const content = [
+    const sessionTitle = sanitizeSessionTitle(input.conversation.name, input.conversation.id);
+    const sessionNoteTitle = getSessionNoteTitle(sessionTitle, input.conversation.id);
+    const conversationPaths = getConversationDocumentPaths(input.conversation.id, target.project?.folderName);
+    const provenance = {
+      sourceProfileKey: input.sourceProfileKey,
+      compactionJobId: input.compactionJobId,
+      lifecycleSummary: input.lifecycleSummary,
+      artifactTargets: input.artifactTargets,
+      sessionTimelineRelativePath: input.sessionTimelineRelativePath ?? conversationPaths.sessionRelativePath,
+      sessionTimelineTitle: input.sessionTimelineTitle ?? sessionNoteTitle,
+      workingContextRelativePath: input.workingContextRelativePath,
+      workingContextTitle: input.workingContextTitle,
+      checkpointRelativePath: input.checkpointRelativePath,
+      checkpointTitle: input.checkpointTitle,
+    };
+    const shouldRenderProvenance = input.kind === 'session-compaction' || hasCompactionProvenance(provenance);
+    const contentLines = [
       GENERATED_MARKER,
       '',
       `# ${input.title}`,
@@ -2354,11 +2468,14 @@ export class SpaceVaultContextSyncService {
       `- Timestamp: ${input.timestamp}`,
       '',
       input.summary,
-      '',
-      input.detail ?? '',
-    ]
-      .filter(Boolean)
-      .join('\n');
+    ];
+    if (input.detail) {
+      contentLines.push('', input.detail);
+    }
+    if (shouldRenderProvenance) {
+      contentLines.push('', '## Compaction Provenance', '', ...buildCompactionProvenanceLines(provenance));
+    }
+    const content = contentLines.join('\n');
 
     await ensureFile(absolutePath, content);
     return {

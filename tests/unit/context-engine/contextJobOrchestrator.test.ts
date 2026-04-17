@@ -24,6 +24,7 @@ describe('ContextJobOrchestrator', () => {
       threadId: 'thread-1',
       projectSlug: 'repo-1',
       source: 'runtime-hook',
+      lifecycleSummary: 'Session compaction handoff after repeated interruptions.',
       snapshot: {
         userTurns: 3,
         assistantReplies: 2,
@@ -46,6 +47,7 @@ describe('ContextJobOrchestrator', () => {
     expect(job?.payload).toEqual(
       expect.objectContaining({
         artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+        lifecycleSummary: 'Session compaction handoff after repeated interruptions.',
       })
     );
   });
