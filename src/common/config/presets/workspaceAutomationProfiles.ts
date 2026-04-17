@@ -750,9 +750,385 @@ const FINANCE_ANALYST_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
   },
 ] as const;
 
+const FIGMA_CLOSED_LOOP_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the Figma round-trip task, MCP connectivity, target file scope, and write-back risk before executing.',
+    templateOverride:
+      'Restate the Figma closed-loop task, identify whether this is a design-system sync, screen push, library sync, implementation handoff, or drift audit, confirm Figma MCP connectivity, list the target file keys, node ids, and code paths involved, and propose the smallest reversible execution path before touching any Figma file or repository asset.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify Figma write-back results, library version impact, drift status, and traceability of implementation handoff before sign-off.',
+    templateOverride:
+      'Verify the current Figma closed-loop output end to end. Re-check that the affected Figma file key and node ids match the intended scope, that no library version was bumped without consent, that drift between code and Figma is recorded, and that every Figma write or implementation handoff has a traceable record (file key, node id, code path, executor, timestamp). Summarize what is confirmed, what is still pending review, and what should be rolled back.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'figma-new-file',
+    enabled: true,
+    name: 'figma-new-file',
+    description: 'Bootstrap a new Figma file scaffold from project context with explicit ownership and intent.',
+    template:
+      'Use the `figma-file-bootstrap` skill for this request. Gather the project goal, target surface, intended owners, and naming conventions, confirm Figma MCP connectivity and write permission, then create a new Figma file scaffold with stated intent, branching policy, and a recorded link between the file key and the originating ContextGo workspace.',
+  },
+  {
+    type: 'custom',
+    id: 'figma-push-screen',
+    enabled: true,
+    name: 'figma-push-screen',
+    description: 'Push a code-side page or screen structure into a Figma file as a frame or screen draft.',
+    template:
+      'Use the `figma-screen-generate` skill for this request. Inspect the target page or screen in code, choose the right Figma file key and parent frame, translate the structural layout into Figma frames with the correct components and tokens, and report back the new node ids, the originating code path, and any structural compromises that the design team should review.',
+  },
+  {
+    type: 'custom',
+    id: 'figma-sync-library',
+    enabled: true,
+    name: 'figma-sync-library',
+    description: 'Sync project component library changes into the corresponding Figma library file.',
+    template:
+      'Use the `figma-library-sync` skill for this request. Diff the recent code-side component additions, removals, and structural changes against the linked Figma library, propose a safe library publish set, never bump library versions without explicit confirmation, and record the resolved file key, node ids, and component lineage in the closed-loop ledger.',
+  },
+  {
+    type: 'custom',
+    id: 'figma-sync-rules',
+    enabled: true,
+    name: 'figma-sync-rules',
+    description: 'Sync DESIGN.md, tokens, and theme variables into Figma design system rules.',
+    template:
+      'Use the `figma-design-system-rules-sync` skill for this request. Read the project DESIGN.md, token files, and theme variables, diff them against the existing Figma design-system rules, propose the minimal rule set to update, surface conflicts that require human judgement, and end with a clear list of what was synced, what is still pending, and what should not be synced automatically.',
+  },
+  {
+    type: 'custom',
+    id: 'figma-implement',
+    enabled: true,
+    name: 'figma-implement',
+    description: 'Generate implementation suggestions or code-change drafts from a Figma node, frame, or page.',
+    template:
+      'Use the `figma-implementation-handoff` skill for this request. Validate the supplied Figma URL, file key, and node id, fetch the structural and token information through Figma MCP, map the design intent to existing code patterns, and produce an implementation suggestion or scoped code-change draft with explicit assumptions, missing-token callouts, and a reviewable handoff record.',
+  },
+  {
+    type: 'custom',
+    id: 'figma-audit-drift',
+    enabled: true,
+    name: 'figma-audit-drift',
+    description: 'Audit drift between code-side design system and Figma design system, then output a remediation plan.',
+    template:
+      'Use the `figma-drift-audit` skill for this request. Compare tokens, components, library version, and screen structure between the code-side design system and the linked Figma files, classify each drift item by severity and direction (code-only, figma-only, divergent), and end with a remediation plan that distinguishes auto-syncable items from items that require explicit design or engineering review.',
+  },
+] as const;
+
 const EMPTY_SCHEDULE_SEED: WorkspaceAutomationScheduleSeed = {
   conversationSchedules: [],
 };
+
+const MARKETING_CREATIVE_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the campaign objective, brand context state, audience, channels, and constraints before producing creatives.',
+    templateOverride:
+      'Restate the marketing task, identify the campaign objective, target audience, channels, and locales, separate brand facts from assumptions, and propose the shortest reliable path before generating any creative output.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify brand consistency, platform spec compliance, copy claims, and review gates before delivery.',
+    templateOverride:
+      'Verify the current campaign deliverable end to end. Re-check brand context alignment, theme pack consistency, per-platform spec compliance, copy claim substantiation, banned-term and mandatory-phrase coverage, locale variant integrity, and unresolved review gates. Summarize what is grounded, what is assumed, and what still needs operator or legal confirmation.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'marketing-normalize-brand',
+    enabled: true,
+    name: 'normalize-brand',
+    description:
+      'Normalize raw brand handbooks, official sites, and reference assets into a stable brand context object.',
+    template:
+      'Use the `marketing-context-normalizer` skill for this request. Inventory and categorize every brand source, distill identity, channel preferences, copy rules, visual primitives, and compliance markers, write the result back into `docs/brand/`, and surface unresolved gaps the operator still needs to confirm.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-build-theme',
+    enabled: true,
+    name: 'build-theme-pack',
+    description:
+      'Build a reusable brand theme pack or campaign theme overlay grounded in the normalized brand context.',
+    template:
+      'Use the `brand-theme-pack` and `marketing-context-normalizer` skills for this request. Decide whether the pack is a base theme or a campaign overlay, assemble palette, typography, motif, composition, and treatment rules from the brand context, map the theme to prioritized channels, write the pack into `docs/brand/themes/<theme-id>/`, and stamp every file with the brand context version.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-generate-ad-creative',
+    enabled: true,
+    name: 'generate-ad-creative',
+    description: 'Generate paid-ad creative variants sized to platform specs from the brand theme pack and brief.',
+    template:
+      'Use the `ad-creative-builder` and `brand-theme-pack` skills for this request. Confirm the brand context, theme pack, campaign brief, and target channels first, decide the variant matrix, look up per-channel platform specs and tone, generate creative variants for each placement, apply per-vertical recipes when relevant, and flag claims needing proof and compliance gates needing legal review.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-generate-social-batch',
+    enabled: true,
+    name: 'generate-social-batch',
+    description: 'Generate organic social asset batches across channels with per-platform tone and format.',
+    template:
+      'Use the `social-asset-batch` and `brand-theme-pack` skills for this request. Confirm inputs, decide the batch matrix, plan per-channel format from platform specs and channel tone, generate post variants with hook, caption, hashtags, visual direction, and alt text, sequence the batch by platform priority and stage, and flag review gates the operator must clear before publish.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-pair-visual-copy',
+    enabled: true,
+    name: 'pair-visual-copy',
+    description: 'Pair visual direction and copy into structured deliverables (PDP, email, one-pager, hero KV pack).',
+    template:
+      'Use the `visual-copy-pairing` and `brand-theme-pack` skills for this request. Pick the module sequence for the surface type, decide claim, body, proof, hero direction, composition, and CTA together per module, resolve hierarchy and the single primary CTA, write the deliverable into `docs/campaigns/<campaign-id>/visual-copy/`, and flag any claims still needing proof or compliance review.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-generate-variant-set',
+    enabled: true,
+    name: 'generate-variant-set',
+    description:
+      'Expand an approved campaign deliverable into a structured variant matrix across the axes the brief declares.',
+    template:
+      'Use the `campaign-variant-generator` skill for this request. Confirm the approved source deliverable and declared axis scope, decide the variant matrix without multiplying axes blindly, generate per-cell variants with explicit source deltas, mark stale variants when the source moved, prefer per-vertical breakdowns when applicable, and flag locale and compliance review gates.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-review-campaign',
+    enabled: true,
+    name: 'review-campaign',
+    description:
+      'Run the marketing review checklist on the current campaign batch before handing assets off for publish.',
+    template:
+      'Walk through `docs/review-checklist.md` for the current campaign batch. Re-check brand alignment, claim substantiation, platform spec compliance, accessibility, banned-term coverage, mandatory-phrase coverage, locale variant integrity, and compliance overlays for regulated categories. End with a clear pass/blocked verdict, the issues that must be fixed before publish, and the items that should route to legal or native review.',
+  },
+] as const;
+
+const MOTION_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the motion brief, channel targets, narrative arc, and reusable assets before scripting any scene.',
+    templateOverride:
+      'Restate the motion task, identify the channel formats and durations involved, separate hard brand or compliance constraints from creative preferences, and propose the shortest credible storyboard-first workflow before drafting scenes or render configs.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify storyboard fidelity, render integrity, captioning, and channel-format compliance before publishing.',
+    templateOverride:
+      'Verify the current motion deliverable end to end. Re-check storyboard intent versus rendered output, scene timing, transition continuity, audio and subtitle sync, channel-format compliance, and contact-sheet sampling. Summarize what is locked, what still needs a re-render, and what blocks a confident publish decision.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'motion-storyboard-video',
+    enabled: true,
+    name: 'storyboard-video',
+    description: 'Translate a motion brief into a code-driven storyboard with scenes, beats, and channel cutdowns.',
+    template:
+      'Use the `motion-storyboard` skill for this request. Clarify the motion goal, audience, channel formats, and brand guardrails first, then produce a storyboard with explicit scenes, beats, transitions, audio cues, and reusable scene recipes ready to feed into the render pipeline.',
+  },
+  {
+    type: 'custom',
+    id: 'motion-build-poster',
+    enabled: true,
+    name: 'build-motion-poster',
+    description: 'Compose a motion poster with a single dominant idea, looping motion, and channel-ready exports.',
+    template:
+      'Use the `motion-poster-builder` and `motion-scene-builder` skills for this request. Lock the dominant message and channel placements first, design a single-scene motion poster with looping or short-form motion, define the variant matrix (vertical, square, banner) needed, and prepare the render config so the poster can be exported consistently across required formats.',
+  },
+  {
+    type: 'custom',
+    id: 'motion-render-video',
+    enabled: true,
+    name: 'render-video',
+    description: 'Drive a storyboard through the code-driven render pipeline and produce review-ready MP4 outputs.',
+    template:
+      'Use the `motion-render-ops` and `motion-scene-builder` skills for this request. Validate the storyboard and scene inputs first, generate a reproducible render config, run the code-driven motion pipeline, capture render logs, and emit MP4 outputs plus a contact sheet that maps each scene to a render frame for review.',
+  },
+  {
+    type: 'custom',
+    id: 'motion-render-social-cut',
+    enabled: true,
+    name: 'render-social-cut',
+    description: 'Re-cut an existing motion render into platform-specific social cutdowns with caption variants.',
+    template:
+      'Use the `motion-render-ops` and `motion-poster-builder` skills for this request. Identify the source render and target platforms first, plan the cutdown durations and aspect-ratio variants, regenerate scene timing where needed, run the social-cut render pipeline, and emit per-platform MP4s with the correct caption and end-card treatment.',
+  },
+  {
+    type: 'custom',
+    id: 'motion-qc-pass',
+    enabled: true,
+    name: 'motion-qc',
+    description:
+      'Run a structured QC pass on rendered motion assets, then return prioritized fixes and rerun guidance.',
+    template:
+      'Use the `motion-qc` and `motion-render-ops` skills for this request. Sample the contact sheet and key frames first, score the render against the QC rubric (timing, brand, audio, captioning, channel compliance), separate must-fix issues from polish notes, and end with a clear rerun plan or sign-off recommendation.',
+  },
+] as const;
+
+const VISUAL_ARTIFACT_RUNNER_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the visual artifact request, classify the input shape, target artifact type, and audience before drafting.',
+    templateOverride:
+      'Restate the artifact request, identify the input shape (brief, report, PDF, structured data, theme override), the target artifact type (deck, PDF, infographic, handout), and the audience constraints, then propose the shortest credible execution path before generating the artifact.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify the produced artifact against pre-export and post-export QC checks, and surface any blocked failures or theme drift.',
+    templateOverride:
+      'Verify the produced visual artifact end to end using the artifact-qc skill. Re-run pre-export checks (font, image, overflow, hierarchy, theme tokens), refresh build-notes.md, assets.json, and failures.json, and call out any blocked failures, warnings, or theme drift before the artifact is shipped.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'var-deck-from-brief',
+    enabled: true,
+    name: 'deck-from-brief',
+    description: 'Turn a brief into a deck artifact with normalized inputs, recipe, theme, build note, and QC.',
+    template:
+      'Use the `deck-from-brief` skill for this request. Normalize the brief, choose the smallest deck recipe that still expresses every key message, apply the theme, default to the pptx-static export mode, and produce the artifact alongside build-notes.md, assets.json, and failures.json. Hand off to morph-ppt only when narrative motion is explicitly required.',
+  },
+  {
+    type: 'custom',
+    id: 'var-deck-from-pdf',
+    enabled: true,
+    name: 'deck-from-pdf',
+    description: 'Convert a PDF into a deck, choosing summary distillation or visual reconstruction with QC.',
+    template:
+      'Use the `pdf-to-deck` skill for this request. Classify the PDF as summary distillation or visual reconstruction first, record the decision in build-notes.md, extract content with citations, choose the recipe and theme, default to the pptx-static export mode, and produce the artifact alongside build-notes.md, assets.json, and failures.json.',
+  },
+  {
+    type: 'custom',
+    id: 'var-artifact-infographic',
+    enabled: true,
+    name: 'artifact-infographic',
+    description: 'Turn a report or structured data input into an infographic with chart-family discipline.',
+    template:
+      'Use the `report-to-infographic` skill for this request. Detect the dominant data shape, choose the matching infographic recipe, apply the theme, default to the infographic export mode, run pre-export QC with attention to chart overflow and label legibility, and emit build-notes.md, assets.json, and failures.json.',
+  },
+  {
+    type: 'custom',
+    id: 'var-artifact-theme',
+    enabled: true,
+    name: 'artifact-theme',
+    description: 'Apply or refresh a visual theme on an existing artifact spec without changing its recipe.',
+    template:
+      'Use the `deck-theme-apply` skill for this request. Validate the existing artifact spec carries a recipe, resolve the new theme tokens, apply them without touching content, re-run pre-export QC, re-export in the original mode, and update build-notes.md, assets.json, and failures.json with the prior theme id, the new theme id, and any QC findings introduced by the theme change.',
+  },
+  {
+    type: 'custom',
+    id: 'var-artifact-qc',
+    enabled: true,
+    name: 'artifact-qc',
+    description: 'Run pre-export and post-export QC on a produced artifact and report blocked failures and drift.',
+    template:
+      'Use the `artifact-qc` skill for this request. Inspect the artifact, run the relevant pre-export and post-export checks from the visual-artifact-runner package, refresh build-notes.md, assets.json, and failures.json, and return a concise QC report listing block failures, warnings, and any theme or recipe drift.',
+  },
+] as const;
 
 const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
   AgentPackageWorkspaceAutomationProfile,
@@ -778,6 +1154,11 @@ const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
     commandSeeds: DESIGN_DIRECTOR_COMMAND_SEEDS,
     scheduleSeed: EMPTY_SCHEDULE_SEED,
   },
+  'figma-closed-loop': {
+    label: 'Figma Closed Loop',
+    commandSeeds: FIGMA_CLOSED_LOOP_COMMAND_SEEDS,
+    scheduleSeed: EMPTY_SCHEDULE_SEED,
+  },
   'pm-workbench': {
     label: 'PM Workbench',
     commandSeeds: PM_WORKBENCH_COMMAND_SEEDS,
@@ -791,6 +1172,21 @@ const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
   'finance-analyst': {
     label: 'Finance Analyst',
     commandSeeds: FINANCE_ANALYST_COMMAND_SEEDS,
+    scheduleSeed: EMPTY_SCHEDULE_SEED,
+  },
+  'marketing-creative-studio': {
+    label: 'Marketing Creative Studio',
+    commandSeeds: MARKETING_CREATIVE_STUDIO_COMMAND_SEEDS,
+    scheduleSeed: EMPTY_SCHEDULE_SEED,
+  },
+  'motion-studio': {
+    label: 'Motion Studio',
+    commandSeeds: MOTION_STUDIO_COMMAND_SEEDS,
+    scheduleSeed: EMPTY_SCHEDULE_SEED,
+  },
+  'visual-artifact-runner': {
+    label: 'Visual Artifact Runner',
+    commandSeeds: VISUAL_ARTIFACT_RUNNER_COMMAND_SEEDS,
     scheduleSeed: EMPTY_SCHEDULE_SEED,
   },
 };

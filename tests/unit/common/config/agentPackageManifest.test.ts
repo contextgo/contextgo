@@ -149,8 +149,66 @@ describe('agent-package manifests', () => {
     expect(manifest.payloads.schedules).toBeUndefined();
   });
 
+  it('ships a marketing creative package with campaign automation and brand-oriented workspace scaffold', () => {
+    const manifest = readManifest('src/process/resources/assistant/creative/marketing-creative-studio');
+
+    expect(manifest.payloads.skills?.packagedSkillNames).toEqual([
+      'marketing-context-normalizer',
+      'brand-theme-pack',
+      'ad-creative-builder',
+      'social-asset-batch',
+      'visual-copy-pairing',
+      'campaign-variant-generator',
+    ]);
+    expect(manifest.payloads.commands?.workspaceAutomationProfile).toBe('marketing-creative-studio');
+    expect(manifest.payloads.schedules?.workspaceAutomationProfile).toBe('marketing-creative-studio');
+    expect(
+      manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/brand/README.md')
+    ).toBe(true);
+    expect(
+      manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/campaigns/README.md')
+    ).toBe(true);
+    expect(
+      manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/assets/README.md')
+    ).toBe(true);
+  });
+
+  it('ships a Figma round-trip skill set and figma-closed-loop automation profile', () => {
+    const manifest = readManifest('src/process/resources/assistant/design/figma-closed-loop');
+
+    expect(manifest.payloads.skills?.packagedSkillNames).toEqual([
+      'figma-file-bootstrap',
+      'figma-screen-generate',
+      'figma-library-sync',
+      'figma-design-system-rules-sync',
+      'figma-implementation-handoff',
+      'figma-drift-audit',
+    ]);
+    expect(manifest.payloads.skills?.hidePackageOwnedSkillsFromLibrary).toBe(true);
+    expect(manifest.payloads.commands?.workspaceAutomationProfile).toBe('figma-closed-loop');
+    expect(manifest.payloads.schedules?.workspaceAutomationProfile).toBe('figma-closed-loop');
+  });
+
   it('ships specialized workspace scaffold templates for non-engineering builtin assistants', () => {
     const cases = [
+      {
+        resourceDir: 'src/process/resources/assistant/creative/marketing-creative-studio',
+        expectedTargets: ['AGENTS.md', 'docs/brand/README.md', 'docs/campaigns/README.md', 'docs/assets/README.md'],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/creative/motion-studio',
+        expectedTargets: [
+          'AGENTS.md',
+          'docs/storyboards/README.md',
+          'docs/scenes/README.md',
+          'docs/renders/README.md',
+          'docs/qc/README.md',
+        ],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/creative/visual-artifact-runner',
+        expectedTargets: ['AGENTS.md', 'docs/inputs/README.md', 'docs/recipes/README.md', 'docs/exports/README.md'],
+      },
       {
         resourceDir: 'src/process/resources/assistant/startup/startup-strategist',
         expectedTargets: ['AGENTS.md', 'docs/ideas/README.md', 'docs/market/README.md', 'docs/strategy/README.md'],
@@ -162,6 +220,16 @@ describe('agent-package manifests', () => {
           'docs/direction/README.md',
           'docs/references/README.md',
           'docs/handoff/README.md',
+        ],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/design/figma-closed-loop',
+        expectedTargets: [
+          'AGENTS.md',
+          'docs/files/README.md',
+          'docs/sync/README.md',
+          'docs/handoff/README.md',
+          'docs/drift/README.md',
         ],
       },
       {
@@ -200,6 +268,32 @@ describe('agent-package manifests', () => {
       for (const expectedTarget of testCase.expectedTargets) {
         expect(scaffold?.templates?.some((template) => template.target === expectedTarget)).toBe(true);
       }
+    }
+  });
+
+  it('keeps visual artifact runner skill payload package-local and complete', () => {
+    const manifest = readManifest('src/process/resources/assistant/creative/visual-artifact-runner');
+    const skillsPayload = manifest.payloads.skills;
+
+    expect(skillsPayload).toBeDefined();
+    expect(skillsPayload?.sources).toEqual([{ kind: 'package-relative', root: 'skills' }]);
+    expect(skillsPayload?.packagedSkillNames).toEqual([
+      'deck-from-brief',
+      'deck-from-report',
+      'pdf-to-deck',
+      'report-to-infographic',
+      'deck-theme-apply',
+      'artifact-qc',
+    ]);
+
+    for (const skillName of skillsPayload?.packagedSkillNames ?? []) {
+      const skillFile = path.join(
+        REPO_ROOT,
+        'src/process/resources/assistant/creative/visual-artifact-runner/skills',
+        skillName,
+        'SKILL.md'
+      );
+      expect(fs.existsSync(skillFile), `Missing packaged visual artifact skill: ${skillFile}`).toBe(true);
     }
   });
 });

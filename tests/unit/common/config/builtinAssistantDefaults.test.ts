@@ -18,6 +18,14 @@ import {
 import { describe, expect, it } from 'vitest';
 
 const DESIGN_DIRECTOR_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-design-director')!;
+const FIGMA_CLOSED_LOOP_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-figma-closed-loop')!;
+const MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-marketing-creative-studio'
+)!;
+const MOTION_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-motion-studio')!;
+const VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-visual-artifact-runner'
+)!;
 const STARTUP_STRATEGIST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-startup-strategist')!;
 const OFFICE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-office-analyst')!;
 const FINANCE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-finance-analyst')!;
@@ -36,12 +44,24 @@ describe('builtinAssistantDefaults', () => {
     const financeAssistant = assistants.find((assistant) => assistant.id === 'builtin-finance-analyst');
     const officeAssistant = assistants.find((assistant) => assistant.id === 'builtin-office-analyst');
     const codingGuardAssistant = assistants.find((assistant) => assistant.id === 'builtin-karpathy-coding-guard');
+    const figmaClosedLoopAssistant = assistants.find((assistant) => assistant.id === 'builtin-figma-closed-loop');
+    const marketingCreativeStudioAssistant = assistants.find(
+      (assistant) => assistant.id === 'builtin-marketing-creative-studio'
+    );
+    const motionAssistant = assistants.find((assistant) => assistant.id === 'builtin-motion-studio');
+    const visualArtifactRunnerAssistant = assistants.find(
+      (assistant) => assistant.id === 'builtin-visual-artifact-runner'
+    );
 
-    expect(assistants).toHaveLength(9);
+    expect(assistants).toHaveLength(13);
     expect(assistants.map((assistant) => assistant.id)).toEqual([
       'builtin-morph-ppt',
       'builtin-startup-strategist',
       'builtin-design-director',
+      'builtin-figma-closed-loop',
+      'builtin-marketing-creative-studio',
+      'builtin-motion-studio',
+      'builtin-visual-artifact-runner',
       'builtin-pm-workbench',
       'builtin-office-analyst',
       'builtin-finance-analyst',
@@ -93,6 +113,117 @@ describe('builtinAssistantDefaults', () => {
         'design-system-adaptation',
         'design-component-visual-spec',
         'design-handoff-brief',
+      ])
+    );
+    expect(figmaClosedLoopAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...FIGMA_CLOSED_LOOP_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Design Execution',
+          'zh-CN': '设计执行闭环',
+        },
+        harnessTagI18n: {
+          'en-US': 'Figma Closed Loop',
+          'zh-CN': 'Figma Closed Loop',
+        },
+      })
+    );
+    expect(figmaClosedLoopAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'figma-file-bootstrap',
+        'figma-screen-generate',
+        'figma-library-sync',
+        'figma-design-system-rules-sync',
+        'figma-implementation-handoff',
+        'figma-drift-audit',
+      ])
+    );
+    expect(marketingCreativeStudioAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Marketing & Creative',
+          'zh-CN': '市场与创意',
+        },
+        harnessTagI18n: {
+          'en-US': 'Marketing Creative Studio',
+          'zh-CN': 'Marketing Creative Studio',
+        },
+      })
+    );
+    expect(marketingCreativeStudioAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'marketing-context-normalizer',
+        'brand-theme-pack',
+        'ad-creative-builder',
+        'social-asset-batch',
+        'visual-copy-pairing',
+        'campaign-variant-generator',
+      ])
+    );
+    expect(motionAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...MOTION_STUDIO_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Motion and Video',
+          'zh-CN': '动效与视频',
+        },
+        harnessTagI18n: {
+          'en-US': 'Motion Studio',
+          'zh-CN': 'Motion Studio',
+        },
+      })
+    );
+    expect(motionAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'motion-storyboard',
+        'motion-scene-builder',
+        'motion-poster-builder',
+        'motion-render-ops',
+        'motion-qc',
+      ])
+    );
+    expect(visualArtifactRunnerAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Visual Artifacts',
+          'zh-CN': '视觉产物',
+        },
+        harnessTagI18n: {
+          'en-US': 'Visual Artifact Runner',
+          'zh-CN': 'Visual Artifact Runner',
+        },
+      })
+    );
+    expect(visualArtifactRunnerAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'deck-from-brief',
+        'deck-from-report',
+        'pdf-to-deck',
+        'report-to-infographic',
+        'deck-theme-apply',
+        'artifact-qc',
       ])
     );
     expect(startupAssistant).toEqual(
@@ -310,6 +441,18 @@ describe('builtinAssistantDefaults', () => {
     expect(resolveBuiltinAssistantEnabledSkills('builtin-morph-ppt', undefined)).toEqual(['morph-ppt']);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-design-director', undefined)).toEqual([
       ...DESIGN_DIRECTOR_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-figma-closed-loop', undefined)).toEqual([
+      ...FIGMA_CLOSED_LOOP_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-marketing-creative-studio', undefined)).toEqual([
+      ...MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-motion-studio', undefined)).toEqual([
+      ...MOTION_STUDIO_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-visual-artifact-runner', undefined)).toEqual([
+      ...VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS,
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-startup-strategist', undefined)).toEqual([
       ...STARTUP_STRATEGIST_DEFAULT_SKILLS,

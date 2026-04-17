@@ -133,6 +133,49 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
+    id: 'figma-closed-loop',
+    avatar: '\u{1F517}',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Figma Closed Loop',
+      'zh-CN': 'Figma Closed Loop',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Design Execution',
+      'zh-CN': '设计执行闭环',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want Figma file ledger entries, sync notes, implementation handoff records, and drift reports written back into the project folder.',
+      'zh-CN':
+        '如果希望把 Figma 文件台账、同步记录、实现交付记录和 drift 报告直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Figma Closed Loop',
+      'zh-CN': 'Figma Closed Loop',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A built-in design-execution assistant that closes the code <-> Figma <-> code loop. Generates Figma files and screens from project context, syncs design system rules and component libraries into Figma, produces implementation suggestions from Figma nodes, and audits drift between code and Figma.',
+      'zh-CN':
+        '面向 code <-> Figma <-> code 真正闭环的内置助手，用于从项目上下文生成 Figma 文件和 screen、把设计系统规则与组件库同步到 Figma、基于 Figma node 反向生成实现建议，并周期性审计代码系统与 Figma 系统之间的 drift。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Push this page structure into Figma as a frame and record the new node ids',
+        'Sync the recent component library changes into the linked Figma library, but do not publish yet',
+        'Generate an implementation suggestion from this Figma node, with explicit assumptions and missing tokens',
+        'Audit the drift between this design system and the linked Figma file, then propose a remediation plan',
+      ],
+      'zh-CN': [
+        '把这个页面结构推到 Figma 里作为一个 frame，并记录新生成的 node id',
+        '把最近的组件库改动同步到关联的 Figma library 里，先不要 publish',
+        '基于这个 Figma node 生成一份实现建议，明确列出假设和缺失的 token',
+        '审计一下这套设计系统与关联 Figma 文件之间的 drift，并给出整改方案',
+      ],
+    },
+  },
+  {
     id: 'marketing-creative-studio',
     avatar: '\u{1F4E3}',
     presetAgentType: 'codex',
@@ -172,6 +215,90 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
         '把这份活动 brief 拆成各平台尺寸和语气都对的广告 KV 批量产出',
         '为 Instagram、TikTok、LinkedIn 规划一周的自然流量内容批量，并保持品牌口吻一致',
         '把这版已通过的主 KV 按 locale、人群和阶段展开成电商上新需要的变体矩阵',
+      ],
+    },
+  },
+  {
+    id: 'motion-studio',
+    avatar: '\u{1F3AC}',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Motion Studio',
+      'zh-CN': 'Motion Studio',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Motion and Video',
+      'zh-CN': '动效与视频',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want storyboards, render configs, contact sheets, and QC reports for motion artifacts written back into the project folder.',
+      'zh-CN':
+        '如果希望把 storyboard、render config、contact sheet 和动效 QC 报告直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Motion Studio',
+      'zh-CN': 'Motion Studio',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A built-in motion-execution assistant for storyboarding videos, motion posters, product demo cuts, and social cutdowns, then driving them through a reproducible code-driven render pipeline with QC, contact sheets, and rerun guidance.',
+      'zh-CN':
+        '面向视频与动效执行的内置助手，用于编写 storyboard、规划镜头与转场，再通过 code-driven 的 render 流程批量产出动效海报、产品演示短片、活动预热视频和社媒 cutdown，并配合 QC 与抽帧审阅形成可复现的产线。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Plan a storyboard for this product launch video and prepare multiple social cutdown sizes',
+        'Build a motion poster for this campaign and run it through QC before we publish',
+        'Re-render this storyboard with the updated assets and produce a contact sheet for review',
+      ],
+      'zh-CN': [
+        '为这次产品发布做一版 storyboard，并准备多种社媒 cutdown 尺寸',
+        '为这次活动做一版动效海报，并跑一遍 QC 再发布',
+        '用更新后的素材重新渲染这版 storyboard，并产出一份 contact sheet 供审稿',
+      ],
+    },
+  },
+  {
+    id: 'visual-artifact-runner',
+    avatar: '\u{1F5BC}\uFE0F',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Visual Artifact Runner',
+      'zh-CN': 'Visual Artifact Runner',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Visual Artifacts',
+      'zh-CN': '视觉产物',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want generated decks, PDFs, infographics, build notes, and asset manifests saved into the working folder.',
+      'zh-CN':
+        '如果希望把生成的 deck、PDF、信息图、build-notes 和资产清单直接保存到工作目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Visual Artifact Runner',
+      'zh-CN': 'Visual Artifact Runner',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A runtime-neutral visual artifact assistant for turning briefs, reports, PDFs, and structured data into decks, infographics, and handouts with normalized inputs, layout recipes, theme application, export modes, and built-in QC.',
+      'zh-CN':
+        '运行时中立的视觉产物助手，用于把 brief、报告、PDF 和结构化数据转成 deck、信息图与 handout，覆盖输入归一化、布局 recipe、主题应用、导出模式与内置 QC。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Turn this brief into a polished deck artifact with explicit recipe, theme, and QC notes',
+        'Convert this PDF into a deck, pick summary distillation or visual reconstruction with reasoning',
+        'Generate an infographic from this report with chart-family discipline and pre-export QC',
+        'Apply a new theme to this artifact spec without changing its recipe and re-run QC',
+      ],
+      'zh-CN': [
+        '把这份 brief 做成一份完整的 deck，要有 recipe、主题和 QC 说明',
+        '把这份 PDF 转成 deck，并显式判断走 summary distillation 还是 visual reconstruction',
+        '基于这份报告生成一张信息图，遵守 chart-family 纪律并跑完 pre-export QC',
+        '在不改动 recipe 的前提下，给这个 artifact spec 应用一个新主题并重跑 QC',
       ],
     },
   },

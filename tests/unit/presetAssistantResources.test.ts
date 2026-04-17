@@ -15,6 +15,14 @@ import {
 } from '../../src/common/config/presets/bundledAgentPackageRegistry';
 
 const DESIGN_DIRECTOR_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-design-director')!;
+const FIGMA_CLOSED_LOOP_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-figma-closed-loop')!;
+const MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-marketing-creative-studio'
+)!;
+const MOTION_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-motion-studio')!;
+const VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-visual-artifact-runner'
+)!;
 const STARTUP_STRATEGIST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-startup-strategist')!;
 const OFFICE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-office-analyst')!;
 const FINANCE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-finance-analyst')!;
@@ -224,6 +232,114 @@ describe('loadPresetAssistantResources', () => {
       rules: 'builtin rules',
       skills: '',
       enabledSkills: [...DESIGN_DIRECTOR_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to builtin figma closed loop preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-figma-closed-loop',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...FIGMA_CLOSED_LOOP_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to builtin marketing creative preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-marketing-creative-studio',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to builtin motion preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-motion-studio',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...MOTION_STUDIO_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to builtin visual-artifact-runner preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-visual-artifact-runner',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS],
       enabledHooks: undefined,
     });
   });

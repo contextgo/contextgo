@@ -327,6 +327,26 @@ describe('initAgent — skill support', () => {
     fileContents[
       `${repoRoot}/src/process/resources/assistant/design/design-director/workspace/docs/handoff/README.md`
     ] = '# Design Handoff\n';
+    fileContents[`${repoRoot}/src/process/resources/assistant/creative/visual-artifact-runner/workspace/AGENTS.md`] =
+      '# Workspace Instructions\n\n' +
+      "This workspace was initialized for ContextGo's built-in **Visual Artifact Runner** assistant.\n\n" +
+      'Use this file as the visual artifact entry point for workspace guidance. Keep it concise and route detailed work into `docs/`.\n\n' +
+      '## Context Routing\n\n' +
+      '- Read `docs/inputs/README.md` for normalized brief, report, PDF, and data input conventions.\n' +
+      '- Read `docs/recipes/README.md` for layout recipe and theme decisions.\n' +
+      '- Read `docs/exports/README.md` for export modes and output locations.\n';
+    fileContents[
+      `${repoRoot}/src/process/resources/assistant/creative/visual-artifact-runner/workspace/docs/README.md`
+    ] = '# Workspace Docs\n\n' + 'This folder stores progressive-disclosure context for **Visual Artifact Runner**.\n';
+    fileContents[
+      `${repoRoot}/src/process/resources/assistant/creative/visual-artifact-runner/workspace/docs/inputs/README.md`
+    ] = '# Inputs\n\nRecord the input shape and normalization decisions.\n';
+    fileContents[
+      `${repoRoot}/src/process/resources/assistant/creative/visual-artifact-runner/workspace/docs/recipes/README.md`
+    ] = '# Recipes\n\nTrack layout recipes and recipe-version decisions.\n';
+    fileContents[
+      `${repoRoot}/src/process/resources/assistant/creative/visual-artifact-runner/workspace/docs/exports/README.md`
+    ] = '# Exports\n\nTrack export modes, output paths, and QC artifacts.\n';
     fileContents[`${repoRoot}/src/process/resources/assistant/product/pm-workbench/workspace/AGENTS.md`] =
       '# Workspace Instructions\n\n' +
       "This workspace was initialized for ContextGo's built-in **PM Workbench** assistant.\n\n" +
@@ -784,9 +804,7 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['pptx'],
       });
 
-      const runtimePolicyCall = writeFileCalls.find(
-        (call) => call.path === '/tmp/workspace/.contextgo/runtime.json'
-      );
+      const runtimePolicyCall = writeFileCalls.find((call) => call.path === '/tmp/workspace/.contextgo/runtime.json');
       expect(runtimePolicyCall).toBeDefined();
       expect(runtimePolicyCall?.content).toContain('"mode": "auto"');
     });
@@ -959,6 +977,16 @@ describe('initAgent — skill support', () => {
             { path: '/tmp/design-workspace/docs/direction/README.md', keyword: 'Visual Direction' },
             { path: '/tmp/design-workspace/docs/references/README.md', keyword: 'Reference Intake' },
             { path: '/tmp/design-workspace/docs/handoff/README.md', keyword: 'Design Handoff' },
+          ],
+        },
+        {
+          presetAssistantId: 'builtin-visual-artifact-runner',
+          workspace: '/tmp/visual-artifact-workspace',
+          displayName: 'Visual Artifact Runner',
+          topicDocs: [
+            { path: '/tmp/visual-artifact-workspace/docs/inputs/README.md', keyword: 'input shape' },
+            { path: '/tmp/visual-artifact-workspace/docs/recipes/README.md', keyword: 'layout recipes' },
+            { path: '/tmp/visual-artifact-workspace/docs/exports/README.md', keyword: 'export modes' },
           ],
         },
         {

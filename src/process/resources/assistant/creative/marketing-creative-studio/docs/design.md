@@ -42,17 +42,17 @@ Each generation flow passes through these layers in order. Skipping a layer is a
 
 ## Differentiation From Design Director
 
-| Concern                                          | Marketing Creative Studio | Design Director                  |
-| ------------------------------------------------ | ------------------------- | -------------------------------- |
-| Paid ad creatives across networks                | Owned                     | Out of scope                     |
-| Social content batches                           | Owned                     | Out of scope                     |
-| Ecommerce KV, banner, selling-point images       | Owned                     | Out of scope                     |
-| Presales one-pager / overview visuals            | Owned                     | Out of scope                     |
-| Product UI design direction                      | Routes back               | Owned                            |
-| Screenshot critique                              | Routes back               | Owned                            |
-| Design-system distillation                       | Routes back               | Owned                            |
-| Frontend implementation handoff                  | Routes back               | Owned                            |
-| Brand identity normalization for marketing surfaces | Owned                  | Co-owned for product surfaces    |
+| Concern                                             | Marketing Creative Studio | Design Director               |
+| --------------------------------------------------- | ------------------------- | ----------------------------- |
+| Paid ad creatives across networks                   | Owned                     | Out of scope                  |
+| Social content batches                              | Owned                     | Out of scope                  |
+| Ecommerce KV, banner, selling-point images          | Owned                     | Out of scope                  |
+| Presales one-pager / overview visuals               | Owned                     | Out of scope                  |
+| Product UI design direction                         | Routes back               | Owned                         |
+| Screenshot critique                                 | Routes back               | Owned                         |
+| Design-system distillation                          | Routes back               | Owned                         |
+| Frontend implementation handoff                     | Routes back               | Owned                         |
+| Brand identity normalization for marketing surfaces | Owned                     | Co-owned for product surfaces |
 
 If a request mixes product UI design with marketing visual work, the package should split the work and explicitly route the product UI side to Design Director.
 
