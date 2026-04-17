@@ -191,13 +191,12 @@ jobs:
 
           if [ "${manual_count}" -eq 3 ]; then
             CERT_PATH="${RUNNER_TEMP}/contextgo-ios-build.p12"
-            PROFILE_DIR="${HOME}/Library/MobileDevice/Provisioning Profiles"
-            PROFILE_PATH="${PROFILE_DIR}/contextgo.mobileprovision"
+            PROFILE_STAGING_PATH="${RUNNER_TEMP}/contextgo.mobileprovision"
+            PROFILE_DIR="${HOME}/Library/Developer/Xcode/UserData/Provisioning Profiles"
             PROFILE_PLIST="${RUNNER_TEMP}/contextgo.mobileprovision.plist"
 
             echo "${IOS_BUILD_CERTIFICATE_BASE64}" | base64 --decode > "${CERT_PATH}"
-            mkdir -p "${PROFILE_DIR}"
-            echo "${IOS_BUILD_PROVISION_PROFILE_BASE64}" | base64 --decode > "${PROFILE_PATH}"
+            echo "${IOS_BUILD_PROVISION_PROFILE_BASE64}" | base64 --decode > "${PROFILE_STAGING_PATH}"
 
             security create-keychain -p "${KEYCHAIN_PASSWORD}" build-ios.keychain
             security default-keychain -s build-ios.keychain
@@ -205,14 +204,19 @@ jobs:
             security import "${CERT_PATH}" -k build-ios.keychain -P "${IOS_P12_PASSWORD}" -T /usr/bin/codesign -T /usr/bin/security
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" build-ios.keychain
 
-            security cms -D -i "${PROFILE_PATH}" > "${PROFILE_PLIST}"
+            security cms -D -i "${PROFILE_STAGING_PATH}" > "${PROFILE_PLIST}"
             PROFILE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :Name' "${PROFILE_PLIST}")"
             PROFILE_UUID="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "${PROFILE_PLIST}")"
+            PROFILE_PATH="${PROFILE_DIR}/${PROFILE_UUID}.mobileprovision"
+
+            mkdir -p "${PROFILE_DIR}"
+            cp "${PROFILE_STAGING_PATH}" "${PROFILE_PATH}"
 
             echo "manual=true" >> "$GITHUB_OUTPUT"
             echo "code_sign_style=Manual" >> "$GITHUB_OUTPUT"
             echo "profile_name=${PROFILE_NAME}" >> "$GITHUB_OUTPUT"
             echo "profile_uuid=${PROFILE_UUID}" >> "$GITHUB_OUTPUT"
+            echo "profile_path=${PROFILE_PATH}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -355,7 +359,11 @@ jobs:
       - name: Clean up iOS signing inputs
         if: always()
         shell: bash
+        env:
+          PROFILE_UUID: ${{ steps.signing.outputs.profile_uuid }}
         run: |
           set +e
           security delete-keychain build-ios.keychain 2>/dev/null || true
-          rm -f "${HOME}/Library/MobileDevice/Provisioning Profiles/contextgo.mobileprovision" 2>/dev/null || true
+          if [ -n "${PROFILE_UUID:-}" ]; then
+            rm -f "${HOME}/Library/Developer/Xcode/UserData/Provisioning Profiles/${PROFILE_UUID}.mobileprovision" 2>/dev/null || true
+          fi
