@@ -72,6 +72,10 @@ That compatibility is acceptable during migration, but all new built-in assistan
 - `design-director`
   - package root: `src/process/resources/assistant/design/design-director`
   - skill source: `src/process/resources/skills/design-director-pack`
+- `figma-closed-loop`
+  - package root: `src/process/resources/assistant/design/figma-closed-loop`
+  - package-local payload: `skills/`
+  - workspace automation: `.contextgo/commands.json`, `.contextgo/schedules.json`
 - `marketing-creative-studio`
   - package root: `src/process/resources/assistant/creative/marketing-creative-studio`
   - skill source: `src/process/resources/skills/marketing-creative-studio-pack`

@@ -18,6 +18,7 @@ import {
 import { describe, expect, it } from 'vitest';
 
 const DESIGN_DIRECTOR_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-design-director')!;
+const FIGMA_CLOSED_LOOP_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-figma-closed-loop')!;
 const MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
   'builtin-marketing-creative-studio'
 )!;
@@ -39,15 +40,17 @@ describe('builtinAssistantDefaults', () => {
     const financeAssistant = assistants.find((assistant) => assistant.id === 'builtin-finance-analyst');
     const officeAssistant = assistants.find((assistant) => assistant.id === 'builtin-office-analyst');
     const codingGuardAssistant = assistants.find((assistant) => assistant.id === 'builtin-karpathy-coding-guard');
+    const figmaClosedLoopAssistant = assistants.find((assistant) => assistant.id === 'builtin-figma-closed-loop');
     const marketingCreativeStudioAssistant = assistants.find(
       (assistant) => assistant.id === 'builtin-marketing-creative-studio'
     );
 
-    expect(assistants).toHaveLength(10);
+    expect(assistants).toHaveLength(11);
     expect(assistants.map((assistant) => assistant.id)).toEqual([
       'builtin-morph-ppt',
       'builtin-startup-strategist',
       'builtin-design-director',
+      'builtin-figma-closed-loop',
       'builtin-marketing-creative-studio',
       'builtin-pm-workbench',
       'builtin-office-analyst',
@@ -100,6 +103,34 @@ describe('builtinAssistantDefaults', () => {
         'design-system-adaptation',
         'design-component-visual-spec',
         'design-handoff-brief',
+      ])
+    );
+    expect(figmaClosedLoopAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...FIGMA_CLOSED_LOOP_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Design Execution',
+          'zh-CN': '设计执行闭环',
+        },
+        harnessTagI18n: {
+          'en-US': 'Figma Closed Loop',
+          'zh-CN': 'Figma Closed Loop',
+        },
+      })
+    );
+    expect(figmaClosedLoopAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'figma-file-bootstrap',
+        'figma-screen-generate',
+        'figma-library-sync',
+        'figma-design-system-rules-sync',
+        'figma-implementation-handoff',
+        'figma-drift-audit',
       ])
     );
     expect(marketingCreativeStudioAssistant).toEqual(
@@ -345,6 +376,9 @@ describe('builtinAssistantDefaults', () => {
     expect(resolveBuiltinAssistantEnabledSkills('builtin-morph-ppt', undefined)).toEqual(['morph-ppt']);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-design-director', undefined)).toEqual([
       ...DESIGN_DIRECTOR_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-figma-closed-loop', undefined)).toEqual([
+      ...FIGMA_CLOSED_LOOP_DEFAULT_SKILLS,
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-marketing-creative-studio', undefined)).toEqual([
       ...MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS,

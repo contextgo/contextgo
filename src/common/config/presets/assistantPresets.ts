@@ -133,6 +133,49 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
+    id: 'figma-closed-loop',
+    avatar: '\u{1F517}',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Figma Closed Loop',
+      'zh-CN': 'Figma Closed Loop',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Design Execution',
+      'zh-CN': '设计执行闭环',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want Figma file ledger entries, sync notes, implementation handoff records, and drift reports written back into the project folder.',
+      'zh-CN':
+        '如果希望把 Figma 文件台账、同步记录、实现交付记录和 drift 报告直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Figma Closed Loop',
+      'zh-CN': 'Figma Closed Loop',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A built-in design-execution assistant that closes the code <-> Figma <-> code loop. Generates Figma files and screens from project context, syncs design system rules and component libraries into Figma, produces implementation suggestions from Figma nodes, and audits drift between code and Figma.',
+      'zh-CN':
+        '面向 code <-> Figma <-> code 真正闭环的内置助手，用于从项目上下文生成 Figma 文件和 screen、把设计系统规则与组件库同步到 Figma、基于 Figma node 反向生成实现建议，并周期性审计代码系统与 Figma 系统之间的 drift。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Push this page structure into Figma as a frame and record the new node ids',
+        'Sync the recent component library changes into the linked Figma library, but do not publish yet',
+        'Generate an implementation suggestion from this Figma node, with explicit assumptions and missing tokens',
+        'Audit the drift between this design system and the linked Figma file, then propose a remediation plan',
+      ],
+      'zh-CN': [
+        '把这个页面结构推到 Figma 里作为一个 frame，并记录新生成的 node id',
+        '把最近的组件库改动同步到关联的 Figma library 里，先不要 publish',
+        '基于这个 Figma node 生成一份实现建议，明确列出假设和缺失的 token',
+        '审计一下这套设计系统与关联 Figma 文件之间的 drift，并给出整改方案',
+      ],
+    },
+  },
+  {
     id: 'marketing-creative-studio',
     avatar: '\u{1F4E3}',
     presetAgentType: 'codex',
