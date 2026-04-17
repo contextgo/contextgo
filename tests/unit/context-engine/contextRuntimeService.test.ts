@@ -495,7 +495,7 @@ describe('ContextRuntimeService', () => {
     );
   });
 
-  it('freezes mounted state before assembly and before current-turn ingestion', async () => {
+  it('freezes mounted state before assembly and keeps snapshot version local to runtime', async () => {
     const previousTurnText = 'Previous release context stays mounted until this turn snapshot is prepared.';
     const currentUserInput = 'New request: change the release checklist for this handoff.';
     mockDb.getConversationMessages.mockReturnValue({
@@ -550,7 +550,6 @@ describe('ContextRuntimeService', () => {
     expect(mockContextService.assemble).toHaveBeenCalledWith(
       expect.objectContaining({
         overlays: expect.objectContaining({
-          preparedAt: expect.any(Number),
           threadSummary: expect.stringContaining(previousTurnText),
           mountedSections: expect.arrayContaining([
             expect.objectContaining({ id: 'session-working-context:conv-1' }),
@@ -567,6 +566,7 @@ describe('ContextRuntimeService', () => {
         }),
       })
     );
+    expect(mockContextService.assemble.mock.calls[0]?.[0]?.overlays).not.toHaveProperty('preparedAt');
     expect(mockContextService.assemble.mock.calls[0]?.[0]?.overlays?.threadSummary).not.toContain(
       currentUserInput
     );
