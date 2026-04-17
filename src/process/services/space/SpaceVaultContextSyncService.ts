@@ -1828,19 +1828,6 @@ const buildHomeDocument = (
   ].join('\n');
 };
 
-const getCapabilityNodeColor = (kind: ProjectCapabilityRecord['kind']): string => {
-  if (kind === 'skill') {
-    return '1';
-  }
-  if (kind === 'hook') {
-    return '3';
-  }
-  if (kind === 'command') {
-    return '5';
-  }
-  return '6';
-};
-
 const buildProjectSourceGraphCanvas = (
   project: ProjectContext,
   capabilitySnapshot: ProjectCapabilitySnapshot
@@ -1980,76 +1967,6 @@ const buildProjectSourceGraphCanvas = (
         label: 'ref',
       });
     }
-  }
-
-  const capabilityRecords = getProjectCapabilityRecords(capabilitySnapshot);
-  if (capabilityRecords.length > 0) {
-    nodes.push(
-      withContextProjectionMetadata(
-        {
-          id: `project-capabilities-${project.slug}`,
-          type: 'file',
-          file: toCanvasFileReference(canvasRelativePath, getProjectCapabilitiesRelativePath(project.folderName)),
-          x: 1360,
-          y: 0,
-          width: 360,
-          height: 220,
-          color: '3',
-        },
-        buildContextProjectionMetadata({
-          namespace: CONTEXT_NAMESPACE.PROJECT,
-          namespaceKind: CONTEXT_NAMESPACE_KIND.CAPABILITY_INVENTORY,
-          projectionLayer: CONTEXT_PROJECTION_LAYER.CAPABILITY_INVENTORY,
-          nodeId: getProjectCapabilityIndexNodeId(project.slug),
-          ownerNodeId: getProjectRootNodeId(project.slug),
-        })
-      )
-    );
-    edges.push({
-      id: `edge-project-capabilities-${project.slug}`,
-      fromNode: `project-${project.slug}`,
-      fromSide: 'right',
-      toNode: `project-capabilities-${project.slug}`,
-      toSide: 'left',
-      color: '3',
-      label: 'capability-inventory',
-    });
-
-    capabilityRecords.forEach((capability, index) => {
-      const nodeId = `capability-${capability.kind}-${stableHash(capability.id)}`;
-      const column = index % 2;
-      const row = Math.floor(index / 2);
-      nodes.push(
-        withContextProjectionMetadata(
-          {
-            id: nodeId,
-            type: 'file',
-            file: toCanvasFileReference(canvasRelativePath, getProjectCapabilityRelativePath(project, capability)),
-            x: 1780 + column * 420,
-            y: row * 220,
-            width: 360,
-            height: 180,
-            color: getCapabilityNodeColor(capability.kind),
-          },
-          buildContextProjectionMetadata({
-            namespace: CONTEXT_NAMESPACE.PROJECT,
-            namespaceKind: CONTEXT_NAMESPACE_KIND.CAPABILITY_INVENTORY,
-            projectionLayer: CONTEXT_PROJECTION_LAYER.CAPABILITY_INVENTORY,
-            nodeId: getProjectCapabilityNodeId(project.slug, capability),
-            ownerNodeId: getProjectCapabilityIndexNodeId(project.slug),
-          })
-        )
-      );
-      edges.push({
-        id: `edge-capability-${stableHash(`${capability.kind}:${capability.id}`)}`,
-        fromNode: `project-capabilities-${project.slug}`,
-        fromSide: 'right',
-        toNode: nodeId,
-        toSide: 'left',
-        color: getCapabilityNodeColor(capability.kind),
-        label: 'capability-inventory',
-      });
-    });
   }
 
   return { nodes, edges };
