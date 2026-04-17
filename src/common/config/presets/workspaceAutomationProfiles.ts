@@ -750,6 +750,101 @@ const FINANCE_ANALYST_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
   },
 ] as const;
 
+const FIGMA_CLOSED_LOOP_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the Figma round-trip task, MCP connectivity, target file scope, and write-back risk before executing.',
+    templateOverride:
+      'Restate the Figma closed-loop task, identify whether this is a design-system sync, screen push, library sync, implementation handoff, or drift audit, confirm Figma MCP connectivity, list the target file keys, node ids, and code paths involved, and propose the smallest reversible execution path before touching any Figma file or repository asset.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify Figma write-back results, library version impact, drift status, and traceability of implementation handoff before sign-off.',
+    templateOverride:
+      'Verify the current Figma closed-loop output end to end. Re-check that the affected Figma file key and node ids match the intended scope, that no library version was bumped without consent, that drift between code and Figma is recorded, and that every Figma write or implementation handoff has a traceable record (file key, node id, code path, executor, timestamp). Summarize what is confirmed, what is still pending review, and what should be rolled back.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'figma-new-file',
+    enabled: true,
+    name: 'figma-new-file',
+    description: 'Bootstrap a new Figma file scaffold from project context with explicit ownership and intent.',
+    template:
+      'Use the `figma-file-bootstrap` skill for this request. Gather the project goal, target surface, intended owners, and naming conventions, confirm Figma MCP connectivity and write permission, then create a new Figma file scaffold with stated intent, branching policy, and a recorded link between the file key and the originating ContextGo workspace.',
+  },
+  {
+    type: 'custom',
+    id: 'figma-push-screen',
+    enabled: true,
+    name: 'figma-push-screen',
+    description: 'Push a code-side page or screen structure into a Figma file as a frame or screen draft.',
+    template:
+      'Use the `figma-screen-generate` skill for this request. Inspect the target page or screen in code, choose the right Figma file key and parent frame, translate the structural layout into Figma frames with the correct components and tokens, and report back the new node ids, the originating code path, and any structural compromises that the design team should review.',
+  },
+  {
+    type: 'custom',
+    id: 'figma-sync-library',
+    enabled: true,
+    name: 'figma-sync-library',
+    description: 'Sync project component library changes into the corresponding Figma library file.',
+    template:
+      'Use the `figma-library-sync` skill for this request. Diff the recent code-side component additions, removals, and structural changes against the linked Figma library, propose a safe library publish set, never bump library versions without explicit confirmation, and record the resolved file key, node ids, and component lineage in the closed-loop ledger.',
+  },
+  {
+    type: 'custom',
+    id: 'figma-sync-rules',
+    enabled: true,
+    name: 'figma-sync-rules',
+    description: 'Sync DESIGN.md, tokens, and theme variables into Figma design system rules.',
+    template:
+      'Use the `figma-design-system-rules-sync` skill for this request. Read the project DESIGN.md, token files, and theme variables, diff them against the existing Figma design-system rules, propose the minimal rule set to update, surface conflicts that require human judgement, and end with a clear list of what was synced, what is still pending, and what should not be synced automatically.',
+  },
+  {
+    type: 'custom',
+    id: 'figma-implement',
+    enabled: true,
+    name: 'figma-implement',
+    description: 'Generate implementation suggestions or code-change drafts from a Figma node, frame, or page.',
+    template:
+      'Use the `figma-implementation-handoff` skill for this request. Validate the supplied Figma URL, file key, and node id, fetch the structural and token information through Figma MCP, map the design intent to existing code patterns, and produce an implementation suggestion or scoped code-change draft with explicit assumptions, missing-token callouts, and a reviewable handoff record.',
+  },
+  {
+    type: 'custom',
+    id: 'figma-audit-drift',
+    enabled: true,
+    name: 'figma-audit-drift',
+    description: 'Audit drift between code-side design system and Figma design system, then output a remediation plan.',
+    template:
+      'Use the `figma-drift-audit` skill for this request. Compare tokens, components, library version, and screen structure between the code-side design system and the linked Figma files, classify each drift item by severity and direction (code-only, figma-only, divergent), and end with a remediation plan that distinguishes auto-syncable items from items that require explicit design or engineering review.',
+  },
+] as const;
+
 const EMPTY_SCHEDULE_SEED: WorkspaceAutomationScheduleSeed = {
   conversationSchedules: [],
 };
@@ -884,6 +979,11 @@ const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
   'design-director': {
     label: 'Design Director',
     commandSeeds: DESIGN_DIRECTOR_COMMAND_SEEDS,
+    scheduleSeed: EMPTY_SCHEDULE_SEED,
+  },
+  'figma-closed-loop': {
+    label: 'Figma Closed Loop',
+    commandSeeds: FIGMA_CLOSED_LOOP_COMMAND_SEEDS,
     scheduleSeed: EMPTY_SCHEDULE_SEED,
   },
   'pm-workbench': {

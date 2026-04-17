@@ -12,6 +12,7 @@ import { parseAgentPackageManifest } from '@/common/config/presets/agentPackageM
 import morphPptManifestRaw from '@/process/resources/assistant/morph-ppt/agent-package.json';
 import startupStrategistManifestRaw from '@/process/resources/assistant/startup/startup-strategist/agent-package.json';
 import designDirectorManifestRaw from '@/process/resources/assistant/design/design-director/agent-package.json';
+import figmaClosedLoopManifestRaw from '@/process/resources/assistant/design/figma-closed-loop/agent-package.json';
 import marketingCreativeStudioManifestRaw from '@/process/resources/assistant/creative/marketing-creative-studio/agent-package.json';
 import pmWorkbenchManifestRaw from '@/process/resources/assistant/product/pm-workbench/agent-package.json';
 import officeAnalystManifestRaw from '@/process/resources/assistant/office/office-analyst/agent-package.json';
@@ -49,6 +50,13 @@ export const BUNDLED_AGENT_PACKAGE_DESCRIPTORS: readonly BundledAgentPackageDesc
   {
     resourceDir: 'src/process/resources/assistant/design/design-director',
     manifest: parseBundledManifest(designDirectorManifestRaw, 'src/process/resources/assistant/design/design-director'),
+  },
+  {
+    resourceDir: 'src/process/resources/assistant/design/figma-closed-loop',
+    manifest: parseBundledManifest(
+      figmaClosedLoopManifestRaw,
+      'src/process/resources/assistant/design/figma-closed-loop'
+    ),
   },
   {
     resourceDir: 'src/process/resources/assistant/creative/marketing-creative-studio',

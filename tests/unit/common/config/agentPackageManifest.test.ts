@@ -173,6 +173,22 @@ describe('agent-package manifests', () => {
     ).toBe(true);
   });
 
+  it('ships a Figma round-trip skill set and figma-closed-loop automation profile', () => {
+    const manifest = readManifest('src/process/resources/assistant/design/figma-closed-loop');
+
+    expect(manifest.payloads.skills?.packagedSkillNames).toEqual([
+      'figma-file-bootstrap',
+      'figma-screen-generate',
+      'figma-library-sync',
+      'figma-design-system-rules-sync',
+      'figma-implementation-handoff',
+      'figma-drift-audit',
+    ]);
+    expect(manifest.payloads.skills?.hidePackageOwnedSkillsFromLibrary).toBe(true);
+    expect(manifest.payloads.commands?.workspaceAutomationProfile).toBe('figma-closed-loop');
+    expect(manifest.payloads.schedules?.workspaceAutomationProfile).toBe('figma-closed-loop');
+  });
+
   it('ships specialized workspace scaffold templates for non-engineering builtin assistants', () => {
     const cases = [
       {
@@ -190,6 +206,16 @@ describe('agent-package manifests', () => {
           'docs/direction/README.md',
           'docs/references/README.md',
           'docs/handoff/README.md',
+        ],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/design/figma-closed-loop',
+        expectedTargets: [
+          'AGENTS.md',
+          'docs/files/README.md',
+          'docs/sync/README.md',
+          'docs/handoff/README.md',
+          'docs/drift/README.md',
         ],
       },
       {

@@ -1,0 +1,126 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "figma-closed-loop",
+  "assistantPresetId": "builtin-figma-closed-loop",
+  "displayName": "Figma Closed Loop",
+  "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "workspace"
+        }
+      ],
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "code to Figma to code execution loop",
+        "design system rules and library sync",
+        "implementation handoff and drift audit"
+      ],
+      "suggestedArtifacts": [
+        "Figma file ledger",
+        "library sync notes",
+        "implementation handoff records",
+        "drift reports"
+      ],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/files/README.md",
+          "target": "docs/files/README.md"
+        },
+        {
+          "source": "workspace/docs/sync/README.md",
+          "target": "docs/sync/README.md"
+        },
+        {
+          "source": "workspace/docs/handoff/README.md",
+          "target": "docs/handoff/README.md"
+        },
+        {
+          "source": "workspace/docs/drift/README.md",
+          "target": "docs/drift/README.md"
+        }
+      ]
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "skills"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "figma-file-bootstrap",
+        "figma-screen-generate",
+        "figma-library-sync",
+        "figma-design-system-rules-sync",
+        "figma-implementation-handoff",
+        "figma-drift-audit"
+      ],
+      "packagedSkillNames": [
+        "figma-file-bootstrap",
+        "figma-screen-generate",
+        "figma-library-sync",
+        "figma-design-system-rules-sync",
+        "figma-implementation-handoff",
+        "figma-drift-audit"
+      ],
+      "hidePackageOwnedSkillsFromLibrary": true
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "figma-closed-loop"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "figma-closed-loop"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "figma-closed-loop"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "figma-closed-loop"
+    }
+  }
+}
