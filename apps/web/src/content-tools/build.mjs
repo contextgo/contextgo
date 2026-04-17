@@ -1,12 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import matter from 'gray-matter';
-import { compile, run } from '@mdx-js/mdx';
-import * as jsxRuntime from 'react/jsx-runtime';
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import { renderToStaticMarkup } from 'react-dom/server';
 import remarkGfm from 'remark-gfm';
-import rehypeSlug from 'rehype-slug';
 
 export const publicContentSchemaVersion = 1;
 export const publicContentLocales = ['en', 'zh'];
@@ -58,27 +55,180 @@ const ensureDocCategory = (value, filePath) => {
   return category;
 };
 
+const parseFrontmatterValue = (value) => {
+  const trimmedValue = value.trim();
+  if (trimmedValue.length < 2) {
+    return trimmedValue;
+  }
+
+  const quote = trimmedValue[0];
+  if ((quote === '"' || quote === "'") && trimmedValue.at(-1) === quote) {
+    return trimmedValue.slice(1, -1);
+  }
+
+  return trimmedValue;
+};
+
+const parseFrontmatterDocument = (source) => {
+  const normalizedSource = source.replace(/\r\n/g, '\n');
+  if (!normalizedSource.startsWith('---\n')) {
+    return {
+      content: normalizedSource,
+      data: {},
+    };
+  }
+
+  const frontmatterEnd = normalizedSource.indexOf('\n---\n', 4);
+  if (frontmatterEnd === -1) {
+    return {
+      content: normalizedSource,
+      data: {},
+    };
+  }
+
+  const frontmatterBlock = normalizedSource.slice(4, frontmatterEnd);
+  const data = {};
+
+  for (const line of frontmatterBlock.split('\n')) {
+    const separatorIndex = line.indexOf(':');
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    if (!key) {
+      continue;
+    }
+
+    data[key] = parseFrontmatterValue(line.slice(separatorIndex + 1));
+  }
+
+  return {
+    content: normalizedSource.slice(frontmatterEnd + '\n---\n'.length),
+    data,
+  };
+};
+
+const toPlainText = (value) => {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(toPlainText).join('');
+  }
+
+  if (React.isValidElement(value)) {
+    return toPlainText(value.props.children);
+  }
+
+  return '';
+};
+
+const slugifyHeadingText = (value) => {
+  const normalized = value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
+  return normalized || 'section';
+};
+
+const createHeadingRenderer = (level) => {
+  return ({ children, node: _node, ...props }) => {
+    const tagName = `h${level}`;
+    const id = slugifyHeadingText(toPlainText(children));
+    return React.createElement(tagName, { ...props, id }, children);
+  };
+};
+
+const markdownComponents = {
+  h1: createHeadingRenderer(1),
+  h2: createHeadingRenderer(2),
+  h3: createHeadingRenderer(3),
+  h4: createHeadingRenderer(4),
+  h5: createHeadingRenderer(5),
+  h6: createHeadingRenderer(6),
+};
+
+const buildMarkdownHtml = (source) => {
+  return renderToStaticMarkup(
+    React.createElement(
+      ReactMarkdown,
+      {
+        remarkPlugins: [remarkGfm],
+        components: markdownComponents,
+      },
+      source
+    )
+  );
+};
+
+const isMissingOptionalDependencyError = (error) => {
+  return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'ERR_MODULE_NOT_FOUND');
+};
+
+let mdxRendererPromise;
+
+const loadMdxRenderer = async () => {
+  if (mdxRendererPromise) {
+    return mdxRendererPromise;
+  }
+
+  mdxRendererPromise = (async () => {
+    try {
+      const [{ compile, run }, jsxRuntime, rehypeSlugModule] = await Promise.all([
+        import('@mdx-js/mdx'),
+        import('react/jsx-runtime'),
+        import('rehype-slug'),
+      ]);
+
+      const rehypeSlug = rehypeSlugModule.default;
+      return async (source) => {
+        const compiled = await compile(source, {
+          outputFormat: 'function-body',
+          development: false,
+          remarkPlugins: [remarkGfm],
+          rehypePlugins: [rehypeSlug],
+        });
+
+        const executed = await run(String(compiled), {
+          ...jsxRuntime,
+          baseUrl: import.meta.url,
+        });
+
+        const Content = executed.default;
+        return renderToStaticMarkup(React.createElement(Content));
+      };
+    } catch (error) {
+      if (!isMissingOptionalDependencyError(error)) {
+        throw error;
+      }
+
+      return null;
+    }
+  })();
+
+  return mdxRendererPromise;
+};
+
 const buildArticleHtml = async (source) => {
-  const compiled = await compile(source, {
-    outputFormat: 'function-body',
-    development: false,
-    remarkPlugins: [remarkGfm],
-    rehypePlugins: [rehypeSlug],
-  });
+  const renderMdx = await loadMdxRenderer();
+  if (renderMdx) {
+    return renderMdx(source);
+  }
 
-  const executed = await run(String(compiled), {
-    ...jsxRuntime,
-    baseUrl: import.meta.url,
-  });
-
-  const Content = executed.default;
-  return renderToStaticMarkup(React.createElement(Content));
+  return buildMarkdownHtml(source);
 };
 
 const buildArticle = async (filePath, slug, requireCategory) => {
   const raw = await fs.readFile(filePath, 'utf8');
-  const parsed = matter(raw);
-  const frontmatter = parsed.data || {};
+  const parsed = parseFrontmatterDocument(raw);
+  const frontmatter = parsed.data;
   const html = await buildArticleHtml(parsed.content);
 
   const meta = {

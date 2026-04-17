@@ -95,6 +95,9 @@ describe('buildPublicContentCollections', () => {
     expect(built.docs.en.collection.docs.entries).toHaveLength(docsIndex.order.length);
     expect(built.blog.zh.collection.blog.entries).toHaveLength(blogIndex.order.length);
     expect(built.docs.en.collection.articles['quick-start'].html).toContain('id="before-you-begin"');
+    expect(built.blog.en.collection.articles['desktop-host-mobile-client'].title).toBe(
+      'Desktop host, mobile client: keep the product model explicit'
+    );
     expect(built.blog.en.collection.articles['context-before-agents'].html).toContain(
       'Why this product does not start'
     );
