@@ -9,17 +9,18 @@ import {
   isSystemFallbackBinding,
   type ChannelBindingScopeType,
   type IChannelBinding,
+  type IChannelPublicationUpsertInput,
   type IChannelPublishObject,
 } from '@process/channels/types';
 
 export type DurableBindingScopeType = Exclude<ChannelBindingScopeType, 'temporary_override'>;
 
-export type BindingDraft = {
+export type PublicationDraft = {
+  existingPublicationId?: string;
   channelAccountId: string;
-  scopeType: ChannelBindingScopeType;
+  scopeType: DurableBindingScopeType;
   scopeKey: string;
   agentProfileId: string;
-  temporary: boolean;
   priority: number;
   publishObject?: IChannelPublishObject;
 };
@@ -50,40 +51,37 @@ export function splitBindingsByLifetime(bindings: IChannelBinding[]): {
   };
 }
 
-export function findMatchingBinding(bindings: IChannelBinding[], draft: BindingDraft): IChannelBinding | undefined {
+export function findMatchingBinding(bindings: IChannelBinding[], draft: PublicationDraft): IChannelBinding | undefined {
   const normalizedScopeKey = normalizeScopeKey(draft.scopeType, draft.scopeKey);
   return bindings.find(
     (binding) =>
       getChannelAccountId(binding) === draft.channelAccountId &&
       binding.scopeType === draft.scopeType &&
-      Boolean(binding.temporary) === draft.temporary &&
+      binding.temporary === false &&
       (binding.scopeKey ?? '') === normalizedScopeKey
   );
 }
 
-export function buildBindingPayload(bindings: IChannelBinding[], draft: BindingDraft): IChannelBinding {
-  const now = Date.now();
+export function buildPublicationPayload(
+  bindings: IChannelBinding[],
+  draft: PublicationDraft
+): IChannelPublicationUpsertInput {
   const normalizedScopeKey = normalizeScopeKey(draft.scopeType, draft.scopeKey);
-  const existing = findMatchingBinding(bindings, draft);
+  const existing =
+    (draft.existingPublicationId
+      ? bindings.find((binding) => binding.id === draft.existingPublicationId)
+      : undefined) ?? findMatchingBinding(bindings, draft);
 
   return {
-    id: existing?.id ?? buildManualBindingId(draft.channelAccountId, draft.scopeType, normalizedScopeKey),
-    connectorId: draft.channelAccountId,
     channelAccountId: draft.channelAccountId,
+    publicationId:
+      existing?.id ??
+      draft.existingPublicationId ??
+      buildManualBindingId(draft.channelAccountId, draft.scopeType, normalizedScopeKey),
     scopeType: draft.scopeType,
-    scopeKey: normalizedScopeKey || undefined,
+    scopeKey: normalizedScopeKey,
     agentProfileId: draft.agentProfileId,
     priority: draft.priority,
-    enabled: existing?.enabled ?? true,
-    temporary: draft.temporary,
-    fallbackAgentProfileId: existing?.fallbackAgentProfileId,
-    metadata: {
-      ...existing?.metadata,
-      source: 'settings-publication-panel',
-      operation: draft.temporary ? 'temporary-override' : 'durable-publication',
-      ...(draft.publishObject ? { publishObject: draft.publishObject } : {}),
-    },
-    createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
+    publishObject: draft.publishObject,
   };
 }

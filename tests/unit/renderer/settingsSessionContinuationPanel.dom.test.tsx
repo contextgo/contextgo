@@ -202,7 +202,10 @@ describe('SessionContinuationPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRefreshPublicationCatalogInvoke.mockResolvedValue(refreshSnapshotResponse);
-    mockGetBindingCatalogInvoke.mockResolvedValue({ success: true, data: refreshSnapshotResponse.data.bindingCatalog });
+    mockGetBindingCatalogInvoke.mockResolvedValue({
+      success: true,
+      data: refreshSnapshotResponse.data.bindingCatalog,
+    });
     mockGetActiveSessionCatalogInvoke.mockResolvedValue({
       success: true,
       data: refreshSnapshotResponse.data.activeSessions,
