@@ -6,7 +6,13 @@
 
 import type { TChatConversation } from '@/common/config/storage';
 import { getDatabase } from '@process/services/database';
-import type { ContextPack, MemoryCandidateEntry, MemoryEntry } from '../../../../packages/context-engine/src/index';
+import type {
+  AssemblyTrace,
+  ContextPack,
+  MemoryCandidateEntry,
+  MemoryEntry,
+  RetrievalTrace,
+} from '../../../../packages/context-engine/src/index';
 import type { ContextTier, MemoryKind, ProfileSegment } from '../../../../packages/context-engine/src/domain';
 import type { TMessage } from '@/common/chat/chatLib';
 import type { ContextServiceImpl } from './ContextServiceImpl';
@@ -180,6 +186,66 @@ function buildContextPackCheckpointBody(pack: ContextPack): string | undefined {
     .slice(0, 4)
     .map((section) => `- ${section.kind}: ${inlineSummary(section.summary)}`)
     .join('\n');
+}
+
+function summarizeFrozenMountedState(mountedState: FrozenMountedState): {
+  threadSummaryIncluded: boolean;
+  mountedSectionCount: number;
+  mountedProfileCount: number;
+  pinnedInstructionCount: number;
+} {
+  return {
+    threadSummaryIncluded: Boolean(mountedState.threadSummary),
+    mountedSectionCount: mountedState.mountedSections.length,
+    mountedProfileCount: mountedState.mountedProfiles.length,
+    pinnedInstructionCount: mountedState.pinnedInstructions.length,
+  };
+}
+
+function buildContextTraceCheckpointBody(input: {
+  pack: ContextPack;
+  retrievalTrace: RetrievalTrace;
+  assemblyTrace: AssemblyTrace;
+  mountedState: FrozenMountedState;
+}): string | undefined {
+  const packBody = buildContextPackCheckpointBody(input.pack);
+  const mountedSummary = summarizeFrozenMountedState(input.mountedState);
+  const keptSections = input.assemblyTrace.entries.filter((entry) => entry.outcome === 'kept').length;
+  const omittedSections = input.assemblyTrace.entries.filter((entry) => entry.outcome === 'omitted').length;
+  const traceBody = [
+    'Assembly Trace',
+    '',
+    `- Retrieval entries: ${input.retrievalTrace.entries.length}`,
+    `- Search mode: ${input.retrievalTrace.searchMode}`,
+    `- Budget spent: ${input.assemblyTrace.spentTokens} / ${input.assemblyTrace.budgetTokens}`,
+    `- Mounted thread summary: ${mountedSummary.threadSummaryIncluded ? 'yes' : 'no'}`,
+    `- Mounted sections: ${mountedSummary.mountedSectionCount}`,
+    `- Mounted profiles: ${mountedSummary.mountedProfileCount}`,
+    `- Pinned instructions: ${mountedSummary.pinnedInstructionCount}`,
+    `- Assembly kept: ${keptSections}`,
+    `- Omitted sections: ${omittedSections}`,
+  ].join('\n');
+
+  return [packBody, traceBody].filter((section): section is string => typeof section === 'string' && section.length > 0).join(
+    '\n\n'
+  );
+}
+
+function buildCompactTurnTraceSummary(
+  retrievalTrace: RetrievalTrace,
+  assemblyTrace: AssemblyTrace,
+  mountedState: FrozenMountedState
+): string {
+  const mountedSummary = summarizeFrozenMountedState(mountedState);
+  const keptSections = assemblyTrace.entries.filter((entry) => entry.outcome === 'kept').length;
+  const omittedSections = assemblyTrace.entries.filter((entry) => entry.outcome === 'omitted').length;
+  return [
+    `retrieval ${retrievalTrace.entries.length}`,
+    `mounted ${mountedSummary.mountedSectionCount}/${mountedSummary.mountedProfileCount}`,
+    `kept ${keptSections}`,
+    `omitted ${omittedSections}`,
+    `budget ${assemblyTrace.spentTokens}/${assemblyTrace.budgetTokens}`,
+  ].join(' · ');
 }
 
 function buildCandidateCheckpointBody(title: string, summaries: readonly string[]): string | undefined {
@@ -635,7 +701,18 @@ export class ContextRuntimeService {
         `Profile refs: ${assembled.pack.provenance.profileIds.length}`,
         `Omitted entities: ${assembled.omittedEntityIds.length}`,
       ],
-      body: buildContextPackCheckpointBody(assembled.pack),
+      body: buildContextTraceCheckpointBody({
+        pack: assembled.pack,
+        retrievalTrace: retrieval.trace,
+        assemblyTrace: assembled.trace,
+        mountedState,
+      }),
+    });
+    await this.vaultSyncService.appendSessionTimelineEvent({
+      conversation: input.conversation,
+      timestamp: new Date(preparedAt).toISOString(),
+      title: 'Context trace',
+      body: buildCompactTurnTraceSummary(retrieval.trace, assembled.trace, mountedState),
     });
 
     await this.eventBus?.emit('context.window.prepared', {

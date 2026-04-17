@@ -5,6 +5,9 @@
  */
 
 import {
+  type AssemblyTrace,
+  type AssemblyTraceEntry,
+  type AssemblyTraceEntrySource,
   type AssembleContextPackInput,
   type AssembleContextPackResult,
   type ContextAssemblyOverlays,
@@ -355,6 +358,11 @@ function buildIngestionLifecycle(snapshot?: DocumentSnapshot): IngestionLifecycl
   };
 }
 
+type AssemblyCandidate = {
+  section: ContextPackSection;
+  source: AssemblyTraceEntrySource;
+};
+
 function makeOperation(
   input: IngestSourceInput,
   type: ContextOperationType,
@@ -660,42 +668,54 @@ export class ContextEngineService implements IContextService {
   }
 
   async assemble(input: AssembleContextPackInput): Promise<AssembleContextPackResult> {
-    const sections: ContextPackSection[] = [];
+    const candidates: AssemblyCandidate[] = [];
     const overlays = resolveAssemblyOverlays(input);
+    const pushCandidate = (section: ContextPackSection, source: AssemblyTraceEntrySource) => {
+      candidates.push({ section, source });
+    };
 
     if (overlays.threadSummary) {
-      sections.push(buildSection('thread-state', overlays.threadSummary, 100, `thread-${input.threadId ?? 'space'}`));
+      pushCandidate(
+        buildSection('thread-state', overlays.threadSummary, 100, `thread-${input.threadId ?? 'space'}`),
+        'thread_summary'
+      );
     }
     for (const mountedSection of overlays.mountedSections ?? []) {
-      sections.push({ ...mountedSection });
+      pushCandidate({ ...mountedSection }, 'mounted_section');
     }
     for (const profile of overlays.mountedProfiles ?? []) {
-      sections.push(
-        buildSection('compaction', profile.summary, 88 + Math.round(profile.confidence * 4), `compaction-${profile.id}`)
+      pushCandidate(
+        buildSection('compaction', profile.summary, 88 + Math.round(profile.confidence * 4), `compaction-${profile.id}`),
+        'mounted_profile'
       );
     }
     for (const [index, instruction] of (overlays.pinnedInstructions ?? []).entries()) {
-      sections.push(buildSection('instruction', instruction, 110 - index, `instruction-${index}`));
+      pushCandidate(buildSection('instruction', instruction, 110 - index, `instruction-${index}`), 'pinned_instruction');
     }
 
     for (const profile of input.retrieval.profiles) {
-      sections.push(buildSection('profile', profile.summary, 84 + Math.round(profile.confidence * 10), profile.id));
+      pushCandidate(
+        buildSection('profile', profile.summary, 84 + Math.round(profile.confidence * 10), profile.id),
+        'retrieved_profile'
+      );
     }
 
     for (const memory of input.retrieval.memories) {
-      sections.push(
+      pushCandidate(
         buildSection(
           'memory',
           memory.memory.detail ? `${memory.memory.summary}\n${memory.memory.detail}` : memory.memory.summary,
           60 + Math.round(memory.score / 2),
           memory.memory.id
-        )
+        ),
+        'retrieved_memory'
       );
     }
 
     for (const chunk of input.retrieval.chunks) {
-      sections.push(
-        buildSection('source', chunk.chunk.text, 44 + Math.round(chunk.score / 3), `chunk-${chunk.chunk.id}`)
+      pushCandidate(
+        buildSection('source', chunk.chunk.text, 44 + Math.round(chunk.score / 3), `chunk-${chunk.chunk.id}`),
+        'retrieved_chunk'
       );
     }
 
@@ -704,23 +724,42 @@ export class ContextEngineService implements IContextService {
         .filter((part): part is string => typeof part === 'string' && part.length > 0)
         .join(' · ');
       if (sourceSummary) {
-        sections.push(buildSection('source', sourceSummary, 36, source.id));
+        pushCandidate(buildSection('source', sourceSummary, 36, source.id), 'retrieved_source');
       }
     }
 
-    sections.sort((left, right) => right.priority - left.priority);
+    candidates.sort((left, right) => right.section.priority - left.section.priority);
 
     const keptSections: ContextPackSection[] = [];
     const omittedEntityIds: string[] = [];
+    const traceEntries: AssemblyTraceEntry[] = [];
     let spentTokens = 0;
 
-    for (const section of sections) {
+    for (const candidate of candidates) {
+      const { section } = candidate;
       if (spentTokens + section.tokenCount > input.budgetTokens && keptSections.length > 0) {
         omittedEntityIds.push(section.id);
+        traceEntries.push({
+          sectionId: section.id,
+          sectionKind: section.kind,
+          source: candidate.source,
+          tokenCount: section.tokenCount,
+          priority: section.priority,
+          outcome: 'omitted',
+          omissionReason: 'budget',
+        });
         continue;
       }
       keptSections.push(section);
       spentTokens += section.tokenCount;
+      traceEntries.push({
+        sectionId: section.id,
+        sectionKind: section.kind,
+        source: candidate.source,
+        tokenCount: section.tokenCount,
+        priority: section.priority,
+        outcome: 'kept',
+      });
     }
 
     const pack: ContextPack = {
@@ -736,6 +775,11 @@ export class ContextEngineService implements IContextService {
         artifactIds: [],
       },
       generatedAt: ISO_NOW(),
+    };
+    const trace: AssemblyTrace = {
+      budgetTokens: input.budgetTokens,
+      spentTokens,
+      entries: traceEntries,
     };
 
     const operation: ContextOperation = {
@@ -760,6 +804,7 @@ export class ContextEngineService implements IContextService {
     return {
       pack,
       omittedEntityIds,
+      trace,
     };
   }
 
