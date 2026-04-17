@@ -8,7 +8,7 @@ import { ipcBridge } from '@/common';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 
 /** Max upload size in MB — keep in sync with server-side MAX_UPLOAD_SIZE in apiRoutes.ts */
-export const MAX_UPLOAD_SIZE_MB = 30;
+export const MAX_UPLOAD_SIZE_MB = 100;
 const MAX_UPLOAD_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
 
 /**
