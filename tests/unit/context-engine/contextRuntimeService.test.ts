@@ -299,10 +299,12 @@ describe('ContextRuntimeService', () => {
     );
     expect(mockContextService.assemble).toHaveBeenCalledWith(
       expect.objectContaining({
-        mountedSections: expect.arrayContaining([
-          expect.objectContaining({ kind: 'profile', id: 'profile:Projects/workspace/workspace.md' }),
-          expect.objectContaining({ kind: 'source', id: 'source:Projects/workspace/Sources/AGENTS.md' }),
-        ]),
+        overlays: expect.objectContaining({
+          mountedSections: expect.arrayContaining([
+            expect.objectContaining({ kind: 'profile', id: 'profile:Projects/workspace/workspace.md' }),
+            expect.objectContaining({ kind: 'source', id: 'source:Projects/workspace/Sources/AGENTS.md' }),
+          ]),
+        }),
       })
     );
     expect(mockContextService.ingestSource).toHaveBeenCalledWith(
@@ -363,12 +365,14 @@ describe('ContextRuntimeService', () => {
 
     expect(mockContextService.assemble).toHaveBeenCalledWith(
       expect.objectContaining({
-        mountedSections: expect.arrayContaining([
-          expect.objectContaining({
-            id: 'session-working-context:conv-1',
-            summary: 'Current Task\nShip the release with minimal, verifiable changes.',
-          }),
-        ]),
+        overlays: expect.objectContaining({
+          mountedSections: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'session-working-context:conv-1',
+              summary: 'Current Task\nShip the release with minimal, verifiable changes.',
+            }),
+          ]),
+        }),
       })
     );
     expect(mockVaultSyncService.readSessionWorkingContextSection).toHaveBeenCalledWith({
@@ -409,13 +413,15 @@ describe('ContextRuntimeService', () => {
 
     expect(mockContextService.assemble).toHaveBeenCalledWith(
       expect.objectContaining({
-        mountedProfiles: [
-          expect.objectContaining({
-            id: 'profile-compact-1',
-            key: 'session.compaction.conv-1',
-            summary: 'Compacted session summary for the active release thread.',
-          }),
-        ],
+        overlays: expect.objectContaining({
+          mountedProfiles: [
+            expect.objectContaining({
+              id: 'profile-compact-1',
+              key: 'session.compaction.conv-1',
+              summary: 'Compacted session summary for the active release thread.',
+            }),
+          ],
+        }),
       })
     );
   });

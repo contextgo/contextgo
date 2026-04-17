@@ -23,6 +23,7 @@ import {
 } from '@process/services/space/SpaceVaultContextSyncService';
 import {
   ProjectContextMirrorService,
+  type ProjectContextAssemblyOverlaySource,
   type ProjectContextSnapshot,
 } from '@process/services/space/ProjectContextMirrorService';
 import { SpaceServiceImpl } from '@process/services/space/SpaceServiceImpl';
@@ -314,6 +315,32 @@ function buildProjectPromotionCandidate(
   };
 }
 
+function getProjectAssemblyOverlaySource(
+  mirrorService: Pick<ProjectContextMirrorService, 'buildMountedSections'> & {
+    buildAssemblyOverlaySource?: (
+      snapshot: ProjectContextSnapshot | undefined
+    ) => ProjectContextAssemblyOverlaySource | undefined;
+  },
+  snapshot: ProjectContextSnapshot | undefined
+): ProjectContextAssemblyOverlaySource | undefined {
+  if (typeof mirrorService.buildAssemblyOverlaySource === 'function') {
+    return mirrorService.buildAssemblyOverlaySource(snapshot);
+  }
+
+  if (!snapshot) {
+    return undefined;
+  }
+
+  const mountedSections = mirrorService.buildMountedSections(snapshot);
+  return {
+    overlaySource: 'project-context-mirror',
+    projectSlug: snapshot.projectSlug,
+    projectSections: mountedSections.filter((section) => section.kind === 'profile'),
+    sourceSections: mountedSections.filter((section) => section.kind === 'source'),
+    mountedSections,
+  };
+}
+
 export class ContextRuntimeService {
   constructor(
     private readonly contextService: ContextServiceImpl,
@@ -399,6 +426,7 @@ export class ContextRuntimeService {
     const preparedAt = Date.now();
     const projectSlug = resolveConversationProjectSlug(input.conversation);
     const projectSnapshot = await this.loadProjectContextSnapshot(input.conversation, spaceId);
+    const projectAssemblyOverlay = getProjectAssemblyOverlaySource(this.projectContextMirrorService, projectSnapshot);
     const sessionWorkingContextSection = await this.vaultSyncService.readSessionWorkingContextSection({
       conversation: input.conversation,
     });
@@ -429,13 +457,15 @@ export class ContextRuntimeService {
       threadId: input.conversation.id,
       retrieval,
       budgetTokens: CONTEXT_BUDGET_TOKENS,
-      threadSummary: buildThreadSummary([...recentMessages].toReversed()),
-      mountedSections: [
-        ...(sessionWorkingContextSection ? [sessionWorkingContextSection] : []),
-        ...this.projectContextMirrorService.buildMountedSections(projectSnapshot),
-      ],
-      mountedProfiles: await this.getSessionCompactionMountedProfiles(spaceId, input.conversation.id),
-      pinnedInstructions: ['Prefer space-consistent answers and reuse approved workflows when relevant.'],
+      overlays: {
+        threadSummary: buildThreadSummary([...recentMessages].toReversed()),
+        mountedSections: [
+          ...(sessionWorkingContextSection ? [sessionWorkingContextSection] : []),
+          ...(projectAssemblyOverlay?.mountedSections ?? []),
+        ],
+        mountedProfiles: await this.getSessionCompactionMountedProfiles(spaceId, input.conversation.id),
+        pinnedInstructions: ['Prefer space-consistent answers and reuse approved workflows when relevant.'],
+      },
     });
 
     const contextBlock = buildContextPackPrompt(assembled.pack);
