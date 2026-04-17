@@ -183,6 +183,7 @@ It should declare stable fields for:
 - whether a payload is projected into runtime-native directories
 - package-owned capability metadata when needed
   - for `skills`, this includes stable `packagedSkillNames`
+  - for Context Engine External Memory Strategy Adapter compatibility, this includes runtime-neutral capability metadata such as adapter capability keys, governance scopes, dual-loop participation, and abstract config schema / secret-key declarations
   - `defaultEnabledSkillNames` remains the assistant default, not the package ownership boundary
   - `hidePackageOwnedSkillsFromLibrary` controls whether package-owned skills stay out of the generic skills picker
 
@@ -265,6 +266,15 @@ The ownership model should stay explicit:
 | Schedules               | package schedule seeds / profiles                                               | `.contextgo/schedules.json`                              | no                                                             | ContextGo automation                        |
 
 The important constraint is that `hooks`, `commands`, and `schedules` remain product automation features even if a specific runtime has partial compatibility features.
+
+### External Memory Strategy Adapter boundary
+
+The Context Engine External Memory Strategy Adapter SPI is a runtime-neutral capability boundary, not a runtime-native projection surface.
+
+- strategy adapters are described by Context Engine descriptor metadata plus optional package compatibility declarations, not by `.codex/`, `.claude/`, `.gemini/`, or `.opencode/` state
+- an agent package may declare compatibility with an adapter capability, but that does not create a new runtime-owned install surface
+- adapter composition must stay inside the current Context Engine ownership model: `session_steward`, `project_curator`, and `space_curator` still own execution and curation across the dual-loop runtime
+- adapter config schema refs and secret requirements stay abstract package or workspace-policy declarations, not runtime-specific filesystem conventions
 
 ## Installation Rules
 
