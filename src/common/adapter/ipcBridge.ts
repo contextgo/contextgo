@@ -1626,6 +1626,11 @@ export interface IExtensionSystemRunItem {
   threadId?: string;
   projectSlug?: string;
   reason?: string;
+  lifecycleSummary?: string;
+  provenanceSummary?: string;
+  sourceRecordId?: string;
+  ingestMode?: string;
+  replayFromCursor?: string;
   source?: string;
   triggerLabel?: string;
   triggerEvent?: string;

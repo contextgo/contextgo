@@ -14,6 +14,10 @@ const mockSpaceService = {
   })),
 };
 
+const mockProjectCapabilityService = {
+  readSnapshot: vi.fn(),
+};
+
 const mockProjectContextMirrorService = {
   syncProjectContext: vi.fn(async () => ({
     projectSlug: PROJECT_SLUG,
@@ -212,6 +216,71 @@ describe('ContextRuntimeService', () => {
     mockContextService.listProfiles.mockResolvedValue([]);
     mockVaultSyncService.readSessionWorkingSetSection.mockResolvedValue(undefined);
     mockVaultSyncService.readSessionWorkingContextSection.mockResolvedValue(undefined);
+    mockProjectCapabilityService.readSnapshot.mockResolvedValue({
+      workspacePath: '/tmp/workspace',
+      automationRootRelativePath: '.contextgo',
+      counts: {
+        skill: 1,
+        hook: 1,
+        command: 1,
+        schedule: 1,
+      },
+      skills: [
+        {
+          kind: 'skill',
+          id: 'release-validation',
+          name: 'release-validation',
+          description: 'Validate release steps.',
+          docKey: 'skill:release-validation',
+          workspaceRelativePath: '.contextgo/skills/release-validation',
+          compatibility: [],
+          implicitInvocation: false,
+        },
+      ],
+      hooks: [
+        {
+          kind: 'hook',
+          id: 'post-release-check',
+          name: 'post-release-check',
+          description: 'Hook for post release validation.',
+          docKey: 'hook:post-release-check',
+          workspaceRelativePath: '.contextgo/hooks/post-release-check',
+          manifestRelativePath: '.contextgo/hooks/post-release-check/manifest.json',
+          events: [],
+          runnableEvents: [],
+          outputTargets: [],
+          selected: true,
+        },
+      ],
+      commands: [
+        {
+          kind: 'command',
+          id: 'release-verify',
+          name: 'release-verify',
+          description: 'Run release verification.',
+          docKey: 'command:release-verify',
+          commandType: 'project',
+          enabled: true,
+          template: 'release verify',
+        },
+      ],
+      schedules: [
+        {
+          kind: 'schedule',
+          id: 'nightly-release-sweep',
+          name: 'nightly-release-sweep',
+          description: 'Nightly release sweep.',
+          docKey: 'schedule:nightly-release-sweep',
+          enabled: true,
+          scheduleKind: 'cron',
+          scheduleLabel: '0 1 * * *',
+          message: 'Nightly release sweep',
+          conversationId: 'conv-1',
+          agentType: 'preset',
+          createdBy: 'user',
+        },
+      ],
+    });
   });
 
   it('registers a bound thread operation when a conversation has a space', async () => {
@@ -539,6 +608,59 @@ describe('ContextRuntimeService', () => {
         reason: 'user-stop',
       })
     );
+  });
+
+  it('adds context and capability usage evidence into session governance outputs', async () => {
+    const observedEvents: Array<{ type: string; payload: Record<string, unknown> }> = [];
+    const eventBus = {
+      emit: vi.fn(async (type: string, payload: Record<string, unknown>) => {
+        observedEvents.push({ type, payload });
+      }),
+    };
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      eventBus as any,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any,
+      mockProjectCapabilityService as any
+    );
+
+    await service.prepareOutgoingTurn({
+      conversation: makeConversation(),
+      userInput: 'Use /release-verify and the release-validation skill for this handoff.',
+      agentInput: 'Use /release-verify and the release-validation skill for this handoff.',
+      agentContent: '[User Request]\nUse /release-verify and the release-validation skill for this handoff.',
+      msgId: 'msg-usage',
+    });
+
+    await service.completeAssistantTurn(
+      'conv-1',
+      'Decision: use /release-verify with release-validation before handoff.',
+      'assistant-usage'
+    );
+
+    expect(mockVaultSyncService.appendContextCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Context Signals Extracted',
+        body: expect.stringContaining('Usage Evidence'),
+      })
+    );
+    expect(mockVaultSyncService.appendContextCheckpoint.mock.calls.at(-1)?.[0]?.body).toContain(
+      'Used command surface: /release-verify'
+    );
+    expect(mockVaultSyncService.appendContextCheckpoint.mock.calls.at(-1)?.[0]?.body).toContain(
+      'Used skill surface: release-validation'
+    );
+
+    const turnCompletedEvent = observedEvents.find((event) => event.type === 'session.turn.completed');
+    expect(turnCompletedEvent?.payload.promotionCandidate).toEqual(
+      expect.objectContaining({
+        detail: expect.stringContaining('Usage evidence: Used command surface: /release-verify'),
+      })
+    );
+    expect(turnCompletedEvent?.payload.promotionCandidate?.confidence).toBeGreaterThan(0.88);
   });
 
   it('emits delegation.completed with the governance lifecycle envelope', async () => {

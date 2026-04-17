@@ -407,11 +407,56 @@ const SystemRunsPage: React.FC = () => {
                     : undefined,
                 },
                 {
+                  key: 'lifecycle-summary',
+                  value: run.lifecycleSummary
+                    ? t('settings.systemRunsLifecycleSummary', {
+                        summary: run.lifecycleSummary,
+                        defaultValue: `Lifecycle summary: ${run.lifecycleSummary}`,
+                      })
+                    : undefined,
+                },
+                {
                   key: 'source',
                   value: run.source
                     ? t('settings.systemRunsSource', {
                         source: run.source,
                         defaultValue: `Source: ${run.source}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'source-record',
+                  value: run.sourceRecordId
+                    ? t('settings.systemRunsSourceRecord', {
+                        sourceRecordId: run.sourceRecordId,
+                        defaultValue: `Source record: ${run.sourceRecordId}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'ingest-mode',
+                  value: run.ingestMode
+                    ? t('settings.systemRunsIngestMode', {
+                        ingestMode: run.ingestMode,
+                        defaultValue: `Ingest mode: ${run.ingestMode}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'replay-cursor',
+                  value: run.replayFromCursor
+                    ? t('settings.systemRunsReplayCursor', {
+                        replayFromCursor: run.replayFromCursor,
+                        defaultValue: `Replay cursor: ${run.replayFromCursor}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'provenance-summary',
+                  value: run.provenanceSummary
+                    ? t('settings.systemRunsProvenanceSummary', {
+                        summary: run.provenanceSummary,
+                        defaultValue: `Provenance summary: ${run.provenanceSummary}`,
                       })
                     : undefined,
                 },
@@ -456,7 +501,9 @@ const SystemRunsPage: React.FC = () => {
                 },
                 {
                   key: 'title',
-                  value: run.artifactTitle ? t('agent.contextEngine.artifactTitle', { title: run.artifactTitle }) : undefined,
+                  value: run.artifactTitle
+                    ? t('agent.contextEngine.artifactTitle', { title: run.artifactTitle })
+                    : undefined,
                 },
                 {
                   key: 'path',
@@ -502,7 +549,10 @@ const SystemRunsPage: React.FC = () => {
 
                   <div className={classNames('mt-12px', styles.systemRunsMetaGrid)}>
                     {renderDetailGroup(t('settings.systemRunsRoutingTitle', { defaultValue: 'Routing' }), routingRows)}
-                    {renderDetailGroup(t('settings.systemRunsArtifactTitle', { defaultValue: 'Artifact' }), artifactRows)}
+                    {renderDetailGroup(
+                      t('settings.systemRunsArtifactTitle', { defaultValue: 'Artifact' }),
+                      artifactRows
+                    )}
                   </div>
 
                   {run.recentEvents.length > 0 ? (

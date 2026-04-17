@@ -31,6 +31,7 @@ type SupportedVaultSyncService = Pick<
 >;
 
 const SESSIONS_DIR = 'Sessions';
+const SESSION_ARTIFACT_TRIAD = ['session_timeline', 'session_working_context', 'session_checkpoint'] as const;
 
 function sanitizeSessionPathSegment(value: string): string {
   return (
@@ -55,6 +56,36 @@ function estimateTokenCount(value: string | undefined): number {
 
 function uniqueStrings(values: readonly string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function isSessionArtifactTarget(value: string): value is (typeof SESSION_ARTIFACT_TRIAD)[number] {
+  return (SESSION_ARTIFACT_TRIAD as readonly string[]).includes(value);
+}
+
+function getSessionArtifactTargets(job: ContextJob): string[] {
+  const payload = job.payload as { artifactTargets?: unknown };
+  if (!Array.isArray(payload.artifactTargets)) {
+    return [...SESSION_ARTIFACT_TRIAD];
+  }
+
+  const normalized = payload.artifactTargets
+    .filter((value): value is string => typeof value === 'string')
+    .filter((value) => isSessionArtifactTarget(value));
+  if (normalized.length === 0) {
+    return [...SESSION_ARTIFACT_TRIAD];
+  }
+
+  return SESSION_ARTIFACT_TRIAD.filter((target) => normalized.includes(target));
+}
+
+function getLifecycleSummary(job: ContextJob): string | undefined {
+  const payload = job.payload as { lifecycleSummary?: unknown };
+  if (typeof payload.lifecycleSummary !== 'string') {
+    return undefined;
+  }
+
+  const normalized = payload.lifecycleSummary.trim();
+  return normalized || undefined;
 }
 
 function getSnapshot(job: ContextJob): SessionCompactionSnapshot {
@@ -355,6 +386,8 @@ export class SessionCompactionJobHandler {
     const sessionRelativePath = getSessionArtifactRelativePath(job.threadId);
     const sessionNoteTitle =
       conversationResult.success && conversationResult.data?.name ? conversationResult.data.name : job.threadId;
+    const artifactTargets = getSessionArtifactTargets(job);
+    const lifecycleSummary = getLifecycleSummary(job);
     const workingSetArtifact =
       conversationResult.success && conversationResult.data
         ? await this.vaultSyncService.writeSessionWorkingContext({
@@ -367,6 +400,9 @@ export class SessionCompactionJobHandler {
             signalKinds,
             pressure: decision.pressure,
             sourceProfileKey: profile.key,
+            compactionJobId: job.id,
+            lifecycleSummary,
+            artifactTargets,
           })
         : undefined;
     const sessionCheckpointArtifact =
@@ -378,6 +414,12 @@ export class SessionCompactionJobHandler {
             title: 'Session checkpoint',
             summary,
             detail,
+            sourceProfileKey: profile.key,
+            compactionJobId: job.id,
+            lifecycleSummary,
+            artifactTargets,
+            workingContextRelativePath: workingSetArtifact?.relativePath,
+            workingContextTitle: workingSetArtifact?.title,
           })
         : undefined;
     if (conversationResult.success && conversationResult.data) {
@@ -386,12 +428,19 @@ export class SessionCompactionJobHandler {
         timestamp: Date.parse(now),
         title: 'Session Compaction Updated',
         bullets: [
+          `Compaction job: \`${job.id}\``,
           `Profile: \`${profile.key}\``,
+          `Artifacts: ${artifactTargets.map((target) => `\`${target}\``).join(', ')}`,
+          lifecycleSummary ? `Handoff summary: ${lifecycleSummary}` : undefined,
+          workingSetArtifact?.relativePath ? `Working context: \`${workingSetArtifact.relativePath}\`` : undefined,
+          sessionCheckpointArtifact?.relativePath
+            ? `Checkpoint: \`${sessionCheckpointArtifact.relativePath}\``
+            : undefined,
           `Promoted takeaways: ${promotedSummaries.length}`,
           `Pending review: ${pendingSummaries.length}`,
           `Signals: ${signalKinds.length}`,
           `Pressure: ${decision.pressure}`,
-        ],
+        ].filter((value): value is string => Boolean(value)),
         body: detail,
       });
     }

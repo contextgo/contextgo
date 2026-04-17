@@ -35,6 +35,11 @@ type MaintenanceRunMetadata = {
   threadId?: string;
   projectSlug?: string;
   reason?: string;
+  lifecycleSummary?: string;
+  provenanceSummary?: string;
+  sourceRecordId?: string;
+  ingestMode?: string;
+  replayFromCursor?: string;
   source?: string;
   trigger?: ContextJob['trigger'];
   executionBoundary?: ContextJob['executionBoundary'];
@@ -199,6 +204,24 @@ async function upsertRun(input: {
       threadId: input.job.threadId,
       projectSlug: input.job.projectSlug,
       reason: input.job.reason,
+      lifecycleSummary:
+        typeof input.job.payload.lifecycleSummary === 'string'
+          ? input.job.payload.lifecycleSummary
+          : existingMetadata.lifecycleSummary,
+      provenanceSummary:
+        typeof input.job.payload.provenanceSummary === 'string'
+          ? input.job.payload.provenanceSummary
+          : existingMetadata.provenanceSummary,
+      sourceRecordId:
+        typeof input.job.payload.sourceRecordId === 'string'
+          ? input.job.payload.sourceRecordId
+          : existingMetadata.sourceRecordId,
+      ingestMode:
+        typeof input.job.payload.ingestMode === 'string' ? input.job.payload.ingestMode : existingMetadata.ingestMode,
+      replayFromCursor:
+        typeof input.job.payload.replayFromCursor === 'string'
+          ? input.job.payload.replayFromCursor
+          : existingMetadata.replayFromCursor,
       source: input.job.source,
       trigger: input.job.trigger,
       executionBoundary: input.job.executionBoundary,

@@ -384,12 +384,96 @@ describe('SpaceVaultContextSyncService', () => {
       signalKinds: ['context_window_prepared'],
       pressure: 42,
       sourceProfileKey: 'session.compaction.conv-1',
+      compactionJobId: 'context-job-1',
+      lifecycleSummary: 'Compaction triggered after repeated interruptions.',
+      artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
     });
+
+    const workingContextPath = path.join(
+      vaultPath,
+      'Projects',
+      'workspace',
+      '_context',
+      'sessions',
+      'conv-1',
+      'working-context.md'
+    );
+    const workingContextContent = await fs.readFile(workingContextPath, 'utf8');
+    expect(workingContextContent).toContain('## Compaction Provenance');
+    expect(workingContextContent).toContain('- Operation: `session_compaction`');
+    expect(workingContextContent).toContain('- Source profile: `session.compaction.conv-1`');
+    expect(workingContextContent).toContain('- Compaction job: `context-job-1`');
+    expect(workingContextContent).toContain(
+      '- Artifact targets: `session_timeline`, `session_working_context`, `session_checkpoint`'
+    );
+    expect(workingContextContent).toContain('Compaction triggered after repeated interruptions.');
 
     const mounted = await service.readSessionWorkingContextSection({ conversation: conversation as any });
     expect(mounted?.id).toBe('session-working-context:conv-1');
     expect(mounted?.summary).toContain('整理发布前的回归检查');
     expect(mounted?.summary).toContain('先缩小改动面，再补验证。');
+  });
+
+  it('writes checkpoint provenance that links the session artifact triad for compaction', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(workspacePath, { recursive: true });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+    const checkpoint = await service.appendSessionCheckpoint({
+      conversation: conversation as any,
+      timestamp: '2026-04-23T13:12:00.000Z',
+      kind: 'session-compaction',
+      title: 'Session checkpoint',
+      summary: 'Current task: stabilize release verification flow.',
+      detail: 'Compaction summary body.',
+      sourceProfileKey: 'session.compaction.conv-1',
+      compactionJobId: 'context-job-1',
+      lifecycleSummary: 'Compaction triggered after repeated interruptions.',
+      artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+      workingContextRelativePath: 'Projects/workspace/_context/sessions/conv-1/working-context.md',
+      workingContextTitle: 'Release Session Working Context',
+    });
+
+    expect(checkpoint).toBeDefined();
+
+    const checkpointPath = path.join(vaultPath, checkpoint!.relativePath);
+    const checkpointContent = await fs.readFile(checkpointPath, 'utf8');
+    expect(checkpointContent).toContain('## Compaction Provenance');
+    expect(checkpointContent).toContain('- Operation: `session_compaction`');
+    expect(checkpointContent).toContain('- Source profile: `session.compaction.conv-1`');
+    expect(checkpointContent).toContain('- Compaction job: `context-job-1`');
+    expect(checkpointContent).toContain(
+      '- Artifact targets: `session_timeline`, `session_working_context`, `session_checkpoint`'
+    );
+    expect(checkpointContent).toContain(
+      '- Session timeline: [[Projects/workspace/Sessions/conv-1|Release Session (conv-1)]]'
+    );
+    expect(checkpointContent).toContain(
+      '- Session working context: [[Projects/workspace/_context/sessions/conv-1/working-context|Release Session Working Context]]'
+    );
   });
 
   it('skips vault sync when the target space is not bound to an obsidian vault', async () => {
