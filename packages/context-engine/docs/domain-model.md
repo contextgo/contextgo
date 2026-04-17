@@ -11,6 +11,24 @@ Space
       -> Context Pack
 ```
 
+## 当前一等对象族
+
+这套语言在代码里应稳定映射为以下对象族：
+
+- raw
+  - `SourceRecord`
+  - `DocumentSnapshot`
+- retrieval
+  - `ChunkRecord`
+- semantic
+  - `MemoryEntry`
+  - `MemoryCandidateEntry`
+  - `ProfileSegment`
+- assembly
+  - `ContextPack`
+
+这不是一组新实体，而是把当前已经在代码中存在的一组对象正式收束成稳定语言。
+
 ## 顶层产品对象
 
 ### Space
