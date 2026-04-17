@@ -201,8 +201,8 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     getBindingCatalog: makeChannel('getBindingCatalog'),
     refreshPublicationCatalog: makeChannel('refreshPublicationCatalog'),
     getBindings: makeChannel('getBindings'),
-    upsertBinding: makeChannel('upsertBinding'),
-    deleteBinding: makeChannel('deleteBinding'),
+    upsertPublication: makeChannel('upsertPublication'),
+    deletePublication: makeChannel('deletePublication'),
     prepareConversationPublication: makeChannel('prepareConversationPublication'),
     prepareConversationAgentProfile: makeChannel('prepareConversationAgentProfile'),
     continuationSession: makeChannel('continuationSession'),
@@ -1279,6 +1279,136 @@ describe('channelBridge', () => {
       );
     });
 
+    it('returns explicit publication entries in the publication snapshot', async () => {
+      const connector: IConnectorInstance = {
+        id: 'connector-1',
+        platform: 'telegram',
+        name: 'Telegram',
+        enabled: true,
+        configured: true,
+        status: 'running',
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const profile: IAgentProfile = {
+        id: 'agent-profile-1',
+        name: 'OpenClaw Publication',
+        backend: 'openclaw-gateway',
+        version: 1,
+        archived: false,
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const binding: IChannelBinding = {
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        scopeType: 'remote_chat',
+        scopeKey: 'group:alpha',
+        agentProfileId: 'agent-profile-1',
+        priority: 10,
+        enabled: true,
+        temporary: false,
+        metadata: {
+          publishObject: {
+            nativeObjectType: 'group',
+            nativeObjectId: 'group:alpha',
+            displayName: 'Alpha Group',
+            discoverySource: 'manual',
+          },
+        },
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      const remoteIdentity: IRemoteIdentity = {
+        id: 'remote-1',
+        connectorId: 'connector-1',
+        remoteUserId: 'user-1',
+        remoteChatId: 'group:alpha',
+        remoteChatType: 'group',
+        displayName: 'Alpha Group',
+        authorizedAt: 1000,
+        lastActive: 2000,
+      };
+      const session: IChannelSession = {
+        id: 'external-session-1',
+        userId: 'remote-1',
+        agentType: 'codex',
+        conversationId: 'conversation-stale-1',
+        workspace: '/tmp/workspace',
+        createdAt: 1000,
+        lastActivity: 2600,
+      };
+
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
+      vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
+      vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
+      vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
+      resolvedPublishObjects = [
+        {
+          id: 'connector-1::group::group:alpha::',
+          channelAccountId: 'connector-1',
+          nativeObjectType: 'group',
+          nativeObjectId: 'group:alpha',
+          displayProfile: {
+            title: 'Alpha Group',
+            source: 'manual',
+            quality: 'fallback',
+            resolvedAt: 1000,
+          },
+          refreshState: {
+            status: 'needs-refresh',
+            reason: 'manual-fallback',
+            updatedAt: 1000,
+          },
+          createdAt: 1000,
+          updatedAt: 1000,
+        },
+      ];
+      mockGetAllExternalSessions.mockReturnValue({
+        success: true,
+        data: [
+          {
+            id: 'external-session-1',
+            connectorId: 'connector-1',
+            remoteIdentityId: 'remote-1',
+            bindingId: 'binding-1',
+            agentProfileId: 'agent-profile-1',
+            activeConversationId: 'conversation-current-1',
+            state: 'active',
+            createdAt: 1000,
+            lastActivity: 2600,
+          },
+        ],
+      });
+
+      const result = await handlers['refreshPublicationSnapshot']();
+
+      expect(result.success).toBe(true);
+      expect(result.data?.catalog.publications).toEqual([
+        expect.objectContaining({
+          id: 'binding-1',
+          agentProfileId: 'agent-profile-1',
+          channelAccountId: 'connector-1',
+          channelAccountName: 'Telegram',
+          channelAccountPlatform: 'telegram',
+          enabled: true,
+          publishObject: expect.objectContaining({
+            id: 'connector-1::group::group:alpha::',
+            nativeObjectType: 'group',
+            nativeObjectId: 'group:alpha',
+            displayProfile: expect.objectContaining({
+              title: 'Alpha Group',
+            }),
+          }),
+          currentSession: expect.objectContaining({
+            publicationBindingId: 'binding-1',
+            activeConversationId: 'conversation-current-1',
+          }),
+        }),
+      ]);
+    });
+
     it('classifies Feishu topic audiences as topics with readable subtitles', async () => {
       const connector: IConnectorInstance = {
         id: 'connector-lark',
@@ -1976,6 +2106,15 @@ describe('channelBridge', () => {
           }),
         ])
       );
+      expect(result.data?.catalog.discoverySummaries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            channelAccountId: 'connector-lark-refresh',
+            state: 'official',
+            discoveredCount: 1,
+          }),
+        ])
+      );
       expect(typeof result.data?.refreshedAt).toBe('number');
       expect(publicationServiceMocks.resolvePublishObjectCatalog).toHaveBeenCalled();
     });
@@ -2156,7 +2295,7 @@ describe('channelBridge', () => {
     });
   });
 
-  describe('upsertBinding', () => {
+  describe('upsertPublication', () => {
     it('upserts binding through repo', async () => {
       vi.mocked(repo.getAgentProfiles).mockReturnValue([
         {
@@ -2183,22 +2322,44 @@ describe('channelBridge', () => {
         updatedAt: 1000,
       };
 
-      const result = await handlers['upsertBinding']({ binding });
-
-      expect(repo.upsertChannelBinding).toHaveBeenCalledWith({
-        ...binding,
-        channelAccountId: binding.connectorId,
-        metadata: {
-          publishObject: {
-            nativeObjectType: 'remote_user',
-            nativeObjectId: 'user-1',
-            parentNativeObjectId: undefined,
-            displayName: undefined,
-            discoverySource: 'manual',
-            metadata: undefined,
-          },
+      const result = await handlers['upsertPublication']({
+        publication: {
+          publicationId: 'binding-1',
+          channelAccountId: 'connector-1',
+          scopeType: 'remote_user',
+          scopeKey: 'user-1',
+          agentProfileId: 'agent-1',
+          priority: 1,
         },
       });
+
+      expect(repo.upsertChannelBinding).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'binding-1',
+          connectorId: binding.connectorId,
+          channelAccountId: binding.connectorId,
+          scopeType: 'remote_user',
+          scopeKey: 'user-1',
+          agentProfileId: 'agent-1',
+          priority: 1,
+          enabled: true,
+          temporary: false,
+          createdAt: expect.any(Number),
+          updatedAt: expect.any(Number),
+          metadata: {
+            source: 'settings-publication-panel',
+            operation: 'durable-publication',
+            publishObject: {
+              nativeObjectType: 'remote_user',
+              nativeObjectId: 'user-1',
+              parentNativeObjectId: undefined,
+              displayName: undefined,
+              discoverySource: 'manual',
+              metadata: undefined,
+            },
+          },
+        })
+      );
       expect(publicationServiceMocks.upsertChannelBinding).toHaveBeenCalledWith(
         '/tmp/workspaces/agent-1',
         expect.objectContaining({
@@ -2282,27 +2443,21 @@ describe('channelBridge', () => {
         },
       ]);
 
-      const result = await handlers['upsertBinding']({
-        binding: {
-          id: 'binding-2',
-          connectorId: 'connector-1',
+      const result = await handlers['upsertPublication']({
+        publication: {
+          publicationId: 'binding-2',
+          channelAccountId: 'connector-1',
           scopeType: 'remote_chat',
           scopeKey: 'other-scope',
           agentProfileId: 'agent-2',
           priority: 1,
-          enabled: true,
-          temporary: false,
-          metadata: {
-            publishObject: {
-              nativeObjectType: 'topic',
-              nativeObjectId: 'om_topic_root_1',
-              parentNativeObjectId: 'oc_group_1',
-              displayName: 'Ops Topic',
-              discoverySource: 'manual',
-            },
+          publishObject: {
+            nativeObjectType: 'topic',
+            nativeObjectId: 'om_topic_root_1',
+            parentNativeObjectId: 'oc_group_1',
+            displayName: 'Ops Topic',
+            discoverySource: 'manual',
           },
-          createdAt: 1000,
-          updatedAt: 1000,
         },
       });
 
@@ -2325,29 +2480,27 @@ describe('channelBridge', () => {
           updatedAt: 1000,
         },
       ]);
-      const binding: IChannelBinding = {
-        id: 'binding-invalid',
-        connectorId: 'connector-1',
-        scopeType: 'connector_default',
-        agentProfileId: 'agent-1',
-        priority: 0,
-        enabled: true,
-        temporary: false,
-        createdAt: 1000,
-        updatedAt: 1000,
-      };
       vi.mocked(repo.upsertChannelBinding).mockImplementation(() => {
         throw new Error('invalid binding scope');
       });
 
-      const result = await handlers['upsertBinding']({ binding });
+      const result = await handlers['upsertPublication']({
+        publication: {
+          publicationId: 'binding-invalid',
+          channelAccountId: 'connector-1',
+          scopeType: 'connector_default',
+          scopeKey: '',
+          agentProfileId: 'agent-1',
+          priority: 0,
+        },
+      });
 
       expect(result.success).toBe(false);
       expect(result.msg).toBe('invalid binding scope');
     });
   });
 
-  describe('deleteBinding', () => {
+  describe('deletePublication', () => {
     it('deletes binding through repo', async () => {
       vi.mocked(repo.getAgentProfiles).mockReturnValue([
         {
@@ -2376,7 +2529,7 @@ describe('channelBridge', () => {
           updatedAt: 1000,
         },
       ]);
-      const result = await handlers['deleteBinding']({ bindingId: 'binding-1' });
+      const result = await handlers['deletePublication']({ publicationId: 'binding-1' });
 
       expect(repo.deleteChannelBinding).toHaveBeenCalledWith('binding-1');
       expect(publicationServiceMocks.deleteChannelBinding).toHaveBeenCalledWith('/tmp/workspaces/agent-1', 'binding-1');
@@ -2415,7 +2568,7 @@ describe('channelBridge', () => {
         throw new Error('delete failed');
       });
 
-      const result = await handlers['deleteBinding']({ bindingId: 'binding-1' });
+      const result = await handlers['deletePublication']({ publicationId: 'binding-1' });
 
       expect(result.success).toBe(false);
       expect(result.msg).toBe('delete failed');

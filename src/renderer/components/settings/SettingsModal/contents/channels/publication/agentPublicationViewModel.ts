@@ -12,6 +12,7 @@ import {
   type IChannelAccount,
   type IChannelAudienceEntry,
   type IChannelBinding,
+  type IChannelPublicationEntry,
   type IChannelPublishObjectCatalogEntry,
 } from '@process/channels/types';
 
@@ -30,13 +31,87 @@ export type AgentPublicationObjectEntry = {
   currentSession?: IChannelActiveSessionEntry;
 };
 
+function getPublishObjectSourceRank(source?: IChannelAudienceEntry['objectSource']): number {
+  if (source === 'official-pull' || source === 'runtime-resolved') {
+    return 3;
+  }
+  if (source === 'inbound-learned') {
+    return 2;
+  }
+  if (source === 'manual') {
+    return 1;
+  }
+  return 0;
+}
+
+function getPublishObjectQualityRank(quality?: IChannelAudienceEntry['objectQuality']): number {
+  if (quality === 'resolved') {
+    return 3;
+  }
+  if (quality === 'inferred') {
+    return 2;
+  }
+  if (quality === 'fallback') {
+    return 1;
+  }
+  return 0;
+}
+
+function getPublishObjectSourceLabel(audience: IChannelAudienceEntry, t: TranslationFn): string | undefined {
+  if (audience.objectSource === 'official-pull' || audience.objectSource === 'runtime-resolved') {
+    return t('settings.channels.publication.optionSourceOfficial');
+  }
+  if (audience.objectSource === 'inbound-learned') {
+    return t('settings.channels.publication.optionSourceLearned');
+  }
+  if (audience.objectSource === 'manual') {
+    return t('settings.channels.publication.optionSourceManual');
+  }
+  return undefined;
+}
+
 type BuildAgentPublicationObjectsParams = {
   channelAccounts: IChannelAccount[];
   audiences: IChannelAudienceEntry[];
   bindings: IChannelBinding[];
+  publications?: IChannelPublicationEntry[];
   publishObjects?: IChannelPublishObjectCatalogEntry[];
   sessions: IChannelActiveSessionEntry[];
 };
+
+function toPublicationObjectKind(nativeObjectType: string): PublicationObjectViewModel['kind'] {
+  return nativeObjectType === 'person' ||
+    nativeObjectType === 'dm' ||
+    nativeObjectType === 'group' ||
+    nativeObjectType === 'channel' ||
+    nativeObjectType === 'topic' ||
+    nativeObjectType === 'thread' ||
+    nativeObjectType === 'server' ||
+    nativeObjectType === 'space'
+    ? nativeObjectType
+    : 'chat';
+}
+
+function buildObjectFromPublicationEntry(publication: IChannelPublicationEntry): PublicationObjectViewModel {
+  return {
+    key: publication.publishObject.id,
+    kind: toPublicationObjectKind(publication.publishObject.nativeObjectType),
+    title: publication.publishObject.displayProfile.title,
+    subtitle: publication.publishObject.displayProfile.subtitle,
+    parentKey: publication.publishObject.parentNativeObjectId,
+    parentTitle: publication.publishObject.displayProfile.parentTitle,
+    parentKind: publication.publishObject.parentNativeObjectId ? 'chat' : undefined,
+    objectSource: publication.publishObject.displayProfile.source,
+    objectQuality: publication.publishObject.displayProfile.quality,
+    refreshState: publication.publishObject.refreshState,
+    publishObjectCatalogEntryId: publication.publishObject.id,
+    audiences: [],
+    bindings: [publication.binding],
+    sessions: publication.currentSession ? [publication.currentSession] : [],
+    activeSessionPointer: publication.publishObject.activeSessionPointer,
+    lastActivity: publication.currentSession?.lastActivity ?? publication.publishObject.updatedAt,
+  };
+}
 
 function getPublishObjectCatalogEntryIdFromAudience(
   audience: IChannelAudienceEntry,
@@ -233,6 +308,41 @@ function resolveCurrentSession(object: PublicationObjectViewModel): IChannelActi
 export function buildAgentPublicationObjects(
   params: BuildAgentPublicationObjectsParams
 ): AgentPublicationObjectEntry[] {
+  if (params.publications && params.publications.length > 0) {
+    const channelAccountMap = new Map(
+      params.channelAccounts.map((channelAccount) => [channelAccount.id, channelAccount] as const)
+    );
+    return params.publications
+      .flatMap((publication) => {
+        const channelAccount = channelAccountMap.get(publication.channelAccountId);
+        if (!channelAccount) {
+          return [];
+        }
+
+        return [
+          {
+            key: publication.id,
+            channelAccount,
+            object: buildObjectFromPublicationEntry(publication),
+            currentSession: publication.currentSession,
+          },
+        ];
+      })
+      .toSorted((left, right) => {
+        const sessionDelta = (right.currentSession?.lastActivity ?? 0) - (left.currentSession?.lastActivity ?? 0);
+        if (sessionDelta !== 0) {
+          return sessionDelta;
+        }
+
+        const activityDelta = (right.object.lastActivity ?? 0) - (left.object.lastActivity ?? 0);
+        if (activityDelta !== 0) {
+          return activityDelta;
+        }
+
+        return left.object.title.localeCompare(right.object.title);
+      });
+  }
+
   const audienceMap = new Map(params.audiences.map((audience) => [audience.key, audience] as const));
   const publishObjectCatalogMap = new Map((params.publishObjects ?? []).map((entry) => [entry.id, entry] as const));
   const entries: AgentPublicationObjectEntry[] = [];
@@ -313,10 +423,31 @@ export function buildPublishObjectOptionLabel(params: {
     params.audience.objectKind ?? (params.audience.scopeType === 'remote_user' ? 'dm' : 'chat'),
     params.t
   );
+  const sourceLabel = getPublishObjectSourceLabel(params.audience, params.t);
   const details = [
+    sourceLabel,
     params.audience.parentObjectTitle,
     params.audience.objectSubtitle ?? params.audience.subtitle,
   ].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
 
   return [title, kindLabel, ...details].join(' · ');
+}
+
+export function comparePublishObjectAudiences(left: IChannelAudienceEntry, right: IChannelAudienceEntry): number {
+  const sourceDelta = getPublishObjectSourceRank(right.objectSource) - getPublishObjectSourceRank(left.objectSource);
+  if (sourceDelta !== 0) {
+    return sourceDelta;
+  }
+
+  const qualityDelta = getPublishObjectQualityRank(right.objectQuality) - getPublishObjectQualityRank(left.objectQuality);
+  if (qualityDelta !== 0) {
+    return qualityDelta;
+  }
+
+  const activityDelta = (right.lastActive ?? 0) - (left.lastActive ?? 0);
+  if (activityDelta !== 0) {
+    return activityDelta;
+  }
+
+  return (left.objectTitle ?? left.title).localeCompare(right.objectTitle ?? right.title);
 }

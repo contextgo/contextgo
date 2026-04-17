@@ -381,6 +381,14 @@ export interface IChannelAudienceEntry {
   lastActive?: number;
 }
 
+export type ChannelPublicationDiscoveryState = 'official' | 'learned' | 'empty';
+
+export type IChannelPublicationDiscoverySummary = {
+  channelAccountId: string;
+  state: ChannelPublicationDiscoveryState;
+  discoveredCount: number;
+};
+
 export type IChannelBindingCatalog = {
   connectors: IChannelAccount[];
   /** @deprecated Use connectors. */
@@ -388,7 +396,9 @@ export type IChannelBindingCatalog = {
   agentProfiles: IAgentProfile[];
   bindings: IChannelBinding[];
   audiences: IChannelAudienceEntry[];
+  discoverySummaries?: IChannelPublicationDiscoverySummary[];
   publishObjects?: IChannelPublishObjectCatalogEntry[];
+  publications?: IChannelPublicationEntry[];
 };
 
 export type IChannelPublicationCatalogRefreshResult = {
@@ -400,6 +410,30 @@ export type IChannelPublicationSnapshot = {
   catalog: IChannelBindingCatalog;
   activeSessions: IChannelActiveSessionEntry[];
   refreshedAt: number;
+};
+
+export type IChannelPublicationEntry = {
+  id: string;
+  agentProfileId: string;
+  channelAccountId: string;
+  channelAccountName?: string;
+  channelAccountPlatform?: PluginType;
+  publishObject: IChannelPublishObjectCatalogEntry;
+  binding: IChannelBinding;
+  currentSession?: IChannelActiveSessionEntry;
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type IChannelPublicationUpsertInput = {
+  publicationId?: string;
+  channelAccountId: string;
+  scopeType: Exclude<ChannelBindingScopeType, 'temporary_override'>;
+  scopeKey: string;
+  agentProfileId: string;
+  priority: number;
+  publishObject?: IChannelPublishObject;
 };
 
 export type IChannelBindingTarget = {
