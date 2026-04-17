@@ -459,52 +459,6 @@ const toCanvasFileReference = (_canvasRelativePath: string, targetRelativePath: 
   return toPosixRelativePath(targetRelativePath);
 };
 
-const createCanvasFileNode = (input: {
-  id: string;
-  canvasRelativePath: string;
-  targetRelativePath: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  color: string;
-  metadata: ContextProjectionMetadata;
-}): JsonCanvasNode => {
-  return {
-    id: input.id,
-    type: 'file',
-    file: toCanvasFileReference(input.canvasRelativePath, input.targetRelativePath),
-    x: input.x,
-    y: input.y,
-    width: input.width,
-    height: input.height,
-    color: input.color,
-    ...input.metadata,
-  };
-};
-
-const createCanvasEdge = (input: {
-  id: string;
-  fromNode: string;
-  fromSide: string;
-  toNode: string;
-  toSide: string;
-  color: string;
-  label: string;
-  projectionLayer: ContextProjectionLayer;
-}): JsonCanvasEdge => {
-  return {
-    id: input.id,
-    fromNode: input.fromNode,
-    fromSide: input.fromSide,
-    toNode: input.toNode,
-    toSide: input.toSide,
-    color: input.color,
-    label: input.label,
-    contextgoProjectionLayer: input.projectionLayer,
-  };
-};
-
 const getSessionContextRootRelativePath = (conversationId: string, projectFolderName?: string): string => {
   const sanitizedConversationId = sanitizeVaultPathSegment(conversationId);
   return projectFolderName
@@ -1887,7 +1841,10 @@ const getCapabilityNodeColor = (kind: ProjectCapabilityRecord['kind']): string =
   return '6';
 };
 
-const buildProjectSourceGraphCanvas = (space: TSpace, project: ProjectContext): JsonCanvasFile => {
+const buildProjectSourceGraphCanvas = (
+  project: ProjectContext,
+  capabilitySnapshot: ProjectCapabilitySnapshot
+): JsonCanvasFile => {
   const canvasRelativePath = getProjectGraphRelativePath(project.folderName);
   const nodes: JsonCanvasFile['nodes'] = [
     withContextProjectionMetadata(
@@ -1906,7 +1863,7 @@ const buildProjectSourceGraphCanvas = (space: TSpace, project: ProjectContext): 
         namespaceKind: CONTEXT_NAMESPACE_KIND.PROJECT,
         projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
         nodeId: getProjectRootNodeId(project.slug),
-        ownerNodeId: getSpaceRootNodeId(space.id),
+        ownerNodeId: getProjectRootNodeId(project.slug),
       })
     ),
     withContextProjectionMetadata(
@@ -2025,10 +1982,81 @@ const buildProjectSourceGraphCanvas = (space: TSpace, project: ProjectContext): 
     }
   }
 
+  const capabilityRecords = getProjectCapabilityRecords(capabilitySnapshot);
+  if (capabilityRecords.length > 0) {
+    nodes.push(
+      withContextProjectionMetadata(
+        {
+          id: `project-capabilities-${project.slug}`,
+          type: 'file',
+          file: toCanvasFileReference(canvasRelativePath, getProjectCapabilitiesRelativePath(project.folderName)),
+          x: 1360,
+          y: 0,
+          width: 360,
+          height: 220,
+          color: '3',
+        },
+        buildContextProjectionMetadata({
+          namespace: CONTEXT_NAMESPACE.PROJECT,
+          namespaceKind: CONTEXT_NAMESPACE_KIND.CAPABILITY_INVENTORY,
+          projectionLayer: CONTEXT_PROJECTION_LAYER.CAPABILITY_INVENTORY,
+          nodeId: getProjectCapabilityIndexNodeId(project.slug),
+          ownerNodeId: getProjectRootNodeId(project.slug),
+        })
+      )
+    );
+    edges.push({
+      id: `edge-project-capabilities-${project.slug}`,
+      fromNode: `project-${project.slug}`,
+      fromSide: 'right',
+      toNode: `project-capabilities-${project.slug}`,
+      toSide: 'left',
+      color: '3',
+      label: 'capability-inventory',
+    });
+
+    capabilityRecords.forEach((capability, index) => {
+      const nodeId = `capability-${capability.kind}-${stableHash(capability.id)}`;
+      const column = index % 2;
+      const row = Math.floor(index / 2);
+      nodes.push(
+        withContextProjectionMetadata(
+          {
+            id: nodeId,
+            type: 'file',
+            file: toCanvasFileReference(canvasRelativePath, getProjectCapabilityRelativePath(project, capability)),
+            x: 1780 + column * 420,
+            y: row * 220,
+            width: 360,
+            height: 180,
+            color: getCapabilityNodeColor(capability.kind),
+          },
+          buildContextProjectionMetadata({
+            namespace: CONTEXT_NAMESPACE.PROJECT,
+            namespaceKind: CONTEXT_NAMESPACE_KIND.CAPABILITY_INVENTORY,
+            projectionLayer: CONTEXT_PROJECTION_LAYER.CAPABILITY_INVENTORY,
+            nodeId: getProjectCapabilityNodeId(project.slug, capability),
+            ownerNodeId: getProjectCapabilityIndexNodeId(project.slug),
+          })
+        )
+      );
+      edges.push({
+        id: `edge-capability-${stableHash(`${capability.kind}:${capability.id}`)}`,
+        fromNode: `project-capabilities-${project.slug}`,
+        fromSide: 'right',
+        toNode: nodeId,
+        toSide: 'left',
+        color: getCapabilityNodeColor(capability.kind),
+        label: 'capability-inventory',
+      });
+    });
+  }
+
   return { nodes, edges };
 };
 
-const buildSpaceCanvas = (projects: ProjectMeta[], sessions: SessionMeta[]): JsonCanvasFile => {
+const buildSpaceCanvas = (space: TSpace, projects: ProjectMeta[], sessions: SessionMeta[]): JsonCanvasFile => {
+  const spaceRootNodeId = getSpaceRootNodeId(space.id);
   const nodes: JsonCanvasFile['nodes'] = [
     withContextProjectionMetadata(
       {
@@ -2045,8 +2073,8 @@ const buildSpaceCanvas = (projects: ProjectMeta[], sessions: SessionMeta[]): Jso
         namespace: CONTEXT_NAMESPACE.SPACE,
         namespaceKind: CONTEXT_NAMESPACE_KIND.SPACE,
         projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
-        nodeId: 'space:home',
-        ownerNodeId: 'space:home',
+        nodeId: spaceRootNodeId,
+        ownerNodeId: spaceRootNodeId,
       })
     ),
   ];
@@ -2085,7 +2113,7 @@ const buildSpaceCanvas = (projects: ProjectMeta[], sessions: SessionMeta[]): Jso
           namespaceKind: CONTEXT_NAMESPACE_KIND.PROJECT,
           projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
           nodeId: getProjectNamespaceNodeId(project.slug),
-          ownerNodeId: 'space:home',
+          ownerNodeId: spaceRootNodeId,
         })
       )
     );
@@ -2156,7 +2184,7 @@ const buildSpaceCanvas = (projects: ProjectMeta[], sessions: SessionMeta[]): Jso
           namespaceKind: CONTEXT_NAMESPACE_KIND.SESSION,
           projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
           nodeId: getSessionNamespaceNodeId(session.conversationId),
-          ownerNodeId: 'space:home',
+          ownerNodeId: spaceRootNodeId,
         })
       )
     );
@@ -2666,6 +2694,24 @@ export class SpaceVaultContextSyncService {
     );
     const absolutePath = path.join(target.vaultPath, relativePath);
     const content = [
+      frontmatter(
+        withContextProjectionMetadata(
+          {
+            contextgoType: 'session-checkpoint',
+            title: input.title,
+            conversationId: input.conversation.id,
+            projectSlug: target.project?.slug,
+            updatedAt: input.timestamp,
+          },
+          buildContextProjectionMetadata({
+            namespace: CONTEXT_NAMESPACE.SESSION,
+            namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+            projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+            nodeId: getSessionArtifactNodeId(input.conversation.id, `checkpoint:${input.kind}:${input.timestamp}`),
+            ownerNodeId: getSessionRootNodeId(input.conversation.id),
+          })
+        )
+      ),
       GENERATED_MARKER,
       '',
       `# ${input.title}`,
@@ -2777,7 +2823,30 @@ export class SpaceVaultContextSyncService {
     const relativePath = getSpaceMemoryRelativePath();
     const absolutePath = path.join(providerRef.vaultPath, relativePath);
     const title = 'Space Memory Distillation';
-    const existing = (await readUtf8(absolutePath)) ?? [GENERATED_MARKER, '', `# ${title}`, ''].join('\n');
+    const initialDocument = [
+      frontmatter(
+        withContextProjectionMetadata(
+          {
+            contextgoType: 'space-memory',
+            title,
+            spaceId: input.spaceId,
+            updatedAt: input.timestamp,
+          },
+          buildContextProjectionMetadata({
+            namespace: CONTEXT_NAMESPACE.SPACE,
+            namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+            projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+            nodeId: getSpaceArtifactNodeId(input.spaceId, 'space-memory'),
+            ownerNodeId: getSpaceRootNodeId(input.spaceId),
+          })
+        )
+      ),
+      GENERATED_MARKER,
+      '',
+      `# ${title}`,
+      '',
+    ].join('\n');
+    const existing = (await readUtf8(absolutePath)) ?? initialDocument;
     const entry = buildTimelineEventBlock({
       timestamp: input.timestamp,
       title,
@@ -2866,7 +2935,30 @@ export class SpaceVaultContextSyncService {
     const relativePath = getConnectorDigestRelativePath();
     const absolutePath = path.join(providerRef.vaultPath, relativePath);
     const title = 'Connector Digest';
-    const existing = (await readUtf8(absolutePath)) ?? [GENERATED_MARKER, '', `# ${title}`, ''].join('\n');
+    const initialDocument = [
+      frontmatter(
+        withContextProjectionMetadata(
+          {
+            contextgoType: 'connector-digest',
+            title,
+            spaceId: input.spaceId,
+            updatedAt: input.timestamp,
+          },
+          buildContextProjectionMetadata({
+            namespace: CONTEXT_NAMESPACE.SPACE,
+            namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+            projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+            nodeId: getSpaceArtifactNodeId(input.spaceId, 'connector-digest'),
+            ownerNodeId: getSpaceRootNodeId(input.spaceId),
+          })
+        )
+      ),
+      GENERATED_MARKER,
+      '',
+      `# ${title}`,
+      '',
+    ].join('\n');
+    const existing = (await readUtf8(absolutePath)) ?? initialDocument;
     const entry = formatConnectorDigestEntry({
       title,
       summary: input.summary,
@@ -3289,7 +3381,7 @@ export class SpaceVaultContextSyncService {
     const homeContent = buildHomeDocument(space, projects, sessions, updatedAt);
     await ensureFile(path.join(vaultPath, 'Home.md'), homeContent);
 
-    const canvas = buildSpaceCanvas(projects, sessions);
+    const canvas = buildSpaceCanvas(space, projects, sessions);
     await ensureFile(path.join(vaultPath, DEFAULT_SPACE_CANVAS_PATH), JSON.stringify(canvas, null, 2) + '\n');
   }
 
