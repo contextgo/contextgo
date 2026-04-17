@@ -173,6 +173,25 @@ describe('ContextRuntimeService', () => {
       chunks: [],
       sources: [],
       totalEstimatedTokens: 80,
+      trace: {
+        query: 'release context',
+        queryTerms: ['release', 'context'],
+        searchMode: 'hybrid' as const,
+        entries: [
+          {
+            entityKind: 'memory' as const,
+            entityId: 'memory-1',
+            score: 88,
+            reasons: [{ kind: 'lexical_match' as const, matchedTerms: ['release'] }],
+          },
+          {
+            entityKind: 'profile' as const,
+            entityId: 'profile-1',
+            score: 36,
+            reasons: [{ kind: 'profile_memory_link' as const, memoryIds: ['memory-1'] }],
+          },
+        ],
+      },
     });
     mockContextService.assemble.mockResolvedValue({
       pack: {
@@ -198,6 +217,20 @@ describe('ContextRuntimeService', () => {
         generatedAt: '2026-03-30T00:00:00.000Z',
       },
       omittedEntityIds: [],
+      trace: {
+        budgetTokens: 420,
+        spentTokens: 12,
+        entries: [
+          {
+            sectionId: 'instruction-0',
+            sectionKind: 'instruction',
+            source: 'pinned_instruction',
+            tokenCount: 8,
+            priority: 110,
+            outcome: 'kept',
+          },
+        ],
+      },
     });
     mockContextService.ingestSource.mockResolvedValue({
       source: { id: 'source-1' },
@@ -573,6 +606,159 @@ describe('ContextRuntimeService', () => {
     expect(mockContextService.assemble.mock.invocationCallOrder[0]).toBeLessThan(
       mockContextService.ingestSource.mock.invocationCallOrder[0]
     );
+    const checkpointBody = mockVaultSyncService.appendContextCheckpoint.mock.calls.at(-1)?.[0]?.body;
+    expect(checkpointBody).toContain('Mounted thread summary: yes');
+    expect(checkpointBody).toContain('Mounted sections: 3');
+    expect(checkpointBody).toContain('Mounted profiles: 1');
+  });
+
+  it('persists a compact retrieval and assembly trace through checkpoint and timeline surfaces', async () => {
+    mockContextService.retrieve.mockResolvedValueOnce({
+      memories: [
+        {
+          memory: {
+            id: 'memory-1',
+            spaceId: 'space-1',
+            kind: 'workflow',
+            summary: 'Use the approved release checklist before shipping.',
+            sourceIds: ['source-memory'],
+            chunkIds: [],
+            confidence: 0.9,
+            tier: 'experiential',
+            priority: 'high',
+            state: 'accepted',
+            createdAt: '2026-03-30T00:00:00.000Z',
+            updatedAt: '2026-03-30T00:00:00.000Z',
+          },
+          score: 88,
+          matchedBy: ['release'],
+        },
+      ],
+      profiles: [
+        {
+          id: 'profile-1',
+          spaceId: 'space-1',
+          key: 'style',
+          summary: 'Team prefers minimal diffs and explicit validation steps.',
+          memoryIds: ['memory-1'],
+          confidence: 0.8,
+          state: 'active',
+          createdAt: '2026-03-30T00:00:00.000Z',
+          updatedAt: '2026-03-30T00:00:00.000Z',
+        },
+      ],
+      chunks: [],
+      sources: [],
+      totalEstimatedTokens: 80,
+      trace: {
+        query: 'release trace',
+        queryTerms: ['release', 'trace'],
+        searchMode: 'hybrid' as const,
+        entries: [
+          {
+            entityKind: 'memory' as const,
+            entityId: 'memory-1',
+            score: 88,
+            reasons: [{ kind: 'lexical_match' as const, matchedTerms: ['release'] }],
+          },
+          {
+            entityKind: 'profile' as const,
+            entityId: 'profile-1',
+            score: 36,
+            reasons: [{ kind: 'profile_memory_link' as const, memoryIds: ['memory-1'] }],
+          },
+        ],
+      },
+    });
+    mockContextService.assemble.mockResolvedValueOnce({
+      pack: {
+        id: 'pack-trace-1',
+        spaceId: 'space-1',
+        threadId: 'conv-1',
+        budgetTokens: 420,
+        sections: [
+          {
+            kind: 'profile',
+            id: 'profile-1',
+            summary: 'Team prefers minimal diffs and explicit validation steps.',
+            tokenCount: 12,
+            priority: 90,
+          },
+        ],
+        provenance: {
+          sourceIds: [],
+          memoryIds: ['memory-1'],
+          profileIds: ['profile-1'],
+          artifactIds: [],
+        },
+        generatedAt: '2026-03-30T00:00:00.000Z',
+      },
+      omittedEntityIds: ['memory-1'],
+      trace: {
+        budgetTokens: 420,
+        spentTokens: 18,
+        entries: [
+          {
+            sectionId: 'instruction-0',
+            sectionKind: 'instruction',
+            source: 'pinned_instruction',
+            tokenCount: 8,
+            priority: 110,
+            outcome: 'kept',
+          },
+          {
+            sectionId: 'memory-1',
+            sectionKind: 'memory',
+            source: 'retrieved_memory',
+            tokenCount: 20,
+            priority: 80,
+            outcome: 'omitted',
+            omissionReason: 'budget',
+          },
+        ],
+      },
+    });
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      undefined,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
+
+    await service.prepareOutgoingTurn({
+      conversation: makeConversation(),
+      userInput: 'Summarize the release context trace for this turn.',
+      agentInput: 'Summarize the release context trace for this turn.',
+      agentContent: '[User Request]\nSummarize the release context trace for this turn.',
+      msgId: 'msg-trace',
+    });
+
+    expect(mockVaultSyncService.appendContextCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Context Window Prepared',
+        body: expect.stringContaining('Assembly Trace'),
+      })
+    );
+    const checkpointBody = mockVaultSyncService.appendContextCheckpoint.mock.calls.at(-1)?.[0]?.body;
+    expect(checkpointBody).toContain('Retrieval entries: 2');
+    expect(checkpointBody).toContain('Budget spent: 18 / 420');
+    expect(checkpointBody).toContain('Mounted thread summary: no');
+    expect(checkpointBody).toContain('Mounted sections: 2');
+    expect(checkpointBody).toContain('Mounted profiles: 0');
+    expect(checkpointBody).toContain('Pinned instructions: 1');
+    expect(checkpointBody).toContain('Assembly kept: 1');
+    expect(checkpointBody).toContain('Omitted sections: 1');
+
+    const traceTimelineCall = mockVaultSyncService.appendSessionTimelineEvent.mock.calls.find(
+      (call) => call[0]?.title === 'Context trace'
+    );
+    expect(traceTimelineCall?.[0]?.body).toContain('retrieval 2');
+    expect(traceTimelineCall?.[0]?.body).toContain('mounted 2/0');
+    expect(traceTimelineCall?.[0]?.body).toContain('kept 1');
+    expect(traceTimelineCall?.[0]?.body).toContain('omitted 1');
+    expect(traceTimelineCall?.[0]?.body).toContain('budget 18/420');
   });
 
   it('auto-promotes strong candidates into durable memories', async () => {
