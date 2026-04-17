@@ -764,7 +764,6 @@ function attachPublishObjectActiveSessionPointers(params: {
   }));
 }
 
-<<<<<<< HEAD
 function buildPublicationEntries(params: {
   connectors: IConnectorInstance[];
   bindings: IChannelBinding[];
