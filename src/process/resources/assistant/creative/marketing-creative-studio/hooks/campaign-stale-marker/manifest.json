@@ -1,0 +1,9 @@
+{
+  "name": "campaign-stale-marker",
+  "description": "When a source campaign brief is updated, mark prior asset variants tied to the previous brief version as stale.",
+  "version": "1.0.0",
+  "executionType": "prompt-transform",
+  "events": ["before_user_prompt"],
+  "category": "marketing",
+  "tags": ["campaign", "stale", "marketing", "trace"]
+}

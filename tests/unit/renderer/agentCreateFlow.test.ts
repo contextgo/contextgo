@@ -38,6 +38,24 @@ describe('buildCapabilityRecommendation', () => {
     expect(recommendation.linkedPackagePresetId).toBe('builtin-finance-analyst');
     expect(recommendation.defaultSkills.length).toBeGreaterThan(0);
   });
+
+  it('should recommend marketing creative studio for campaign asset intent', () => {
+    const draft: AgentCreateIntentDraft = {
+      workDescription: 'Build a multi-platform ad creative batch for campaign launch',
+      audience: 'Growth marketing',
+      output: 'Campaign variants and social assets',
+      workStyle: 'create',
+      recurrence: 'frequent',
+    };
+
+    const recommendation = buildCapabilityRecommendation(draft);
+
+    expect(recommendation.linkedPackagePresetId).toBe('builtin-marketing-creative-studio');
+    expect(recommendation.defaultSkills).toEqual(
+      expect.arrayContaining(['marketing-context-normalizer', 'ad-creative-builder', 'campaign-variant-generator'])
+    );
+    expect(recommendation.commandCount).toBeGreaterThan(0);
+  });
 });
 
 describe('buildCreateFlowSummary', () => {
