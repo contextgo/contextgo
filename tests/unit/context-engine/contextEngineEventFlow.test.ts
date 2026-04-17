@@ -185,7 +185,7 @@ describe('context engine event flow', () => {
       }),
     ]);
   });
-  it('writes operation logs for signals, queued jobs, and completed jobs', async () => {
+  it('baseline[GF1]: writes operation logs for signals, queued jobs, and completed jobs', async () => {
     const bus = new ContextEventBus();
     const contextService = {
       appendSystemOperation: vi.fn(async () => undefined),
