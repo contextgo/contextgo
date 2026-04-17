@@ -232,6 +232,29 @@ export function createDefaultManagedSlashCommandLibrary(
   );
 }
 
+export function mergeManagedSlashCommandLibraries(
+  libraries: ReadonlyArray<ReadonlyArray<ManagedSlashCommandRecord> | null | undefined>
+): ManagedSlashCommandRecord[] {
+  const combined = libraries.flatMap((library) => normalizeManagedSlashCommandLibrary(library));
+  const seenNames = new Set<string>();
+  const mergedReversed: ManagedSlashCommandRecord[] = [];
+
+  for (let index = combined.length - 1; index >= 0; index -= 1) {
+    const command = combined[index];
+    const normalizedName = command.name.toLowerCase();
+    if (seenNames.has(normalizedName)) {
+      continue;
+    }
+
+    seenNames.add(normalizedName);
+    mergedReversed.push({
+      ...command,
+    });
+  }
+
+  return mergedReversed.reverse();
+}
+
 export function resolveManagedSlashCommands(
   library: ManagedSlashCommandRecord[],
   _resolveText?: SlashCommandTranslationResolver

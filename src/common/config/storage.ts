@@ -362,6 +362,10 @@ export type TBrowserContextAsset = {
   modifyTime: number;
 };
 
+export type SpaceAutomationState = {
+  commands?: ManagedSlashCommandRecord[];
+};
+
 export type TSpace = {
   id: string;
   name: string;
@@ -370,6 +374,7 @@ export type TSpace = {
   members?: SpaceMember[];
   permissionsPolicy?: SpacePermissionsPolicy;
   providerRef?: SpaceProviderRef;
+  automation?: SpaceAutomationState;
   isDefault?: boolean;
   archivedAt?: number;
   createTime: number;

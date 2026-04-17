@@ -5,6 +5,7 @@
  */
 
 // 复用现有的业务类型定义
+import { normalizeManagedSlashCommandLibrary } from '@/common/chat/slash/library';
 import type {
   ConversationSource,
   IConfigStorageRefer,
@@ -268,6 +269,7 @@ export interface ISpaceRow {
   members_json?: string | null;
   permissions_policy_json?: string | null;
   provider_ref_json?: string | null;
+  automation_json?: string | null;
   is_default: number;
   archived_at?: number | null;
   created_at: number;
@@ -378,10 +380,29 @@ export function spaceToRow(space: TSpace, userId: string): ISpaceRow {
     members_json: JSON.stringify(space.members ?? []),
     permissions_policy_json: JSON.stringify(space.permissionsPolicy ?? {}),
     provider_ref_json: JSON.stringify(space.providerRef ?? null),
+    automation_json: JSON.stringify({
+      commands: normalizeManagedSlashCommandLibrary(space.automation?.commands ?? []),
+    }),
     is_default: space.isDefault ? 1 : 0,
     archived_at: space.archivedAt ?? null,
     created_at: space.createTime,
     updated_at: space.modifyTime,
+  };
+}
+
+function parseSpaceAutomation(value: string | null | undefined): TSpace['automation'] | undefined {
+  const parsed = parseJson<{ commands?: unknown } | null>(value, null);
+  if (!parsed || typeof parsed !== 'object') {
+    return undefined;
+  }
+
+  const commands = normalizeManagedSlashCommandLibrary(parsed.commands ?? []);
+  if (commands.length === 0) {
+    return undefined;
+  }
+
+  return {
+    commands,
   };
 }
 
@@ -394,6 +415,7 @@ export function rowToSpace(row: ISpaceRow): TSpace {
     members: parseJson(row.members_json, []),
     permissionsPolicy: parseJson(row.permissions_policy_json, {}),
     providerRef: parseJson(row.provider_ref_json, undefined),
+    automation: parseSpaceAutomation(row.automation_json),
     isDefault: row.is_default === 1,
     archivedAt: row.archived_at ?? undefined,
     createTime: row.created_at,

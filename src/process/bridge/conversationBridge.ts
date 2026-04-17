@@ -8,11 +8,12 @@ import type { CodexAgentManager } from '@process/agent/codex';
 import { GeminiAgent, GeminiApprovalStore } from '@process/agent/gemini';
 import type { ICreateConversationParams, IDiscussionGroupCreateParams } from '@/common/adapter/ipcBridge';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
-import { normalizeManagedSlashCommandLibrary, type ManagedSlashCommandRecord } from '@/common/chat/slash/library';
+import { mergeManagedSlashCommandLibraries, type ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import { transformMessage } from '@/common/chat/chatLib';
 import type { TChatConversation } from '@/common/config/storage';
 import type { IAgentManager } from '@process/task/IAgentManager';
 import type { IConversationService } from '@process/services/IConversationService';
+import type { ISpaceService } from '@process/services/space/ISpaceService';
 import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
 import { ipcBridge } from '@/common';
 import { uuid } from '@/common/utils';
@@ -75,21 +76,31 @@ function getConversationWorkspacePath(conversation?: TChatConversation): string 
   return resolveWorkspacePath(workingDirectory || workspace);
 }
 
-async function resolveManagedSlashCommandLibrary(
-  conversation?: TChatConversation
-): Promise<ManagedSlashCommandRecord[]> {
-  const workspacePath = getConversationWorkspacePath(conversation);
-  if (!workspacePath) {
-    return [];
-  }
+function getConversationSpaceId(conversation?: TChatConversation): string | undefined {
+  const spaceId = conversation?.extra?.spaceId;
+  return typeof spaceId === 'string' && spaceId.trim() ? spaceId : undefined;
+}
 
-  const workspaceLibrary = await readWorkspaceCommandLibrary(workspacePath);
-  return normalizeManagedSlashCommandLibrary(workspaceLibrary ?? []);
+async function resolveManagedSlashCommandLibrary(
+  conversation: TChatConversation | undefined,
+  spaceService: ISpaceService
+): Promise<ManagedSlashCommandRecord[]> {
+  const spaceId = getConversationSpaceId(conversation);
+  const workspacePath = getConversationWorkspacePath(conversation);
+  const [spaceLibrary, workspaceLibrary] = await Promise.all([
+    spaceId ? spaceService.getSpaceCommandLibrary(spaceId) : Promise.resolve<ManagedSlashCommandRecord[]>([]),
+    workspacePath
+      ? readWorkspaceCommandLibrary(workspacePath)
+      : Promise.resolve<ManagedSlashCommandRecord[] | null>(null),
+  ]);
+
+  return mergeManagedSlashCommandLibraries([spaceLibrary, workspaceLibrary ?? []]);
 }
 
 export function initConversationBridge(
   conversationService: IConversationService,
-  workerTaskManager: IWorkerTaskManager
+  workerTaskManager: IWorkerTaskManager,
+  spaceService: ISpaceService
 ): void {
   const assistantHookRuntime = new AssistantHookRuntime();
   const groupConversationService = new GroupConversationService(conversationService, workerTaskManager);
@@ -506,7 +517,7 @@ export function initConversationBridge(
   ipcBridge.conversation.getSlashCommands.provider(async ({ conversation_id, includeRuntimeCommands = true }) => {
     try {
       const conversation = await conversationService.getConversation(conversation_id);
-      const managedLibrary = await resolveManagedSlashCommandLibrary(conversation);
+      const managedLibrary = await resolveManagedSlashCommandLibrary(conversation, spaceService);
       if (!conversation) {
         return { success: true, data: { commands: [], managedLibrary } };
       }

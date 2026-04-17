@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createManagedSlashCommandFromBuiltin,
+  mergeManagedSlashCommandLibraries,
   normalizeManagedSlashCommandLibrary,
   resolveManagedSlashCommands,
   toSlashCommandItems,
@@ -136,5 +137,66 @@ describe('managed slash command library', () => {
       template:
         'settings.commands.presets.plan.template:Restate the task, identify the main constraints and risks, then propose a clear step-by-step implementation plan. Do not modify files yet. Wait for confirmation before executing.',
     });
+  });
+
+  it('merges Space commands before project-local commands and lets project-local override by name case-insensitively', () => {
+    const merged = mergeManagedSlashCommandLibraries([
+      [
+        {
+          id: 'space-plan',
+          enabled: true,
+          name: 'plan',
+          description: 'Shared Space plan',
+          template: 'Use the shared Space plan template.',
+        },
+        {
+          id: 'space-verify',
+          enabled: true,
+          name: 'verify',
+          description: 'Shared Space verification',
+          template: 'Run the shared Space verification checklist.',
+        },
+      ],
+      [
+        {
+          id: 'project-plan',
+          enabled: true,
+          name: 'PLAN',
+          description: 'Project-local override',
+          template: 'Use the project-local plan template.',
+        },
+        {
+          id: 'project-ship',
+          enabled: false,
+          name: 'ship',
+          description: 'Project-local ship checklist',
+          template: 'Ship the current change safely.',
+        },
+      ],
+    ]);
+
+    expect(merged).toEqual([
+      {
+        id: 'space-verify',
+        enabled: true,
+        name: 'verify',
+        description: 'Shared Space verification',
+        template: 'Run the shared Space verification checklist.',
+      },
+      {
+        id: 'project-plan',
+        enabled: true,
+        name: 'PLAN',
+        description: 'Project-local override',
+        template: 'Use the project-local plan template.',
+      },
+      {
+        id: 'project-ship',
+        enabled: false,
+        name: 'ship',
+        description: 'Project-local ship checklist',
+        template: 'Ship the current change safely.',
+      },
+    ]);
   });
 });

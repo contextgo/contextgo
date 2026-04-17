@@ -74,6 +74,11 @@ export const space = {
   ensureDefault: bridge.buildProvider<TSpace, void>('space.ensure-default'),
   list: bridge.buildProvider<TSpace[], void>('space.list'),
   create: bridge.buildProvider<TSpace, { name: string; description?: string }>('space.create'),
+  getCommandLibrary: bridge.buildProvider<ManagedSlashCommandRecord[], { id: string }>('space.get-command-library'),
+  saveCommandLibrary: bridge.buildProvider<
+    ManagedSlashCommandRecord[],
+    { id: string; commands: ManagedSlashCommandRecord[] }
+  >('space.save-command-library'),
   openVault: bridge.buildProvider<
     {
       opened: boolean;

@@ -222,4 +222,108 @@ describe('SpaceServiceImpl', () => {
     });
     expect(execFileMock).toHaveBeenNthCalledWith(4, 'open', ['/tmp/vaults/space-folder'], expect.any(Function));
   });
+
+  it('reads the normalized Space command library from Space automation state', async () => {
+    const existingSpace = {
+      id: 'space-commands',
+      name: 'Command Vault',
+      engine: 'vault',
+      automation: {
+        commands: [
+          {
+            id: 'space-plan',
+            enabled: true,
+            name: 'plan',
+            description: 'Shared plan command',
+            template: 'Plan with the shared Space template.',
+          },
+          {
+            id: 'duplicate-plan',
+            enabled: true,
+            name: 'PLAN',
+            description: 'duplicate should be discarded',
+            template: 'duplicate',
+          },
+        ],
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } satisfies TSpace;
+    const repo = makeRepo({
+      getSpace: vi.fn(async () => existingSpace),
+    });
+    const service = new SpaceServiceImpl(repo, syncSpaceVaultMock);
+
+    const result = await service.getSpaceCommandLibrary('space-commands');
+
+    expect(result).toEqual([
+      {
+        id: 'space-plan',
+        enabled: true,
+        name: 'plan',
+        description: 'Shared plan command',
+        template: 'Plan with the shared Space template.',
+      },
+    ]);
+  });
+
+  it('saves the normalized Space command library through the focused command method', async () => {
+    const existingSpace = {
+      id: 'space-save',
+      name: 'Command Vault',
+      engine: 'vault',
+      automation: {
+        commands: [],
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } satisfies TSpace;
+    const repo = makeRepo({
+      getSpace: vi.fn(async () => existingSpace),
+    });
+    const service = new SpaceServiceImpl(repo, syncSpaceVaultMock);
+
+    const result = await service.saveSpaceCommandLibrary('space-save', [
+      {
+        id: 'space-plan',
+        enabled: true,
+        name: '/plan',
+        description: 'Shared plan command',
+        template: 'Plan with the shared Space template.',
+      },
+      {
+        id: 'duplicate-plan',
+        enabled: false,
+        name: 'PLAN',
+        description: 'duplicate should be discarded',
+        template: 'duplicate',
+      },
+    ]);
+
+    expect(result).toEqual([
+      {
+        id: 'space-plan',
+        enabled: true,
+        name: 'plan',
+        description: 'Shared plan command',
+        template: 'Plan with the shared Space template.',
+      },
+    ]);
+    expect(repo.updateSpace).toHaveBeenCalledWith(
+      'space-save',
+      expect.objectContaining({
+        automation: {
+          commands: [
+            {
+              id: 'space-plan',
+              enabled: true,
+              name: 'plan',
+              description: 'Shared plan command',
+              template: 'Plan with the shared Space template.',
+            },
+          ],
+        },
+      })
+    );
+  });
 });

@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import type { TSpace } from '@/common/config/storage';
 
 export interface ISpaceService {
@@ -11,6 +12,8 @@ export interface ISpaceService {
   listSpaces(): Promise<TSpace[]>;
   createSpace(name: string, description?: string): Promise<TSpace>;
   updateSpace(id: string, updates: Partial<TSpace>): Promise<TSpace | undefined>;
+  getSpaceCommandLibrary(id: string): Promise<ManagedSlashCommandRecord[]>;
+  saveSpaceCommandLibrary(id: string, commands: ManagedSlashCommandRecord[]): Promise<ManagedSlashCommandRecord[]>;
   openSpaceVault(id: string): Promise<{
     opened: boolean;
     fallback: 'obsidian-uri' | 'folder' | 'none';
