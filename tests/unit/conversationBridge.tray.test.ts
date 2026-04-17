@@ -131,7 +131,14 @@ const registerMocks = () => {
 let initConversationBridge: typeof import('@process/bridge/conversationBridge').initConversationBridge;
 
 const getProvider = async (key: string): Promise<Provider> => {
-  initConversationBridge(mockConversationService as any, mockWorkerTaskManager as any);
+  initConversationBridge(
+    mockConversationService as any,
+    mockWorkerTaskManager as any,
+    {
+      getCommandLibrary: vi.fn(async () => []),
+      saveCommandLibrary: vi.fn(),
+    } as any
+  );
 
   const provider = handlers[key];
   if (!provider) {

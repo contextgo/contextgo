@@ -64,6 +64,7 @@ export function initSchema(db: ISqliteDriver): void {
     name TEXT NOT NULL,
     engine TEXT NOT NULL,
     description TEXT,
+    automation_json TEXT,
     members_json TEXT NOT NULL DEFAULT '[]',
     permissions_policy_json TEXT NOT NULL DEFAULT '{}',
     provider_ref_json TEXT,
@@ -73,6 +74,7 @@ export function initSchema(db: ISqliteDriver): void {
     updated_at INTEGER NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
+  ensureColumn(db, 'spaces', 'automation_json', 'automation_json TEXT');
   ensureColumn(db, 'spaces', 'members_json', `members_json TEXT NOT NULL DEFAULT '[]'`);
   ensureColumn(db, 'spaces', 'permissions_policy_json', `permissions_policy_json TEXT NOT NULL DEFAULT '{}'`);
   ensureColumn(db, 'spaces', 'provider_ref_json', 'provider_ref_json TEXT');

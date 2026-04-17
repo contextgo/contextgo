@@ -341,6 +341,11 @@ export type BrowserContextStorageMode = 'local-encrypted' | 'extension-bridge' |
 
 export type BrowserContextMetadataValue = string | number | boolean | null;
 
+export type SpaceAutomationState = {
+  version: 1;
+  commands?: ManagedSlashCommandRecord[];
+};
+
 export type TBrowserContextAsset = {
   id: string;
   spaceId: string;
@@ -367,6 +372,7 @@ export type TSpace = {
   name: string;
   engine: SpaceEngine;
   description?: string;
+  automation?: SpaceAutomationState;
   members?: SpaceMember[];
   permissionsPolicy?: SpacePermissionsPolicy;
   providerRef?: SpaceProviderRef;

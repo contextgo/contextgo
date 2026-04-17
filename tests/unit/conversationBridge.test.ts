@@ -131,6 +131,7 @@ vi.mock('@process/utils/tray', () => ({
 import { initConversationBridge } from '../../src/process/bridge/conversationBridge';
 import type { IConversationService } from '../../src/process/services/IConversationService';
 import type { IWorkerTaskManager } from '../../src/process/task/IWorkerTaskManager';
+import type { ISpaceService } from '../../src/process/services/space/ISpaceService';
 import type { TChatConversation } from '../../src/common/config/storage';
 
 function makeService(overrides?: Partial<IConversationService>): IConversationService {
@@ -166,6 +167,7 @@ function makeConversation(id: string, workspace = '/ws'): TChatConversation {
 describe('conversationBridge', () => {
   let service: IConversationService;
   let taskManager: IWorkerTaskManager;
+  let spaceService: ISpaceService;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -178,7 +180,19 @@ describe('conversationBridge', () => {
     // Re-register providers by re-initializing the bridge
     service = makeService();
     taskManager = makeTaskManager();
-    initConversationBridge(service, taskManager);
+    spaceService = {
+      getSpace: vi.fn(),
+      listSpaces: vi.fn(async () => []),
+      createSpace: vi.fn(),
+      updateSpace: vi.fn(),
+      openSpaceVault: vi.fn(),
+      renameSpace: vi.fn(),
+      archiveSpace: vi.fn(),
+      ensureDefaultSpace: vi.fn(),
+      getCommandLibrary: vi.fn(async () => []),
+      saveCommandLibrary: vi.fn(),
+    } as unknown as ISpaceService;
+    initConversationBridge(service, taskManager, spaceService);
   });
 
   describe('getAssociateConversation — listAllConversations path', () => {
@@ -240,7 +254,7 @@ describe('conversationBridge', () => {
       const rejectingTaskManager = makeTaskManager({
         getOrBuildTask: vi.fn().mockRejectedValue(new Error('Conversation not found: new-id')),
       });
-      initConversationBridge(service, rejectingTaskManager);
+      initConversationBridge(service, rejectingTaskManager, spaceService);
 
       // Should complete without throwing / unhandled rejection
       const result = await handlers['createWithConversation']({
@@ -380,6 +394,87 @@ describe('conversationBridge', () => {
   });
 
   describe('getSlashCommands', () => {
+    it('merges space commands ahead of project-local commands and lets local commands override by name', async () => {
+      vi.mocked(service.getConversation).mockResolvedValue({
+        id: 'c1',
+        type: 'gemini',
+        name: 'Merged Commands',
+        extra: {
+          workspace: '/workspace',
+          spaceId: 'space-1',
+        },
+      } as unknown as TChatConversation);
+      vi.mocked(spaceService.getCommandLibrary).mockResolvedValue([
+        {
+          id: 'shared-plan',
+          enabled: true,
+          name: 'plan',
+          description: 'Space plan',
+          template: 'Use the shared plan.',
+        },
+        {
+          id: 'shared-review',
+          enabled: true,
+          name: 'review',
+          description: 'Space review',
+          template: 'Use the shared review.',
+        },
+      ]);
+      readWorkspaceCommandLibraryMock.mockResolvedValue([
+        {
+          id: 'local-plan',
+          enabled: true,
+          name: 'plan',
+          description: 'Project plan',
+          template: 'Use the local plan.',
+        },
+        {
+          id: 'local-docs',
+          enabled: true,
+          name: 'docs',
+          description: 'Project docs',
+          template: 'Use the local docs.',
+        },
+      ]);
+
+      const handler = handlers['getSlashCommands'];
+      const result = (await handler({
+        conversation_id: 'c1',
+        includeRuntimeCommands: false,
+      })) as {
+        success: boolean;
+        data: { commands: Array<{ name: string }>; managedLibrary: Array<Record<string, unknown>> };
+      };
+
+      expect(result.success).toBe(true);
+      expect(result.data.commands).toEqual([]);
+      expect(result.data.managedLibrary).toEqual([
+        {
+          id: 'shared-review',
+          enabled: true,
+          name: 'review',
+          description: 'Space review',
+          template: 'Use the shared review.',
+        },
+        {
+          id: 'local-plan',
+          enabled: true,
+          name: 'plan',
+          description: 'Project plan',
+          template: 'Use the local plan.',
+        },
+        {
+          id: 'local-docs',
+          enabled: true,
+          name: 'docs',
+          description: 'Project docs',
+          template: 'Use the local docs.',
+        },
+      ]);
+      expect(spaceService.getCommandLibrary).toHaveBeenCalledWith('space-1');
+      expect(readWorkspaceCommandLibraryMock).toHaveBeenCalledWith('/workspace');
+    });
+
     it('returns workspace-managed libraries even when runtime commands are skipped', async () => {
       vi.mocked(service.getConversation).mockResolvedValue(makeConversation('c1', '/workspace'));
       readWorkspaceCommandLibraryMock.mockResolvedValue([
@@ -427,7 +522,50 @@ describe('conversationBridge', () => {
       expect(readWorkspaceCommandLibraryMock).toHaveBeenCalledWith('/workspace');
     });
 
-    it('returns no managed commands when the conversation has no workspace', async () => {
+    it('returns space-managed commands when the conversation has a space but no workspace', async () => {
+      vi.mocked(service.getConversation).mockResolvedValue({
+        id: 'c1',
+        type: 'gemini',
+        name: 'Space Only',
+        extra: {
+          spaceId: 'space-1',
+        },
+      } as unknown as TChatConversation);
+      vi.mocked(spaceService.getCommandLibrary).mockResolvedValue([
+        {
+          id: 'shared-plan',
+          enabled: true,
+          name: 'plan',
+          description: 'Space plan',
+          template: 'Use the shared plan.',
+        },
+      ]);
+
+      const handler = handlers['getSlashCommands'];
+      const result = (await handler({
+        conversation_id: 'c1',
+        includeRuntimeCommands: false,
+      })) as {
+        success: boolean;
+        data: { commands: Array<{ name: string }>; managedLibrary: Array<Record<string, unknown>> };
+      };
+
+      expect(result.success).toBe(true);
+      expect(result.data.commands).toEqual([]);
+      expect(result.data.managedLibrary).toEqual([
+        {
+          id: 'shared-plan',
+          enabled: true,
+          name: 'plan',
+          description: 'Space plan',
+          template: 'Use the shared plan.',
+        },
+      ]);
+      expect(spaceService.getCommandLibrary).toHaveBeenCalledWith('space-1');
+      expect(readWorkspaceCommandLibraryMock).not.toHaveBeenCalled();
+    });
+
+    it('returns no managed commands when the conversation has neither a workspace nor a space binding', async () => {
       vi.mocked(service.getConversation).mockResolvedValue({
         id: 'c1',
         type: 'gemini',
@@ -447,6 +585,7 @@ describe('conversationBridge', () => {
       expect(result.success).toBe(true);
       expect(result.data.commands).toEqual([]);
       expect(result.data.managedLibrary).toEqual([]);
+      expect(spaceService.getCommandLibrary).not.toHaveBeenCalled();
       expect(readWorkspaceCommandLibraryMock).not.toHaveBeenCalled();
     });
 

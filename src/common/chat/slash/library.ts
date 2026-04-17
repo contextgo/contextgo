@@ -241,6 +241,23 @@ export function resolveManagedSlashCommands(
   }));
 }
 
+export function mergeManagedSlashCommandLibraries(
+  baseLibrary: ManagedSlashCommandRecord[],
+  overrideLibrary: ManagedSlashCommandRecord[]
+): ManagedSlashCommandRecord[] {
+  const normalizedBaseLibrary = normalizeManagedSlashCommandLibrary(baseLibrary);
+  const normalizedOverrideLibrary = normalizeManagedSlashCommandLibrary(overrideLibrary);
+  const overriddenIds = new Set(normalizedOverrideLibrary.map((record) => record.id));
+  const overriddenNames = new Set(normalizedOverrideLibrary.map((record) => record.name.toLowerCase()));
+
+  return [
+    ...normalizedBaseLibrary.filter(
+      (record) => !overriddenIds.has(record.id) && !overriddenNames.has(record.name.toLowerCase())
+    ),
+    ...normalizedOverrideLibrary,
+  ];
+}
+
 export function toSlashCommandItems(commands: ResolvedManagedSlashCommand[]): SlashCommandItem[] {
   return commands
     .filter((command) => command.enabled)

@@ -9,13 +9,12 @@ import type { IProvider, TChatConversation, TProviderWithModel } from '@/common/
 import { channel } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
 import addChatIcon from '@/renderer/assets/icons/add-chat.svg';
-import ProjectSkillMarketModal from '@/renderer/pages/conversation/ProjectSkillMarketModal';
 import ProjectAutomationModal from '@/renderer/pages/schedule/components/ProjectAutomationModal';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { iconColors } from '@/renderer/styles/colors';
 import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
 import { Button, Dropdown, Menu, Message, Tooltip, Typography } from '@arco-design/web-react';
-import { ConnectionPoint, History, Search, SettingTwo } from '@icon-park/react';
+import { ConnectionPoint, History, SettingTwo } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -240,44 +239,6 @@ const ProjectAutomationEntryButton: React.FC<{ conversation: TChatConversation }
   );
 };
 
-const ProjectSkillMarketEntryButton: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
-  const { t } = useTranslation();
-  const workspacePath = getConversationWorkspacePath(conversation);
-  const [modalVisible, setModalVisible] = useState(false);
-
-  if (!workspacePath) {
-    return null;
-  }
-
-  return (
-    <>
-      <Tooltip content={t('conversation.workspace.skillMarket.action')}>
-        <Button
-          type='text'
-          size='small'
-          className='app-header-pill-button chat-header-publish-pill !h-auto !w-auto !min-w-0'
-          aria-label={t('conversation.workspace.skillMarket.action')}
-          onClick={() => setModalVisible(true)}
-        >
-          <span className='app-header-pill'>
-            <span className='app-header-pill__icon'>
-              <Search theme='outline' size={16} fill={iconColors.primary} />
-            </span>
-            <span className='hidden md:inline text-12px text-t-primary'>
-              {t('conversation.workspace.skillMarket.action')}
-            </span>
-          </span>
-        </Button>
-      </Tooltip>
-      <ProjectSkillMarketModal
-        visible={modalVisible}
-        workspacePath={workspacePath}
-        onClose={() => setModalVisible(false)}
-      />
-    </>
-  );
-};
-
 const _AssociatedConversation: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
   const { data } = useSWR(['getAssociateConversation', conversation_id], () =>
     ipcBridge.conversation.getAssociateConversation.invoke({ conversation_id })
@@ -401,9 +362,6 @@ const GeminiConversationPanel: React.FC<{ conversation: GeminiConversation; slid
       <div className='flex items-center gap-8px'>
         <div className='shrink-0'>
           <PublishAgentEntryButton conversation={conversation} />
-        </div>
-        <div className='shrink-0'>
-          <ProjectSkillMarketEntryButton conversation={conversation} />
         </div>
         <div className='shrink-0'>
           <ProjectAutomationEntryButton conversation={conversation} />
@@ -558,11 +516,6 @@ const ChatConversation: React.FC<{
         {conversation ? (
           <div className='shrink-0'>
             <PublishAgentEntryButton conversation={conversation} />
-          </div>
-        ) : null}
-        {conversation ? (
-          <div className='shrink-0'>
-            <ProjectSkillMarketEntryButton conversation={conversation} />
           </div>
         ) : null}
         {conversation ? (

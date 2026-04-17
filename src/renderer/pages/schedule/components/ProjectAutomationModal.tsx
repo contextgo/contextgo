@@ -22,6 +22,7 @@ import {
   getConversationEnabledHooks,
   resolveConversationHookBackend,
 } from '@/renderer/pages/conversation/Workspace/utils/sessionHooks';
+import ProjectSkillMarketModal from '@/renderer/pages/conversation/ProjectSkillMarketModal';
 import ManagedCommandLibraryEditor from '@/renderer/pages/settings/ToolsSettings/ManagedCommandLibraryEditor';
 import { emitter } from '@/renderer/utils/emitter';
 import {
@@ -179,6 +180,16 @@ const resolveSkillSummary = (skill: SkillInfo): string => {
   return skill.openAIConfig?.interface?.shortDescription?.trim() || skill.description?.trim() || skill.name || '';
 };
 
+const getConversationSpaceId = (conversation: TChatConversation): string | null => {
+  const rawSpaceId = (conversation.extra as { spaceId?: unknown } | undefined)?.spaceId;
+  if (typeof rawSpaceId !== 'string') {
+    return null;
+  }
+
+  const normalizedSpaceId = rawSpaceId.trim();
+  return normalizedSpaceId || null;
+};
+
 const stripSkillFrontMatter = (content: string): string => {
   const match = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/);
   const markdownBody = match ? content.slice(match[0].length) : content;
@@ -211,6 +222,7 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
   const { t } = useTranslation();
   const [messageApi, messageContext] = Message.useMessage();
   const [activeTab, setActiveTab] = useState<AutomationTabKey>('skills');
+  const [skillMarketVisible, setSkillMarketVisible] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [scheduleDeleting, setScheduleDeleting] = useState(false);
   const [scheduleRunningNow, setScheduleRunningNow] = useState(false);
@@ -229,6 +241,7 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
   const [runtimePolicy, setRuntimePolicy] = useState<ProjectRuntimePolicy>(createDefaultRuntimePolicy);
   const directCreateContext = useMemo(() => getScheduleDirectCreateContext(conversation), [conversation]);
   const workspacePath = useMemo(() => getConversationWorkspacePath(conversation), [conversation]);
+  const spaceId = useMemo(() => getConversationSpaceId(conversation), [conversation]);
   const automationPaths = useMemo(
     () => (workspacePath ? getWorkspaceAutomationPaths(workspacePath) : null),
     [workspacePath]
@@ -294,6 +307,7 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
       setPreviewingSkill(null);
       setSkillPreviewContent('');
       setSkillPreviewLoading(false);
+      setSkillMarketVisible(false);
       return;
     }
 
@@ -317,6 +331,14 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
     }
   }, [automationPaths]);
 
+  const loadSpaceCommandLibrary = useCallback(async (): Promise<ManagedSlashCommandRecord[]> => {
+    if (!spaceId) {
+      return [];
+    }
+
+    return normalizeManagedSlashCommandLibrary(await ipcBridge.space.getCommandLibrary.invoke({ id: spaceId }));
+  }, [spaceId]);
+
   const saveProjectCommandLibrary = useCallback(
     async (nextLibrary: ManagedSlashCommandRecord[]) => {
       if (!automationPaths) {
@@ -329,6 +351,20 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
       });
     },
     [automationPaths]
+  );
+
+  const saveSpaceCommandLibrary = useCallback(
+    async (nextLibrary: ManagedSlashCommandRecord[]) => {
+      if (!spaceId) {
+        return;
+      }
+
+      await ipcBridge.space.saveCommandLibrary.invoke({
+        id: spaceId,
+        library: nextLibrary,
+      });
+    },
+    [spaceId]
   );
 
   const loadRuntimePolicy = useCallback(async () => {
@@ -810,13 +846,25 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                     </div>
                   }
                   actions={
-                    <Button
-                      type='secondary'
-                      icon={<Refresh size={14} className={skillsLoading ? 'animate-spin' : ''} />}
-                      onClick={() => void handleRefreshSkills()}
-                    >
-                      {t('common.refresh', { defaultValue: 'Refresh' })}
-                    </Button>
+                    <>
+                      {workspacePath ? (
+                        <Button
+                          type='secondary'
+                          onClick={() => {
+                            setSkillMarketVisible(true);
+                          }}
+                        >
+                          {t('conversation.workspace.skillMarket.action')}
+                        </Button>
+                      ) : null}
+                      <Button
+                        type='secondary'
+                        icon={<Refresh size={14} className={skillsLoading ? 'animate-spin' : ''} />}
+                        onClick={() => void handleRefreshSkills()}
+                      >
+                        {t('common.refresh', { defaultValue: 'Refresh' })}
+                      </Button>
+                    </>
                   }
                 >
                   <AutomationSectionCard
@@ -934,6 +982,13 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                     )}
                   </AutomationSectionCard>
                 </AutomationPanel>
+                {workspacePath ? (
+                  <ProjectSkillMarketModal
+                    visible={skillMarketVisible}
+                    workspacePath={workspacePath}
+                    onClose={() => setSkillMarketVisible(false)}
+                  />
+                ) : null}
               </div>
             </Tabs.TabPane>
 
@@ -1075,13 +1130,67 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
             </Tabs.TabPane>
 
             <Tabs.TabPane key='commands' title={t('settings.commands.title')}>
-              <div className='mt-8px'>
+              <div className='mt-8px flex flex-col gap-16px'>
+                {spaceId ? (
+                  <ManagedCommandLibraryEditor
+                    variant='embedded'
+                    title={t('conversation.workspace.automation.spaceCommandsTitle', {
+                      defaultValue: 'Space Commands',
+                    })}
+                    description={t('conversation.workspace.automation.spaceCommandsDescription', {
+                      defaultValue: 'Shared commands from the current Space are available across projects in this Space.',
+                    })}
+                    usageHint={t('conversation.workspace.automation.spaceCommandsUsageHint', {
+                      defaultValue:
+                        'Editing here updates the shared Space command library directly. Project-local commands can still override these by name.',
+                    })}
+                    loadLibrary={loadSpaceCommandLibrary}
+                    saveLibrary={saveSpaceCommandLibrary}
+                    onLibraryChanged={() => {
+                      emitter.emit('commands.library.updated');
+                    }}
+                    headerMeta={
+                      <Typography.Text type='secondary'>
+                        {t('conversation.workspace.automation.spaceCommandsScopeHint', {
+                          defaultValue: 'Space binding: {{spaceId}}',
+                          spaceId,
+                        })}
+                      </Typography.Text>
+                    }
+                  />
+                ) : (
+                  <AutomationPanel
+                    title={t('conversation.workspace.automation.spaceCommandsTitle', {
+                      defaultValue: 'Space Commands',
+                    })}
+                    description={t('conversation.workspace.automation.spaceCommandsDescription', {
+                      defaultValue: 'Shared commands from the current Space are available across projects in this Space.',
+                    })}
+                    icon={<Command theme='outline' size='18' className='app-icon text-t-primary' />}
+                  >
+                    <AutomationSectionCard>
+                      <Typography.Paragraph className='mb-0 text-t-secondary'>
+                        {t('conversation.workspace.automation.spaceCommandsUnavailable', {
+                          defaultValue: 'This conversation is not bound to a Space yet, so shared Space Commands are unavailable.',
+                        })}
+                      </Typography.Paragraph>
+                    </AutomationSectionCard>
+                  </AutomationPanel>
+                )}
                 {automationPaths ? (
                   <ManagedCommandLibraryEditor
                     variant='embedded'
-                    title={t('conversation.workspace.automation.commandsTitle')}
-                    description={t('conversation.workspace.automation.commandsDescription')}
-                    usageHint={t('conversation.workspace.automation.commandsUsageHint')}
+                    title={t('conversation.workspace.automation.projectCommandsTitle', {
+                      defaultValue: 'Project Local Commands',
+                    })}
+                    description={t('conversation.workspace.automation.projectCommandsDescription', {
+                      defaultValue:
+                        'These commands are saved into this project\'s `.contextgo/commands.json` and override Space Commands when names conflict.',
+                    })}
+                    usageHint={t('conversation.workspace.automation.projectCommandsUsageHint', {
+                      defaultValue:
+                        'Use this layer for project-specific prompts or local overrides of shared Space Commands.',
+                    })}
                     loadLibrary={loadProjectCommandLibrary}
                     saveLibrary={saveProjectCommandLibrary}
                     onLibraryChanged={() => {
@@ -1097,8 +1206,13 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                   />
                 ) : (
                   <AutomationPanel
-                    title={t('conversation.workspace.automation.commandsTitle')}
-                    description={t('conversation.workspace.automation.commandsDescription')}
+                    title={t('conversation.workspace.automation.projectCommandsTitle', {
+                      defaultValue: 'Project Local Commands',
+                    })}
+                    description={t('conversation.workspace.automation.projectCommandsDescription', {
+                      defaultValue:
+                        'These commands are saved into this project\'s `.contextgo/commands.json` and override Space Commands when names conflict.',
+                    })}
                     icon={<Command theme='outline' size='18' className='app-icon text-t-primary' />}
                   >
                     <AutomationSectionCard>

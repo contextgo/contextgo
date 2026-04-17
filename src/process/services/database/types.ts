@@ -265,6 +265,7 @@ export interface ISpaceRow {
   name: string;
   engine: TSpace['engine'];
   description?: string | null;
+  automation_json?: string | null;
   members_json?: string | null;
   permissions_policy_json?: string | null;
   provider_ref_json?: string | null;
@@ -375,6 +376,7 @@ export function spaceToRow(space: TSpace, userId: string): ISpaceRow {
     name: space.name,
     engine: space.engine,
     description: space.description ?? null,
+    automation_json: JSON.stringify(space.automation ?? null),
     members_json: JSON.stringify(space.members ?? []),
     permissions_policy_json: JSON.stringify(space.permissionsPolicy ?? {}),
     provider_ref_json: JSON.stringify(space.providerRef ?? null),
@@ -391,6 +393,7 @@ export function rowToSpace(row: ISpaceRow): TSpace {
     name: row.name,
     engine: row.engine,
     description: row.description ?? undefined,
+    automation: parseJson(row.automation_json, undefined),
     members: parseJson(row.members_json, []),
     permissionsPolicy: parseJson(row.permissions_policy_json, {}),
     providerRef: parseJson(row.provider_ref_json, undefined),

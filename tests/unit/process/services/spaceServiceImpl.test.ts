@@ -222,4 +222,89 @@ describe('SpaceServiceImpl', () => {
     });
     expect(execFileMock).toHaveBeenNthCalledWith(4, 'open', ['/tmp/vaults/space-folder'], expect.any(Function));
   });
+
+  it('returns an empty command library when the space has no automation commands', async () => {
+    const existingSpace = {
+      id: 'space-commands-empty',
+      name: 'Commands Empty',
+      engine: 'vault',
+      providerRef: createVaultProviderRef({ id: 'space-commands-empty', name: 'Commands Empty' }),
+      createTime: 1,
+      modifyTime: 1,
+    } satisfies TSpace;
+    const repo = makeRepo({
+      getSpace: vi.fn(async () => existingSpace),
+    });
+    const service = new SpaceServiceImpl(repo, syncSpaceVaultMock);
+
+    const result = await service.getCommandLibrary('space-commands-empty');
+
+    expect(result).toEqual([]);
+  });
+
+  it('saves normalized command library records into the space automation state', async () => {
+    const existingSpace = {
+      id: 'space-commands-save',
+      name: 'Commands Save',
+      engine: 'vault',
+      providerRef: createVaultProviderRef({ id: 'space-commands-save', name: 'Commands Save' }),
+      createTime: 1,
+      modifyTime: 1,
+    } satisfies TSpace;
+    const repo = makeRepo({
+      getSpace: vi.fn(async () => existingSpace),
+    });
+    const service = new SpaceServiceImpl(repo, syncSpaceVaultMock);
+
+    const result = await service.saveCommandLibrary('space-commands-save', [
+      {
+        id: 'shared-plan',
+        enabled: true,
+        name: 'plan',
+        description: 'Space plan',
+        template: 'Use the shared plan.',
+      },
+      {
+        id: 'ignored-invalid',
+        enabled: true,
+        name: 'not valid!',
+        description: 'Should be dropped',
+        template: 'Drop me.',
+      },
+      {
+        id: 'shared-plan-duplicate',
+        enabled: true,
+        name: 'plan',
+        description: 'Duplicate plan',
+        template: 'Duplicate plan.',
+      },
+    ]);
+
+    expect(result).toEqual([
+      {
+        id: 'shared-plan',
+        enabled: true,
+        name: 'plan',
+        description: 'Space plan',
+        template: 'Use the shared plan.',
+      },
+    ]);
+    expect(repo.updateSpace).toHaveBeenCalledWith(
+      'space-commands-save',
+      expect.objectContaining({
+        automation: {
+          version: 1,
+          commands: [
+            {
+              id: 'shared-plan',
+              enabled: true,
+              name: 'plan',
+              description: 'Space plan',
+              template: 'Use the shared plan.',
+            },
+          ],
+        },
+      })
+    );
+  });
 });

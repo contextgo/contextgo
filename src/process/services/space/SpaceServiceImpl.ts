@@ -12,6 +12,10 @@ import type {
   SpaceVaultProviderRef,
   TSpace,
 } from '@/common/config/storage';
+import {
+  normalizeManagedSlashCommandLibrary,
+  type ManagedSlashCommandRecord,
+} from '@/common/chat/slash/library';
 import { buildObsidianPathUri, buildObsidianVaultUri } from '@/common/utils/obsidianVaultOpen';
 import { uuid } from '@/common/utils';
 import { execFile } from 'node:child_process';
@@ -130,6 +134,11 @@ export class SpaceServiceImpl implements ISpaceService {
     return this.ensureVaultBackedSpace(space);
   }
 
+  async getCommandLibrary(id: string): Promise<ManagedSlashCommandRecord[]> {
+    const space = await this.getSpace(id);
+    return normalizeManagedSlashCommandLibrary(space?.automation?.commands ?? []);
+  }
+
   async listSpaces(): Promise<TSpace[]> {
     const spaces = await this.repo.listSpaces();
     return Promise.all(spaces.map((space) => this.ensureVaultBackedSpace(space)));
@@ -166,6 +175,24 @@ export class SpaceServiceImpl implements ISpaceService {
 
     await this.repo.updateSpace(id, updates);
     return this.getSpace(id);
+  }
+
+  async saveCommandLibrary(id: string, library: ManagedSlashCommandRecord[]): Promise<ManagedSlashCommandRecord[]> {
+    const space = await this.getSpace(id);
+    if (!space) {
+      throw new Error('Space not found');
+    }
+
+    const nextLibrary = normalizeManagedSlashCommandLibrary(library);
+    await this.repo.updateSpace(id, {
+      automation: {
+        ...(space.automation ?? {}),
+        version: 1,
+        commands: nextLibrary,
+      },
+    });
+
+    return nextLibrary;
   }
 
   async openSpaceVault(id: string): Promise<{
