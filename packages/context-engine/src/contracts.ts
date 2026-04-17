@@ -123,6 +123,125 @@ export type AssembleContextPackResult = {
   omittedEntityIds: readonly string[];
 };
 
+export type ExternalMemoryStrategyGovernanceScope = 'session_steward' | 'project_curator' | 'space_curator';
+
+export type ExternalMemoryStrategyToolSurface = 'none' | 'optional' | 'required';
+
+export type ExternalMemoryStrategyCapabilityMatrix = {
+  profile: boolean;
+  search: boolean;
+  reflect: boolean;
+  graph: boolean;
+  conclude: boolean;
+  prefetch: boolean;
+  trustScore: boolean;
+  toolSurface: ExternalMemoryStrategyToolSurface;
+};
+
+export type ExternalMemoryStrategyWriteMode = 'turn_sync' | 'async' | 'session_end' | 'batch';
+
+export type ExternalMemoryStrategyWriteSemantics = {
+  mode: ExternalMemoryStrategyWriteMode;
+};
+
+export type ExternalMemoryStrategyRecallMode = 'auto_inject' | 'tools_only' | 'hybrid';
+
+export type ExternalMemoryStrategyRecallSemantics = {
+  mode: ExternalMemoryStrategyRecallMode;
+};
+
+export type ExternalMemoryStrategyLatencyClass = 'local' | 'remote' | 'llm_dependent';
+
+export type ExternalMemoryStrategyCostClass = 'cheap' | 'expensive' | 'llm_dependent';
+
+export type ExternalMemoryStrategyPerformanceProfile = {
+  latencyClass: ExternalMemoryStrategyLatencyClass;
+  costClass: ExternalMemoryStrategyCostClass;
+};
+
+export type ExternalMemoryStrategyConfigSchema = {
+  schemaRef: string;
+  secretKeys: readonly string[];
+  supportsWorkspaceOverrides: boolean;
+};
+
+export type ExternalMemoryStrategySideEffect = 'none' | 'external_memory_write' | 'connector_sync';
+
+export type ExternalMemoryStrategyApprovalMode = 'none' | 'workspace_policy' | 'human_review';
+
+export type ExternalMemoryStrategySafetyBoundary = {
+  durableWrites: boolean;
+  sideEffects: ExternalMemoryStrategySideEffect;
+  approvalMode: ExternalMemoryStrategyApprovalMode;
+};
+
+export type ExternalMemoryStrategyDualLoopParticipation = {
+  session: boolean;
+  project: boolean;
+  space: boolean;
+};
+
+export type ExternalMemoryStrategyAgentPackageComposition = {
+  runtimeNeutral: true;
+  capabilityKey: 'external-memory-strategy';
+};
+
+export type ExternalMemoryStrategyComposition = {
+  dualLoopParticipation: ExternalMemoryStrategyDualLoopParticipation;
+  agentPackage: ExternalMemoryStrategyAgentPackageComposition;
+};
+
+export type ExternalMemoryStrategyPackageCompatibility = {
+  agentPackageIds: readonly string[];
+  runtimeNeutral: true;
+};
+
+export type ExternalMemoryStrategyAdapterDescriptor = {
+  id: string;
+  version: string;
+  displayName: string;
+  governanceScopes: readonly ExternalMemoryStrategyGovernanceScope[];
+  capabilities: ExternalMemoryStrategyCapabilityMatrix;
+  writeSemantics: ExternalMemoryStrategyWriteSemantics;
+  recallSemantics: ExternalMemoryStrategyRecallSemantics;
+  performance: ExternalMemoryStrategyPerformanceProfile;
+  config: ExternalMemoryStrategyConfigSchema;
+  safety: ExternalMemoryStrategySafetyBoundary;
+  composition: ExternalMemoryStrategyComposition;
+};
+
+export type ExternalMemoryStrategyAdapterRegistryEntry = {
+  descriptor: ExternalMemoryStrategyAdapterDescriptor;
+  packageCompatibility?: ExternalMemoryStrategyPackageCompatibility;
+};
+
+export type ContextEngineExternalMemorySelection = {
+  adapterId: string;
+  activeScopes: readonly ExternalMemoryStrategyGovernanceScope[];
+  mountedToolsOnly: boolean;
+};
+
+export type ContextEngineExternalMemoryBinding = {
+  registry: readonly ExternalMemoryStrategyAdapterRegistryEntry[];
+  activeSelection?: ContextEngineExternalMemorySelection;
+};
+
+export function defineExternalMemoryStrategyAdapter<T extends ExternalMemoryStrategyAdapterDescriptor>(
+  descriptor: T
+): T {
+  return descriptor;
+}
+
+export function defineExternalMemoryStrategyRegistryEntry<T extends ExternalMemoryStrategyAdapterRegistryEntry>(
+  entry: T
+): T {
+  return entry;
+}
+
+export function selectExternalMemoryStrategyAdapter<T extends ContextEngineExternalMemorySelection>(selection: T): T {
+  return selection;
+}
+
 export type EvaluatePromotionInput = {
   spaceId: SpaceId;
   candidate: PromotionCandidate;
@@ -204,6 +323,7 @@ export type ContextEngineProviderDependencies = {
   profiles: ProfileStore;
   operations: OperationLogStore;
   vectorIndex?: VectorIndexProvider;
+  externalMemory?: ContextEngineExternalMemoryBinding;
 };
 
 export type ContextEnginePolicyDependencies = {
