@@ -42,6 +42,77 @@ export type PluginStatus =
   | 'stopped'
   | 'error';
 
+export const CHANNEL_NATIVE_CAPABILITY_SCHEMA_VERSION = 1 as const;
+export type ChannelNativeCapabilitySchemaVersion = typeof CHANNEL_NATIVE_CAPABILITY_SCHEMA_VERSION;
+export type ChannelCapabilitySupport = 'full' | 'limited' | 'none';
+
+/**
+ * Native command-entry surfaces for invoking agent commands.
+ * `message_text` represents plain-text command parsing and is usually not official.
+ */
+export type ChannelCommandEntrySurface = 'slash_command' | 'message_text' | 'bot_menu' | 'reply_keyboard';
+
+/**
+ * Native menu-entry surfaces that can expose quick command launchers.
+ */
+export type ChannelMenuEntrySurface = 'bot_menu' | 'reply_keyboard' | 'interactive_card_menu';
+
+/**
+ * Native message surfaces for action buttons.
+ */
+export type ChannelMessageActionButtonSurface =
+  | 'inline_keyboard'
+  | 'message_component'
+  | 'block_actions'
+  | 'interactive_card';
+
+/**
+ * Native callback payload channels used when users click action controls.
+ */
+export type ChannelCardCallbackSurface =
+  | 'callback_query'
+  | 'message_component_interaction'
+  | 'block_action_payload'
+  | 'interactive_card_callback'
+  | 'menu_event';
+
+/**
+ * Thread/topic-aware reply surfaces.
+ */
+export type ChannelThreadReplySurface = 'thread' | 'topic';
+
+export type IChannelNativeSurfaceCapability<TSurface extends string> = {
+  support: ChannelCapabilitySupport;
+  /**
+   * Officially supported native surfaces on the target platform.
+   */
+  officialSurfaces: TSurface[];
+  /**
+   * Compatibility-only surfaces (typically plain-text fallback behavior).
+   */
+  compatibilitySurfaces?: TSurface[];
+};
+
+/**
+ * Stable process-facing projection for how channel platforms map agent commands/actions
+ * to native IM surfaces.
+ */
+export type IChannelNativeAgentSurfaceCapabilities = {
+  schemaVersion: ChannelNativeCapabilitySchemaVersion;
+  platform: PluginType;
+  commandEntry: IChannelNativeSurfaceCapability<ChannelCommandEntrySurface>;
+  menuEntry: IChannelNativeSurfaceCapability<ChannelMenuEntrySurface>;
+  messageActionButtons: IChannelNativeSurfaceCapability<ChannelMessageActionButtonSurface>;
+  cardCallbacks: IChannelNativeSurfaceCapability<ChannelCardCallbackSurface>;
+  threadReply: IChannelNativeSurfaceCapability<ChannelThreadReplySurface>;
+  notes?: string[];
+};
+
+export type IChannelCapabilityRegistry = {
+  schemaVersion: ChannelNativeCapabilitySchemaVersion;
+  platforms: Record<string, IChannelNativeAgentSurfaceCapabilities>;
+};
+
 /**
  * Plugin credentials (stored encrypted in database)
  * Built-in fields for known platforms + index signature for extension plugins.
@@ -129,6 +200,8 @@ export interface IChannelPluginStatus {
   hasToken?: boolean;
   /** Whether this plugin comes from an extension (not built-in) */
   isExtension?: boolean;
+  /** Stable mapping from agent commands/actions to this platform's native surfaces. */
+  nativeAgentCapabilities?: IChannelNativeAgentSurfaceCapabilities;
   /** Extension-contributed metadata for dynamic UI rendering */
   extensionMeta?: {
     /** Credential fields required by this extension plugin */
@@ -174,6 +247,8 @@ export interface IChannelAccount {
   runtimeConfig?: IPluginConfigOptions;
   configured?: boolean;
   capabilities?: Record<string, unknown>;
+  /** Stable mapping from agent commands/actions to this platform's native surfaces. */
+  nativeAgentCapabilities?: IChannelNativeAgentSurfaceCapabilities;
   legacyPluginId?: string;
   createdAt: number;
   updatedAt: number;
@@ -407,6 +482,7 @@ export type IChannelBindingCatalog = {
   connectors: IChannelAccount[];
   /** @deprecated Use connectors. */
   channelAccounts?: IChannelAccount[];
+  capabilityRegistry?: IChannelCapabilityRegistry;
   agentProfiles: IAgentProfile[];
   bindings: IChannelBinding[];
   audiences: IChannelAudienceEntry[];

@@ -493,6 +493,47 @@ describe('channelBridge', () => {
         ])
       );
     });
+
+    it('projects typed native capability mapping for builtin platforms', async () => {
+      vi.mocked(repo.getChannelPlugins).mockReturnValue([]);
+      vi.mocked(repo.getConnectorInstances).mockReturnValue([]);
+
+      const result = await handlers['getPluginStatus']();
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'lark',
+            nativeAgentCapabilities: expect.objectContaining({
+              schemaVersion: 1,
+              commandEntry: expect.objectContaining({
+                support: 'full',
+                officialSurfaces: expect.arrayContaining(['bot_menu']),
+              }),
+              threadReply: expect.objectContaining({
+                support: 'full',
+                officialSurfaces: expect.arrayContaining(['thread', 'topic']),
+              }),
+            }),
+          }),
+          expect.objectContaining({
+            type: 'weixin',
+            nativeAgentCapabilities: expect.objectContaining({
+              schemaVersion: 1,
+              commandEntry: expect.objectContaining({
+                support: 'limited',
+                officialSurfaces: [],
+              }),
+              menuEntry: expect.objectContaining({
+                support: 'none',
+                officialSurfaces: [],
+              }),
+            }),
+          }),
+        ])
+      );
+    });
   });
 
   // --- getAuthorizedUsers ---
@@ -1129,6 +1170,24 @@ describe('channelBridge', () => {
         expect.objectContaining({
           connectors: [connector],
           channelAccounts: [connector],
+          capabilityRegistry: expect.objectContaining({
+            schemaVersion: 1,
+            platforms: expect.objectContaining({
+              telegram: expect.objectContaining({
+                platform: 'telegram',
+                messageActionButtons: expect.objectContaining({
+                  support: 'full',
+                }),
+              }),
+              weixin: expect.objectContaining({
+                platform: 'weixin',
+                commandEntry: expect.objectContaining({
+                  support: 'limited',
+                  officialSurfaces: [],
+                }),
+              }),
+            }),
+          }),
           agentProfiles: [
             expect.objectContaining({
               id: 'agent-profile-1',
