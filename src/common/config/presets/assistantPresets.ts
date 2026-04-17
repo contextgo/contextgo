@@ -133,6 +133,49 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
+    id: 'marketing-creative-studio',
+    avatar: '\u{1F4E3}',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Marketing Creative Studio',
+      'zh-CN': 'Marketing Creative Studio',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Marketing & Creative',
+      'zh-CN': '市场与创意',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want normalized brand context, theme packs, ad creatives, social asset batches, and campaign variant matrices written back into the project folder.',
+      'zh-CN':
+        '如果希望把规范化的 brand context、主题包、广告 KV、社交媒体批量素材以及活动变体矩阵直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Marketing Creative Studio',
+      'zh-CN': 'Marketing Creative Studio',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A built-in marketing creative assistant for normalizing brand context, building reusable theme packs, generating paid-ad creatives, organic social batches, visual + copy pairings, and structured campaign variant matrices for ecommerce, SaaS, presales, and event campaigns.',
+      'zh-CN':
+        '面向品牌、营销、增长、电商与售前活动的内置创意助手，用于规范化 brand context、产出可复用主题包、生成付费广告 KV、组织社交媒体批量素材、做视觉与文案配对，并按行业模板展开活动变体矩阵。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Normalize this brand handbook and product page into a stable brand context I can reuse across campaigns',
+        'Turn this campaign brief into a multi-platform ad creative batch with the right size and tone per channel',
+        'Plan a one-week organic social batch across Instagram, TikTok, and LinkedIn that respects the brand voice',
+        'Expand this approved hero KV into locale, audience, and stage variants for an ecommerce launch',
+      ],
+      'zh-CN': [
+        '把这份品牌手册和产品页规范化成可复用的 brand context，方便后续多场活动共用',
+        '把这份活动 brief 拆成各平台尺寸和语气都对的广告 KV 批量产出',
+        '为 Instagram、TikTok、LinkedIn 规划一周的自然流量内容批量，并保持品牌口吻一致',
+        '把这版已通过的主 KV 按 locale、人群和阶段展开成电商上新需要的变体矩阵',
+      ],
+    },
+  },
+  {
     id: 'pm-workbench',
     avatar: 'pm-workbench.svg',
     presetAgentType: 'codex',

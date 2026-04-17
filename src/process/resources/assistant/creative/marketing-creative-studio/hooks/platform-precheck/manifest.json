@@ -1,0 +1,9 @@
+{
+  "name": "platform-precheck",
+  "description": "Before final marketing assets are emitted, validate platform spec, copy length, brand-banned terms, and legal-risk placeholders.",
+  "version": "1.0.0",
+  "executionType": "prompt-transform",
+  "events": ["before_user_prompt"],
+  "category": "marketing",
+  "tags": ["platform", "compliance", "marketing", "review"]
+}
