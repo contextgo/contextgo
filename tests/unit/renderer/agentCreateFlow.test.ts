@@ -82,6 +82,26 @@ describe('buildCapabilityRecommendation', () => {
     expect(recommendation.commandCount).toBeGreaterThan(0);
     expect(recommendation.runtime).toBe('codex');
   });
+
+  it('should recommend visual artifact runner for deck/pdf artifact requests', () => {
+    const draft: AgentCreateIntentDraft = {
+      workDescription: 'Convert this PDF report into a polished deck artifact with QC and export notes',
+      audience: 'Leadership team',
+      output: 'Deck',
+      workStyle: 'create',
+      recurrence: 'frequent',
+    };
+
+    const recommendation = buildCapabilityRecommendation(draft);
+
+    expect(recommendation.linkedPackagePresetId).toBe('builtin-visual-artifact-runner');
+    expect(recommendation.defaultSkills).toEqual(
+      expect.arrayContaining(['deck-from-brief', 'pdf-to-deck', 'report-to-infographic', 'artifact-qc'])
+    );
+    expect(recommendation.commandCount).toBeGreaterThan(0);
+    expect(recommendation.scheduleCount).toBe(0);
+    expect(recommendation.packageLabel).toBe('Visual Artifact Runner');
+  });
 });
 
 describe('buildCreateFlowSummary', () => {

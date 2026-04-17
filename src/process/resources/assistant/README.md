@@ -83,6 +83,11 @@ That compatibility is acceptable during migration, but all new built-in assistan
 - `motion-studio`
   - package root: `src/process/resources/assistant/creative/motion-studio`
   - skill source: `src/process/resources/skills/motion-studio-pack`
+- `visual-artifact-runner`
+  - package root: `src/process/resources/assistant/creative/visual-artifact-runner`
+  - package-local payload: `skills/`, `hooks/`
+  - workspace scaffold: `workspace/` with starter `AGENTS.md` and inputs/recipes/exports docs
+  - workspace automation: `.contextgo/commands.json`, `.contextgo/hooks/`, `.contextgo/hooks.json`, `.contextgo/schedules.json`
 - `pm-workbench`
   - package root: `src/process/resources/assistant/product/pm-workbench`
   - skill source: `src/process/resources/skills/pm-workbench-pack`

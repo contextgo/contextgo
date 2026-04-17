@@ -206,6 +206,10 @@ describe('agent-package manifests', () => {
         ],
       },
       {
+        resourceDir: 'src/process/resources/assistant/creative/visual-artifact-runner',
+        expectedTargets: ['AGENTS.md', 'docs/inputs/README.md', 'docs/recipes/README.md', 'docs/exports/README.md'],
+      },
+      {
         resourceDir: 'src/process/resources/assistant/startup/startup-strategist',
         expectedTargets: ['AGENTS.md', 'docs/ideas/README.md', 'docs/market/README.md', 'docs/strategy/README.md'],
       },
@@ -264,6 +268,32 @@ describe('agent-package manifests', () => {
       for (const expectedTarget of testCase.expectedTargets) {
         expect(scaffold?.templates?.some((template) => template.target === expectedTarget)).toBe(true);
       }
+    }
+  });
+
+  it('keeps visual artifact runner skill payload package-local and complete', () => {
+    const manifest = readManifest('src/process/resources/assistant/creative/visual-artifact-runner');
+    const skillsPayload = manifest.payloads.skills;
+
+    expect(skillsPayload).toBeDefined();
+    expect(skillsPayload?.sources).toEqual([{ kind: 'package-relative', root: 'skills' }]);
+    expect(skillsPayload?.packagedSkillNames).toEqual([
+      'deck-from-brief',
+      'deck-from-report',
+      'pdf-to-deck',
+      'report-to-infographic',
+      'deck-theme-apply',
+      'artifact-qc',
+    ]);
+
+    for (const skillName of skillsPayload?.packagedSkillNames ?? []) {
+      const skillFile = path.join(
+        REPO_ROOT,
+        'src/process/resources/assistant/creative/visual-artifact-runner/skills',
+        skillName,
+        'SKILL.md'
+      );
+      expect(fs.existsSync(skillFile), `Missing packaged visual artifact skill: ${skillFile}`).toBe(true);
     }
   });
 });
