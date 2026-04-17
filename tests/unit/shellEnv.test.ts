@@ -260,15 +260,15 @@ describe('getProjectRuntimeEnv', () => {
     const { getProjectRuntimeEnv } = await import('@process/utils/shellEnv');
     const result = getProjectRuntimeEnv({
       workspace: '/workspace/app',
-      runtimeRoot: '/workspace/app/.contextgo/runtime',
+      runtimeRoot: '/workspace/app/.contextgo',
       injectedEnv: {
         OPENAI_API_KEY: 'project-openai-key',
       },
     });
 
-    expect(result.HOME).toBe('/workspace/app/.contextgo/runtime');
-    expect(result.XDG_CONFIG_HOME).toBe('/workspace/app/.contextgo/runtime');
-    expect(result.XDG_DATA_HOME).toBe('/workspace/app/.contextgo/runtime');
+    expect(result.HOME).toBe('/workspace/app/.contextgo');
+    expect(result.XDG_CONFIG_HOME).toBe('/workspace/app/.contextgo');
+    expect(result.XDG_DATA_HOME).toBe('/workspace/app/.contextgo');
     expect(result.OPENAI_API_KEY).toBe('project-openai-key');
     expect(result.CODEX_API_KEY).toBeUndefined();
     expect(result.PATH).toContain('/usr/bin');

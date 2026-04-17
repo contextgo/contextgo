@@ -385,7 +385,32 @@
       "skillsAvailableTitle": "工作空間技能",
       "skillsAvailableDescription": "從專案本地 `.contextgo/skills` 目錄發現的 skills。",
       "skillsEmpty": "目前工作空間尚未發現專案本地 skill。",
-      "skillsLoadFailed": "載入專案技能失敗"
+      "skillsLoadFailed": "載入專案技能失敗",
+      "runtime": {
+        "title": "執行環境",
+        "description": "以專案維度控制這一套統一的 runtime policy。ContextGo 會把它儲存到 `.contextgo/runtime.json`，並以這個檔案作為真源。",
+        "policyPathHint": "策略檔案：{{path}}",
+        "runtimeRootHint": "目前後端設定根目錄：{{path}}",
+        "saveAction": "儲存執行環境策略",
+        "modeTitle": "執行環境模式",
+        "modeDescription": "選擇這個專案如何解析執行環境設定與模型存取來源。",
+        "currentSource": "目前生效來源：{{source}}",
+        "currentMode": "目前模式：{{mode}}",
+        "loading": "正在載入執行環境策略...",
+        "saving": "儲存中...",
+        "loadFailed": "載入專案執行環境策略失敗。",
+        "saveSuccess": "專案執行環境策略已儲存。",
+        "saveFailed": "儲存專案執行環境策略失敗。",
+        "source": {
+          "imported": "已匯入的本地執行環境",
+          "modelCenter": "ContextGo 模型中心"
+        },
+        "mode": {
+          "projectManaged": "使用 ContextGo 模型中心",
+          "importLocal": "匯入本地 Runtime 設定",
+          "auto": "自動"
+        }
+      }
     },
     "skillMarket": {
       "action": "技能市場",

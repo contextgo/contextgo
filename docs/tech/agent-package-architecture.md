@@ -127,7 +127,7 @@ After workspace bootstrap, the product-owned state must live under:
 Runtime-native directories remain derived views:
 
 ```text
-.codex/skills   -> projection of .contextgo/skills
+.agents/skills  -> projection of .contextgo/skills
 .claude/skills  -> projection of .contextgo/skills
 .gemini/skills  -> projection of .contextgo/skills
 ```
@@ -262,7 +262,7 @@ Project-level scaffold files such as runtime entry docs and starter `docs/` file
 
 Supported runtimes may receive projected skills into their native directories, for example:
 
-- `.codex/skills`
+- `.agents/skills`
 - `.claude/skills`
 - `.gemini/skills`
 - `.opencode/skills`
@@ -327,7 +327,7 @@ The frontend must not rely on:
 
 - scanning runtime-native directories
 - inferring package structure from incidental file presence
-- treating `.codex/skills`, `.claude/skills`, or runtime root docs as the source of truth
+- treating `.agents/skills`, `.claude/skills`, or runtime root docs as the source of truth
 
 If the product needs a new visible section, the protocol should be extended first and the renderer should follow that protocol.
 

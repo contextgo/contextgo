@@ -96,13 +96,13 @@
 每个 project 都拥有一份 project-owned runtime 根目录：
 
 ```text
-.contextgo/runtime/
+.contextgo/
 ```
 
 建议的首版布局：
 
 ```text
-.contextgo/runtime/
+.contextgo/
   runtime.json
   skills/
   claude/
@@ -217,7 +217,7 @@ Project runtime boundary 对 skills 的要求，必须和它对 model config 的
 1. 检查该 runtime 的全局 config/auth 位置
 2. 提取最小必要的 runtime state
 3. 在需要时做归一化或协议翻译
-4. 写入 `.contextgo/runtime/<runtime>/...`
+4. 写入 `.contextgo/<runtime>/...`
 5. 使用 project-scoped runtime home 启动 runtime
 
 导入完成后，runtime 执行不应再继续依赖原始全局文件。
@@ -284,7 +284,7 @@ Project runtime boundary 仍然是统一的，但每个 runtime 依然需要自�
 ### OpenCode
 
 - config 和 auth 位置必须改成解析到 project runtime boundary 内
-- ContextGo 需要把兼容文件物化到 `.contextgo/runtime/opencode/`
+- ContextGo 需要把兼容文件物化到 `.contextgo/opencode/`
 
 ### Gemini
 
@@ -311,7 +311,7 @@ Project runtime boundary 仍然是统一的，但每个 runtime 依然需要自�
 
 1. conversation/runtime 创建时先识别目标 workspace
 2. runtime bootstrap 调用 `ProjectRuntimeService.resolve(workspace)`
-3. service 确保 `.contextgo/runtime/` 已经最新
+3. service 确保 `.contextgo/` 已经最新
 4. service 返回：
    - effective mode
    - runtime home 路径

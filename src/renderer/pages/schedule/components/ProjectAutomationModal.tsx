@@ -9,6 +9,7 @@ import { normalizeManagedSlashCommandLibrary, type ManagedSlashCommandRecord } f
 import type { IContextSchedule, IProjectCapabilitySnapshot, IScheduleSpec } from '@/common/adapter/ipcBridge';
 import MarkdownView from '@/renderer/components/Markdown';
 import type { TChatConversation } from '@/common/config/storage';
+import type { ProjectRuntimeMode, ProjectRuntimePolicy } from '@/common/types/projectRuntime';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { AutomationPanel, AutomationSectionCard } from '@/renderer/components/automation';
 import { SettingsSubModal } from '@/renderer/components/settings';
@@ -51,7 +52,7 @@ type ProjectScheduleEditorState = {
   scheduleDescription: string;
 };
 
-type AutomationTabKey = 'skills' | 'hooks' | 'commands' | 'schedules';
+type AutomationTabKey = 'skills' | 'hooks' | 'commands' | 'schedules' | 'runtime';
 
 type SkillSelectionState = {
   names: string[];
@@ -63,6 +64,50 @@ const EMPTY_SCHEDULE_EDITOR_STATE: ProjectScheduleEditorState = {
   message: '',
   cronExpr: '',
   scheduleDescription: '',
+};
+
+const createDefaultRuntimePolicy = (): ProjectRuntimePolicy => ({
+  version: 1,
+  mode: 'auto',
+  resolvedSource: 'model_center',
+  providerProtocol: 'openai',
+  baseUrl: null,
+  apiKeyRef: null,
+  defaultModel: null,
+  importedFrom: null,
+  lastImportedAt: null,
+});
+
+const isRuntimeMode = (value: unknown): value is ProjectRuntimeMode =>
+  value === 'project_managed' || value === 'import_local_runtime' || value === 'auto';
+
+const normalizeRuntimePolicy = (raw: string): ProjectRuntimePolicy => {
+  try {
+    const parsed = JSON.parse(raw) as Partial<ProjectRuntimePolicy>;
+    const fallback = createDefaultRuntimePolicy();
+
+    return {
+      version: 1,
+      mode: isRuntimeMode(parsed.mode) ? parsed.mode : fallback.mode,
+      resolvedSource: parsed.resolvedSource === 'imported_local_runtime' ? 'imported_local_runtime' : 'model_center',
+      providerProtocol:
+        parsed.providerProtocol === 'anthropic' ||
+        parsed.providerProtocol === 'gemini' ||
+        parsed.providerProtocol === 'openai'
+          ? parsed.providerProtocol
+          : fallback.providerProtocol,
+      baseUrl: typeof parsed.baseUrl === 'string' ? parsed.baseUrl : null,
+      apiKeyRef: typeof parsed.apiKeyRef === 'string' ? parsed.apiKeyRef : null,
+      defaultModel: typeof parsed.defaultModel === 'string' ? parsed.defaultModel : null,
+      importedFrom:
+        parsed.importedFrom && typeof parsed.importedFrom === 'object'
+          ? (parsed.importedFrom as ProjectRuntimePolicy['importedFrom'])
+          : null,
+      lastImportedAt: typeof parsed.lastImportedAt === 'string' ? parsed.lastImportedAt : null,
+    };
+  } catch {
+    return createDefaultRuntimePolicy();
+  }
 };
 
 const normalizeHookNames = (value: unknown): string[] => {
@@ -179,6 +224,9 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
   const [previewingSkill, setPreviewingSkill] = useState<SkillInfo | null>(null);
   const [skillPreviewContent, setSkillPreviewContent] = useState('');
   const [skillPreviewLoading, setSkillPreviewLoading] = useState(false);
+  const [runtimePolicyLoading, setRuntimePolicyLoading] = useState(false);
+  const [runtimePolicySaving, setRuntimePolicySaving] = useState(false);
+  const [runtimePolicy, setRuntimePolicy] = useState<ProjectRuntimePolicy>(createDefaultRuntimePolicy);
   const directCreateContext = useMemo(() => getScheduleDirectCreateContext(conversation), [conversation]);
   const workspacePath = useMemo(() => getConversationWorkspacePath(conversation), [conversation]);
   const automationPaths = useMemo(
@@ -232,6 +280,14 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
         }),
     [availableSkills, projectCapabilitySnapshot]
   );
+  const runtimePolicyFile = automationPaths?.runtimePolicyFile ?? null;
+  const runtimeConfigRoot = useMemo(() => {
+    if (!automationPaths) {
+      return null;
+    }
+
+    return `${automationPaths.rootDir}/${currentBackend}`;
+  }, [automationPaths, currentBackend]);
 
   useEffect(() => {
     if (!visible) {
@@ -274,6 +330,33 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
     },
     [automationPaths]
   );
+
+  const loadRuntimePolicy = useCallback(async () => {
+    if (!runtimePolicyFile) {
+      setRuntimePolicy(createDefaultRuntimePolicy());
+      return;
+    }
+
+    setRuntimePolicyLoading(true);
+    try {
+      const raw = await ipcBridge.fs.readFile.invoke({ path: runtimePolicyFile });
+      setRuntimePolicy(normalizeRuntimePolicy(raw));
+    } catch (error) {
+      if (isMissingWorkspaceFileError(error)) {
+        setRuntimePolicy(createDefaultRuntimePolicy());
+        return;
+      }
+
+      console.error('[ProjectAutomationModal] Failed to load runtime policy:', error);
+      messageApi.error(
+        t('conversation.workspace.automation.runtime.loadFailed', {
+          defaultValue: 'Failed to load the project runtime policy.',
+        })
+      );
+    } finally {
+      setRuntimePolicyLoading(false);
+    }
+  }, [messageApi, runtimePolicyFile, t]);
 
   const validateScheduleInput = useCallback((): ProjectScheduleEditorState | null => {
     const name = scheduleState.name.trim();
@@ -533,6 +616,12 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
     // Depend only on real triggering state.
   }, [activeTab, visible, workspacePath]);
 
+  useEffect(() => {
+    if (visible && activeTab === 'runtime') {
+      void loadRuntimePolicy();
+    }
+  }, [activeTab, loadRuntimePolicy, visible]);
+
   const handleSaveHooks = useCallback(async () => {
     setHooksSaving(true);
     try {
@@ -612,6 +701,41 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
     selectedHooks,
     t,
   ]);
+
+  const handleSelectRuntimeMode = useCallback((mode: ProjectRuntimeMode) => {
+    setRuntimePolicy((current) => ({
+      ...current,
+      mode,
+    }));
+  }, []);
+
+  const handleSaveRuntimePolicy = useCallback(async () => {
+    if (!runtimePolicyFile) {
+      return;
+    }
+
+    setRuntimePolicySaving(true);
+    try {
+      await ipcBridge.fs.writeFile.invoke({
+        path: runtimePolicyFile,
+        data: `${JSON.stringify(runtimePolicy, null, 2)}\n`,
+      });
+      messageApi.success(
+        t('conversation.workspace.automation.runtime.saveSuccess', {
+          defaultValue: 'Project runtime policy saved.',
+        })
+      );
+    } catch (error) {
+      console.error('[ProjectAutomationModal] Failed to save runtime policy:', error);
+      messageApi.error(
+        t('conversation.workspace.automation.runtime.saveFailed', {
+          defaultValue: 'Failed to save the project runtime policy.',
+        })
+      );
+    } finally {
+      setRuntimePolicySaving(false);
+    }
+  }, [messageApi, runtimePolicy, runtimePolicyFile, t]);
 
   const scheduleStatus = existingJob ? getJobStatusFlags(existingJob) : null;
 
@@ -984,6 +1108,131 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                     </AutomationSectionCard>
                   </AutomationPanel>
                 )}
+              </div>
+            </Tabs.TabPane>
+
+            <Tabs.TabPane
+              key='runtime'
+              title={t('conversation.workspace.automation.runtime.title', {
+                defaultValue: 'Runtime',
+              })}
+            >
+              <div className='mt-8px'>
+                <AutomationPanel
+                  title={t('conversation.workspace.automation.runtime.title', {
+                    defaultValue: 'Runtime',
+                  })}
+                  description={t('conversation.workspace.automation.runtime.description', {
+                    defaultValue:
+                      'Control one project-level runtime policy for this workspace. ContextGo stores it in `.contextgo/runtime.json` and uses that file as the source of truth.',
+                  })}
+                  icon={<ConnectionPoint theme='outline' size='18' className='app-icon text-t-primary' />}
+                  meta={
+                    automationPaths ? (
+                      <div className='flex flex-col gap-8px'>
+                        <Typography.Text type='secondary'>
+                          {t('conversation.workspace.automation.runtime.policyPathHint', {
+                            defaultValue: 'Policy file: {{path}}',
+                            path: automationPaths.runtimePolicyFile,
+                          })}
+                        </Typography.Text>
+                        {runtimeConfigRoot ? (
+                          <Typography.Text type='secondary'>
+                            {t('conversation.workspace.automation.runtime.runtimeRootHint', {
+                              defaultValue: 'Current backend config root: {{path}}',
+                              path: runtimeConfigRoot,
+                            })}
+                          </Typography.Text>
+                        ) : null}
+                      </div>
+                    ) : null
+                  }
+                  actions={
+                    <>
+                      <Button
+                        type='secondary'
+                        icon={<Refresh size={14} className={runtimePolicyLoading ? 'animate-spin' : ''} />}
+                        onClick={() => void loadRuntimePolicy()}
+                      >
+                        {t('common.reload', { defaultValue: 'Reload' })}
+                      </Button>
+                      <Button
+                        type='primary'
+                        loading={runtimePolicySaving}
+                        onClick={() => void handleSaveRuntimePolicy()}
+                      >
+                        {t('conversation.workspace.automation.runtime.saveAction', {
+                          defaultValue: 'Save runtime policy',
+                        })}
+                      </Button>
+                    </>
+                  }
+                >
+                  <AutomationSectionCard
+                    title={t('conversation.workspace.automation.runtime.modeTitle', {
+                      defaultValue: 'Runtime mode',
+                    })}
+                    description={t('conversation.workspace.automation.runtime.modeDescription', {
+                      defaultValue: 'Choose how this project resolves runtime config and model access.',
+                    })}
+                    extra={
+                      <Typography.Text type='secondary'>
+                        {t('conversation.workspace.automation.runtime.currentSource', {
+                          defaultValue: 'Current effective source: {{source}}',
+                          source:
+                            runtimePolicy.resolvedSource === 'imported_local_runtime'
+                              ? t('conversation.workspace.automation.runtime.source.imported', {
+                                  defaultValue: 'Imported local runtime',
+                                })
+                              : t('conversation.workspace.automation.runtime.source.modelCenter', {
+                                  defaultValue: 'ContextGo model center',
+                                }),
+                        })}
+                      </Typography.Text>
+                    }
+                  >
+                    {workspacePath ? (
+                      <div className='flex flex-wrap gap-8px'>
+                        <Button onClick={() => handleSelectRuntimeMode('project_managed')}>
+                          {t('conversation.workspace.automation.runtime.mode.projectManaged', {
+                            defaultValue: 'Use ContextGo model center',
+                          })}
+                        </Button>
+                        <Button onClick={() => handleSelectRuntimeMode('import_local_runtime')}>
+                          {t('conversation.workspace.automation.runtime.mode.importLocal', {
+                            defaultValue: 'Import local runtime config',
+                          })}
+                        </Button>
+                        <Button onClick={() => handleSelectRuntimeMode('auto')}>
+                          {t('conversation.workspace.automation.runtime.mode.auto', {
+                            defaultValue: 'Automatic',
+                          })}
+                        </Button>
+                        <Tag color='arcoblue'>
+                          {t('conversation.workspace.automation.runtime.currentMode', {
+                            defaultValue: 'Current mode: {{mode}}',
+                            mode:
+                              runtimePolicy.mode === 'project_managed'
+                                ? t('conversation.workspace.automation.runtime.mode.projectManaged', {
+                                    defaultValue: 'Use ContextGo model center',
+                                  })
+                                : runtimePolicy.mode === 'import_local_runtime'
+                                  ? t('conversation.workspace.automation.runtime.mode.importLocal', {
+                                      defaultValue: 'Import local runtime config',
+                                    })
+                                  : t('conversation.workspace.automation.runtime.mode.auto', {
+                                      defaultValue: 'Automatic',
+                                    }),
+                          })}
+                        </Tag>
+                      </div>
+                    ) : (
+                      <Typography.Paragraph className='mb-0 text-t-secondary'>
+                        {t('conversation.workspace.automation.workspaceUnavailable')}
+                      </Typography.Paragraph>
+                    )}
+                  </AutomationSectionCard>
+                </AutomationPanel>
               </div>
             </Tabs.TabPane>
 

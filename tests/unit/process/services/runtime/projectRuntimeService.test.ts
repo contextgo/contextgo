@@ -30,7 +30,7 @@ describe('ProjectRuntimeService', () => {
     expect(importLocalRuntime).not.toHaveBeenCalled();
     expect(resolved.policy.mode).toBe('project_managed');
     expect(resolved.effectiveSource).toBe('model_center');
-    expect(resolved.runtimeRoot).toBe('/workspace/app/.contextgo/runtime');
+    expect(resolved.runtimeRoot).toBe('/workspace/app/.contextgo');
   });
 
   it('imports local runtime config when mode is import_local_runtime', async () => {

@@ -53,7 +53,7 @@ Rejected because it breaks conversation-level flow and turns a project-scoped ac
 
 - Installed project skills live under `<workspace>/.contextgo/skills/<skill-name>`.
 - Existing project capability discovery already reads `.contextgo/skills`; the new flow should feed that surface directly.
-- Runtime-native directories such as `.claude/skills` and `.codex/skills` remain projection outputs only.
+- Runtime-native directories such as `.claude/skills` and `.agents/skills` remain projection outputs only.
 
 ## UX Details
 
