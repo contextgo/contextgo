@@ -10,6 +10,50 @@ import {
 } from '../../../packages/context-engine/src/index';
 
 const SPACE_ID = 'space-1';
+const CONTEXT_ENGINE_EVAL_BASELINES = {
+  sourceIngestAudit: 'context-engine/source-ingest-audit',
+  releaseDebugRetrieval: 'context-engine/release-debug-retrieval',
+  releaseBudgetAssembly: 'context-engine/release-budget-assembly',
+  projectScopedVectorAffinity: 'context-engine/project-scoped-vector-affinity',
+} as const;
+
+type ContextEngineIngestResult = Awaited<ReturnType<ContextEngineService['ingestSource']>>;
+type ContextEngineRetrievalResult = Awaited<ReturnType<ContextEngineService['retrieve']>>;
+type ContextEngineAssemblyResult = Awaited<ReturnType<ContextEngineService['assemble']>>;
+
+function summarizeIngestBaseline(result: ContextEngineIngestResult) {
+  const snapshotOperation = result.operations.find((operation) => operation.type === 'document.snapshotted');
+
+  return {
+    operationTypes: result.operations.map((operation) => operation.type),
+    snapshotStorageUri: result.snapshot?.storageUri ?? null,
+    snapshotSourceId:
+      typeof snapshotOperation?.payload.sourceId === 'string' ? (snapshotOperation.payload.sourceId as string) : null,
+  };
+}
+
+function summarizeRetrievalBaseline(result: ContextEngineRetrievalResult) {
+  return {
+    memoryIds: result.memories.map((item) => item.memory.id),
+    topMemoryMatches: [...(result.memories[0]?.matchedBy ?? [])],
+    profileIds: result.profiles.map((item) => item.id),
+    sourceIds: result.sources.map((item) => item.id),
+    chunkIds: result.chunks.map((item) => item.chunk.id),
+    topChunkProjectSlug:
+      typeof result.chunks[0]?.vectorHits?.[0]?.metadata?.projectSlug === 'string'
+        ? result.chunks[0].vectorHits[0].metadata.projectSlug
+        : null,
+  };
+}
+
+function summarizeAssemblyBaseline(result: ContextEngineAssemblyResult) {
+  return {
+    topSectionKinds: result.pack.sections.slice(0, 3).map((section) => section.kind),
+    omittedEntityIds: [...result.omittedEntityIds],
+    provenanceMemoryIds: [...result.pack.provenance.memoryIds],
+    budgetTokens: result.pack.budgetTokens,
+  };
+}
 
 function makeSource(id: string, title: string): SourceRecord {
   return {
@@ -82,7 +126,7 @@ function makeProfile(overrides: Partial<ProfileSegment> & Pick<ProfileSegment, '
 }
 
 describe('ContextEngineService', () => {
-  it('ingests a source and writes source/document operations', async () => {
+  it(`[${CONTEXT_ENGINE_EVAL_BASELINES.sourceIngestAudit}] keeps source ingestion audit telemetry stable`, async () => {
     const dependencies = createInMemoryContextEngineDependencies();
     const service = new ContextEngineService(dependencies);
 
@@ -95,14 +139,19 @@ describe('ContextEngineService', () => {
     });
 
     expect(result.source.id).toMatch(/^source-/);
-    expect(result.snapshot?.storageUri).toBe('file:///tmp/rfc-notes.md');
-    expect(result.operations.map((item) => item.type)).toEqual(['source.ingested', 'document.snapshotted']);
+    expect(summarizeIngestBaseline(result)).toEqual({
+      operationTypes: ['source.ingested', 'document.snapshotted'],
+      snapshotStorageUri: 'file:///tmp/rfc-notes.md',
+      snapshotSourceId: result.source.id,
+    });
 
     const latestCursor = await dependencies.operations.getLatestCursor(SPACE_ID);
     expect(latestCursor?.operationId).toBe(result.operations[1]?.id);
   });
 
-  it('retrieves accepted memories and matching profiles for a query', async () => {
+  it(
+    `[${CONTEXT_ENGINE_EVAL_BASELINES.releaseDebugRetrieval}] keeps the release-debug retrieval baseline stable`,
+    async () => {
     const dependencies = createInMemoryContextEngineDependencies({
       sources: [makeSource('source-1', 'Debugging notes')],
       memories: [
@@ -133,15 +182,20 @@ describe('ContextEngineService', () => {
       budgetTokens: 600,
     });
 
-    expect(result.memories[0]?.memory.id).toBe('memory-1');
-    expect(result.memories[0]?.matchedBy).toContain('vitest');
-    expect(result.profiles.map((item) => item.id)).toEqual(['profile-1']);
-    expect(result.sources.map((item) => item.id)).toContain('source-1');
-    expect(result.chunks).toEqual([]);
+    expect(summarizeRetrievalBaseline(result)).toEqual({
+      memoryIds: ['memory-1'],
+      topMemoryMatches: ['vitest', 'failures'],
+      profileIds: ['profile-1'],
+      sourceIds: ['source-1'],
+      chunkIds: [],
+      topChunkProjectSlug: null,
+    });
     expect(result.totalEstimatedTokens).toBeGreaterThan(0);
   });
 
-  it('assembles a task-scoped context pack and omits lower-priority sections beyond budget', async () => {
+  it(
+    `[${CONTEXT_ENGINE_EVAL_BASELINES.releaseBudgetAssembly}] keeps the task-scoped budget baseline stable`,
+    async () => {
     const dependencies = createInMemoryContextEngineDependencies({
       sources: [makeSource('source-1', 'Debugging notes')],
       memories: [
@@ -176,10 +230,13 @@ describe('ContextEngineService', () => {
       pinnedInstructions: ['Prefer surgical changes and keep tool output concise.'],
     });
 
-    expect(result.pack.sections[0]?.kind).toBe('instruction');
-    expect(result.pack.sections.some((item) => item.kind === 'thread-state')).toBe(true);
+    expect(summarizeAssemblyBaseline(result)).toEqual({
+      topSectionKinds: ['instruction', 'thread-state'],
+      omittedEntityIds: result.omittedEntityIds,
+      provenanceMemoryIds: ['memory-1'],
+      budgetTokens: 35,
+    });
     expect(result.omittedEntityIds.length).toBeGreaterThan(0);
-    expect(result.pack.provenance.memoryIds).toContain('memory-1');
   });
 
   it('filters memory retrieval by tier when requested', async () => {
@@ -273,7 +330,9 @@ describe('ContextEngineService', () => {
     expect(result.sources.map((item) => item.id)).toContain('source-1');
   });
 
-  it('boosts same-project vector hits when projectSlug is provided', async () => {
+  it(
+    `[${CONTEXT_ENGINE_EVAL_BASELINES.projectScopedVectorAffinity}] keeps same-project vector ranking stable`,
+    async () => {
     const vectorIndex = new InMemoryVectorIndexProvider();
     await vectorIndex.upsert([
       {
@@ -354,7 +413,14 @@ describe('ContextEngineService', () => {
       projectSlug: 'project-a',
     });
 
-    expect(result.chunks[0]?.chunk.id).toBe('chunk-project-a');
+    expect(summarizeRetrievalBaseline(result)).toEqual({
+      memoryIds: [],
+      topMemoryMatches: [],
+      profileIds: [],
+      sourceIds: ['source-project-a', 'source-project-b'],
+      chunkIds: ['chunk-project-a', 'chunk-project-b'],
+      topChunkProjectSlug: 'project-a',
+    });
   });
 
   it('keeps mounted sections at the top of the assembled pack', async () => {

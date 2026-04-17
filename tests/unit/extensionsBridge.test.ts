@@ -24,6 +24,10 @@ import type { IWorkerTaskManager } from '../../src/process/task/IWorkerTaskManag
 import type { TChatConversation } from '../../src/common/config/storage';
 import type { TMessage } from '../../src/common/chat/chatLib';
 
+const EXTENSIONS_EVAL_BASELINES = {
+  maintenanceSnapshot: 'extensions-bridge/maintenance-snapshot-telemetry',
+} as const;
+
 function makeRepo(overrides?: Partial<IConversationRepository>): IConversationRepository {
   return {
     getConversation: vi.fn(),
@@ -70,6 +74,33 @@ function makeConversation(overrides: Partial<TChatConversation> = {}): TChatConv
     createTime: Date.now(),
     ...overrides,
   } as TChatConversation;
+}
+
+function summarizeMaintenanceSnapshotBaseline(snapshot: Awaited<ReturnType<ActivitySnapshotBuilder['build']>>) {
+  const maintenanceAgent = snapshot.agents.find((item) => item.runType === 'maintenance');
+  const systemRun = snapshot.systemRuns[0];
+
+  return {
+    maintenanceAgent: {
+      runType: maintenanceAgent?.runType ?? 'missing',
+      runtimeStatus: maintenanceAgent?.runtimeStatus ?? 'unknown',
+      assistantId: maintenanceAgent?.assistantId ?? null,
+      governanceIdentity: maintenanceAgent?.governanceIdentity ?? null,
+      maintenanceKind: maintenanceAgent?.maintenanceKind ?? null,
+      latestArtifactSummary: maintenanceAgent?.latestArtifactSummary ?? null,
+      artifactTargets: [...(maintenanceAgent?.artifactTargets ?? [])],
+    },
+    systemRun: {
+      threadId: systemRun?.threadId ?? null,
+      projectSlug: systemRun?.projectSlug ?? null,
+      reason: systemRun?.reason ?? null,
+      source: systemRun?.source ?? null,
+      triggerEvent: systemRun?.triggerEvent ?? null,
+      triggerLabel: systemRun?.triggerLabel ?? null,
+      executionBoundaryPath: systemRun?.executionBoundaryPath ?? null,
+      executionBoundaryLabel: systemRun?.executionBoundaryLabel ?? null,
+    },
+  };
 }
 
 describe('ActivitySnapshotBuilder', () => {
@@ -213,7 +244,9 @@ describe('ActivitySnapshotBuilder', () => {
     expect(agent?.state).toBe('error');
   });
 
-  it('merges context engine maintenance runs into the snapshot', async () => {
+  it(
+    `[${EXTENSIONS_EVAL_BASELINES.maintenanceSnapshot}] keeps maintenance snapshot telemetry stable`,
+    async () => {
     vi.mocked(repo.getUserConversations).mockResolvedValue({
       data: [],
       total: 0,
@@ -242,6 +275,19 @@ describe('ActivitySnapshotBuilder', () => {
               latestArtifactSummary: 'Session working context refreshed.',
               currentTask: 'Compressing repeated session signals',
               scopeLabel: 'workspace-alpha',
+              threadId: 'thread-1',
+              projectSlug: 'workspace-alpha',
+              reason: 'Repeated signal pressure exceeded baseline',
+              source: 'runtime-hook',
+              trigger: {
+                label: 'Release Session pressure',
+                event: 'session.turn.completed',
+              },
+              executionBoundary: {
+                vaultRoot: '/tmp/vault',
+                spaceId: 'space-1',
+                spaceName: 'Release Space',
+              },
               artifactRelativePath: 'Sessions/thread-1.md',
               artifactTitle: 'Release Session',
               artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
@@ -264,6 +310,27 @@ describe('ActivitySnapshotBuilder', () => {
 
     const snapshot = await new ActivitySnapshotBuilder(repo, taskManager).build();
 
+    expect(summarizeMaintenanceSnapshotBaseline(snapshot)).toEqual({
+      maintenanceAgent: {
+        runType: 'maintenance',
+        runtimeStatus: 'running',
+        assistantId: 'system-context-engine-session-compactor',
+        governanceIdentity: 'session_steward',
+        maintenanceKind: 'session_compaction',
+        latestArtifactSummary: 'Session working context refreshed.',
+        artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+      },
+      systemRun: {
+        threadId: 'thread-1',
+        projectSlug: 'workspace-alpha',
+        reason: 'Repeated signal pressure exceeded baseline',
+        source: 'runtime-hook',
+        triggerEvent: 'session.turn.completed',
+        triggerLabel: 'Release Session pressure',
+        executionBoundaryPath: '/tmp/vault',
+        executionBoundaryLabel: 'Release Space',
+      },
+    });
     expect(snapshot.agents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

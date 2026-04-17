@@ -11,6 +11,14 @@ import { registerOperationLogVaultProjector } from '../../../src/process/service
 import { registerSessionSignalProjector } from '../../../src/process/services/context/events/handlers/SessionSignalProjector';
 import { ContextTriggerRouter } from '../../../src/process/services/context/events/ContextTriggerRouter';
 
+const CONTEXT_EVENT_FLOW_EVAL_BASELINES = {
+  signalJobObservability: 'context-event-flow/signal-job-observability',
+  maintenanceRunProjection: 'context-event-flow/maintenance-run-projection',
+  sessionCompactionArtifact: 'context-event-flow/session-compaction-artifact',
+  connectorDigestRouting: 'context-event-flow/connector-digest-routing',
+  delegationLifecycleRouting: 'context-event-flow/delegation-lifecycle-routing',
+} as const;
+
 const mockDb = {
   getConversation: vi.fn(),
   getChannelRun: vi.fn(() => ({ success: true, data: null })),
@@ -60,6 +68,7 @@ function makeJob(overrides: Partial<ContextJob> = {}): ContextJob {
     source: 'runtime-hook',
     reason: 'Repeated user interruption',
     payload: {
+      artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
       snapshot: {
         userTurns: 3,
         assistantReplies: 2,
@@ -84,6 +93,49 @@ function makeJob(overrides: Partial<ContextJob> = {}): ContextJob {
     },
     queuedAt: '2026-04-08T00:02:00.000Z',
     ...overrides,
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function summarizeOperationLogTelemetry(calls: Array<[Record<string, unknown>]>) {
+  return calls.map(([input]) => {
+    const payload = asRecord(input.payload);
+
+    return {
+      type: typeof input.type === 'string' ? input.type : undefined,
+      entityId: typeof input.entityId === 'string' ? input.entityId : undefined,
+      payload,
+    };
+  });
+}
+
+function summarizeMaintenanceRunTelemetry(run: Record<string, unknown> | undefined) {
+  const metadata = asRecord(run?.metadata);
+
+  return {
+    status: typeof run?.status === 'string' ? run.status : 'missing',
+    threadId: typeof metadata?.threadId === 'string' ? metadata.threadId : null,
+    projectSlug: typeof metadata?.projectSlug === 'string' ? metadata.projectSlug : null,
+    reason: typeof metadata?.reason === 'string' ? metadata.reason : null,
+    source: typeof metadata?.source === 'string' ? metadata.source : null,
+    triggerEvent:
+      typeof asRecord(metadata?.trigger)?.event === 'string' ? (asRecord(metadata?.trigger)?.event as string) : null,
+    triggerLabel:
+      typeof asRecord(metadata?.trigger)?.label === 'string' ? (asRecord(metadata?.trigger)?.label as string) : null,
+    governanceIdentity: typeof metadata?.governanceIdentity === 'string' ? metadata.governanceIdentity : null,
+    currentTask: typeof metadata?.currentTask === 'string' ? metadata.currentTask : null,
+    latestArtifactSummary:
+      typeof metadata?.latestArtifactSummary === 'string' ? metadata.latestArtifactSummary : null,
+    artifactTargets: Array.isArray(metadata?.artifactTargets)
+      ? metadata.artifactTargets.filter((target): target is string => typeof target === 'string')
+      : [],
   };
 }
 
@@ -185,7 +237,9 @@ describe('context engine event flow', () => {
       }),
     ]);
   });
-  it('writes operation logs for signals, queued jobs, and completed jobs', async () => {
+  it(
+    `[${CONTEXT_EVENT_FLOW_EVAL_BASELINES.signalJobObservability}] keeps signal/job observability telemetry stable`,
+    async () => {
     const bus = new ContextEventBus();
     const contextService = {
       appendSystemOperation: vi.fn(async () => undefined),
@@ -279,9 +333,52 @@ describe('context engine event flow', () => {
         bullets: ['Compacted release session context.'],
       })
     );
+    expect(summarizeOperationLogTelemetry(contextService.appendSystemOperation.mock.calls as Array<[Record<string, unknown>]>))
+      .toEqual([
+        {
+          type: 'session.signal_detected',
+          entityId: expect.any(String),
+          payload: {
+            projectSlug: 'workspace-abcd1234',
+            kind: 'user_interrupt',
+            summary: 'User interrupted the run.',
+            score: 0.8,
+            occurredAt: '2026-04-08T00:00:00.000Z',
+          },
+        },
+        {
+          type: 'context.job_queued',
+          entityId: 'job-1',
+          payload: {
+            jobType: 'session_compaction',
+            priority: 'high',
+            reason: 'Repeated user interruption',
+            projectSlug: 'workspace-abcd1234',
+            source: 'runtime-hook',
+          },
+        },
+        {
+          type: 'context.job_completed',
+          entityId: 'job-1',
+          payload: {
+            jobType: 'session_compaction',
+            projectSlug: 'workspace-abcd1234',
+            status: 'completed',
+            artifactSummary: 'Compacted release session context.',
+            profileKey: 'session.compaction.thread-1',
+            pressure: 57,
+            relativePath: undefined,
+            noteTitle: undefined,
+            error: undefined,
+            completedAt: '2026-04-08T00:03:00.000Z',
+          },
+        },
+      ]);
   });
 
-  it('projects maintenance jobs onto system-managed assistant runs', async () => {
+  it(
+    `[${CONTEXT_EVENT_FLOW_EVAL_BASELINES.maintenanceRunProjection}] keeps maintenance run telemetry stable`,
+    async () => {
     const bus = new ContextEventBus();
     const vaultSyncService = {
       writeContextRunArtifact: vi.fn(async () => ({
@@ -293,13 +390,29 @@ describe('context engine event flow', () => {
 
     registerContextJobRunProjector(bus, vaultSyncService as never);
 
+    const queuedJob = makeJob({
+      governanceIdentity: 'session_steward',
+      trigger: {
+        kind: 'lifecycle',
+        event: 'session.turn.completed',
+        firedAt: '2026-04-08T00:02:00.000Z',
+        label: 'Release session pressure',
+      },
+      executionBoundary: {
+        kind: 'space-vault-root',
+        spaceId: 'space-1',
+        spaceName: 'Release Space',
+        vaultRoot: '/vault/space-1',
+      },
+    });
+
     await bus.emit('context.job.queued', {
-      job: makeJob(),
+      job: queuedJob,
     });
 
     await bus.emit('context.job.completed', {
       job: {
-        ...makeJob(),
+        ...queuedJob,
         status: 'completed',
         startedAt: '2026-04-08T00:02:10.000Z',
         completedAt: '2026-04-08T00:03:00.000Z',
@@ -365,10 +478,38 @@ describe('context engine event flow', () => {
         }),
       })
     );
+    expect(summarizeMaintenanceRunTelemetry(queuedRun)).toEqual({
+      status: 'pending',
+      threadId: 'thread-1',
+      projectSlug: 'workspace-abcd1234',
+      reason: 'Repeated user interruption',
+      source: 'runtime-hook',
+      triggerEvent: 'session.turn.completed',
+      triggerLabel: 'Release session pressure',
+      governanceIdentity: 'session_steward',
+      currentTask: 'Repeated user interruption',
+      latestArtifactSummary: null,
+      artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+    });
+    expect(summarizeMaintenanceRunTelemetry(completedRun)).toEqual({
+      status: 'finished',
+      threadId: 'thread-1',
+      projectSlug: 'workspace-abcd1234',
+      reason: 'Repeated user interruption',
+      source: 'runtime-hook',
+      triggerEvent: 'session.turn.completed',
+      triggerLabel: 'Release session pressure',
+      governanceIdentity: 'session_steward',
+      currentTask: 'Ship the release safely.',
+      latestArtifactSummary: 'Compacted release session context.',
+      artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+    });
     expect(completedRun.metadata.events[0]?.text).toContain('Completed session compaction');
   });
 
-  it('builds a compaction profile and appends a session checkpoint', async () => {
+  it(
+    `[${CONTEXT_EVENT_FLOW_EVAL_BASELINES.sessionCompactionArtifact}] keeps session compaction artifact baseline stable`,
+    async () => {
     const contextService = {
       evaluateCompaction: vi.fn(async () => ({
         pressure: 58,
@@ -509,7 +650,9 @@ describe('context engine event flow', () => {
     );
   });
 
-  it('queues connector digest jobs when connector sources are ingested', async () => {
+  it(
+    `[${CONTEXT_EVENT_FLOW_EVAL_BASELINES.connectorDigestRouting}] keeps connector-digest routing stable`,
+    async () => {
     const bus = new ContextEventBus();
     const emittedJobs: ContextJob[] = [];
     const router = new ContextTriggerRouter(bus, {
@@ -659,7 +802,9 @@ describe('context engine event flow', () => {
     expect(emittedJobs[0]?.source).toBe('lifecycle');
   });
 
-  it('routes delegation.completed through the lifecycle trigger contract', async () => {
+  it(
+    `[${CONTEXT_EVENT_FLOW_EVAL_BASELINES.delegationLifecycleRouting}] routes delegation.completed through the lifecycle trigger contract`,
+    async () => {
     const bus = new ContextEventBus();
     const emittedJobs: ContextJob[] = [];
     const router = new ContextTriggerRouter(bus, {

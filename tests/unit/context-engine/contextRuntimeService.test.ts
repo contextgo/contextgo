@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const PROJECT_SLUG = 'workspace-b9e43543';
+const CONTEXT_RUNTIME_EVAL_BASELINES = {
+  outgoingContextWindow: 'context-runtime/outgoing-context-window',
+  autoPromotion: 'context-runtime/assistant-turn-auto-promotion',
+  pendingReview: 'context-runtime/assistant-turn-pending-review',
+  delegationLifecycle: 'context-runtime/delegation-lifecycle-envelope',
+} as const;
 
 const mockSpaceService = {
   getSpace: vi.fn(async () => ({
@@ -124,6 +130,53 @@ function makeConversation() {
       workingDirectory: '/tmp/workspace',
       spaceId: 'space-1',
     },
+  };
+}
+
+function createObservedEventBus() {
+  const observedEvents: Array<{ type: string; payload: Record<string, unknown> }> = [];
+
+  return {
+    observedEvents,
+    eventBus: {
+      emit: vi.fn(async (type: string, payload: Record<string, unknown>) => {
+        observedEvents.push({ type, payload });
+      }),
+    },
+  };
+}
+
+function findObservedEvent(
+  observedEvents: readonly Array<{ type: string; payload: Record<string, unknown> }>,
+  type: string
+) {
+  return observedEvents.find((event) => event.type === type);
+}
+
+function summarizeRuntimeEventBaseline(event: { type: string; payload: Record<string, unknown> } | undefined) {
+  const snapshot =
+    typeof event?.payload.snapshot === 'object' && event.payload.snapshot !== null && !Array.isArray(event.payload.snapshot)
+      ? (event.payload.snapshot as {
+          userTurns?: number;
+          assistantReplies?: number;
+          interruptions?: number;
+          lastUserGoal?: string;
+          lastAssistantOutcome?: string;
+          recentSignals?: Array<{ kind?: string }>;
+        })
+      : undefined;
+
+  return {
+    type: event?.type ?? 'missing',
+    projectSlug: typeof event?.payload.projectSlug === 'string' ? event.payload.projectSlug : null,
+    userTurns: snapshot?.userTurns ?? 0,
+    assistantReplies: snapshot?.assistantReplies ?? 0,
+    interruptions: snapshot?.interruptions ?? 0,
+    lastUserGoal: snapshot?.lastUserGoal ?? null,
+    lastAssistantOutcome: snapshot?.lastAssistantOutcome ?? null,
+    signalKinds: (snapshot?.recentSignals ?? [])
+      .map((signal) => signal.kind)
+      .filter((kind): kind is string => typeof kind === 'string'),
   };
 }
 
@@ -262,12 +315,15 @@ describe('ContextRuntimeService', () => {
     });
   });
 
-  it('assembles and injects a context pack before user request content', async () => {
+  it(
+    `[${CONTEXT_RUNTIME_EVAL_BASELINES.outgoingContextWindow}] keeps the outgoing context window baseline stable`,
+    async () => {
+    const { observedEvents, eventBus } = createObservedEventBus();
     const service = new ContextRuntimeService(
       mockContextService as any,
       undefined,
       mockVaultSyncService as any,
-      undefined,
+      eventBus as any,
       mockProjectContextMirrorService as any,
       mockSpaceService as any
     );
@@ -331,6 +387,16 @@ describe('ContextRuntimeService', () => {
         title: 'Context Window Prepared',
       })
     );
+    expect(summarizeRuntimeEventBaseline(findObservedEvent(observedEvents, 'context.window.prepared'))).toEqual({
+      type: 'context.window.prepared',
+      projectSlug: PROJECT_SLUG,
+      userTurns: 1,
+      assistantReplies: 0,
+      interruptions: 0,
+      lastUserGoal: 'We prefer release changes to stay minimal and verifiable.',
+      lastAssistantOutcome: null,
+      signalKinds: ['context_window_prepared'],
+    });
     expect(result.agentContent).toContain('[ContextGo Runtime Context]');
     expect(result.agentContent).toContain('[User Request]');
     expect(result.agentInput).toContain('read-only background data');
@@ -420,12 +486,15 @@ describe('ContextRuntimeService', () => {
     );
   });
 
-  it('auto-promotes strong candidates into durable memories', async () => {
+  it(
+    `[${CONTEXT_RUNTIME_EVAL_BASELINES.autoPromotion}] keeps the auto-promotion baseline stable`,
+    async () => {
+    const { observedEvents, eventBus } = createObservedEventBus();
     const service = new ContextRuntimeService(
       mockContextService as any,
       undefined,
       mockVaultSyncService as any,
-      undefined,
+      eventBus as any,
       mockProjectContextMirrorService as any,
       mockSpaceService as any
     );
@@ -465,10 +534,23 @@ describe('ContextRuntimeService', () => {
     expect(mockContextService.saveMemory).toHaveBeenCalled();
     const savedSummaries = mockContextService.saveMemory.mock.calls.map((call) => call[0].summary);
     expect(savedSummaries.some((summary: string) => summary.includes('Decision'))).toBe(true);
+    expect(summarizeRuntimeEventBaseline(findObservedEvent(observedEvents, 'session.turn.completed'))).toEqual({
+      type: 'session.turn.completed',
+      projectSlug: PROJECT_SLUG,
+      userTurns: 1,
+      assistantReplies: 1,
+      interruptions: 0,
+      lastUserGoal: 'We prefer test-first debugging and we must avoid large diffs.',
+      lastAssistantOutcome: 'Decision: use the staged release checklist. Next steps: - Run focused tests - Keep diffs small',
+      signalKinds: ['memory_candidate_promoted'],
+    });
   });
 
-  it('notifies humans when candidates require review instead of auto-promotion', async () => {
+  it(
+    `[${CONTEXT_RUNTIME_EVAL_BASELINES.pendingReview}] keeps the pending-review baseline stable`,
+    async () => {
     const notifyPendingReview = vi.fn();
+    const { observedEvents, eventBus } = createObservedEventBus();
     mockContextService.evaluatePromotion.mockResolvedValue({
       score: 40,
       shouldPromote: false,
@@ -478,7 +560,7 @@ describe('ContextRuntimeService', () => {
       mockContextService as any,
       notifyPendingReview,
       mockVaultSyncService as any,
-      undefined,
+      eventBus as any,
       mockProjectContextMirrorService as any,
       mockSpaceService as any
     );
@@ -504,6 +586,16 @@ describe('ContextRuntimeService', () => {
     expect(notifyPendingReview).toHaveBeenCalledWith(
       expect.objectContaining({ conversationId: 'conv-1', spaceId: 'space-1' })
     );
+    expect(summarizeRuntimeEventBaseline(findObservedEvent(observedEvents, 'session.turn.completed'))).toEqual({
+      type: 'session.turn.completed',
+      projectSlug: PROJECT_SLUG,
+      userTurns: 1,
+      assistantReplies: 1,
+      interruptions: 0,
+      lastUserGoal: 'We should not change the release checklist without review.',
+      lastAssistantOutcome: 'Plan: keep the current checklist and review changes manually.',
+      signalKinds: ['memory_candidate_created'],
+    });
   });
 
   it('records a stop event when a prepared turn is interrupted', async () => {
@@ -535,13 +627,10 @@ describe('ContextRuntimeService', () => {
     );
   });
 
-  it('emits delegation.completed with the governance lifecycle envelope', async () => {
-    const observedEvents: Array<{ type: string; payload: Record<string, unknown> }> = [];
-    const eventBus = {
-      emit: vi.fn(async (type: string, payload: Record<string, unknown>) => {
-        observedEvents.push({ type, payload });
-      }),
-    };
+  it(
+    `[${CONTEXT_RUNTIME_EVAL_BASELINES.delegationLifecycle}] keeps the delegation lifecycle envelope stable`,
+    async () => {
+    const { observedEvents, eventBus } = createObservedEventBus();
     const service = new ContextRuntimeService(
       mockContextService as any,
       undefined,
@@ -573,5 +662,15 @@ describe('ContextRuntimeService', () => {
         }),
       })
     );
+    expect(summarizeRuntimeEventBaseline(findObservedEvent(observedEvents, 'delegation.completed'))).toEqual({
+      type: 'delegation.completed',
+      projectSlug: PROJECT_SLUG,
+      userTurns: 3,
+      assistantReplies: 2,
+      interruptions: 0,
+      lastUserGoal: null,
+      lastAssistantOutcome: null,
+      signalKinds: [],
+    });
   });
 });
