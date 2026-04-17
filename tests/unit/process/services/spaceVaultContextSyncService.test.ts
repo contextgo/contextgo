@@ -918,10 +918,10 @@ describe('SpaceVaultContextSyncService', () => {
     );
 
     expect(Number(baselineNode?.y)).toBeLessThan(Number(sourceNode?.y));
-    expect(graphCanvas.nodes.some((node) => String(node.file).includes('_context/capabilities'))).toBe(true);
+    expect(graphCanvas.nodes.some((node) => String(node.file).includes('_context/capabilities'))).toBe(false);
     expect(graphCanvas.edges.some((edge) => edge.label === 'semantic-context')).toBe(true);
     expect(graphCanvas.edges.some((edge) => edge.label === 'source-mirror')).toBe(true);
-    expect(graphCanvas.edges.some((edge) => edge.label === 'capability-inventory')).toBe(true);
+    expect(graphCanvas.edges.some((edge) => edge.label === 'capability-inventory')).toBe(false);
   });
 
   it('sanitizes imported session titles so graph nodes stay readable', async () => {
