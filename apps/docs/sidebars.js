@@ -1,0 +1,121 @@
+/** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
+const sidebars = {
+  docsSidebar: [
+    'index',
+    {
+      type: 'category',
+      label: 'Start Here',
+      link: { type: 'doc', id: 'start-here/index' },
+      items: [
+        'start-here/what-is-contextgo',
+        'start-here/quick-start',
+        'start-here/product-map',
+        'start-here/choose-your-setup',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Use Cases',
+      link: { type: 'doc', id: 'use-cases/index' },
+      items: [
+        'use-cases/bring-your-workflow-into-contextgo',
+        'use-cases/content-and-writing-studio',
+        'use-cases/research-and-browser-workflow',
+        'use-cases/coding-and-builder-workflow',
+        'use-cases/operations-and-automation-workflow',
+        'use-cases/publish-to-channel-workflow',
+        'use-cases/personal-remote-workbench',
+        'use-cases/recommended-starter-modes',
+        'use-cases/team-and-collaboration-workflow',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Workbench',
+      link: { type: 'doc', id: 'workbench/index' },
+      items: ['workbench/ai-native-workbench-overview', 'workbench/conversation-cowork-workbench'],
+    },
+    {
+      type: 'category',
+      label: 'Context',
+      link: { type: 'doc', id: 'context/index' },
+      items: [
+        'context/context-system-overview',
+        'context/context-connector',
+        'context/context-engine',
+        'context/session-project-space',
+        'context/memory-profile-context-pack',
+        'context/context-governance',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Agents & Capabilities',
+      link: { type: 'doc', id: 'agents/index' },
+      items: [
+        'agents/agent-system-overview',
+        'agents/agent-packages',
+        'agents/built-in-assistants',
+        'agents/skill-market',
+        'agents/hooks-commands-schedules',
+        'agents/runtime-center',
+        'agents/installed-signed-in-ready',
+        'agents/browser-tools-and-runtime-actions',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Publish',
+      link: { type: 'doc', id: 'publish/index' },
+      items: [
+        'publish/publish-overview',
+        'publish/channels',
+        'publish/channel-accounts-and-instances',
+        'publish/audiences-threads-groups',
+        'publish/publish-one-agent-to-many-places',
+        'publish/managing-published-agents',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Collaboration',
+      link: { type: 'doc', id: 'collaboration/index' },
+      items: [
+        'collaboration/collaboration-overview',
+        'collaboration/multi-agent-collaboration',
+        'collaboration/harness-style-workflows',
+        'collaboration/group-workflows',
+        'collaboration/agent-teams',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Remote & Devices',
+      link: { type: 'doc', id: 'remote/index' },
+      items: [
+        'remote/remote-access-overview',
+        'remote/desktop-host',
+        'remote/web-client',
+        'remote/mobile-shells',
+        'remote/linux-host-and-cli',
+        'remote/uploads-files-and-host-processing',
+        'remote/same-experience-across-devices',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Manage',
+      link: { type: 'doc', id: 'manage/index' },
+      items: [
+        'manage/account-and-devices',
+        'manage/settings-guide',
+        'manage/updates',
+        'manage/security-and-permissions',
+        'manage/troubleshooting',
+        'manage/faq',
+      ],
+    },
+  ],
+};
+
+module.exports = sidebars;
