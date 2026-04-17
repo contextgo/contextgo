@@ -347,6 +347,10 @@
 
 /* Settings mobile navigation drawer */
 @media (max-width: 767px) {
+  .settings-page-wrapper.settings-page-wrapper--mobile-compact {
+    padding: 12px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
   .settings-mobile-nav-drawer :global(.arco-drawer-content) {
     background: var(--bg-1);
   }

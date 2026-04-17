@@ -14,6 +14,122 @@
   flex-shrink: 0;
 }
 
+.mobileListView,
+.mobileDetailView {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.mobileFamilyRail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.mobileFamilyChip {
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  flex: 0 0 auto;
+}
+
+.mobileFamilyChipLabel,
+.mobileFamilyChipCount {
+  display: inline-flex;
+  align-items: center;
+}
+
+.mobileFamilyChip :global(.arco-btn-content) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-1) 88%, var(--bg-1) 12%);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.mobileFamilyChipActive :global(.arco-btn-content) {
+  border-color: color-mix(in srgb, rgb(var(--primary-6)) 28%, var(--border-base) 72%);
+  background: color-mix(in srgb, var(--color-primary-light-1) 62%, var(--bg-1) 38%);
+  color: color-mix(in srgb, rgb(var(--primary-6)) 72%, var(--text-primary) 28%);
+}
+
+.mobileFamilyChipCount {
+  min-width: 20px;
+  height: 20px;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-2) 86%, var(--bg-1) 14%);
+  color: inherit;
+  font-size: 11px;
+}
+
+.mobileFamilySummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-2) 95%, var(--fill-1) 5%);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+.mobileFamilySummaryMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.mobileFamilySummaryCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobileFamilySummaryTitle {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.mobileFamilySummaryDescription {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mobileBackButton {
+  align-self: flex-start;
+  padding-left: 2px;
+}
+
 .shell {
   display: grid;
   grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
@@ -945,11 +1061,25 @@
 }
 
 @media (max-width: 767px) {
+  .mobileFamilySummary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mobileFamilySummaryMain {
+    width: 100%;
+  }
+
+  .mobileFamilySummary > :global(.arco-btn) {
+    width: 100%;
+    justify-content: center;
+  }
+
   .sidebarCard,
   .heroCard,
   .instanceCard,
   .detailCard {
-    padding: 14px;
+    padding: 12px;
   }
 
   .heroMain,
@@ -975,6 +1105,13 @@
 
   .instanceId {
     text-align: left;
+  }
+
+  .instanceButtonInner,
+  .setupStep,
+  .instanceEmptyState,
+  .setupCard {
+    padding: 12px;
   }
 }
 

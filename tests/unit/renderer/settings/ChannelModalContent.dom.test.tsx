@@ -182,12 +182,20 @@ vi.mock('@arco-design/web-react', async () => {
       children,
       onClick,
       className,
+      type: _type,
+      loading: _loading,
+      status: _status,
+      ...props
     }: {
       children?: React.ReactNode;
       onClick?: () => void;
       className?: string;
+      type?: string;
+      loading?: boolean;
+      status?: string;
+      [key: string]: unknown;
     }) => (
-      <button type='button' onClick={onClick} className={className}>
+      <button type='button' onClick={onClick} className={className} {...props}>
         {children}
       </button>
     ),
@@ -387,6 +395,40 @@ describe('ChannelModalContent', () => {
     });
 
     expect(screen.getByTestId('scroll-area')).toHaveAttribute('data-disable-overflow', 'false');
+  });
+
+  it('uses a list-first mobile flow and opens instance details only after selection', async () => {
+    useLayoutContextMock.mockReturnValue({
+      isMobile: true,
+    });
+
+    renderChannelsPage();
+
+    await waitFor(() => {
+      expect(mockGetPluginStatusInvoke).toHaveBeenCalled();
+      expect(mockGetChannelAccountsInvoke).toHaveBeenCalled();
+    });
+
+    expect(screen.getByTestId('channel-mobile-list')).toBeInTheDocument();
+    expect(screen.queryByTestId('channel-mobile-detail')).toBeNull();
+    expect(screen.queryByText('telegram form')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('channel-instance-trigger-telegram_default'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('channel-mobile-detail')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('telegram form')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('channel-mobile-back'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('channel-mobile-list')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('channel-mobile-detail')).toBeNull();
+    expect(screen.queryByText('telegram form')).not.toBeInTheDocument();
   });
 
   it('hides implicit builtin defaults when no real instance exists', async () => {
