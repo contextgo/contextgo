@@ -42,6 +42,7 @@ The supported runtimes above share the same product-level assistant package mode
 - runtime-native directories such as `.codex/skills` or `.claude/skills` are projections only
 - only skills should be projected into runtime-native directories
 - `hooks`, `commands`, and `schedules` remain ContextGo-native automation owned by `.contextgo/`
+- Context Engine External Memory Strategy Adapter metadata stays runtime-neutral and belongs to package or policy declarations, not runtime-native directory state
 
 Runtime-facing workspace docs are a separate concern:
 
@@ -54,6 +55,14 @@ This distinction matters:
 - package-root `AGENTS.md` is the packaged rules-entry document used for projection-aware product UI
 - workspace-root `AGENTS.md` / `CLAUDE.md` describe repository instructions for runtime consumption
 - these two surfaces may share content lineage, but they are not the same architectural object
+
+## External Memory Strategy Adapter Boundary
+
+ContextGo's External Memory Strategy Adapter SPI composes with the existing Context Engine model rather than introducing a new runtime-facing surface.
+
+- agent packages may declare compatibility with adapter capability metadata, but `.codex/`, `.claude/`, `.gemini/`, and `.opencode/` must not become the source of truth for adapter state
+- adapter participation is expressed against the current governance identities and dual-loop model: `session_steward`, `project_curator`, and `space_curator` remain the owning Context Engine roles
+- adapter config schema refs and secret requirements stay abstract package or workspace-policy declarations, not runtime-specific filesystem conventions
 
 ## Verified Runtime-Native Surfaces
 
@@ -135,6 +144,7 @@ When ContextGo projects package state into runtime-native directories:
 - runtime-native skill directories are compatibility projections only
 - do not infer a runtime's supported project surfaces from another runtime's conventions
 - only project a surface when the target runtime actually documents and supports that surface
+- do not invent runtime-native adapter-state conventions for Context Engine strategy adapters
 
 Examples:
 

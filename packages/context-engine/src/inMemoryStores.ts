@@ -15,7 +15,7 @@ import type {
   ProfileSegment,
   SourceRecord,
 } from './domain';
-import type { ContextEngineDependencies } from './contracts';
+import type { ContextEngineDependencies, ContextEngineExternalMemoryBinding } from './contracts';
 import type { ContextOperation } from './operations';
 import { InMemoryVectorIndexProvider, type VectorIndexProvider } from './vectorIndex';
 
@@ -33,6 +33,7 @@ export function createInMemoryContextEngineDependencies(
     profiles: readonly ProfileSegment[];
     operations: readonly ContextOperation[];
     vectorIndex: VectorIndexProvider;
+    externalMemory: ContextEngineExternalMemoryBinding;
   }>
 ): ContextEngineDependencies {
   const sources = new Map((seed?.sources ?? []).map((item) => [item.id, item]));
@@ -152,5 +153,6 @@ export function createInMemoryContextEngineDependencies(
       forgetting: DEFAULT_FORGETTING_POLICY,
     },
     vectorIndex: seed?.vectorIndex ?? new InMemoryVectorIndexProvider(),
+    externalMemory: seed?.externalMemory,
   };
 }
