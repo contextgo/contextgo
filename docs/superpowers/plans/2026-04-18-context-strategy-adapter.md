@@ -75,10 +75,7 @@ Expected: FAIL because `defineExternalMemoryStrategyAdapter` and the adapter des
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-export type ExternalMemoryStrategyGovernanceScope =
-  | 'session_steward'
-  | 'project_curator'
-  | 'space_curator';
+export type ExternalMemoryStrategyGovernanceScope = 'session_steward' | 'project_curator' | 'space_curator';
 
 export type ExternalMemoryStrategyLifecycle = {
   writeMode: 'sync' | 'async' | 'session_end' | 'batch';
@@ -116,7 +113,7 @@ export type ExternalMemoryStrategyAdapterDescriptor = {
 };
 
 export function defineExternalMemoryStrategyAdapter(
-  descriptor: ExternalMemoryStrategyAdapterDescriptor,
+  descriptor: ExternalMemoryStrategyAdapterDescriptor
 ): ExternalMemoryStrategyAdapterDescriptor {
   return descriptor;
 }
