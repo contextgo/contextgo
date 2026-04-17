@@ -92,6 +92,21 @@ jobs:
 
           echo "Resolved iOS TestFlight version: ${VERSION}"
 
+      - name: Resolve iOS build number
+        id: build_number
+        shell: bash
+        env:
+          GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT_VALUE: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+
+          # Use a globally unique numeric build number so repeated uploads for the same
+          # marketing version do not collide in App Store Connect.
+          BUILD_NUMBER="${GITHUB_RUN_ID_VALUE}$(printf '%02d' "${GITHUB_RUN_ATTEMPT_VALUE}")"
+          echo "build_number=${BUILD_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "Resolved iOS build number: ${BUILD_NUMBER}"
+
       - name: Prepare App Store Connect upload API key
         id: upload_api_key
         shell: bash
@@ -296,7 +311,7 @@ jobs:
       - name: Build iOS archive and export IPA
         shell: bash
         env:
-          CONTEXTGO_RELEASE_BUILD_NUMBER: ${{ github.run_number }}
+          CONTEXTGO_RELEASE_BUILD_NUMBER: ${{ steps.build_number.outputs.build_number }}
           CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST: ${{ steps.export_options.outputs.path }}
           IOS_DEVELOPMENT_TEAM: ${{ vars.IOS_DEVELOPMENT_TEAM != '' && vars.IOS_DEVELOPMENT_TEAM || 'DQ362F38WB' }}
           IOS_CODE_SIGN_STYLE: ${{ steps.signing.outputs.code_sign_style }}
