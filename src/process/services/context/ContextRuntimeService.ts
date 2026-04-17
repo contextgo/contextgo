@@ -22,6 +22,11 @@ import {
   createWorkspaceProjectSlug,
 } from '@process/services/space/SpaceVaultContextSyncService';
 import {
+  ProjectCapabilityService,
+  type ProjectCapabilityRecord,
+  type ProjectCapabilitySnapshot,
+} from '@process/services/space/ProjectCapabilityService';
+import {
   ProjectContextMirrorService,
   type ProjectContextAssemblyOverlaySource,
   type ProjectContextSnapshot,
@@ -43,6 +48,8 @@ type PendingTurn = {
   userSourceId: string;
   msgId?: string;
   preparedAt: number;
+  contextPackProvenance?: ContextPack['provenance'];
+  capabilitySnapshot?: ProjectCapabilitySnapshot;
 };
 
 type PrepareOutgoingTurnInput = {
@@ -176,6 +183,18 @@ function buildCandidateCheckpointBody(title: string, summaries: readonly string[
   return [title, '', ...summaries.slice(0, 4).map((summary) => `- ${inlineSummary(summary)}`)].join('\n');
 }
 
+function uniqueStrings(values: readonly string[]): string[] {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function buildUsageEvidenceCheckpointBody(evidence: readonly string[]): string | undefined {
+  if (evidence.length === 0) {
+    return undefined;
+  }
+
+  return ['Usage Evidence', '', ...evidence.map((item) => `- ${item}`)].join('\n');
+}
+
 function inferMemoryTier(kind: MemoryKind): Exclude<ContextTier, 'source'> {
   switch (kind) {
     case 'workflow':
@@ -300,7 +319,8 @@ function resolveConversationProjectSlug(conversation: TChatConversation): string
 function buildProjectPromotionCandidate(
   projectSlug: string | undefined,
   promotedSummaries: readonly string[],
-  threadId: string
+  threadId: string,
+  usageEvidence: readonly string[] = []
 ): ProjectPromotionCandidate | undefined {
   if (!projectSlug || promotedSummaries.length === 0) {
     return undefined;
@@ -309,9 +329,9 @@ function buildProjectPromotionCandidate(
   return {
     projectSlug,
     summary: promotedSummaries[0],
-    detail: promotedSummaries.slice(1).join('\n') || undefined,
+    detail: [...promotedSummaries.slice(1), ...usageEvidence.map((item) => `Usage evidence: ${item}`)].join('\n') || undefined,
     sourceThreadIds: [threadId],
-    confidence: 0.88,
+    confidence: Math.min(0.96, 0.88 + Math.min(0.06, usageEvidence.length * 0.02)),
   };
 }
 
@@ -341,6 +361,63 @@ function getProjectAssemblyOverlaySource(
   };
 }
 
+function normalizeCapabilityName(value: string): string {
+  return normalizeText(value).toLowerCase();
+}
+
+function buildCapabilityUsageEvidence(
+  snapshot: ProjectCapabilitySnapshot | undefined,
+  text: string
+): string[] {
+  if (!snapshot) {
+    return [];
+  }
+
+  const normalizedText = normalizeCapabilityName(text);
+  if (!normalizedText) {
+    return [];
+  }
+
+  const matchesCapability = (capability: ProjectCapabilityRecord): boolean => {
+    const capabilityName = normalizeCapabilityName(capability.name);
+    if (!capabilityName) {
+      return false;
+    }
+    if (capability.kind === 'command') {
+      return normalizedText.includes(`/${capabilityName}`) || normalizedText.includes(capabilityName);
+    }
+    return normalizedText.includes(capabilityName);
+  };
+
+  return [
+    ...snapshot.skills.filter(matchesCapability).map((capability) => `Used skill surface: ${capability.name}`),
+    ...snapshot.hooks.filter(matchesCapability).map((capability) => `Used hook surface: ${capability.name}`),
+    ...snapshot.commands.filter(matchesCapability).map((capability) => `Used command surface: /${capability.name}`),
+    ...snapshot.schedules.filter(matchesCapability).map((capability) => `Used schedule surface: ${capability.name}`),
+  ];
+}
+
+function buildContextUsageEvidence(provenance: ContextPack['provenance'] | undefined): string[] {
+  if (!provenance) {
+    return [];
+  }
+
+  const evidence: string[] = [];
+  if (provenance.memoryIds.length > 0) {
+    evidence.push(`Used mounted memory references: ${provenance.memoryIds.length}`);
+  }
+  if (provenance.profileIds.length > 0) {
+    evidence.push(`Used mounted profile references: ${provenance.profileIds.length}`);
+  }
+  if (provenance.sourceIds.length > 0) {
+    evidence.push(`Used mounted source references: ${provenance.sourceIds.length}`);
+  }
+  if (provenance.artifactIds.length > 0) {
+    evidence.push(`Used mounted artifact references: ${provenance.artifactIds.length}`);
+  }
+  return evidence;
+}
+
 export class ContextRuntimeService {
   constructor(
     private readonly contextService: ContextServiceImpl,
@@ -360,7 +437,8 @@ export class ContextRuntimeService {
     private readonly projectContextMirrorService = new ProjectContextMirrorService(contextService),
     private readonly spaceService: Pick<SpaceServiceImpl, 'getSpace'> = new SpaceServiceImpl(
       new SqliteSpaceRepository()
-    )
+    ),
+    private readonly projectCapabilityService: Pick<ProjectCapabilityService, 'readSnapshot'> = new ProjectCapabilityService()
   ) {}
 
   private readonly pendingTurns = new Map<string, PendingTurn>();
@@ -427,6 +505,11 @@ export class ContextRuntimeService {
     const projectSlug = resolveConversationProjectSlug(input.conversation);
     const projectSnapshot = await this.loadProjectContextSnapshot(input.conversation, spaceId);
     const projectAssemblyOverlay = getProjectAssemblyOverlaySource(this.projectContextMirrorService, projectSnapshot);
+    const capabilitySnapshot = input.conversation.extra?.workingDirectory || input.conversation.extra?.workspace
+      ? await this.projectCapabilityService.readSnapshot(
+          input.conversation.extra?.workingDirectory || input.conversation.extra?.workspace || ''
+        )
+      : undefined;
     const sessionWorkingContextSection = await this.vaultSyncService.readSessionWorkingContextSection({
       conversation: input.conversation,
     });
@@ -496,6 +579,8 @@ export class ContextRuntimeService {
       userSourceId: userSourceResult.source.id,
       msgId: input.msgId,
       preparedAt,
+      contextPackProvenance: assembled.pack.provenance,
+      capabilitySnapshot,
     });
 
     await this.vaultSyncService.appendUserTurnStarted({
@@ -635,6 +720,13 @@ export class ContextRuntimeService {
     const promotedSummaries: string[] = [];
     const reviewSummaries: string[] = [];
     const rejectedSummaries: string[] = [];
+    const usageEvidence = uniqueStrings([
+      ...buildContextUsageEvidence(pendingTurn?.contextPackProvenance),
+      ...buildCapabilityUsageEvidence(
+        pendingTurn?.capabilitySnapshot,
+        [pendingTurn?.userInput || '', text].filter(Boolean).join('\n')
+      ),
+    ]);
 
     for (const draft of drafts) {
       const sourceIds = pendingTurn
@@ -755,6 +847,7 @@ export class ContextRuntimeService {
         buildCandidateCheckpointBody('Promoted', promotedSummaries),
         buildCandidateCheckpointBody('Pending Review', reviewSummaries),
         buildCandidateCheckpointBody('Filtered Out', rejectedSummaries),
+        buildUsageEvidenceCheckpointBody(usageEvidence),
       ].filter((value): value is string => Boolean(value));
 
       await this.vaultSyncService.appendContextCheckpoint({
@@ -791,7 +884,8 @@ export class ContextRuntimeService {
       promotionCandidate: buildProjectPromotionCandidate(
         resolveConversationProjectSlug(conversation),
         promotedSummaries,
-        conversationId
+        conversationId,
+        usageEvidence
       ),
     });
 
