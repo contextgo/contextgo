@@ -77,7 +77,6 @@ type MemoryCandidateDraft = {
 };
 
 type FrozenMountedState = Readonly<{
-  preparedAt: number;
   threadSummary?: string;
   mountedSections: ContextPack['sections'];
   mountedProfiles: readonly ProfileSegment[];
@@ -426,14 +425,12 @@ function buildContextUsageEvidence(provenance: ContextPack['provenance'] | undef
 }
 
 function buildFrozenMountedState(input: {
-  preparedAt: number;
   threadSummary?: string;
   mountedSections: ContextPack['sections'];
   mountedProfiles: readonly ProfileSegment[];
   pinnedInstructions: readonly string[];
 }): FrozenMountedState {
   return {
-    preparedAt: input.preparedAt,
     threadSummary: input.threadSummary,
     mountedSections: input.mountedSections.map((section) => ({ ...section })),
     mountedProfiles: input.mountedProfiles.map((profile) => ({ ...profile })),
@@ -551,7 +548,6 @@ export class ContextRuntimeService {
     const mountedProfiles = await this.getSessionCompactionMountedProfiles(spaceId, input.conversation.id);
     const pinnedInstructions = ['Prefer space-consistent answers and reuse approved workflows when relevant.'] as const;
     const mountedState = buildFrozenMountedState({
-      preparedAt,
       threadSummary: buildThreadSummary([...recentMessages].toReversed()),
       mountedSections: [
         ...(sessionWorkingContextSection ? [sessionWorkingContextSection] : []),
