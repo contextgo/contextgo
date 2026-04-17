@@ -136,6 +136,19 @@ describe('agent-package manifests', () => {
     expect(scaffold?.templates?.some((template) => template.target === 'docs/reviews/README.md')).toBe(true);
   });
 
+  it('ships a lightweight engineering scaffold for karpathy coding guard without automation payloads', () => {
+    const manifest = readManifest('src/process/resources/assistant/engineering/karpathy-coding-guard');
+    const scaffold = manifest.payloads.workspaceScaffold;
+
+    expect(scaffold).toBeDefined();
+    expect(scaffold?.templates?.some((template) => template.target === 'docs/assumptions/README.md')).toBe(true);
+    expect(scaffold?.templates?.some((template) => template.target === 'docs/changes/README.md')).toBe(true);
+    expect(scaffold?.templates?.some((template) => template.target === 'docs/verification/README.md')).toBe(true);
+    expect(manifest.payloads.commands).toBeUndefined();
+    expect(manifest.payloads.hooks).toBeUndefined();
+    expect(manifest.payloads.schedules).toBeUndefined();
+  });
+
   it('ships specialized workspace scaffold templates for non-engineering builtin assistants', () => {
     const cases = [
       {
@@ -166,6 +179,15 @@ describe('agent-package manifests', () => {
           'docs/analysis/README.md',
           'docs/valuation/README.md',
           'docs/scenarios/README.md',
+        ],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/engineering/karpathy-coding-guard',
+        expectedTargets: [
+          'AGENTS.md',
+          'docs/assumptions/README.md',
+          'docs/changes/README.md',
+          'docs/verification/README.md',
         ],
       },
     ];

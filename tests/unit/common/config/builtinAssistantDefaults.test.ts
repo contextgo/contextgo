@@ -22,6 +22,9 @@ const STARTUP_STRATEGIST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSk
 const OFFICE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-office-analyst')!;
 const FINANCE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-finance-analyst')!;
 const PM_WORKBENCH_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-pm-workbench')!;
+const KARPATHY_CODING_GUARD_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-karpathy-coding-guard'
+)!;
 const ENGINEERING_WORKBENCH_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-superpowers')!;
 const ENGINEERING_DEFAULT_HOOKS = getBundledAgentPackageDefaultEnabledHookNames('builtin-superpowers')!;
 
@@ -32,8 +35,9 @@ describe('builtinAssistantDefaults', () => {
     const startupAssistant = assistants.find((assistant) => assistant.id === 'builtin-startup-strategist');
     const financeAssistant = assistants.find((assistant) => assistant.id === 'builtin-finance-analyst');
     const officeAssistant = assistants.find((assistant) => assistant.id === 'builtin-office-analyst');
+    const codingGuardAssistant = assistants.find((assistant) => assistant.id === 'builtin-karpathy-coding-guard');
 
-    expect(assistants).toHaveLength(8);
+    expect(assistants).toHaveLength(9);
     expect(assistants.map((assistant) => assistant.id)).toEqual([
       'builtin-morph-ppt',
       'builtin-startup-strategist',
@@ -43,6 +47,7 @@ describe('builtinAssistantDefaults', () => {
       'builtin-finance-analyst',
       'builtin-superpowers',
       'builtin-everything-in-claude-code',
+      'builtin-karpathy-coding-guard',
     ]);
     expect(assistants.find((assistant) => assistant.id === 'builtin-morph-ppt')).toEqual(
       expect.objectContaining({
@@ -198,6 +203,33 @@ describe('builtinAssistantDefaults', () => {
           'zh-CN': 'Superpowers',
         },
       })
+    );
+    expect(codingGuardAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...KARPATHY_CODING_GUARD_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Engineering',
+          'zh-CN': '研发',
+        },
+        harnessTagI18n: {
+          'en-US': 'Karpathy Coding Guard',
+          'zh-CN': 'Karpathy Coding Guard',
+        },
+      })
+    );
+    expect(codingGuardAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'assumption-audit',
+        'simplicity-first',
+        'surgical-change',
+        'goal-driven-execution',
+        'diff-minimization-review',
+      ])
     );
     expect(assistants.find((assistant) => assistant.id === 'builtin-everything-in-claude-code')).toEqual(
       expect.objectContaining({

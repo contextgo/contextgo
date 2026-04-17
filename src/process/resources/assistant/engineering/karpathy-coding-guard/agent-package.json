@@ -1,0 +1,96 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "karpathy-coding-guard",
+  "assistantPresetId": "builtin-karpathy-coding-guard",
+  "displayName": "Karpathy Coding Guard",
+  "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "workspace"
+        }
+      ],
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "assumption control before coding",
+        "minimal and well-bounded repository changes",
+        "verification captured against explicit success criteria"
+      ],
+      "suggestedArtifacts": [
+        "assumption logs",
+        "change boundary notes",
+        "verification checklists",
+        "diff review notes"
+      ],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/assumptions/README.md",
+          "target": "docs/assumptions/README.md"
+        },
+        {
+          "source": "workspace/docs/changes/README.md",
+          "target": "docs/changes/README.md"
+        },
+        {
+          "source": "workspace/docs/verification/README.md",
+          "target": "docs/verification/README.md"
+        }
+      ]
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "skills"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "assumption-audit",
+        "simplicity-first",
+        "surgical-change",
+        "goal-driven-execution",
+        "diff-minimization-review"
+      ],
+      "packagedSkillNames": [
+        "assumption-audit",
+        "simplicity-first",
+        "surgical-change",
+        "goal-driven-execution",
+        "diff-minimization-review"
+      ],
+      "hidePackageOwnedSkillsFromLibrary": true
+    }
+  }
+}
