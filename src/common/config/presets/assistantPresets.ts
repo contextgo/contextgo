@@ -330,4 +330,44 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
       ],
     },
   },
+  {
+    id: 'karpathy-coding-guard',
+    avatar: '\u{1F6E1}\uFE0F',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Karpathy Coding Guard',
+      'zh-CN': 'Karpathy Coding Guard',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Engineering',
+      'zh-CN': '研发',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want assumption notes, scoped change records, and verification logs written back into the project folder.',
+      'zh-CN': '如果希望把假设记录、改动边界说明和验证日志直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Karpathy Coding Guard',
+      'zh-CN': 'Karpathy Coding Guard',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A built-in engineering assistant for assumption auditing, minimal diffs, anti-overengineering discipline, and success-criteria-driven coding around a linked workspace.',
+      'zh-CN':
+        '一个面向工程交付的内置助手，围绕已关联工作空间推进假设审计、最小 diff、反过度设计约束，以及基于成功标准的编码闭环。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Help me implement this change with the smallest verifiable diff and call out any hidden assumptions first',
+        'Audit the ambiguity in this coding task, then propose the simplest safe implementation path',
+        'Review this planned code change for overengineering, scope creep, and weak verification',
+      ],
+      'zh-CN': [
+        '先把这个编码任务里的隐含假设挑出来，再用最小可验证 diff 来实现',
+        '先审计这次改动的歧义和范围，再给我一条最简单且安全的实现路径',
+        '帮我检查这次代码改动有没有过度设计、范围膨胀和验证不足的问题',
+      ],
+    },
+  },
 ];

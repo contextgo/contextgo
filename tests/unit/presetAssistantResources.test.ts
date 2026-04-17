@@ -19,6 +19,9 @@ const STARTUP_STRATEGIST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSk
 const OFFICE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-office-analyst')!;
 const FINANCE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-finance-analyst')!;
 const PM_WORKBENCH_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-pm-workbench')!;
+const KARPATHY_CODING_GUARD_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-karpathy-coding-guard'
+)!;
 const ENGINEERING_WORKBENCH_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-superpowers')!;
 const ENGINEERING_DEFAULT_HOOKS = getBundledAgentPackageDefaultEnabledHookNames('builtin-superpowers')!;
 
@@ -275,6 +278,33 @@ describe('loadPresetAssistantResources', () => {
       rules: 'builtin rules',
       skills: '',
       enabledSkills: [...FINANCE_ANALYST_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to karpathy coding guard preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-karpathy-coding-guard',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...KARPATHY_CODING_GUARD_DEFAULT_SKILLS],
       enabledHooks: undefined,
     });
   });
