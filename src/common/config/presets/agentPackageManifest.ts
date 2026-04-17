@@ -9,6 +9,7 @@ export type AgentPackageWorkspaceAutomationProfile =
   | 'office-analyst'
   | 'finance-analyst'
   | 'design-director'
+  | 'figma-closed-loop'
   | 'marketing-creative-studio';
 
 export type AgentPackageWorkspaceSkillBootstrapStrategy = 'enabled-skills' | 'packaged-skills';
@@ -141,6 +142,7 @@ const WORKSPACE_AUTOMATION_PROFILES = new Set<AgentPackageWorkspaceAutomationPro
   'office-analyst',
   'finance-analyst',
   'design-director',
+  'figma-closed-loop',
   'marketing-creative-studio',
 ]);
 

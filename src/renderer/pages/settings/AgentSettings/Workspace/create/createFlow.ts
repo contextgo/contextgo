@@ -75,9 +75,25 @@ const RECOMMENDATION_PROFILES: RecommendationProfile[] = [
   },
   {
     presetId: 'design-director',
-    keywords: ['design', 'figma', 'ui', 'ux', 'visual', 'art direction', 'screenshot'],
+    keywords: ['design', 'ui', 'ux', 'visual', 'art direction', 'screenshot', 'critique', 'reference'],
     styles: ['create', 'analyze'],
     reasons: ['Best fit for design direction, critique, and implementation handoff.'],
+  },
+  {
+    presetId: 'figma-closed-loop',
+    keywords: [
+      'figma',
+      'figma sync',
+      'figma library',
+      'design system sync',
+      'design tokens sync',
+      'implementation handoff',
+      'design drift',
+      'figma node',
+      'figma file',
+    ],
+    styles: ['create', 'execute', 'maintain'],
+    reasons: ['Best fit for code <-> Figma <-> code execution loop, library sync, and drift audit.'],
   },
   {
     presetId: 'marketing-creative-studio',
