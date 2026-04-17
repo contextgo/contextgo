@@ -33,6 +33,7 @@ describe('workspace utils', () => {
       hooksFile: '/Users/demo/project/.contextgo/hooks.json',
       commandsFile: '/Users/demo/project/.contextgo/commands.json',
       schedulesFile: '/Users/demo/project/.contextgo/schedules.json',
+      runtimePolicyFile: '/Users/demo/project/.contextgo/runtime.json',
     });
   });
 
@@ -44,6 +45,7 @@ describe('workspace utils', () => {
       hooksFile: 'D:\\workspace\\project\\.contextgo\\hooks.json',
       commandsFile: 'D:\\workspace\\project\\.contextgo\\commands.json',
       schedulesFile: 'D:\\workspace\\project\\.contextgo\\schedules.json',
+      runtimePolicyFile: 'D:\\workspace\\project\\.contextgo\\runtime.json',
     });
   });
 
