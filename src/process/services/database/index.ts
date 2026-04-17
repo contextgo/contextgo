@@ -826,7 +826,15 @@ export class AionUIDatabase {
     updates: Partial<
       Pick<
         TSpace,
-        'name' | 'engine' | 'description' | 'members' | 'permissionsPolicy' | 'providerRef' | 'automation' | 'isDefault' | 'archivedAt'
+        | 'name'
+        | 'engine'
+        | 'description'
+        | 'members'
+        | 'permissionsPolicy'
+        | 'providerRef'
+        | 'automation'
+        | 'isDefault'
+        | 'archivedAt'
       >
     >
   ): IQueryResult<boolean> {

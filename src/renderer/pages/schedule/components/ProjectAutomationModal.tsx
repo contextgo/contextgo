@@ -1151,7 +1151,8 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                     <AutomationSectionCard>
                       <Typography.Paragraph className='mb-0 text-t-secondary'>
                         {t('conversation.workspace.automation.spaceUnavailable', {
-                          defaultValue: 'This conversation is not bound to a Space yet, so Space Commands are unavailable.',
+                          defaultValue:
+                            'This conversation is not bound to a Space yet, so Space Commands are unavailable.',
                         })}
                       </Typography.Paragraph>
                     </AutomationSectionCard>

@@ -385,7 +385,11 @@ const GeminiConversationPanel: React.FC<{
 
   return (
     <ChatLayout {...chatLayoutProps} conversationId={conversation.id}>
-      <GeminiChat conversation_id={conversation.id} workspace={conversation.extra.workspace} modelSelection={modelSelection} />
+      <GeminiChat
+        conversation_id={conversation.id}
+        workspace={conversation.extra.workspace}
+        modelSelection={modelSelection}
+      />
     </ChatLayout>
   );
 };
@@ -506,13 +510,7 @@ const ChatConversation: React.FC<{
   if (conversation && conversation.type === 'gemini') {
     // Gemini 会话独立渲染，带右上角模型选择
     // Render Gemini layout with dedicated top-right model selector
-    return (
-      <GeminiConversationPanel
-        key={conversation.id}
-        conversation={conversation}
-        sliderTitle={sliderTitle}
-      />
-    );
+    return <GeminiConversationPanel key={conversation.id} conversation={conversation} sliderTitle={sliderTitle} />;
   }
 
   // 如果有预设助手信息，使用预设助手的 logo 和名称；加载中时不进入 fallback；否则使用 backend 的 logo

@@ -70,7 +70,12 @@ function makeSpaceService(overrides: Partial<ISpaceService> = {}): ISpaceService
     updateSpace: vi.fn(async () => undefined),
     getSpaceCommandLibrary: vi.fn(async () => []),
     saveSpaceCommandLibrary: vi.fn(async () => []),
-    openSpaceVault: vi.fn(async () => ({ opened: true, fallback: 'none', target: '/tmp/vault', obsidianInstalled: true })),
+    openSpaceVault: vi.fn(async () => ({
+      opened: true,
+      fallback: 'none',
+      target: '/tmp/vault',
+      obsidianInstalled: true,
+    })),
     renameSpace: vi.fn(),
     archiveSpace: vi.fn(),
     ensureDefaultSpace: vi.fn(async () => ({

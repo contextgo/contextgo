@@ -147,7 +147,9 @@ vi.mock('@/renderer/pages/conversation/ProjectSkillMarketModal', () => ({
       workspacePath,
       variant,
     };
-    return visible ? <div data-testid='project-skill-market-panel'>{`${variant ?? 'modal'}:${workspacePath}`}</div> : null;
+    return visible ? (
+      <div data-testid='project-skill-market-panel'>{`${variant ?? 'modal'}:${workspacePath}`}</div>
+    ) : null;
   },
 }));
 
@@ -575,7 +577,9 @@ describe('ProjectAutomationModal', () => {
       expect(screen.getAllByTestId('managed-command-library-editor')).toHaveLength(2);
     });
 
-    const spaceEditor = managedCommandLibraryEditorState.current.find((editor) => editor.titleText === 'Space Commands');
+    const spaceEditor = managedCommandLibraryEditorState.current.find(
+      (editor) => editor.titleText === 'Space Commands'
+    );
     const projectLocalEditor = managedCommandLibraryEditorState.current.find(
       (editor) => editor.titleText === 'Project Local Commands'
     );

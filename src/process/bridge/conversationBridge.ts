@@ -8,10 +8,7 @@ import type { CodexAgentManager } from '@process/agent/codex';
 import { GeminiAgent, GeminiApprovalStore } from '@process/agent/gemini';
 import type { ICreateConversationParams, IDiscussionGroupCreateParams } from '@/common/adapter/ipcBridge';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
-import {
-  mergeManagedSlashCommandLibraries,
-  type ManagedSlashCommandRecord,
-} from '@/common/chat/slash/library';
+import { mergeManagedSlashCommandLibraries, type ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import { transformMessage } from '@/common/chat/chatLib';
 import type { TChatConversation } from '@/common/config/storage';
 import type { IAgentManager } from '@process/task/IAgentManager';
@@ -92,7 +89,9 @@ async function resolveManagedSlashCommandLibrary(
   const workspacePath = getConversationWorkspacePath(conversation);
   const [spaceLibrary, workspaceLibrary] = await Promise.all([
     spaceId ? spaceService.getSpaceCommandLibrary(spaceId) : Promise.resolve<ManagedSlashCommandRecord[]>([]),
-    workspacePath ? readWorkspaceCommandLibrary(workspacePath) : Promise.resolve<ManagedSlashCommandRecord[] | null>(null),
+    workspacePath
+      ? readWorkspaceCommandLibrary(workspacePath)
+      : Promise.resolve<ManagedSlashCommandRecord[] | null>(null),
   ]);
 
   return mergeManagedSlashCommandLibraries([spaceLibrary, workspaceLibrary ?? []]);

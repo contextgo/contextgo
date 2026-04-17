@@ -178,7 +178,10 @@ export class SpaceServiceImpl implements ISpaceService {
     return normalizeManagedSlashCommandLibrary(space.automation?.commands ?? []);
   }
 
-  async saveSpaceCommandLibrary(id: string, commands: ManagedSlashCommandRecord[]): Promise<ManagedSlashCommandRecord[]> {
+  async saveSpaceCommandLibrary(
+    id: string,
+    commands: ManagedSlashCommandRecord[]
+  ): Promise<ManagedSlashCommandRecord[]> {
     const existing = await this.repo.getSpace(id);
     if (!existing) {
       throw new Error('Space not found');
