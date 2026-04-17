@@ -6,6 +6,10 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  ContextEngineService,
+  createInMemoryContextEngineDependencies,
+} from '../../../../packages/context-engine/src/index';
 import type { BrowserActivityEntry } from '../../../../src/common/types/connectors/browserActivity';
 import { BrowserActivityConnectorService } from '../../../../src/process/services/space/browser/activity/BrowserActivityConnectorService';
 
@@ -22,6 +26,46 @@ const BASE_ENTRY: BrowserActivityEntry = {
   tags: ['workspace:alpha'],
 };
 
+describe('ContextEngineService ingestion lifecycle', () => {
+  it('returns explicit lifecycle state for raw input with a persisted snapshot', async () => {
+    const service = new ContextEngineService(createInMemoryContextEngineDependencies());
+
+    const result = await service.ingestSource({
+      spaceId: 'space-1',
+      kind: 'web-clip',
+      title: 'RFC Notes',
+      rawContentRef: 'file:///tmp/rfc-notes.md',
+      tokenCountEstimate: 120,
+    });
+
+    expect(result.lifecycle).toEqual({
+      sourceRegistered: true,
+      snapshotPersisted: true,
+      chunksPrepared: false,
+      indexReady: false,
+    });
+    expect(result.snapshot?.storageUri).toBe('file:///tmp/rfc-notes.md');
+  });
+
+  it('marks downstream indexing phases as incomplete when only the source is registered', async () => {
+    const service = new ContextEngineService(createInMemoryContextEngineDependencies());
+
+    const result = await service.ingestSource({
+      spaceId: 'space-1',
+      kind: 'manual-note',
+      title: 'Scratchpad',
+    });
+
+    expect(result.lifecycle).toEqual({
+      sourceRegistered: true,
+      snapshotPersisted: false,
+      chunksPrepared: false,
+      indexReady: false,
+    });
+    expect(result.snapshot).toBeUndefined();
+  });
+});
+
 describe('BrowserActivityConnectorService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -35,7 +79,15 @@ describe('BrowserActivityConnectorService', () => {
       getStatus: vi.fn(async () => ({ eventCount: 1, latestDomain: 'example.com' })),
     };
     const contextService = {
-      ingestSource: vi.fn(async () => ({ source: { id: 'source-1' } })),
+      ingestSource: vi.fn(async () => ({
+        source: { id: 'source-1' },
+        lifecycle: {
+          sourceRegistered: true,
+          snapshotPersisted: false,
+          chunksPrepared: false,
+          indexReady: false,
+        },
+      })),
       indexTextDocument: vi.fn(async () => ({
         snapshot: { id: 'doc-1' },
         chunks: [{ id: 'chunk-1' }, { id: 'chunk-2' }],
