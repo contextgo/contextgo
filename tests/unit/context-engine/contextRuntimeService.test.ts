@@ -218,15 +218,8 @@ describe('ContextRuntimeService', () => {
       },
       omittedEntityIds: [],
       trace: {
-        traceId: 'assembly-trace-default',
         budgetTokens: 420,
         spentTokens: 12,
-        mountedState: {
-          threadSummaryIncluded: false,
-          mountedSectionIds: [],
-          mountedProfileIds: [],
-          pinnedInstructionCount: 1,
-        },
         entries: [
           {
             sectionId: 'instruction-0',
@@ -613,6 +606,10 @@ describe('ContextRuntimeService', () => {
     expect(mockContextService.assemble.mock.invocationCallOrder[0]).toBeLessThan(
       mockContextService.ingestSource.mock.invocationCallOrder[0]
     );
+    const checkpointBody = mockVaultSyncService.appendContextCheckpoint.mock.calls.at(-1)?.[0]?.body;
+    expect(checkpointBody).toContain('Mounted thread summary: yes');
+    expect(checkpointBody).toContain('Mounted sections: 3');
+    expect(checkpointBody).toContain('Mounted profiles: 1');
   });
 
   it('persists a compact retrieval and assembly trace through checkpoint and timeline surfaces', async () => {
@@ -698,15 +695,8 @@ describe('ContextRuntimeService', () => {
       },
       omittedEntityIds: ['memory-1'],
       trace: {
-        traceId: 'assembly-trace-1',
         budgetTokens: 420,
         spentTokens: 18,
-        mountedState: {
-          threadSummaryIncluded: true,
-          mountedSectionIds: ['profile:Projects/workspace/workspace.md'],
-          mountedProfileIds: ['profile-compact-1'],
-          pinnedInstructionCount: 1,
-        },
         entries: [
           {
             sectionId: 'instruction-0',
@@ -753,16 +743,19 @@ describe('ContextRuntimeService', () => {
     );
     const checkpointBody = mockVaultSyncService.appendContextCheckpoint.mock.calls.at(-1)?.[0]?.body;
     expect(checkpointBody).toContain('Retrieval entries: 2');
-    expect(checkpointBody).toContain('Assembly trace: `assembly-trace-1`');
     expect(checkpointBody).toContain('Budget spent: 18 / 420');
-    expect(checkpointBody).toContain('Mounted sections: 1');
-    expect(checkpointBody).toContain('Mounted profiles: 1');
+    expect(checkpointBody).toContain('Mounted thread summary: no');
+    expect(checkpointBody).toContain('Mounted sections: 2');
+    expect(checkpointBody).toContain('Mounted profiles: 0');
+    expect(checkpointBody).toContain('Pinned instructions: 1');
+    expect(checkpointBody).toContain('Assembly kept: 1');
     expect(checkpointBody).toContain('Omitted sections: 1');
 
     const traceTimelineCall = mockVaultSyncService.appendSessionTimelineEvent.mock.calls.find(
       (call) => call[0]?.title === 'Context trace'
     );
     expect(traceTimelineCall?.[0]?.body).toContain('retrieval 2');
+    expect(traceTimelineCall?.[0]?.body).toContain('mounted 2/0');
     expect(traceTimelineCall?.[0]?.body).toContain('kept 1');
     expect(traceTimelineCall?.[0]?.body).toContain('omitted 1');
     expect(traceTimelineCall?.[0]?.body).toContain('budget 18/420');

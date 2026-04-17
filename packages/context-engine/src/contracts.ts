@@ -184,18 +184,9 @@ export type AssemblyTraceEntry = {
   omissionReason?: 'budget';
 };
 
-export type AssemblyTraceMountedState = {
-  threadSummaryIncluded: boolean;
-  mountedSectionIds: readonly string[];
-  mountedProfileIds: readonly ProfileSegmentId[];
-  pinnedInstructionCount: number;
-};
-
 export type AssemblyTrace = {
-  traceId: string;
   budgetTokens: number;
   spentTokens: number;
-  mountedState: AssemblyTraceMountedState;
   entries: readonly AssemblyTraceEntry[];
 };
 

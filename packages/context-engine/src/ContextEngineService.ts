@@ -777,15 +777,8 @@ export class ContextEngineService implements IContextService {
       generatedAt: ISO_NOW(),
     };
     const trace: AssemblyTrace = {
-      traceId: createId('assembly-trace'),
       budgetTokens: input.budgetTokens,
       spentTokens,
-      mountedState: {
-        threadSummaryIncluded: Boolean(overlays.threadSummary),
-        mountedSectionIds: (overlays.mountedSections ?? []).map((section) => section.id),
-        mountedProfileIds: (overlays.mountedProfiles ?? []).map((profile) => profile.id),
-        pinnedInstructionCount: (overlays.pinnedInstructions ?? []).length,
-      },
       entries: traceEntries,
     };
 

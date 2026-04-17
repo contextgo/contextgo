@@ -233,12 +233,6 @@ describe('ContextEngineService', () => {
       expect.objectContaining({
         budgetTokens: 35,
         spentTokens: expect.any(Number),
-        mountedState: {
-          threadSummaryIncluded: true,
-          mountedSectionIds: [],
-          mountedProfileIds: [],
-          pinnedInstructionCount: 1,
-        },
         entries: expect.arrayContaining([
           expect.objectContaining({
             sectionKind: 'instruction',

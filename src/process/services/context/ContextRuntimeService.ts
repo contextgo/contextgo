@@ -188,22 +188,41 @@ function buildContextPackCheckpointBody(pack: ContextPack): string | undefined {
     .join('\n');
 }
 
+function summarizeFrozenMountedState(mountedState: FrozenMountedState): {
+  threadSummaryIncluded: boolean;
+  mountedSectionCount: number;
+  mountedProfileCount: number;
+  pinnedInstructionCount: number;
+} {
+  return {
+    threadSummaryIncluded: Boolean(mountedState.threadSummary),
+    mountedSectionCount: mountedState.mountedSections.length,
+    mountedProfileCount: mountedState.mountedProfiles.length,
+    pinnedInstructionCount: mountedState.pinnedInstructions.length,
+  };
+}
+
 function buildContextTraceCheckpointBody(input: {
   pack: ContextPack;
   retrievalTrace: RetrievalTrace;
   assemblyTrace: AssemblyTrace;
+  mountedState: FrozenMountedState;
 }): string | undefined {
   const packBody = buildContextPackCheckpointBody(input.pack);
+  const mountedSummary = summarizeFrozenMountedState(input.mountedState);
+  const keptSections = input.assemblyTrace.entries.filter((entry) => entry.outcome === 'kept').length;
   const omittedSections = input.assemblyTrace.entries.filter((entry) => entry.outcome === 'omitted').length;
   const traceBody = [
     'Assembly Trace',
     '',
     `- Retrieval entries: ${input.retrievalTrace.entries.length}`,
     `- Search mode: ${input.retrievalTrace.searchMode}`,
-    `- Assembly trace: \`${input.assemblyTrace.traceId}\``,
     `- Budget spent: ${input.assemblyTrace.spentTokens} / ${input.assemblyTrace.budgetTokens}`,
-    `- Mounted sections: ${input.assemblyTrace.mountedState.mountedSectionIds.length}`,
-    `- Mounted profiles: ${input.assemblyTrace.mountedState.mountedProfileIds.length}`,
+    `- Mounted thread summary: ${mountedSummary.threadSummaryIncluded ? 'yes' : 'no'}`,
+    `- Mounted sections: ${mountedSummary.mountedSectionCount}`,
+    `- Mounted profiles: ${mountedSummary.mountedProfileCount}`,
+    `- Pinned instructions: ${mountedSummary.pinnedInstructionCount}`,
+    `- Assembly kept: ${keptSections}`,
     `- Omitted sections: ${omittedSections}`,
   ].join('\n');
 
@@ -212,11 +231,17 @@ function buildContextTraceCheckpointBody(input: {
   );
 }
 
-function buildCompactTurnTraceSummary(retrievalTrace: RetrievalTrace, assemblyTrace: AssemblyTrace): string {
+function buildCompactTurnTraceSummary(
+  retrievalTrace: RetrievalTrace,
+  assemblyTrace: AssemblyTrace,
+  mountedState: FrozenMountedState
+): string {
+  const mountedSummary = summarizeFrozenMountedState(mountedState);
   const keptSections = assemblyTrace.entries.filter((entry) => entry.outcome === 'kept').length;
   const omittedSections = assemblyTrace.entries.filter((entry) => entry.outcome === 'omitted').length;
   return [
     `retrieval ${retrievalTrace.entries.length}`,
+    `mounted ${mountedSummary.mountedSectionCount}/${mountedSummary.mountedProfileCount}`,
     `kept ${keptSections}`,
     `omitted ${omittedSections}`,
     `budget ${assemblyTrace.spentTokens}/${assemblyTrace.budgetTokens}`,
@@ -680,13 +705,14 @@ export class ContextRuntimeService {
         pack: assembled.pack,
         retrievalTrace: retrieval.trace,
         assemblyTrace: assembled.trace,
+        mountedState,
       }),
     });
     await this.vaultSyncService.appendSessionTimelineEvent({
       conversation: input.conversation,
       timestamp: new Date(preparedAt).toISOString(),
       title: 'Context trace',
-      body: buildCompactTurnTraceSummary(retrieval.trace, assembled.trace),
+      body: buildCompactTurnTraceSummary(retrieval.trace, assembled.trace, mountedState),
     });
 
     await this.eventBus?.emit('context.window.prepared', {
