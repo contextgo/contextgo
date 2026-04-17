@@ -31,6 +31,11 @@ describe('ProjectRuntimeService', () => {
     expect(resolved.policy.mode).toBe('project_managed');
     expect(resolved.effectiveSource).toBe('model_center');
     expect(resolved.runtimeRoot).toBe('/workspace/app/.contextgo');
+    expect(resolved.runtimeEnv).toMatchObject({
+      HOME: '/workspace/app/.contextgo',
+      XDG_CONFIG_HOME: '/workspace/app/.contextgo',
+      XDG_DATA_HOME: '/workspace/app/.contextgo',
+    });
   });
 
   it('imports local runtime config when mode is import_local_runtime', async () => {
@@ -116,5 +121,23 @@ describe('ProjectRuntimeService', () => {
     );
     expect(resolved.policy.mode).toBe('auto');
     expect(resolved.effectiveSource).toBe('model_center');
+  });
+
+  it('resolves runtime state in read-only mode without persisting a default policy', async () => {
+    const writePolicy = vi.fn();
+    const service = new ProjectRuntimeService({
+      readPolicy: async () => null,
+      writePolicy,
+      importLocalRuntime: vi.fn(),
+    });
+
+    const resolved = await service.resolve('/workspace/app', {
+      persistDefaultPolicy: false,
+    });
+
+    expect(writePolicy).not.toHaveBeenCalled();
+    expect(resolved.policy.mode).toBe('auto');
+    expect(resolved.runtimeRoot).toBe('/workspace/app/.contextgo');
+    expect(resolved.runtimeEnv.HOME).toBe('/workspace/app/.contextgo');
   });
 });

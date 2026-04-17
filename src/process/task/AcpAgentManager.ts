@@ -39,8 +39,7 @@ import { hasNativeSkillSupport } from '@process/utils/initAgent';
 import { prepareFirstMessageWithSkillsIndex } from '@process/task/agentUtils';
 import { extractTextFromMessage } from './MessageMiddleware';
 import { stripThinkTags } from './ThinkTagDetector';
-import { getProjectRuntimeRoot } from '@process/services/runtime/ProjectRuntimePaths';
-import { getProjectRuntimeEnv } from '@process/utils/shellEnv';
+import { ProjectRuntimeService } from '@process/services/runtime/ProjectRuntimeService';
 
 interface AcpAgentManagerData {
   workspace?: string;
@@ -258,11 +257,10 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
       let customArgs: string[] | undefined;
       let customEnv: Record<string, string> | undefined;
       let yoloMode: boolean | undefined;
-      const runtimeRoot = getProjectRuntimeRoot(data.workspace);
-      const runtimeEnv = getProjectRuntimeEnv({
-        workspace: data.workspace,
-        runtimeRoot,
-      });
+      const runtimeWorkspace = data.workspace || process.cwd();
+      const resolvedRuntime = await new ProjectRuntimeService().resolve(runtimeWorkspace);
+      const runtimeRoot = resolvedRuntime.runtimeRoot;
+      const runtimeEnv = resolvedRuntime.runtimeEnv;
 
       // 处理自定义后端：优先读 acp.customAgents；若未命中则尝试扩展贡献的 adapter
       // Handle custom backend: prefer acp.customAgents; fallback to extension-contributed adapters
