@@ -260,6 +260,49 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
+    id: 'visual-artifact-runner',
+    avatar: '\u{1F5BC}\uFE0F',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Visual Artifact Runner',
+      'zh-CN': 'Visual Artifact Runner',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Visual Artifacts',
+      'zh-CN': '视觉产物',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want generated decks, PDFs, infographics, build notes, and asset manifests saved into the working folder.',
+      'zh-CN':
+        '如果希望把生成的 deck、PDF、信息图、build-notes 和资产清单直接保存到工作目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Visual Artifact Runner',
+      'zh-CN': 'Visual Artifact Runner',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A runtime-neutral visual artifact assistant for turning briefs, reports, PDFs, and structured data into decks, infographics, and handouts with normalized inputs, layout recipes, theme application, export modes, and built-in QC.',
+      'zh-CN':
+        '运行时中立的视觉产物助手，用于把 brief、报告、PDF 和结构化数据转成 deck、信息图与 handout，覆盖输入归一化、布局 recipe、主题应用、导出模式与内置 QC。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Turn this brief into a polished deck artifact with explicit recipe, theme, and QC notes',
+        'Convert this PDF into a deck, pick summary distillation or visual reconstruction with reasoning',
+        'Generate an infographic from this report with chart-family discipline and pre-export QC',
+        'Apply a new theme to this artifact spec without changing its recipe and re-run QC',
+      ],
+      'zh-CN': [
+        '把这份 brief 做成一份完整的 deck，要有 recipe、主题和 QC 说明',
+        '把这份 PDF 转成 deck，并显式判断走 summary distillation 还是 visual reconstruction',
+        '基于这份报告生成一张信息图，遵守 chart-family 纪律并跑完 pre-export QC',
+        '在不改动 recipe 的前提下，给这个 artifact spec 应用一个新主题并重跑 QC',
+      ],
+    },
+  },
+  {
     id: 'pm-workbench',
     avatar: 'pm-workbench.svg',
     presetAgentType: 'codex',
