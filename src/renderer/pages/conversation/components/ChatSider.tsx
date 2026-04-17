@@ -57,7 +57,7 @@ const ChatSider: React.FC<{
   }
 
   if (!workspaceNode) {
-    return <div></div>;
+    return <div className='px-12px py-12px text-12px text-t-secondary'>No workspace linked</div>;
   }
 
   return (
