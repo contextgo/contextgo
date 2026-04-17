@@ -6,7 +6,7 @@
 
 import type { IChannelAuthorizedTarget, IChannelPairingRequest, IChannelPluginStatus } from '@process/channels/types';
 import { channel } from '@/common/adapter/ipcBridge';
-import { Button, Empty, Message, Spin, Tooltip } from '@arco-design/web-react';
+import { Alert, Button, Message, Spin, Tooltip } from '@arco-design/web-react';
 import { CheckOne, CloseOne, Copy, Refresh } from '@icon-park/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -345,6 +345,25 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
 
   return (
     <div className={formLayoutStyles.formRoot}>
+      <Alert
+        type='warning'
+        content={
+          <div className='space-y-4px'>
+            <div>
+              {t(
+                'settings.weixin.boundaryNotice',
+                '当前微信接入是个人账号桥接，不等价于 Slack、Discord、Lark 这类官方 Bot 平台。'
+              )}
+            </div>
+            <div>
+              {t(
+                'settings.weixin.discoveryNotice',
+                '这里的发布对象发现与命令暴露能力更受限，应更多依赖学习式或手动目标选择。'
+              )}
+            </div>
+          </div>
+        }
+      />
       <FormPreferenceRow
         label={t('settings.weixin.accountId', '微信账号授权')}
         description={

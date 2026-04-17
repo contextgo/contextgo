@@ -56,6 +56,22 @@ const translations: Record<string, string> = {
   'settings.channels.publication.discoveryHintEmptyAction': 'Use manual fallback',
   'settings.channels.publication.discoveryHintEmptyHelp':
     'Use a target key directly, or let the target speak in IM first so ContextGo can learn it.',
+  'settings.channels.publication.capabilityTitle': 'Platform capabilities',
+  'settings.channels.publication.capabilityDescription':
+    'These are the native command and interaction surfaces this platform can expose for the current publication flow.',
+  'settings.channels.publication.capabilityWeixinBoundary':
+    'This WeChat integration is a constrained bridge surface. Do not expect the same official command, menu, or management surfaces available on official bot platforms.',
+  'settings.channels.publication.capabilityIntegrationOfficial': 'Official bot platform',
+  'settings.channels.publication.capabilityIntegrationBridge': 'Bridge-limited platform',
+  'settings.channels.publication.capabilityDiscoveryOfficial': 'Official object directory',
+  'settings.channels.publication.capabilityDiscoveryMixed': 'Mixed discovery',
+  'settings.channels.publication.capabilityDiscoveryLearned': 'Learned / manual discovery',
+  'settings.channels.publication.capabilitySurface.command': 'Native commands',
+  'settings.channels.publication.capabilitySurface.menu': 'Menu entry',
+  'settings.channels.publication.capabilitySurface.messageButtons': 'Message buttons',
+  'settings.channels.publication.capabilitySurface.cardActions': 'Card actions',
+  'settings.channels.publication.capabilitySurface.threadReply': 'Thread-aware replies',
+  'settings.channels.publication.capabilitySurface.none': 'No official command surface',
   'settings.channels.publication.optionSourceOfficial': 'Synced directory',
   'settings.channels.publication.optionSourceLearned': 'Recent activity',
   'settings.channels.publication.optionSourceManual': 'Manual target',
@@ -385,6 +401,26 @@ const catalogResponse = {
         discoveredCount: 0,
       },
     ],
+    capabilitySummaries: [
+      {
+        channelAccountId: 'connector-1',
+        integrationModel: 'official-bot-platform',
+        discoveryMode: 'official-pull',
+        actionSurfaces: ['menu-entry', 'card-action-callbacks', 'thread-aware-reply'],
+      },
+      {
+        channelAccountId: 'connector-2',
+        integrationModel: 'official-bot-platform',
+        discoveryMode: 'official-pull',
+        actionSurfaces: ['native-command-entry', 'message-action-buttons', 'thread-aware-reply'],
+      },
+      {
+        channelAccountId: 'connector-3',
+        integrationModel: 'bridge-limited',
+        discoveryMode: 'learned-manual',
+        actionSurfaces: [],
+      },
+    ],
   },
 };
 
@@ -581,6 +617,9 @@ describe('PublicationBindingPanel', () => {
     await waitFor(() => {
       expect(screen.getByRole('combobox', { name: 'Select a publish object' })).toBeInTheDocument();
     });
+    expect(screen.getByText('Platform capabilities')).toBeInTheDocument();
+    expect(screen.getByText('Official bot platform')).toBeInTheDocument();
+    expect(screen.getByText('Official object directory')).toBeInTheDocument();
     expect(screen.getByText('Discovery status')).toBeInTheDocument();
     expect(
       screen.getByText('{{count}} objects are available from channel discovery for this instance.')
@@ -627,6 +666,9 @@ describe('PublicationBindingPanel', () => {
     expect(
       screen.getByText('Use a target key directly, or let the target speak in IM first so ContextGo can learn it.')
     ).toBeInTheDocument();
+    expect(screen.getByText('Bridge-limited platform')).toBeInTheDocument();
+    expect(screen.getByText('Learned / manual discovery')).toBeInTheDocument();
+    expect(screen.getByText('No official command surface')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Use manual fallback' }));
 
@@ -671,9 +713,9 @@ describe('PublicationBindingPanel', () => {
 
     expect(optionTexts).toContain('Release topic · Topic · Recent activity · Core Ops Group · Topic root 2');
     expect(optionTexts).toContain('Ops topic · Topic · Recent activity · Core Ops Group · Topic root 1');
-    expect(
-      optionTexts.indexOf('Release topic · Topic · Recent activity · Core Ops Group · Topic root 2')
-    ).toBeLessThan(optionTexts.indexOf('Ops topic · Topic · Recent activity · Core Ops Group · Topic root 1'));
+    expect(optionTexts.indexOf('Release topic · Topic · Recent activity · Core Ops Group · Topic root 2')).toBeLessThan(
+      optionTexts.indexOf('Ops topic · Topic · Recent activity · Core Ops Group · Topic root 1')
+    );
   });
 
   it('deletes one published object from the selected agent', async () => {

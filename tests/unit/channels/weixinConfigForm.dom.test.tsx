@@ -7,7 +7,6 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
 
 const mockEnablePlugin = vi.fn(async () => ({ success: true }));
 const mockGetPluginStatus = vi.fn(async () => ({ success: true, data: [] }));
@@ -45,10 +44,21 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
 }));
 
 vi.mock('@arco-design/web-react', async () => {
-  const ReactModule = await import('react');
-
   return {
-    Button: ({ children, onClick, loading, icon, type }: any) => (
+    Alert: ({ content }: { content?: React.ReactNode }) => <div>{content}</div>,
+    Button: ({
+      children,
+      onClick,
+      loading,
+      icon,
+      type,
+    }: {
+      children?: React.ReactNode;
+      onClick?: () => void;
+      loading?: boolean;
+      icon?: React.ReactNode;
+      type?: string;
+    }) => (
       <button type='button' data-loading={loading ? 'true' : 'false'} data-kind={type} onClick={onClick}>
         {icon}
         {children}
@@ -135,6 +145,9 @@ describe('WeixinConfigForm', () => {
   it('renders login button in idle state', () => {
     render(<WeixinConfigForm pluginId='weixin_default' pluginStatus={null} onStatusChange={vi.fn()} />);
     expect(screen.getByRole('button', { name: '扫码登录并完成授权' })).toBeInTheDocument();
+    expect(
+      screen.getByText('当前微信接入是个人账号桥接，不等价于 Slack、Discord、Lark 这类官方 Bot 平台。')
+    ).toBeInTheDocument();
   });
 
   it('shows loading state when login starts', async () => {
