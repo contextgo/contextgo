@@ -344,19 +344,11 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
           break;
         }
         case 'agent_status': {
-          if (!runningRef.current) {
-            setRunning(true);
-            runningRef.current = true;
-          }
           const agentData = message.data as {
             status?: 'connecting' | 'connected' | 'authenticated' | 'session_active' | 'disconnected' | 'error';
           };
           if (agentData?.status) {
             setAcpStatus(agentData.status);
-            if (['authenticated', 'session_active'].includes(agentData.status)) {
-              setRunning(false);
-              runningRef.current = false;
-            }
             if (['error', 'disconnected'].includes(agentData.status)) {
               setRunning(false);
               runningRef.current = false;

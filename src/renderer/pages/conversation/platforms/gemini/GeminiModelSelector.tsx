@@ -1,5 +1,5 @@
 import type { GeminiModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGeminiModelSelection';
-import { usePreviewContext } from '@/renderer/pages/conversation/Preview/context';
+import { usePreviewSurface } from '@/renderer/pages/conversation/Preview/context';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { getModelDisplayLabel, getModelLogo } from '@/renderer/utils/model/agentLogo';
 import { Button, Dropdown, Menu, Tooltip } from '@arco-design/web-react';
@@ -25,7 +25,7 @@ const GeminiModelSelector: React.FC<{
   };
 }> = ({ selection, disabled = false, label: customLabel, variant = 'header', readOnlyModel }) => {
   const { t } = useTranslation();
-  const { isOpen: isPreviewOpen } = usePreviewContext();
+  const { isOpen: isPreviewOpen } = usePreviewSurface();
   const layout = useLayoutContext();
   const compact = variant === 'header' && (isPreviewOpen || layout?.isMobile);
   const isMobileHeaderCompact = variant === 'header' && Boolean(layout?.isMobile);

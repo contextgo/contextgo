@@ -9,8 +9,15 @@
  * Preview context exports
  */
 
-export { PreviewProvider, usePreviewContext } from './PreviewContext';
-export type { PreviewContextValue, DomSnippet } from './PreviewContext';
+export { PreviewProvider, usePreviewActions, usePreviewComposer, usePreviewContext, usePreviewSurface } from './PreviewContext';
+export type {
+  DomSnippet,
+  PreviewActionsValue,
+  PreviewComposerValue,
+  PreviewContextValue,
+  PreviewSurfaceTab,
+  PreviewSurfaceValue,
+} from './PreviewContext';
 
 export { PreviewToolbarExtrasProvider, usePreviewToolbarExtras } from './PreviewToolbarExtrasContext';
 export type { PreviewToolbarExtras, PreviewToolbarExtrasContextValue } from './PreviewToolbarExtrasContext';

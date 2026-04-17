@@ -611,23 +611,27 @@ const Layout: React.FC<{
       };
     });
   }, []);
+  const remoteAccessContextValue = useMemo(
+    () => ({
+      target: remoteAccessTarget,
+      setTarget: setRemoteAccessTarget,
+      resetToDeviceList: resetRemoteAccessTarget,
+    }),
+    [remoteAccessTarget, resetRemoteAccessTarget]
+  );
+  const layoutContextValue = useMemo(
+    () => ({
+      isMobile,
+      siderCollapsed: collapsed,
+      setSiderCollapsed: setCollapsed,
+      activeWorkbenchDefinition,
+    }),
+    [activeWorkbenchDefinition, collapsed, isMobile, setCollapsed]
+  );
 
   return (
-    <RemoteAccessContext.Provider
-      value={{
-        target: remoteAccessTarget,
-        setTarget: setRemoteAccessTarget,
-        resetToDeviceList: resetRemoteAccessTarget,
-      }}
-    >
-      <LayoutContext.Provider
-        value={{
-          isMobile,
-          siderCollapsed: collapsed,
-          setSiderCollapsed: setCollapsed,
-          activeWorkbenchDefinition,
-        }}
-      >
+    <RemoteAccessContext.Provider value={remoteAccessContextValue}>
+      <LayoutContext.Provider value={layoutContextValue}>
         <div
           className={classNames(
             'app-shell relative flex flex-col size-full min-h-0',

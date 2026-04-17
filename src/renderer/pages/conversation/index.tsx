@@ -5,13 +5,13 @@ import React, { useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import ChatConversation from './components/ChatConversation';
-import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { usePreviewActions } from '@/renderer/pages/conversation/Preview';
 import { useConversationTabs } from './hooks/ConversationTabsContext';
 
 const ChatConversationIndex: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { closePreview } = usePreviewContext();
+  const { closePreview } = usePreviewActions();
   const { closeTab, openTabsForConversations } = useConversationTabs();
   const previousConversationIdRef = useRef<string | undefined>(undefined);
 

@@ -7,7 +7,7 @@
 import type { TChatConversation } from '@/common/config/storage';
 import { STORAGE_KEYS } from '@/common/config/storageKeys';
 import { addEventListener } from '@/renderer/utils/emitter';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 /** 会话 Tab 数据结构 / Conversation Tab data structure */
 export interface ConversationTab {
@@ -78,6 +78,29 @@ const toConversationTab = (conversation: TChatConversation): ConversationTab => 
   groupConversationId: getGroupConversationId(conversation),
 });
 
+const areConversationTabsEqual = (current: ConversationTab[], next: ConversationTab[]): boolean => {
+  if (current === next) {
+    return true;
+  }
+
+  if (current.length !== next.length) {
+    return false;
+  }
+
+  return current.every((tab, index) => {
+    const nextTab = next[index];
+    return (
+      tab.id === nextTab.id &&
+      tab.name === nextTab.name &&
+      tab.workspace === nextTab.workspace &&
+      tab.type === nextTab.type &&
+      tab.groupConversationId === nextTab.groupConversationId &&
+      tab.isDirty === nextTab.isDirty &&
+      JSON.stringify(tab.extra ?? null) === JSON.stringify(nextTab.extra ?? null)
+    );
+  });
+};
+
 // 从 localStorage 恢复状态 / Restore state from localStorage
 const loadPersistedState = (): { openTabs: ConversationTab[]; activeTabId: string | null } => {
   try {
@@ -120,7 +143,7 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
   }, [openTabs, activeTabId]);
 
   // 获取当前激活的 tab / Get active tab
-  const activeTab = openTabs.find((tab) => tab.id === activeTabId) || null;
+  const activeTab = useMemo(() => openTabs.find((tab) => tab.id === activeTabId) || null, [activeTabId, openTabs]);
 
   const openTabsForConversations = useCallback((conversations: TChatConversation[], activeConversationId?: string) => {
     if (conversations.length === 0) {
@@ -142,9 +165,9 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
         }
       });
 
-      return nextTabs;
+      return areConversationTabsEqual(prev, nextTabs) ? prev : nextTabs;
     });
-    setActiveTabId(targetConversationId);
+    setActiveTabId((prev) => (prev === targetConversationId ? prev : targetConversationId));
   }, []);
 
   const openTab = useCallback(
@@ -260,6 +283,37 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
     );
   }, []);
 
+  const contextValue = useMemo<ConversationTabsContextValue>(
+    () => ({
+      openTabs,
+      activeTabId,
+      activeTab,
+      openTab,
+      openTabsForConversations,
+      closeTab,
+      switchTab,
+      closeAllTabs,
+      closeTabsToLeft,
+      closeTabsToRight,
+      closeOtherTabs,
+      updateTabName,
+    }),
+    [
+      activeTab,
+      activeTabId,
+      closeAllTabs,
+      closeOtherTabs,
+      closeTab,
+      closeTabsToLeft,
+      closeTabsToRight,
+      openTab,
+      openTabs,
+      openTabsForConversations,
+      switchTab,
+      updateTabName,
+    ]
+  );
+
   // 监听会话删除事件，自动关闭对应 tab / Listen to conversation deletion event, auto-close corresponding tab
   useEffect(() => {
     return addEventListener('conversation.deleted', (conversationId) => {
@@ -267,26 +321,7 @@ export const ConversationTabsProvider: React.FC<{ children: React.ReactNode }> =
     });
   }, [closeTab]);
 
-  return (
-    <ConversationTabsContext.Provider
-      value={{
-        openTabs,
-        activeTabId,
-        activeTab,
-        openTab,
-        openTabsForConversations,
-        closeTab,
-        switchTab,
-        closeAllTabs,
-        closeTabsToLeft,
-        closeTabsToRight,
-        closeOtherTabs,
-        updateTabName,
-      }}
-    >
-      {children}
-    </ConversationTabsContext.Provider>
-  );
+  return <ConversationTabsContext.Provider value={contextValue}>{children}</ConversationTabsContext.Provider>;
 };
 
 export const useConversationTabs = () => {

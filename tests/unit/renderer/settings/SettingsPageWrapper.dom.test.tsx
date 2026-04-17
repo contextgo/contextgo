@@ -38,9 +38,10 @@ vi.mock('@/renderer/hooks/system/useExtI18n', () => ({
 
 vi.mock('@/renderer/pages/conversation/Preview', () => ({
   PreviewPanel: () => <div data-testid='preview-panel'>preview panel</div>,
-  usePreviewContext: () => ({
+  usePreviewSurface: () => ({
     isOpen: true,
     activeTab: { id: 'preview-1', title: 'config.toml' },
+    activeTabId: 'preview-1',
   }),
 }));
 

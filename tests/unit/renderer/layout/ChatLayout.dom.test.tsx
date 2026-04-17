@@ -3,7 +3,7 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useLayoutContextMock = vi.fn();
-const usePreviewContextMock = vi.fn();
+const usePreviewSurfaceMock = vi.fn();
 const useWorkspaceCollapseMock = vi.fn();
 const useContainerWidthMock = vi.fn();
 const useConversationTabsMock = vi.fn();
@@ -44,7 +44,7 @@ vi.mock('@/renderer/pages/conversation/hooks/useWorkspaceCollapse', () => ({
 }));
 
 vi.mock('@/renderer/pages/conversation/Preview', () => ({
-  usePreviewContext: () => usePreviewContextMock(),
+  usePreviewSurface: () => usePreviewSurfaceMock(),
   PreviewPanel: () => <div data-testid='preview-panel' />,
 }));
 
@@ -149,7 +149,7 @@ describe('ChatLayout mobile header composition', () => {
       activeWorkbenchDefinition: null,
     });
 
-    usePreviewContextMock.mockReturnValue({
+    usePreviewSurfaceMock.mockReturnValue({
       isOpen: false,
     });
 

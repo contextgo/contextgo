@@ -10,7 +10,7 @@ import SlashCommandMenu, { type SlashCommandMenuItem } from '@/renderer/componen
 import { useSlashCommandController } from '@/renderer/hooks/chat/useSlashCommandController';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
-import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { usePreviewComposer } from '@/renderer/pages/conversation/Preview';
 import { blurActiveElement, shouldBlockMobileInputFocus } from '@/renderer/utils/ui/focus';
 import { getTextLayoutStyle, measureTextLineCount } from '@/renderer/utils/chat/textLayout';
 import { Button, Input, Message, Tag } from '@arco-design/web-react';
@@ -92,7 +92,7 @@ const SendBox: React.FC<{
   const setInputRef = useLatestRef(setInput);
 
   // 集成预览面板的"添加到聊天"功能 / Integrate preview panel's "Add to chat" functionality
-  const { setSendBoxHandler, domSnippets, removeDomSnippet, clearDomSnippets } = usePreviewContext();
+  const { setSendBoxHandler, domSnippets, removeDomSnippet, clearDomSnippets } = usePreviewComposer();
 
   // 注册处理器以接收来自预览面板的文本 / Register handler to receive text from preview panel
   useEffect(() => {

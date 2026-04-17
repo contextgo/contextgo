@@ -7,7 +7,7 @@
 import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { Down, Up } from '@icon-park/react';
 import classNames from 'classnames';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 // 渐变遮罩常量 Gradient mask constants
@@ -92,25 +92,25 @@ export const CollapsibleContent: React.FC<CollapsibleContentProps> = ({
   const contentRef = useRef<HTMLDivElement>(null); // 内容容器引用 Content container ref
 
   // 检测内容高度 Detect content height using ResizeObserver
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = contentRef.current;
     if (!element) return;
 
     // 检测内容高度的辅助函数 Helper function to check content height
     let rafId: number | null = null;
-    const scheduleHeightCheck = () => {
-      const update = () => {
-        const contentHeight = element.scrollHeight;
-        setNeedsCollapse(contentHeight > maxHeight);
-      };
+    const updateNeedsCollapse = () => {
+      const contentHeight = element.scrollHeight;
+      setNeedsCollapse(contentHeight > maxHeight);
+    };
 
+    const scheduleHeightCheck = () => {
       if (typeof window !== 'undefined' && 'requestAnimationFrame' in window) {
         if (rafId !== null) {
           cancelAnimationFrame(rafId);
         }
-        rafId = window.requestAnimationFrame(update);
+        rafId = window.requestAnimationFrame(updateNeedsCollapse);
       } else {
-        update();
+        updateNeedsCollapse();
       }
     };
 
@@ -125,8 +125,8 @@ export const CollapsibleContent: React.FC<CollapsibleContentProps> = ({
 
       resizeObserver.observe(element);
 
-      // 初始检测 Initial check
-      scheduleHeightCheck();
+      // 初始检测 Initial check: run synchronously to avoid a second layout pass
+      updateNeedsCollapse();
 
       return () => {
         if (rafId !== null) {
@@ -137,6 +137,7 @@ export const CollapsibleContent: React.FC<CollapsibleContentProps> = ({
     } else {
       // Fallback: 如果 ResizeObserver 不可用（理论上不会发生），使用 setTimeout
       // Fallback: use setTimeout if ResizeObserver is unavailable (should not happen in practice)
+      updateNeedsCollapse();
       const timer = setTimeout(scheduleHeightCheck, 100);
       return () => {
         clearTimeout(timer);

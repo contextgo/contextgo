@@ -14,7 +14,7 @@ import { Down } from '@icon-park/react';
 import MessageAcpPermission from '@renderer/pages/conversation/Messages/acp/MessageAcpPermission';
 import MessageAcpToolCall from '@renderer/pages/conversation/Messages/acp/MessageAcpToolCall';
 import classNames from 'classnames';
-import React, { createContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
@@ -68,6 +68,8 @@ const getProcessedItemAnchorId = (item: IMessageVO): string => {
   const sourceIds = getProcessedItemSourceMessageIds(item);
   return sourceIds[0] || ('id' in item ? item.id : uuid());
 };
+
+const getProcessedItemKey = (item: IMessageVO): string => item.id;
 
 const highlightStyle: React.CSSProperties = {
   backgroundColor: 'var(--color-aou-1)',
@@ -308,6 +310,20 @@ const MessageList: React.FC<{ className?: string }> = () => {
     processedList.length,
     targetMessageId
   );
+  const initialBottomPositionKey =
+    conversationId && !targetMessageId ? `${conversationId}:${processedList.length > 0 ? 'ready' : 'empty'}` : null;
+  const appliedInitialBottomPositionKeyRef = useRef<string | null>(null);
+  const shouldApplyInitialBottomPosition =
+    initialBottomPositionKey !== null && appliedInitialBottomPositionKeyRef.current !== initialBottomPositionKey;
+  const effectiveInitialTopMostItemIndex = shouldApplyInitialBottomPosition ? initialTopMostItemIndex : null;
+
+  useLayoutEffect(() => {
+    if (!shouldApplyInitialBottomPosition || !initialBottomPositionKey) {
+      return;
+    }
+
+    appliedInitialBottomPositionKeyRef.current = initialBottomPositionKey;
+  }, [initialBottomPositionKey, shouldApplyInitialBottomPosition]);
 
   useEffect(() => {
     if (!targetMessageId || processedList.length === 0 || !virtuosoRef.current) {
@@ -385,27 +401,44 @@ const MessageList: React.FC<{ className?: string }> = () => {
     scrollToBottom('smooth');
   };
 
-  const renderItem = (_index: number, item: (typeof processedList)[0]) => {
-    const highlighted = matchesTargetMessage(item, highlightedMessageId);
-    if ('type' in item && ['file_summary', 'step_summary'].includes(item.type)) {
-      const summaryClassName =
-        'min-w-0 flex items-start message-item [&>div]:max-w-full px-4px md:px-8px m-t-10px max-w-full md:max-w-780px mx-auto justify-start ' +
-        item.type;
+  const renderItem = useCallback(
+    (_index: number, item: (typeof processedList)[0]) => {
+      const highlighted = matchesTargetMessage(item, highlightedMessageId);
+      if ('type' in item && ['file_summary', 'step_summary'].includes(item.type)) {
+        const summaryClassName =
+          'min-w-0 flex items-start message-item [&>div]:max-w-full px-4px md:px-8px m-t-10px max-w-full md:max-w-780px mx-auto justify-start ' +
+          item.type;
 
+        return (
+          <div
+            key={item.id}
+            id={`message-${getProcessedItemAnchorId(item)}`}
+            className={summaryClassName}
+            style={highlighted ? highlightStyle : undefined}
+          >
+            {item.type === 'file_summary' && <MessageFileChanges diffsChanges={item.diffs} />}
+            {item.type === 'step_summary' && <MessageToolGroupSummary steps={item.steps}></MessageToolGroupSummary>}
+          </div>
+        );
+      }
       return (
-        <div
-          key={item.id}
-          id={`message-${getProcessedItemAnchorId(item)}`}
-          className={summaryClassName}
-          style={highlighted ? highlightStyle : undefined}
-        >
-          {item.type === 'file_summary' && <MessageFileChanges diffsChanges={item.diffs} />}
-          {item.type === 'step_summary' && <MessageToolGroupSummary steps={item.steps}></MessageToolGroupSummary>}
-        </div>
+        <MessageItem message={item as TMessage} key={(item as TMessage).id} highlighted={highlighted}></MessageItem>
       );
-    }
-    return <MessageItem message={item as TMessage} key={(item as TMessage).id} highlighted={highlighted}></MessageItem>;
-  };
+    },
+    [highlightedMessageId]
+  );
+  const computeItemKey = useCallback((_index: number, item: IMessageVO) => getProcessedItemKey(item), []);
+
+  const virtuosoHeader = useCallback(() => <div className='h-10px' />, []);
+  const virtuosoFooter = useCallback(() => <div className='h-20px' />, []);
+  const virtuosoComponents = useMemo(
+    () => ({
+      Scroller: stableVirtuosoScroller,
+      Header: virtuosoHeader,
+      Footer: virtuosoFooter,
+    }),
+    [stableVirtuosoScroller, virtuosoFooter, virtuosoHeader]
+  );
 
   return (
     <div className='relative flex-1 h-full min-w-0 overflow-x-hidden'>
@@ -416,18 +449,17 @@ const MessageList: React.FC<{ className?: string }> = () => {
             ref={virtuosoRef}
             className='flex-1 h-full min-w-0 pb-10px box-border'
             data={processedList}
-            {...(initialTopMostItemIndex === null ? {} : { initialTopMostItemIndex })}
+            {...(effectiveInitialTopMostItemIndex === null
+              ? {}
+              : { initialTopMostItemIndex: effectiveInitialTopMostItemIndex })}
             atBottomThreshold={100}
             increaseViewportBy={200}
+            computeItemKey={computeItemKey}
             itemContent={renderItem}
             followOutput={handleFollowOutput}
             onScroll={handleScroll}
             atBottomStateChange={handleAtBottomStateChange}
-            components={{
-              Scroller: stableVirtuosoScroller,
-              Header: () => <div className='h-10px' />,
-              Footer: () => <div className='h-20px' />,
-            }}
+            components={virtuosoComponents}
           />
         </ImagePreviewContext.Provider>
       </Image.PreviewGroup>

@@ -178,7 +178,7 @@ vi.mock('@/renderer/services/i18n', () => ({
 }));
 
 vi.mock('@renderer/pages/conversation/Preview/context/PreviewContext', () => ({
-  usePreviewContext: () => ({
+  usePreviewActions: () => ({
     closePreview: vi.fn(),
   }),
 }));

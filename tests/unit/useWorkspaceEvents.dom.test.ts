@@ -5,38 +5,48 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { emitter } from '../../src/renderer/utils/emitter';
 
-// Mock ipcBridge
-vi.mock('../../src/common/adapter/ipcBridge', () => ({
+const mockGeminiResponseStreamOn = vi.fn();
+const mockAcpResponseStreamOn = vi.fn();
+const mockCodexResponseStreamOn = vi.fn();
+const mockWorkspaceSearchProvider = vi.fn();
+
+vi.mock('@/common', () => ({
   ipcBridge: {
     geminiConversation: {
       responseStream: {
-        on: vi.fn(() => vi.fn()),
+        on: (...args: unknown[]) => mockGeminiResponseStreamOn(...args),
       },
     },
     acpConversation: {
       responseStream: {
-        on: vi.fn(() => vi.fn()),
+        on: (...args: unknown[]) => mockAcpResponseStreamOn(...args),
       },
     },
     codexConversation: {
       responseStream: {
-        on: vi.fn(() => vi.fn()),
+        on: (...args: unknown[]) => mockCodexResponseStreamOn(...args),
       },
     },
     conversation: {
       responseSearchWorkSpace: {
-        provider: vi.fn(() => vi.fn()),
+        provider: (...args: unknown[]) => mockWorkspaceSearchProvider(...args),
       },
     },
   },
 }));
 
+import { useWorkspaceEvents } from '../../src/renderer/pages/conversation/Workspace/hooks/useWorkspaceEvents';
+
 describe('useWorkspaceEvents - folder tag sync (#1083)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGeminiResponseStreamOn.mockReturnValue(vi.fn());
+    mockAcpResponseStreamOn.mockReturnValue(vi.fn());
+    mockCodexResponseStreamOn.mockReturnValue(vi.fn());
+    mockWorkspaceSearchProvider.mockReturnValue(vi.fn());
   });
 
   afterEach(() => {
@@ -250,6 +260,64 @@ describe('useWorkspaceEvents - folder tag sync (#1083)', () => {
       });
 
       expect(setSelected).toHaveBeenCalledWith(['folder1']);
+    });
+  });
+
+  describe('workspace refresh subscription', () => {
+    it('refreshes only for the active conversation response stream', () => {
+      vi.useFakeTimers();
+
+      const refreshWorkspace = vi.fn();
+      const acpHandlers: Array<(data: { type: string; conversation_id?: string }) => void> = [];
+
+      mockAcpResponseStreamOn.mockImplementation((handler: (data: { type: string; conversation_id?: string }) => void) => {
+        acpHandlers.push(handler);
+        return vi.fn();
+      });
+
+      const { unmount } = renderHook(() =>
+        useWorkspaceEvents({
+          conversation_id: 'conv-1',
+          eventPrefix: 'acp',
+          autoLoadOnMount: false,
+          refreshWorkspace,
+          clearSelection: vi.fn(),
+          setFiles: vi.fn(),
+          setSelected: vi.fn(),
+          setExpandedKeys: vi.fn(),
+          setTreeKey: vi.fn(),
+          selectedNodeRef: { current: null },
+          selectedKeysRef: { current: [] },
+          closeContextMenu: vi.fn(),
+          setContextMenu: vi.fn(),
+          closeRenameModal: vi.fn(),
+          closeDeleteModal: vi.fn(),
+        })
+      );
+
+      expect(acpHandlers).toHaveLength(1);
+
+      act(() => {
+        acpHandlers[0]?.({
+          type: 'acp_tool_call',
+          conversation_id: 'conv-2',
+        });
+      });
+
+      expect(refreshWorkspace).not.toHaveBeenCalled();
+
+      act(() => {
+        acpHandlers[0]?.({
+          type: 'acp_tool_call',
+          conversation_id: 'conv-1',
+        });
+      });
+
+      expect(refreshWorkspace).toHaveBeenCalledTimes(1);
+
+      unmount();
+      vi.runOnlyPendingTimers();
+      vi.useRealTimers();
     });
   });
 });

@@ -8,7 +8,7 @@ import { ipcBridge } from '@/common';
 import type { IDirOrFile } from '@/common/adapter/ipcBridge';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
-import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { usePreviewActions } from '@/renderer/pages/conversation/Preview';
 import { addEventListener, emitter } from '@/renderer/utils/emitter';
 import {
   isTemporaryWorkspace as checkIsTemporaryWorkspace,
@@ -57,7 +57,7 @@ const ChatWorkspace: React.FC<WorkspaceProps> = ({
   const { t } = useTranslation();
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
-  const { openPreview } = usePreviewContext();
+  const { openPreview } = usePreviewActions();
   const legacyWorkspaceLoadDeferred = Boolean(
     (conversation.extra as { deferInitialWorkspaceLoad?: boolean } | undefined)?.deferInitialWorkspaceLoad
   );

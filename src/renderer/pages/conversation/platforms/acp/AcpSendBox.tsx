@@ -21,7 +21,7 @@ import React, { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
-import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { usePreviewComposer } from '@/renderer/pages/conversation/Preview';
 import {
   usePendingConversationMessages,
   type PendingConversationMessage,
@@ -101,7 +101,7 @@ const AcpSendBox: React.FC<{
   const { checkAndUpdateTitle } = useAutoTitle();
   const slashCommands = useSlashCommands(conversation_id, { agentStatus: acpStatus });
   const { atPath, uploadFile, setAtPath, setUploadFile, content, setContent } = useSendBoxDraft(conversation_id);
-  const { setSendBoxHandler } = usePreviewContext();
+  const { setSendBoxHandler } = usePreviewComposer();
 
   // Use useLatestRef to keep latest setters to avoid re-registering handler
   const setContentRef = useLatestRef(setContent);

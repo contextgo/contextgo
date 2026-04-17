@@ -192,11 +192,17 @@ describe('MessageText', () => {
     expect(bubble?.className).not.toContain('pr-40px');
   });
 
-  it('keeps copy-button padding inside assistant text cards', () => {
+  it('does not reserve right-side copy padding inside assistant text cards on desktop', () => {
     const { container } = renderMessage(createMessage('hello assistant bubble', 'left'));
     const bubble = container.querySelector('.relative.min-w-0');
 
-    expect(bubble?.className).toContain('pr-40px');
+    expect(bubble?.className).not.toContain('pr-40px');
+  });
+
+  it('does not render the floating copy button on desktop assistant messages', () => {
+    renderMessage(createMessage('hello assistant bubble', 'left'));
+
+    expect(screen.queryByRole('button', { name: 'Copy' })).not.toBeInTheDocument();
   });
 
   it('hides the floating copy button on mobile assistant messages', () => {

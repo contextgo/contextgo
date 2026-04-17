@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Drawer } from '@arco-design/web-react';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { SettingsViewModeProvider } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
-import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { PreviewPanel, usePreviewSurface } from '@/renderer/pages/conversation/Preview';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import SettingsSideDock from './SettingsSideDock';
@@ -22,7 +22,7 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
   const isMobile = layout?.isMobile ?? false;
   const { pathname } = useLocation();
   const { t } = useTranslation();
-  const { isOpen: isPreviewOpen, activeTab } = usePreviewContext();
+  const { isOpen: isPreviewOpen, activeTab } = usePreviewSurface();
   const [mobileNavVisible, setMobileNavVisible] = useState(false);
 
   useEffect(() => {

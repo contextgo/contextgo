@@ -40,7 +40,7 @@ import GithubDashboardLogo from '@renderer/assets/logos/tools/github-dashboard.s
 import GoogleDashboardLogo from '@renderer/assets/logos/tools/google-dashboard.svg';
 import LinuxDashboardLogo from '@renderer/assets/logos/tools/linux-dashboard.svg';
 import MicrosoftDashboardLogo from '@renderer/assets/logos/tools/microsoft-dashboard.svg';
-import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
+import { usePreviewActions } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
 import { blurActiveElement } from '@renderer/utils/ui/focus';
@@ -255,7 +255,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useThemeContext();
   const navigate = useNavigate();
-  const { closePreview } = usePreviewContext();
+  const { closePreview } = usePreviewActions();
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [groupModalVisible, setGroupModalVisible] = useState(false);
   const [spaceModalVisible, setSpaceModalVisible] = useState(false);

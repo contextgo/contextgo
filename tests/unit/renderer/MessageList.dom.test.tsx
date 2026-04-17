@@ -7,6 +7,29 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LayoutContext } from '../../../src/renderer/hooks/context/LayoutContext';
 import MessageList from '../../../src/renderer/pages/conversation/Messages/MessageList';
 
+const virtuosoPropsHistory: Array<{
+  components?: {
+    Scroller?: React.ComponentType<React.ComponentProps<'div'>>;
+    Header?: React.ComponentType;
+    Footer?: React.ComponentType;
+  };
+  computeItemKey?: (index: number, item: { id: string }) => React.Key;
+  data?: Array<{ id: string; type: string }>;
+  initialTopMostItemIndex?: number;
+  itemContent?: unknown;
+}> = [];
+const messageListMock: Array<{
+  id: string;
+  msg_id?: string;
+  type: string;
+  position: 'left' | 'right' | 'center';
+  content: unknown;
+}> = [];
+const conversationContextMock = {
+  conversationId: 'conv-1',
+  type: 'gemini' as const,
+};
+
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -24,14 +47,11 @@ vi.mock('@icon-park/react', () => ({
 }));
 
 vi.mock('@/renderer/hooks/context/ConversationContext', () => ({
-  useConversationContextSafe: () => ({
-    conversationId: 'conv-1',
-    type: 'gemini',
-  }),
+  useConversationContextSafe: () => conversationContextMock,
 }));
 
 vi.mock('../../../src/renderer/pages/conversation/Messages/hooks', () => ({
-  useMessageList: () => [],
+  useMessageList: () => messageListMock,
 }));
 
 vi.mock('../../../src/renderer/pages/conversation/Messages/useAutoScroll', () => ({
@@ -56,15 +76,30 @@ vi.mock('react-router-dom', () => ({
 vi.mock('react-virtuoso', () => ({
   Virtuoso: ({
     className,
+    computeItemKey,
+    data,
     components,
+    initialTopMostItemIndex,
+    itemContent,
   }: {
     className?: string;
+    computeItemKey?: (index: number, item: { id: string }) => React.Key;
+    data?: Array<{ id: string; type: string }>;
     components?: {
       Scroller?: React.ComponentType<React.ComponentProps<'div'>>;
       Header?: React.ComponentType;
       Footer?: React.ComponentType;
     };
+    initialTopMostItemIndex?: number;
+    itemContent?: unknown;
   }) => {
+    virtuosoPropsHistory.push({
+      components,
+      computeItemKey,
+      data,
+      initialTopMostItemIndex,
+      itemContent,
+    });
     const Scroller = components?.Scroller ?? 'div';
     const Header = components?.Header;
     const Footer = components?.Footer;
@@ -141,6 +176,9 @@ const renderMessageList = (isMobile = false) =>
 describe('MessageList', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    virtuosoPropsHistory.length = 0;
+    messageListMock.length = 0;
+    conversationContextMock.conversationId = 'conv-1';
   });
 
   it('clamps horizontal overflow on the virtualized message scroller', () => {
@@ -165,5 +203,129 @@ describe('MessageList', () => {
     expect(screen.getByTestId('virtuoso-scroller')).toHaveStyle({
       touchAction: 'pan-y',
     });
+  });
+
+  it('keeps Virtuoso structural props stable across rerenders', () => {
+    const view = renderMessageList();
+
+    const firstRender = virtuosoPropsHistory.at(-1);
+    expect(firstRender).toBeDefined();
+
+    view.rerender(
+      <LayoutContext.Provider
+        value={{
+          isMobile: false,
+          siderCollapsed: false,
+          setSiderCollapsed: vi.fn(),
+        }}
+      >
+        <MessageList />
+      </LayoutContext.Provider>
+    );
+
+    const secondRender = virtuosoPropsHistory.at(-1);
+    expect(secondRender).toBeDefined();
+    expect(secondRender?.components).toBe(firstRender?.components);
+    expect(secondRender?.itemContent).toBe(firstRender?.itemContent);
+  });
+
+  it('uses stable processed item ids as Virtuoso keys', () => {
+    messageListMock.push(
+      {
+        id: 'msg-1',
+        type: 'text',
+        position: 'left',
+        content: { content: 'hello' },
+      },
+      {
+        id: 'tool-1',
+        type: 'tool_group',
+        position: 'left',
+        content: [{ name: 'ReadFile' }],
+      }
+    );
+
+    renderMessageList();
+
+    const latestRender = virtuosoPropsHistory.at(-1);
+    expect(latestRender?.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'msg-1', type: 'text' }),
+        expect.objectContaining({ id: 'step-summary-tool-1', type: 'step_summary' }),
+      ])
+    );
+    expect(latestRender?.computeItemKey?.(0, latestRender.data?.[0] ?? { id: 'missing' })).toBe('msg-1');
+    expect(latestRender?.computeItemKey?.(1, latestRender.data?.[1] ?? { id: 'missing' })).toBe('step-summary-tool-1');
+  });
+
+  it('applies the initial bottom position only on the first render for a conversation', () => {
+    messageListMock.push(
+      {
+        id: 'msg-1',
+        type: 'text',
+        position: 'left',
+        content: { content: 'hello' },
+      },
+      {
+        id: 'msg-2',
+        type: 'text',
+        position: 'left',
+        content: { content: 'world' },
+      }
+    );
+
+    const view = renderMessageList();
+
+    expect(virtuosoPropsHistory.at(-1)?.initialTopMostItemIndex).toBe(1);
+
+    view.rerender(
+      <LayoutContext.Provider
+        value={{
+          isMobile: false,
+          siderCollapsed: false,
+          setSiderCollapsed: vi.fn(),
+        }}
+      >
+        <MessageList />
+      </LayoutContext.Provider>
+    );
+
+    expect(virtuosoPropsHistory.at(-1)?.initialTopMostItemIndex).toBeUndefined();
+  });
+
+  it('re-applies the initial bottom position when switching to a different conversation', () => {
+    messageListMock.push(
+      {
+        id: 'msg-1',
+        type: 'text',
+        position: 'left',
+        content: { content: 'hello' },
+      },
+      {
+        id: 'msg-2',
+        type: 'text',
+        position: 'left',
+        content: { content: 'world' },
+      }
+    );
+
+    const view = renderMessageList();
+    expect(virtuosoPropsHistory.at(-1)?.initialTopMostItemIndex).toBe(1);
+
+    conversationContextMock.conversationId = 'conv-2';
+
+    view.rerender(
+      <LayoutContext.Provider
+        value={{
+          isMobile: false,
+          siderCollapsed: false,
+          setSiderCollapsed: vi.fn(),
+        }}
+      >
+        <MessageList />
+      </LayoutContext.Provider>
+    );
+
+    expect(virtuosoPropsHistory.at(-1)?.initialTopMostItemIndex).toBe(1);
   });
 });

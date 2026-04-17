@@ -1,4 +1,5 @@
 import { ipcBridge } from '@/common';
+import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import { hasConversationUiState, readConversationUiState, writeConversationUiState } from './conversationUiStateCache';
 import { useEffect } from 'react';
 
@@ -15,6 +16,10 @@ type UseConversationUiStateRestoreOptions<TState> = {
 export const useConversationUiStateRestore = <TState>(options: UseConversationUiStateRestoreOptions<TState>): void => {
   const { scope, conversationId, state, createDefaultState, applyCachedState, resetTransientState, syncBackendState } =
     options;
+  const createDefaultStateRef = useLatestRef(createDefaultState);
+  const applyCachedStateRef = useLatestRef(applyCachedState);
+  const resetTransientStateRef = useLatestRef(resetTransientState);
+  const syncBackendStateRef = useLatestRef(syncBackendState);
 
   useEffect(() => {
     writeConversationUiState(scope, conversationId, state);
@@ -22,16 +27,16 @@ export const useConversationUiStateRestore = <TState>(options: UseConversationUi
 
   useEffect(() => {
     const hasCachedState = hasConversationUiState(scope, conversationId);
-    const cachedState = readConversationUiState(scope, conversationId, createDefaultState());
-    applyCachedState(cachedState);
-    resetTransientState?.();
+    const cachedState = readConversationUiState(scope, conversationId, createDefaultStateRef.current());
+    applyCachedStateRef.current(cachedState);
+    resetTransientStateRef.current?.();
 
-    if (!syncBackendState) {
+    if (!syncBackendStateRef.current) {
       return;
     }
 
     void ipcBridge.conversation.get.invoke({ id: conversationId }).then((conversation) => {
-      syncBackendState(conversation?.status === 'running', hasCachedState);
+      syncBackendStateRef.current?.(conversation?.status === 'running', hasCachedState);
     });
-  }, [applyCachedState, conversationId, createDefaultState, resetTransientState, scope, syncBackendState]);
+  }, [conversationId, scope]);
 };
