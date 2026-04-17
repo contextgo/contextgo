@@ -957,6 +957,93 @@ const MARKETING_CREATIVE_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] =
   },
 ] as const;
 
+const MOTION_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the motion brief, channel targets, narrative arc, and reusable assets before scripting any scene.',
+    templateOverride:
+      'Restate the motion task, identify the channel formats and durations involved, separate hard brand or compliance constraints from creative preferences, and propose the shortest credible storyboard-first workflow before drafting scenes or render configs.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify storyboard fidelity, render integrity, captioning, and channel-format compliance before publishing.',
+    templateOverride:
+      'Verify the current motion deliverable end to end. Re-check storyboard intent versus rendered output, scene timing, transition continuity, audio and subtitle sync, channel-format compliance, and contact-sheet sampling. Summarize what is locked, what still needs a re-render, and what blocks a confident publish decision.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'motion-storyboard-video',
+    enabled: true,
+    name: 'storyboard-video',
+    description: 'Translate a motion brief into a code-driven storyboard with scenes, beats, and channel cutdowns.',
+    template:
+      'Use the `motion-storyboard` skill for this request. Clarify the motion goal, audience, channel formats, and brand guardrails first, then produce a storyboard with explicit scenes, beats, transitions, audio cues, and reusable scene recipes ready to feed into the render pipeline.',
+  },
+  {
+    type: 'custom',
+    id: 'motion-build-poster',
+    enabled: true,
+    name: 'build-motion-poster',
+    description: 'Compose a motion poster with a single dominant idea, looping motion, and channel-ready exports.',
+    template:
+      'Use the `motion-poster-builder` and `motion-scene-builder` skills for this request. Lock the dominant message and channel placements first, design a single-scene motion poster with looping or short-form motion, define the variant matrix (vertical, square, banner) needed, and prepare the render config so the poster can be exported consistently across required formats.',
+  },
+  {
+    type: 'custom',
+    id: 'motion-render-video',
+    enabled: true,
+    name: 'render-video',
+    description: 'Drive a storyboard through the code-driven render pipeline and produce review-ready MP4 outputs.',
+    template:
+      'Use the `motion-render-ops` and `motion-scene-builder` skills for this request. Validate the storyboard and scene inputs first, generate a reproducible render config, run the code-driven motion pipeline, capture render logs, and emit MP4 outputs plus a contact sheet that maps each scene to a render frame for review.',
+  },
+  {
+    type: 'custom',
+    id: 'motion-render-social-cut',
+    enabled: true,
+    name: 'render-social-cut',
+    description: 'Re-cut an existing motion render into platform-specific social cutdowns with caption variants.',
+    template:
+      'Use the `motion-render-ops` and `motion-poster-builder` skills for this request. Identify the source render and target platforms first, plan the cutdown durations and aspect-ratio variants, regenerate scene timing where needed, run the social-cut render pipeline, and emit per-platform MP4s with the correct caption and end-card treatment.',
+  },
+  {
+    type: 'custom',
+    id: 'motion-qc-pass',
+    enabled: true,
+    name: 'motion-qc',
+    description:
+      'Run a structured QC pass on rendered motion assets, then return prioritized fixes and rerun guidance.',
+    template:
+      'Use the `motion-qc` and `motion-render-ops` skills for this request. Sample the contact sheet and key frames first, score the render against the QC rubric (timing, brand, audio, captioning, channel compliance), separate must-fix issues from polish notes, and end with a clear rerun plan or sign-off recommendation.',
+  },
+] as const;
+
 const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
   AgentPackageWorkspaceAutomationProfile,
   WorkspaceAutomationProfileDefinition
@@ -1004,6 +1091,11 @@ const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
   'marketing-creative-studio': {
     label: 'Marketing Creative Studio',
     commandSeeds: MARKETING_CREATIVE_STUDIO_COMMAND_SEEDS,
+    scheduleSeed: EMPTY_SCHEDULE_SEED,
+  },
+  'motion-studio': {
+    label: 'Motion Studio',
+    commandSeeds: MOTION_STUDIO_COMMAND_SEEDS,
     scheduleSeed: EMPTY_SCHEDULE_SEED,
   },
 };

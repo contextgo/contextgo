@@ -22,6 +22,7 @@ const FIGMA_CLOSED_LOOP_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSki
 const MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
   'builtin-marketing-creative-studio'
 )!;
+const MOTION_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-motion-studio')!;
 const STARTUP_STRATEGIST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-startup-strategist')!;
 const OFFICE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-office-analyst')!;
 const FINANCE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-finance-analyst')!;
@@ -44,14 +45,16 @@ describe('builtinAssistantDefaults', () => {
     const marketingCreativeStudioAssistant = assistants.find(
       (assistant) => assistant.id === 'builtin-marketing-creative-studio'
     );
+    const motionAssistant = assistants.find((assistant) => assistant.id === 'builtin-motion-studio');
 
-    expect(assistants).toHaveLength(11);
+    expect(assistants).toHaveLength(12);
     expect(assistants.map((assistant) => assistant.id)).toEqual([
       'builtin-morph-ppt',
       'builtin-startup-strategist',
       'builtin-design-director',
       'builtin-figma-closed-loop',
       'builtin-marketing-creative-studio',
+      'builtin-motion-studio',
       'builtin-pm-workbench',
       'builtin-office-analyst',
       'builtin-finance-analyst',
@@ -159,6 +162,33 @@ describe('builtinAssistantDefaults', () => {
         'social-asset-batch',
         'visual-copy-pairing',
         'campaign-variant-generator',
+      ])
+    );
+    expect(motionAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...MOTION_STUDIO_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Motion and Video',
+          'zh-CN': '动效与视频',
+        },
+        harnessTagI18n: {
+          'en-US': 'Motion Studio',
+          'zh-CN': 'Motion Studio',
+        },
+      })
+    );
+    expect(motionAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'motion-storyboard',
+        'motion-scene-builder',
+        'motion-poster-builder',
+        'motion-render-ops',
+        'motion-qc',
       ])
     );
     expect(startupAssistant).toEqual(
@@ -382,6 +412,9 @@ describe('builtinAssistantDefaults', () => {
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-marketing-creative-studio', undefined)).toEqual([
       ...MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-motion-studio', undefined)).toEqual([
+      ...MOTION_STUDIO_DEFAULT_SKILLS,
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-startup-strategist', undefined)).toEqual([
       ...STARTUP_STRATEGIST_DEFAULT_SKILLS,
