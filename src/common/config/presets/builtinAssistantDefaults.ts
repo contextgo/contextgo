@@ -19,6 +19,7 @@ export const BUILTIN_ASSISTANT_PREFIX = 'builtin-';
 export const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set([
   'morph-ppt',
   'design-director',
+  'figma-closed-loop',
   'marketing-creative-studio',
   'startup-strategist',
   'office-analyst',
