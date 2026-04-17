@@ -7,6 +7,7 @@
 import {
   type AssembleContextPackInput,
   type AssembleContextPackResult,
+  type ContextAssemblyOverlays,
   type ContextEngineDependencies,
   type ContextEnginePolicySet,
   type ContextEngineProviderDependencies,
@@ -14,6 +15,7 @@ import {
   type EvaluateCompactionInput,
   type EvaluatePromotionInput,
   type IContextService,
+  type IngestionLifecycle,
   type IngestSourceInput,
   type IngestSourceResult,
   type RetrieveContextInput,
@@ -162,6 +164,26 @@ function dedupe<T>(items: readonly T[]): T[] {
   return [...new Set(items)];
 }
 
+function resolveAssemblyOverlays(input: AssembleContextPackInput): ContextAssemblyOverlays {
+  return (
+    input.overlays ?? {
+      threadSummary: input.threadSummary,
+      mountedSections: input.mountedSections,
+      mountedProfiles: input.mountedProfiles,
+      pinnedInstructions: input.pinnedInstructions,
+    }
+  );
+}
+
+function buildIngestionLifecycle(snapshot?: DocumentSnapshot): IngestionLifecycle {
+  return {
+    sourceRegistered: true,
+    snapshotPersisted: snapshot !== undefined,
+    chunksPrepared: false,
+    indexReady: false,
+  };
+}
+
 function makeOperation(
   input: IngestSourceInput,
   type: ContextOperationType,
@@ -276,6 +298,7 @@ export class ContextEngineService implements IContextService {
       snapshot,
       chunkIds: [],
       operations,
+      lifecycle: buildIngestionLifecycle(snapshot),
     };
   }
 
@@ -464,19 +487,20 @@ export class ContextEngineService implements IContextService {
 
   async assemble(input: AssembleContextPackInput): Promise<AssembleContextPackResult> {
     const sections: ContextPackSection[] = [];
+    const overlays = resolveAssemblyOverlays(input);
 
-    if (input.threadSummary) {
-      sections.push(buildSection('thread-state', input.threadSummary, 100, `thread-${input.threadId ?? 'space'}`));
+    if (overlays.threadSummary) {
+      sections.push(buildSection('thread-state', overlays.threadSummary, 100, `thread-${input.threadId ?? 'space'}`));
     }
-    for (const mountedSection of input.mountedSections ?? []) {
+    for (const mountedSection of overlays.mountedSections ?? []) {
       sections.push({ ...mountedSection });
     }
-    for (const profile of input.mountedProfiles ?? []) {
+    for (const profile of overlays.mountedProfiles ?? []) {
       sections.push(
         buildSection('compaction', profile.summary, 88 + Math.round(profile.confidence * 4), `compaction-${profile.id}`)
       );
     }
-    for (const [index, instruction] of (input.pinnedInstructions ?? []).entries()) {
+    for (const [index, instruction] of (overlays.pinnedInstructions ?? []).entries()) {
       sections.push(buildSection('instruction', instruction, 110 - index, `instruction-${index}`));
     }
 

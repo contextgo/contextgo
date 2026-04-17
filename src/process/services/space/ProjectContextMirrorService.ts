@@ -43,10 +43,19 @@ type StableMirrorIds = {
   checksum: string;
 };
 
+export type ProjectContextAssemblyOverlaySource = {
+  overlaySource: 'project-context-mirror';
+  projectSlug: string;
+  projectSections: readonly ContextPackSection[];
+  sourceSections: readonly ContextPackSection[];
+  mountedSections: readonly ContextPackSection[];
+};
+
 export type ProjectContextSnapshot = {
   projectSlug: string;
   projectDocs: readonly ProjectContextDocument[];
   sourceDocs: readonly ProjectContextDocument[];
+  assemblyOverlaySource?: ProjectContextAssemblyOverlaySource;
 };
 
 function normalizeText(value: string): string {
@@ -66,7 +75,7 @@ function sanitizePathSegment(value: string): string {
   const normalized = value
     .normalize('NFKC')
     .trim()
-    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ')
+    .replace(/[<>:"/\\|?*\p{Cc}]/gu, ' ')
     .replace(/\s+/g, '-')
     .replace(/^-+|-+$/g, '')
     .replace(/\.+$/g, '');
@@ -150,6 +159,25 @@ function toMountedSection(
     summary: content,
     priority,
     tokenCount: estimateTokenCount(content),
+  };
+}
+
+function createProjectContextAssemblyOverlaySource(snapshot: {
+  projectSlug: string;
+  projectDocs: readonly ProjectContextDocument[];
+  sourceDocs: readonly ProjectContextDocument[];
+}): ProjectContextAssemblyOverlaySource {
+  const projectSections = snapshot.projectDocs.map((doc, index) => toMountedSection(doc, 'profile', 98 - index));
+  const sourceSections = snapshot.sourceDocs
+    .slice(0, 4)
+    .map((doc, index) => toMountedSection(doc, 'source', 72 - index));
+
+  return {
+    overlaySource: 'project-context-mirror',
+    projectSlug: snapshot.projectSlug,
+    projectSections,
+    sourceSections,
+    mountedSections: [...projectSections, ...sourceSections],
   };
 }
 
@@ -303,6 +331,11 @@ export class ProjectContextMirrorService {
       projectSlug,
       projectDocs,
       sourceDocs,
+      assemblyOverlaySource: createProjectContextAssemblyOverlaySource({
+        projectSlug,
+        projectDocs,
+        sourceDocs,
+      }),
     };
 
     await this.persistSnapshot({
@@ -314,15 +347,27 @@ export class ProjectContextMirrorService {
     return snapshot;
   }
 
-  buildMountedSections(snapshot: ProjectContextSnapshot | undefined): ContextPackSection[] {
+  buildAssemblyOverlaySource(
+    snapshot: ProjectContextSnapshot | undefined
+  ): ProjectContextAssemblyOverlaySource | undefined {
     if (!snapshot) {
-      return [];
+      return undefined;
     }
 
-    return [
-      ...snapshot.projectDocs.map((doc, index) => toMountedSection(doc, 'profile', 98 - index)),
-      ...snapshot.sourceDocs.slice(0, 4).map((doc, index) => toMountedSection(doc, 'source', 72 - index)),
-    ];
+    return (
+      snapshot.assemblyOverlaySource ??
+      createProjectContextAssemblyOverlaySource({
+        projectSlug: snapshot.projectSlug,
+        projectDocs: snapshot.projectDocs,
+        sourceDocs: snapshot.sourceDocs,
+      })
+    );
+  }
+
+  buildMountedSections(snapshot: ProjectContextSnapshot | undefined): ContextPackSection[] {
+    return (this.buildAssemblyOverlaySource(snapshot)?.mountedSections ?? []).map((section) => ({
+      ...section,
+    }));
   }
 
   private async persistSnapshot(input: {
