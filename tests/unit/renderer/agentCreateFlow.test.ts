@@ -56,6 +56,32 @@ describe('buildCapabilityRecommendation', () => {
     );
     expect(recommendation.commandCount).toBeGreaterThan(0);
   });
+
+  it('should recommend motion studio for storyboard and render intent', () => {
+    const draft: AgentCreateIntentDraft = {
+      workDescription: 'Plan a storyboard and render social cutdowns for a launch video',
+      audience: 'Growth and brand team',
+      output: 'Storyboard JSON, renders, and QC report',
+      workStyle: 'create',
+      recurrence: 'frequent',
+    };
+
+    const recommendation = buildCapabilityRecommendation(draft);
+
+    expect(recommendation.linkedPackagePresetId).toBe('builtin-motion-studio');
+    expect(recommendation.packageLabel).toBe('Motion Studio');
+    expect(recommendation.defaultSkills).toEqual(
+      expect.arrayContaining([
+        'motion-storyboard',
+        'motion-scene-builder',
+        'motion-poster-builder',
+        'motion-render-ops',
+        'motion-qc',
+      ])
+    );
+    expect(recommendation.commandCount).toBeGreaterThan(0);
+    expect(recommendation.runtime).toBe('codex');
+  });
 });
 
 describe('buildCreateFlowSummary', () => {

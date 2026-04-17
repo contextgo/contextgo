@@ -1,0 +1,118 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "motion-studio",
+  "assistantPresetId": "builtin-motion-studio",
+  "displayName": "Motion Studio",
+  "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "workspace"
+        }
+      ],
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "code-driven storyboard, scene composition, and timeline planning",
+        "reproducible motion render pipeline with QC and contact sheets",
+        "multi-format cutdowns, captioning, and review-ready deliverables"
+      ],
+      "suggestedArtifacts": ["storyboard briefs", "scene recipes", "render configs", "contact sheets", "QC reports"],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/storyboards/README.md",
+          "target": "docs/storyboards/README.md"
+        },
+        {
+          "source": "workspace/docs/scenes/README.md",
+          "target": "docs/scenes/README.md"
+        },
+        {
+          "source": "workspace/docs/renders/README.md",
+          "target": "docs/renders/README.md"
+        },
+        {
+          "source": "workspace/docs/qc/README.md",
+          "target": "docs/qc/README.md"
+        }
+      ]
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/motion-studio-pack"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "motion-storyboard",
+        "motion-scene-builder",
+        "motion-poster-builder",
+        "motion-render-ops",
+        "motion-qc"
+      ],
+      "packagedSkillNames": [
+        "motion-storyboard",
+        "motion-scene-builder",
+        "motion-poster-builder",
+        "motion-render-ops",
+        "motion-qc"
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "motion-studio"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "motion-studio"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "motion-studio"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "motion-studio"
+    }
+  }
+}

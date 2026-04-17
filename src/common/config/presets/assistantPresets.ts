@@ -219,6 +219,47 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
+    id: 'motion-studio',
+    avatar: '\u{1F3AC}',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Motion Studio',
+      'zh-CN': 'Motion Studio',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'Motion and Video',
+      'zh-CN': '动效与视频',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want storyboards, render configs, contact sheets, and QC reports for motion artifacts written back into the project folder.',
+      'zh-CN':
+        '如果希望把 storyboard、render config、contact sheet 和动效 QC 报告直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Motion Studio',
+      'zh-CN': 'Motion Studio',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A built-in motion-execution assistant for storyboarding videos, motion posters, product demo cuts, and social cutdowns, then driving them through a reproducible code-driven render pipeline with QC, contact sheets, and rerun guidance.',
+      'zh-CN':
+        '面向视频与动效执行的内置助手，用于编写 storyboard、规划镜头与转场，再通过 code-driven 的 render 流程批量产出动效海报、产品演示短片、活动预热视频和社媒 cutdown，并配合 QC 与抽帧审阅形成可复现的产线。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Plan a storyboard for this product launch video and prepare multiple social cutdown sizes',
+        'Build a motion poster for this campaign and run it through QC before we publish',
+        'Re-render this storyboard with the updated assets and produce a contact sheet for review',
+      ],
+      'zh-CN': [
+        '为这次产品发布做一版 storyboard，并准备多种社媒 cutdown 尺寸',
+        '为这次活动做一版动效海报，并跑一遍 QC 再发布',
+        '用更新后的素材重新渲染这版 storyboard，并产出一份 contact sheet 供审稿',
+      ],
+    },
+  },
+  {
     id: 'pm-workbench',
     avatar: 'pm-workbench.svg',
     presetAgentType: 'codex',
