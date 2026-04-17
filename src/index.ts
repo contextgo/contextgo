@@ -265,6 +265,137 @@ const createWindow = (): void => {
   });
   console.log(`[ContextGo] Main window created (id=${mainWindow.id})`);
 
+  const getMainWindowUrl = (): string | null => {
+    try {
+      return mainWindow.isDestroyed() ? null : mainWindow.webContents.getURL();
+    } catch {
+      return null;
+    }
+  };
+
+  const getMainWindowLifecycleSnapshot = () => ({
+    url: getMainWindowUrl(),
+    visible: mainWindow.isDestroyed() ? false : mainWindow.isVisible(),
+    focused: mainWindow.isDestroyed() ? false : mainWindow.isFocused(),
+    minimized: mainWindow.isDestroyed() ? false : mainWindow.isMinimized(),
+    loading: mainWindow.isDestroyed() ? false : mainWindow.webContents.isLoading(),
+    ...(() => {
+      try {
+        const navigationHistory = mainWindow.webContents.navigationHistory;
+        const historyLength = navigationHistory.length();
+        const historyActiveIndex = navigationHistory.getActiveIndex();
+        const activeEntry =
+          historyActiveIndex >= 0 && historyActiveIndex < historyLength
+            ? navigationHistory.getEntryAtIndex(historyActiveIndex)
+            : null;
+
+        return {
+          historyLength,
+          historyActiveIndex,
+          historyActiveUrl: activeEntry?.url ?? null,
+        };
+      } catch {
+        return {
+          historyLength: null,
+          historyActiveIndex: null,
+          historyActiveUrl: null,
+        };
+      }
+    })(),
+  });
+
+  const logMainWindowLifecycle = (scope: string, payload: Record<string, unknown> = {}) => {
+    console.log(`[LifecycleDiag][MainWindow] ${scope}`, {
+      ...getMainWindowLifecycleSnapshot(),
+      ...payload,
+    });
+  };
+
+  mainWindow.on('show', () => {
+    logMainWindowLifecycle('show');
+  });
+  mainWindow.on('hide', () => {
+    logMainWindowLifecycle('hide');
+  });
+  mainWindow.on('focus', () => {
+    logMainWindowLifecycle('focus');
+  });
+  mainWindow.on('blur', () => {
+    logMainWindowLifecycle('blur');
+  });
+  mainWindow.on('enter-full-screen', () => {
+    logMainWindowLifecycle('enter-full-screen');
+  });
+  mainWindow.on('leave-full-screen', () => {
+    logMainWindowLifecycle('leave-full-screen');
+  });
+  mainWindow.on('maximize', () => {
+    logMainWindowLifecycle('maximize');
+  });
+  mainWindow.on('unmaximize', () => {
+    logMainWindowLifecycle('unmaximize');
+  });
+
+  mainWindow.webContents.on('did-start-loading', () => {
+    logMainWindowLifecycle('did-start-loading');
+  });
+  mainWindow.webContents.on('did-stop-loading', () => {
+    logMainWindowLifecycle('did-stop-loading');
+  });
+  mainWindow.webContents.on('dom-ready', () => {
+    logMainWindowLifecycle('dom-ready');
+  });
+  mainWindow.webContents.on(
+    'did-start-navigation',
+    (_event, navigationUrl, isInPlace, isMainFrame, frameProcessId, frameRoutingId) => {
+      logMainWindowLifecycle('did-start-navigation', {
+        navigationUrl,
+        isInPlace,
+        isMainFrame,
+        frameProcessId,
+        frameRoutingId,
+      });
+    }
+  );
+  mainWindow.webContents.on('did-navigate', (_event, navigationUrl, httpResponseCode, httpStatusText) => {
+    logMainWindowLifecycle('did-navigate', {
+      navigationUrl,
+      httpResponseCode,
+      httpStatusText,
+    });
+  });
+  mainWindow.webContents.on(
+    'did-frame-navigate',
+    (_event, navigationUrl, httpResponseCode, httpStatusText, isMainFrame, frameProcessId, frameRoutingId) => {
+      logMainWindowLifecycle('did-frame-navigate', {
+        navigationUrl,
+        httpResponseCode,
+        httpStatusText,
+        isMainFrame,
+        frameProcessId,
+        frameRoutingId,
+      });
+    }
+  );
+  mainWindow.webContents.on(
+    'did-navigate-in-page',
+    (_event, navigationUrl, isMainFrame, frameProcessId, frameRoutingId) => {
+      logMainWindowLifecycle('did-navigate-in-page', {
+        navigationUrl,
+        isMainFrame,
+        frameProcessId,
+        frameRoutingId,
+      });
+    }
+  );
+  mainWindow.webContents.on('did-frame-finish-load', (_event, isMainFrame, frameProcessId, frameRoutingId) => {
+    logMainWindowLifecycle('did-frame-finish-load', {
+      isMainFrame,
+      frameProcessId,
+      frameRoutingId,
+    });
+  });
+
   // Show window after content is ready to prevent FOUC (Flash of Unstyled Content)
   // Use 'ready-to-show' which fires when renderer has painted first frame,
   // combined with 'did-finish-load' as belt-and-suspenders approach.
@@ -283,6 +414,25 @@ const createWindow = (): void => {
   mainWindow.webContents.once('did-finish-load', () => {
     console.log('[ContextGo] Renderer did-finish-load');
     showWindow();
+  });
+  // Mirror targeted renderer diagnostics into the main-process log file so
+  // remount evidence survives both packaged and dev sessions.
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (
+      !message.includes('[RemountDiag]') &&
+      !message.includes('[NavDiag]') &&
+      !message.includes('[VisualDiag]') &&
+      !message.includes('[vite]')
+    ) {
+      return;
+    }
+
+    console.log('[RemountDiag][RendererConsole]', {
+      level,
+      message,
+      line,
+      sourceId,
+    });
   });
   // Fallback: show window after 5s even if events don't fire (e.g. loadURL failure)
   setTimeout(showWindow, 5000);

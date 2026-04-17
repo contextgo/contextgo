@@ -17,6 +17,7 @@ import { isMobileShellWebView, isElectronDesktop } from '@renderer/utils/platfor
 import {
   getLastStableHashRoute,
   normalizeHashRouteShellHref,
+  preloadRoutePath,
   rememberStableHashRoute,
   warmCriticalRendererRoutes,
 } from './routerLocation';
@@ -280,6 +281,20 @@ const StartupConversationRedirect: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
 
+    const resolveAndSetStartupPath = async (nextPath: string) => {
+      if (nextPath !== '/guid') {
+        try {
+          await preloadRoutePath(nextPath);
+        } catch (error) {
+          console.warn('[StartupConversationRedirect] Failed to preload startup route:', nextPath, error);
+        }
+      }
+
+      if (!cancelled) {
+        setStartupPath(nextPath);
+      }
+    };
+
     const resolveStartupPath = async () => {
       const nextPath = resolveAuthenticatedStartupPath({
         activeTabId,
@@ -288,9 +303,7 @@ const StartupConversationRedirect: React.FC = () => {
       });
 
       if (preferOfficialRemoteShell || !activeTabId || nextPath === '/guid') {
-        if (!cancelled) {
-          setStartupPath(nextPath);
-        }
+        await resolveAndSetStartupPath(nextPath);
         return;
       }
 
@@ -304,7 +317,7 @@ const StartupConversationRedirect: React.FC = () => {
         }
 
         if (restoredConversation) {
-          setStartupPath(nextPath);
+          await resolveAndSetStartupPath(nextPath);
           return;
         }
       } catch (error) {
@@ -350,8 +363,11 @@ const RoutedPanels: React.FC<{
           status === 'authenticated' ? <StartupConversationRedirect /> : withRouteFallback(loadLoginPage, '/login')
         }
       />
+      <Route
+        path='/'
+        element={status === 'authenticated' ? <StartupConversationRedirect /> : <Navigate to='/login' replace />}
+      />
       <Route element={<ProtectedLayout status={status} />}>
-        <Route index element={<StartupConversationRedirect />} />
         <Route path='/guid' element={withRouteFallback(loadGuid, '/guid')} />
         <Route
           path={OFFICIAL_REMOTE_DEVICES_ROUTE}
@@ -432,6 +448,10 @@ const PanelRoute: React.FC = () => {
   }, [status]);
 
   React.useEffect(() => {
+    if (isElectronDesktop()) {
+      return;
+    }
+
     warmCriticalRendererRoutes();
   }, []);
 

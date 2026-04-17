@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockUseConversationTabs = vi.fn();
 const mockGetConversation = vi.fn();
+const preloadRoutePathMock = vi.fn();
+const warmCriticalRendererRoutesMock = vi.fn();
 
 const mountStats = {
   mounts: 0,
@@ -69,8 +71,9 @@ vi.mock('@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover',
 vi.mock('@renderer/components/layout/routerLocation', () => ({
   getLastStableHashRoute: () => '/guid',
   normalizeHashRouteShellHref: (href: string) => href,
+  preloadRoutePath: (...args: unknown[]) => preloadRoutePathMock(...args),
   rememberStableHashRoute: vi.fn(),
-  warmCriticalRendererRoutes: vi.fn(),
+  warmCriticalRendererRoutes: (...args: unknown[]) => warmCriticalRendererRoutesMock(...args),
 }));
 
 vi.mock('@renderer/pages/conversation', () => ({
@@ -214,12 +217,15 @@ describe('Router route switching', () => {
     mountStats.mounts = 0;
     mountStats.unmounts = 0;
     workbenchHostPropsSpy.mockClear();
+    preloadRoutePathMock.mockReset();
+    warmCriticalRendererRoutesMock.mockReset();
     mockUseConversationTabs.mockReturnValue({
       openTabs: [],
       activeTabId: null,
       closeAllTabs: vi.fn(),
     });
     mockGetConversation.mockReset();
+    delete (window as Window & { electronAPI?: unknown }).electronAPI;
     window.history.replaceState({}, '', '/#/conversation/alpha');
   });
 
@@ -254,6 +260,41 @@ describe('Router route switching', () => {
     await waitFor(() => {
       expect(screen.getByTestId('conversation-page')).toHaveTextContent('beta');
     });
+    expect(mountStats.mounts).toBe(1);
+    expect(mountStats.unmounts).toBe(0);
+  });
+
+  it('keeps the conversation route mounted across unrelated parent rerenders', async () => {
+    const Shell: React.FC = () => {
+      const [tick, setTick] = React.useState(0);
+
+      return (
+        <div data-testid='router-shell' data-tick={tick}>
+          <button type='button' onClick={() => setTick((current) => current + 1)}>
+            rerender
+          </button>
+          <Router
+            renderLayout={() => (
+              <div data-testid='layout'>
+                <Outlet />
+              </div>
+            )}
+          />
+        </div>
+      );
+    };
+
+    render(<Shell />);
+
+    expect(await screen.findByTestId('conversation-page')).toHaveTextContent('alpha');
+    expect(mountStats.mounts).toBe(1);
+    expect(mountStats.unmounts).toBe(0);
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'rerender' }).click();
+    });
+
+    expect(screen.getByTestId('conversation-page')).toHaveTextContent('alpha');
     expect(mountStats.mounts).toBe(1);
     expect(mountStats.unmounts).toBe(0);
   });
@@ -316,5 +357,58 @@ describe('Router route switching', () => {
     expect(screen.queryByTestId('conversation-page')).not.toBeInTheDocument();
     expect(closeAllTabs).toHaveBeenCalledTimes(1);
     expect(mountStats.mounts).toBe(0);
+  });
+
+  it('waits for conversation route preloading before redirecting restored startup tabs', async () => {
+    let resolvePreload: (() => void) | null = null;
+
+    window.history.replaceState({}, '', '/#/');
+    mockUseConversationTabs.mockReturnValue({
+      openTabs: [{ id: 'alpha', name: 'Alpha', workspace: '/tmp/alpha', type: 'acp' }],
+      activeTabId: 'alpha',
+      closeAllTabs: vi.fn(),
+    });
+    mockGetConversation.mockResolvedValue({
+      id: 'alpha',
+      type: 'acp',
+      name: 'Alpha',
+      extra: { workspace: '/tmp/alpha' },
+    });
+    preloadRoutePathMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePreload = resolve;
+        })
+    );
+
+    renderRouter();
+
+    expect(screen.getByTestId('app-loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('layout')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(preloadRoutePathMock).toHaveBeenCalledWith('/conversation/alpha');
+    });
+
+    expect(screen.queryByTestId('conversation-page')).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolvePreload?.();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('layout')).toBeInTheDocument();
+      expect(screen.getByTestId('conversation-page')).toHaveTextContent('alpha');
+    });
+  });
+
+  it('skips desktop route warming so startup does not inject unrelated lazy-route CSS', async () => {
+    (window as Window & { electronAPI?: unknown }).electronAPI = {};
+
+    renderRouter();
+
+    await screen.findByTestId('conversation-page');
+
+    expect(warmCriticalRendererRoutesMock).not.toHaveBeenCalled();
   });
 });

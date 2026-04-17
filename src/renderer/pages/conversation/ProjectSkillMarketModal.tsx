@@ -18,6 +18,12 @@ type ProjectSkillMarketModalProps = {
   variant?: 'modal' | 'embedded';
 };
 
+const REMOUNT_DIAG_TAG = '[RemountDiag]';
+
+const logRemountDiag = (scope: string, phase: string, payload: Record<string, unknown>) => {
+  console.log(`${REMOUNT_DIAG_TAG}[${scope}] ${phase} ${JSON.stringify(payload)}`);
+};
+
 const normalizePath = (value: string): string => value.replace(/\\/g, '/').replace(/\/+$/, '');
 
 const resolveSkillTitle = (skill: SkillMarketItem): string => skill.displayName || skill.name;
@@ -57,6 +63,44 @@ const ProjectSkillMarketModal: React.FC<ProjectSkillMarketModalProps> = ({
   const automationPaths = useMemo(() => getWorkspaceAutomationPaths(workspacePath), [workspacePath]);
   const workspaceDisplayName = useMemo(() => getWorkspaceDisplayName(workspacePath, t), [workspacePath, t]);
   const hasMoreMarketSkills = marketSkills.length < marketTotal;
+
+  useEffect(() => {
+    logRemountDiag('ProjectSkillMarketModal', 'mount', {
+      workspacePath,
+    });
+
+    return () => {
+      logRemountDiag('ProjectSkillMarketModal', 'unmount', {
+        workspacePath,
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    logRemountDiag('ProjectSkillMarketModal', 'state', {
+      visible,
+      workspacePath,
+      marketQuery,
+      marketView,
+      marketSkillsCount: marketSkills.length,
+      marketTotal,
+      marketLoading,
+      marketLoadingMore,
+      marketRefreshing,
+      marketInstallingId,
+    });
+  }, [
+    marketInstallingId,
+    marketLoading,
+    marketLoadingMore,
+    marketQuery,
+    marketRefreshing,
+    marketSkills.length,
+    marketTotal,
+    marketView,
+    visible,
+    workspacePath,
+  ]);
 
   const refreshInstalledSkills = useEffectEvent(async () => {
     const skills = await ipcBridge.fs.listAvailableSkills.invoke({ workspacePath });

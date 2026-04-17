@@ -26,6 +26,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './chat-layout.css';
 
+const REMOUNT_DIAG_TAG = '[RemountDiag]';
+
+const logRemountDiag = (scope: string, phase: string, payload: Record<string, unknown>) => {
+  console.log(`${REMOUNT_DIAG_TAG}[${scope}] ${phase} ${JSON.stringify(payload)}`);
+};
+
 // headerExtra allows injecting custom actions (e.g., model picker) into the header's right area
 const ChatLayout: React.FC<{
   children: React.ReactNode;
@@ -60,6 +66,22 @@ const ChatLayout: React.FC<{
   const [desktopToolbarTarget, setDesktopToolbarTarget] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
+    logRemountDiag('ChatLayout', 'mount', {
+      conversationId: conversationId ?? null,
+      isMobile,
+      workspaceEnabled,
+    });
+
+    return () => {
+      logRemountDiag('ChatLayout', 'unmount', {
+        conversationId: conversationId ?? null,
+        isMobile,
+        workspaceEnabled,
+      });
+    };
+  }, []);
+
+  useEffect(() => {
     if (isMobile || typeof document === 'undefined') {
       setDesktopHeaderTarget(null);
       setDesktopToolbarTarget(null);
@@ -70,8 +92,23 @@ const ChatLayout: React.FC<{
     setDesktopToolbarTarget(toolbarSlotId ? document.getElementById(toolbarSlotId) : null);
   }, [isMobile, titlebarPrimarySlotId, toolbarSlotId]);
 
-  // Preview panel state
-  const { isOpen: isPreviewOpen } = usePreviewSurface();
+  useEffect(() => {
+    logRemountDiag('ChatLayout', 'portal-state', {
+      conversationId: conversationId ?? null,
+      isMobile,
+      titlebarPrimarySlotId,
+      toolbarSlotId,
+      headerTargetPresent: Boolean(desktopHeaderTarget),
+      toolbarTargetPresent: Boolean(desktopToolbarTarget),
+    });
+  }, [
+    conversationId,
+    desktopHeaderTarget,
+    desktopToolbarTarget,
+    isMobile,
+    titlebarPrimarySlotId,
+    toolbarSlotId,
+  ]);
 
   // --- Hook A: workspace collapse ---
   const { rightSiderCollapsed, setRightSiderCollapsed } = useWorkspaceCollapse({
@@ -79,6 +116,18 @@ const ChatLayout: React.FC<{
     isMobile,
     conversationId,
   });
+
+  // Preview panel state
+  const { isOpen: isPreviewOpen } = usePreviewSurface();
+
+  useEffect(() => {
+    logRemountDiag('ChatLayout', 'surface-state', {
+      conversationId: conversationId ?? null,
+      isPreviewOpen,
+      workspaceEnabled,
+      rightSiderCollapsed,
+    });
+  }, [conversationId, isPreviewOpen, rightSiderCollapsed, workspaceEnabled]);
 
   // --- Hook B: container width ---
   const { containerRef, containerWidth } = useContainerWidth();

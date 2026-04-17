@@ -9,6 +9,11 @@
   "sendFailedWithReason": "Mesaj gönderilemedi: {{reason}}",
   "externalSessions": {
     "title": "Harici Session'ları Devral",
+    "titleVariants": {
+      "continueWork": "Dışarıdaki işe devam et",
+      "resumeProgress": "Yarım kalan işi sürdür",
+      "bringBack": "Dış ilerlemeyi geri getir"
+    },
     "description": "ContextGo dışında başlatılan ve henüz devralınmamış CLI oturumları burada görünür.",
     "filters": {
       "all": "Tümü"
@@ -26,11 +31,11 @@
       "opencode": "OpenCode",
       "openclaw-gateway": "OpenClaw"
     },
-    "loadingShort": "Taranıyor",
-    "loadFailedShort": "Tarama başarısız",
+    "loadingShort": "Hazırlanıyor",
+    "loadFailedShort": "Tekrar dene",
     "readyCount": "{{count}} oturum hazır",
-    "readyCountShort": "{{count}} hazır",
-    "emptyStateShort": "Yok",
+    "readyCountShort": "{{count}} devam edebilir",
+    "emptyStateShort": "Bekleyen bir şey yok",
     "open": "Aç",
     "emptyState": "Henüz devralınacak harici Session yok."
   },

@@ -9,6 +9,7 @@ import {
   AVAILABLE_AGENTS_SWR_KEY,
   buildConversationPresetAssistants,
   filterAvailableAgentsForUi,
+  sortAvailableAgentsForUi,
   splitConversationDropdownAgents,
 } from '../../src/renderer/utils/model/availableAgents';
 import type { AvailableAgent } from '../../src/renderer/utils/model/agentTypes';
@@ -19,6 +20,7 @@ describe('availableAgents helpers', () => {
     { backend: 'gemini', name: 'Gemini' },
     { backend: 'gemini', name: 'Gemini CLI', cliPath: '/usr/local/bin/gemini' },
     { backend: 'claude', name: 'Claude Code', cliPath: '/usr/local/bin/claude' },
+    { backend: 'codex', name: 'Codex', cliPath: '/usr/local/bin/codex' },
     { backend: 'qwen', name: 'Qwen Code', cliPath: '/usr/local/bin/qwen' },
     { backend: 'opencode', name: 'OpenCode', cliPath: '/usr/local/bin/opencode' },
     { backend: 'custom', name: 'Custom Agent', customAgentId: 'custom-1' },
@@ -32,9 +34,10 @@ describe('availableAgents helpers', () => {
 
   it('filters out unsupported runtimes while keeping supported runtime entries', () => {
     expect(filterAvailableAgentsForUi(agents)).toEqual([
+      { backend: 'codex', name: 'Codex', cliPath: '/usr/local/bin/codex' },
+      { backend: 'claude', name: 'Claude Code', cliPath: '/usr/local/bin/claude' },
       { backend: 'gemini', name: 'Gemini' },
       { backend: 'gemini', name: 'Gemini CLI', cliPath: '/usr/local/bin/gemini' },
-      { backend: 'claude', name: 'Claude Code', cliPath: '/usr/local/bin/claude' },
       { backend: 'opencode', name: 'OpenCode', cliPath: '/usr/local/bin/opencode' },
       { backend: 'custom', name: 'Custom Agent', customAgentId: 'custom-1' },
       { backend: 'custom', name: 'Preset Assistant', customAgentId: 'builtin-superpowers', isPreset: true },
@@ -45,9 +48,10 @@ describe('availableAgents helpers', () => {
   it('splits conversation dropdown agents into cli and preset groups', () => {
     expect(splitConversationDropdownAgents(filterAvailableAgentsForUi(agents))).toEqual({
       cliAgents: [
+        { backend: 'codex', name: 'Codex', cliPath: '/usr/local/bin/codex' },
+        { backend: 'claude', name: 'Claude Code', cliPath: '/usr/local/bin/claude' },
         { backend: 'gemini', name: 'Gemini' },
         { backend: 'gemini', name: 'Gemini CLI', cliPath: '/usr/local/bin/gemini' },
-        { backend: 'claude', name: 'Claude Code', cliPath: '/usr/local/bin/claude' },
         { backend: 'opencode', name: 'OpenCode', cliPath: '/usr/local/bin/opencode' },
         { backend: 'custom', name: 'Custom Agent', customAgentId: 'custom-1' },
       ],
@@ -56,6 +60,20 @@ describe('availableAgents helpers', () => {
         { backend: 'codex', name: 'Code Review Assistant', isPreset: true, customAgentId: 'preset-1' },
       ],
     });
+  });
+
+  it('sorts runtime agents by product priority while keeping custom entries stable', () => {
+    expect(sortAvailableAgentsForUi(agents)).toEqual([
+      { backend: 'codex', name: 'Codex', cliPath: '/usr/local/bin/codex' },
+      { backend: 'claude', name: 'Claude Code', cliPath: '/usr/local/bin/claude' },
+      { backend: 'gemini', name: 'Gemini' },
+      { backend: 'gemini', name: 'Gemini CLI', cliPath: '/usr/local/bin/gemini' },
+      { backend: 'opencode', name: 'OpenCode', cliPath: '/usr/local/bin/opencode' },
+      { backend: 'qwen', name: 'Qwen Code', cliPath: '/usr/local/bin/qwen' },
+      { backend: 'custom', name: 'Custom Agent', customAgentId: 'custom-1' },
+      { backend: 'custom', name: 'Preset Assistant', customAgentId: 'builtin-superpowers', isPreset: true },
+      { backend: 'codex', name: 'Code Review Assistant', isPreset: true, customAgentId: 'preset-1' },
+    ]);
   });
 
   it('builds preset assistants from enabled assistant config entries', () => {

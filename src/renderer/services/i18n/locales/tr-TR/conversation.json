@@ -1,17 +1,28 @@
 {
   "welcome": {
-    "title": "Merhaba, bugünkü planın nedir?",
-    "placeholder": "Mesaj gönder, dosya yükle veya klasör aç...",
-    "uploadFile": "Dosya Yükle",
+    "title": "Önce hangi işi ilerletelim?",
+    "titleVariants": {
+      "focus": "Önce hangi işi ilerletelim?",
+      "workbench": "İşi buraya getir, birlikte hemen başlayalım.",
+      "momentum": "Burası senin AI-native çalışma tezgahın."
+    },
+    "placeholder": "Ne yapmak istediğini yaz, hemen başlayalım...",
+    "placeholderVariants": {
+      "start": "Ne yapmak istediğini kısa bir cümleyle söyle, hemen girelim...",
+      "goal": "Hedeflediğin sonucu söyle, birlikte ileri taşıyalım...",
+      "anything": "İş, yazı, araştırma, düzenleme. Hepsini burada ilerletebiliriz...",
+      "brief": "Görevi, fikri ya da sorunu buraya bırak, hemen harekete geçelim..."
+    },
+    "uploadFile": "Materyal Ekle",
     "linkFolder": "Klasör Aç",
     "newConversation": "Yeni Sohbet",
     "multiAgentModeEnabled": "Çoklu ajan moduna giriliyor",
     "selectModel": "Model Seç",
     "useCliModel": "Model Seç",
     "modelSwitchNotSupported": "Model listesi ilk bağlantıdan sonra kullanılabilir olacaktır. Bağlanmak ve mevcut modelleri yüklemek için önce bir mesaj gönderin.",
-    "specifyWorkspace": "Klasörde Sohbet Et",
-    "currentWorkspace": "Mevcut Çalışma Alanı",
-    "clearWorkspace": "Klasörü kaldır",
+    "specifyWorkspace": "Çalışma Alanını Bağla",
+    "currentWorkspace": "Bağlı Çalışma Alanı",
+    "clearWorkspace": "Çalışma Alanını Kaldır",
     "openFolder": "Klasör Aç",
     "none": "Hiçbiri",
     "quickActionsTitle": "ContextGo neler yapabilir?",

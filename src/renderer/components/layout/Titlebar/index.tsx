@@ -42,6 +42,11 @@ interface TitlebarProps {
 
 const MOBILE_SHELL_CONVERSATION_TITLE_MAX_LENGTH = 14;
 const IS_DEV_BUILD = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV === true;
+const REMOUNT_DIAG_TAG = '[RemountDiag]';
+
+const logRemountDiag = (scope: string, phase: string, payload: Record<string, unknown>) => {
+  console.log(`${REMOUNT_DIAG_TAG}[${scope}] ${phase} ${JSON.stringify(payload)}`);
+};
 
 const formatMobileShellConversationTitle = (title: string): string => {
   const normalizedTitle = normalizeConversationTitle(title);
@@ -95,6 +100,22 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const isMacRuntime = isDesktopRuntime && isMacOS();
   const isMobileShellRuntime = !isDesktopRuntime && isMobileShellWebView();
   const { openTabs } = useConversationTabs();
+
+  useEffect(() => {
+    logRemountDiag('Titlebar', 'mount', {
+      pathname: location.pathname,
+      search: location.search,
+      hash: location.hash,
+    });
+
+    return () => {
+      logRemountDiag('Titlebar', 'unmount', {
+        pathname: location.pathname,
+        search: location.search,
+        hash: location.hash,
+      });
+    };
+  }, []);
 
   // 监听工作空间折叠状态，保持按钮图标一致 / Sync workspace collapsed state for toggle button
   useEffect(() => {
@@ -218,6 +239,34 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
       : remoteAccess?.target.mode === 'device-list'
         ? t('settings.webui.remoteDevicesNav')
         : t('settings.webui.deviceModeRemote');
+
+  useEffect(() => {
+    logRemountDiag('Titlebar', 'chrome-state', {
+      pathname: location.pathname,
+      openTabsCount: openTabs.length,
+      workspaceAvailable,
+      showDesktopConversationTabs,
+      titlebarPrimarySlotId,
+      toolbarSlotId,
+      showWorkbenchToolbarSlot,
+      isDesktopRuntime,
+      isMacRuntime,
+      isMobile: layout?.isMobile ?? false,
+      remoteMode: remoteAccess?.target.mode ?? null,
+    });
+  }, [
+    isDesktopRuntime,
+    isMacRuntime,
+    layout?.isMobile,
+    location.pathname,
+    openTabs.length,
+    remoteAccess?.target.mode,
+    showDesktopConversationTabs,
+    showWorkbenchToolbarSlot,
+    titlebarPrimarySlotId,
+    toolbarSlotId,
+    workspaceAvailable,
+  ]);
 
   const handleSiderToggle = () => {
     if (!showSiderToggle || !layout?.setSiderCollapsed) return;

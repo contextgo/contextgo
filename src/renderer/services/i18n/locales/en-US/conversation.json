@@ -1,17 +1,28 @@
 {
   "welcome": {
-    "title": "Hi, what's your plan for today?",
-    "placeholder": "Send a message, upload files, open a folder, or create a scheduled task...",
-    "uploadFile": "Upload Files",
+    "title": "What should we move forward first?",
+    "titleVariants": {
+      "focus": "What should we move forward first?",
+      "workbench": "Bring the task here and let's get to work.",
+      "momentum": "This is your AI-native workbench."
+    },
+    "placeholder": "Tell me what you want to get done and we can start now...",
+    "placeholderVariants": {
+      "start": "Say what you want to do and we can jump right in...",
+      "goal": "Tell me the outcome you want and I'll help drive it forward...",
+      "anything": "Work, writing, research, planning, cleanup. Bring it here...",
+      "brief": "Drop in the task, idea, or problem and we'll get moving..."
+    },
+    "uploadFile": "Add Files",
     "linkFolder": "Open Folder",
     "newConversation": "New Chat",
     "multiAgentModeEnabled": "Entering multi-agent mode",
     "selectModel": "Select Model",
     "useCliModel": "Select Model",
     "modelSwitchNotSupported": "Model list will be available after first connection. Send a message to connect and load available models.",
-    "specifyWorkspace": "Chat in Folder",
-    "currentWorkspace": "Current Workspace",
-    "clearWorkspace": "Remove folder",
+    "specifyWorkspace": "Link Workspace",
+    "currentWorkspace": "Linked Workspace",
+    "clearWorkspace": "Remove Workspace",
     "openFolder": "Open Folder",
     "none": "None",
     "quickActionsTitle": "What can ContextGo do?",
