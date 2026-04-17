@@ -2115,6 +2115,16 @@ describe('channelBridge', () => {
           }),
         ])
       );
+      expect(result.data?.catalog.capabilitySummaries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            channelAccountId: 'connector-lark-refresh',
+            integrationModel: 'official-bot-platform',
+            discoveryMode: 'official-pull',
+            actionSurfaces: expect.arrayContaining(['menu-entry', 'card-action-callbacks', 'thread-aware-reply']),
+          }),
+        ])
+      );
       expect(typeof result.data?.refreshedAt).toBe('number');
       expect(publicationServiceMocks.resolvePublishObjectCatalog).toHaveBeenCalled();
     });

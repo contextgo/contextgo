@@ -382,11 +382,25 @@ export interface IChannelAudienceEntry {
 }
 
 export type ChannelPublicationDiscoveryState = 'official' | 'learned' | 'empty';
+export type ChannelPublicationIntegrationModel = 'official-bot-platform' | 'bridge-limited';
+export type ChannelPublicationActionSurface =
+  | 'native-command-entry'
+  | 'menu-entry'
+  | 'message-action-buttons'
+  | 'card-action-callbacks'
+  | 'thread-aware-reply';
 
 export type IChannelPublicationDiscoverySummary = {
   channelAccountId: string;
   state: ChannelPublicationDiscoveryState;
   discoveredCount: number;
+};
+
+export type IChannelPublicationCapabilitySummary = {
+  channelAccountId: string;
+  integrationModel: ChannelPublicationIntegrationModel;
+  discoveryMode: 'official-pull' | 'learned-manual' | 'mixed';
+  actionSurfaces: ChannelPublicationActionSurface[];
 };
 
 export type IChannelBindingCatalog = {
@@ -397,6 +411,7 @@ export type IChannelBindingCatalog = {
   bindings: IChannelBinding[];
   audiences: IChannelAudienceEntry[];
   discoverySummaries?: IChannelPublicationDiscoverySummary[];
+  capabilitySummaries?: IChannelPublicationCapabilitySummary[];
   publishObjects?: IChannelPublishObjectCatalogEntry[];
   publications?: IChannelPublicationEntry[];
 };

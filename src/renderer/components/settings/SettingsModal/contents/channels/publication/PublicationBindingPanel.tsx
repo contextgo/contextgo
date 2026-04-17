@@ -274,6 +274,53 @@ function getObjectRefreshBadgeLabel(entry: AgentPublicationObjectEntry, t: Trans
   return null;
 }
 
+function getCapabilityIntegrationLabel(
+  integrationModel: 'official-bot-platform' | 'bridge-limited',
+  t: TranslationFn
+): string {
+  return integrationModel === 'official-bot-platform'
+    ? t('settings.channels.publication.capabilityIntegrationOfficial', { defaultValue: 'Official bot platform' })
+    : t('settings.channels.publication.capabilityIntegrationBridge', { defaultValue: 'Bridge-limited platform' });
+}
+
+function getCapabilityDiscoveryModeLabel(
+  discoveryMode: 'official-pull' | 'learned-manual' | 'mixed',
+  t: TranslationFn
+): string {
+  if (discoveryMode === 'official-pull') {
+    return t('settings.channels.publication.capabilityDiscoveryOfficial', {
+      defaultValue: 'Official object directory',
+    });
+  }
+  if (discoveryMode === 'mixed') {
+    return t('settings.channels.publication.capabilityDiscoveryMixed', { defaultValue: 'Mixed discovery' });
+  }
+  return t('settings.channels.publication.capabilityDiscoveryLearned', { defaultValue: 'Learned / manual discovery' });
+}
+
+function getCapabilityActionSurfaceLabel(
+  actionSurface:
+    | 'native-command-entry'
+    | 'menu-entry'
+    | 'message-action-buttons'
+    | 'card-action-callbacks'
+    | 'thread-aware-reply',
+  t: TranslationFn
+): string {
+  switch (actionSurface) {
+    case 'native-command-entry':
+      return t('settings.channels.publication.capabilitySurface.command', { defaultValue: 'Native commands' });
+    case 'menu-entry':
+      return t('settings.channels.publication.capabilitySurface.menu', { defaultValue: 'Menu entry' });
+    case 'message-action-buttons':
+      return t('settings.channels.publication.capabilitySurface.messageButtons', { defaultValue: 'Message buttons' });
+    case 'card-action-callbacks':
+      return t('settings.channels.publication.capabilitySurface.cardActions', { defaultValue: 'Card actions' });
+    case 'thread-aware-reply':
+      return t('settings.channels.publication.capabilitySurface.threadReply', { defaultValue: 'Thread-aware replies' });
+  }
+}
+
 type DiscoveryStatus = {
   kind: 'official' | 'learned' | 'empty';
   count: number;
@@ -459,6 +506,10 @@ const PublicationBindingPanel: React.FC = () => {
     () => new Map((catalog.discoverySummaries ?? []).map((summary) => [summary.channelAccountId, summary] as const)),
     [catalog.discoverySummaries]
   );
+  const capabilitySummaryMap = useMemo(
+    () => new Map((catalog.capabilitySummaries ?? []).map((summary) => [summary.channelAccountId, summary] as const)),
+    [catalog.capabilitySummaries]
+  );
 
   const discoveryStatus = useMemo<DiscoveryStatus | null>(() => {
     if (!selectedEditorChannelAccount || !editor.channelAccountId) {
@@ -489,6 +540,10 @@ const PublicationBindingPanel: React.FC = () => {
       count: availableAudiences.length,
     };
   }, [availableAudiences, discoverySummaryMap, editor.channelAccountId, selectedEditorChannelAccount]);
+  const selectedCapabilitySummary = useMemo(
+    () => (editor.channelAccountId ? capabilitySummaryMap.get(editor.channelAccountId) : undefined),
+    [capabilitySummaryMap, editor.channelAccountId]
+  );
 
   useEffect(() => {
     if (!editor.selectedAudienceKey) {
@@ -978,6 +1033,45 @@ const PublicationBindingPanel: React.FC = () => {
                     }
                     allowClear
                   />
+                  {selectedCapabilitySummary ? (
+                    <div className='space-y-6px border border-[var(--color-border-2)] rd-12px p-10px bg-[var(--color-fill-1)]/40'>
+                      <div className='text-12px font-600 text-t-primary'>
+                        {t('settings.channels.publication.capabilityTitle', { defaultValue: 'Platform capabilities' })}
+                      </div>
+                      <div className='text-12px text-t-secondary leading-relaxed'>
+                        {selectedCapabilitySummary.integrationModel === 'bridge-limited'
+                          ? t('settings.channels.publication.capabilityWeixinBoundary', {
+                              defaultValue:
+                                'This WeChat integration is a constrained bridge surface. Do not expect the same official command, menu, or management surfaces available on official bot platforms.',
+                            })
+                          : t('settings.channels.publication.capabilityDescription', {
+                              defaultValue:
+                                'These are the native command and interaction surfaces this platform can expose for the current publication flow.',
+                            })}
+                      </div>
+                      <div className='flex flex-wrap gap-8px'>
+                        <Tag className={styles.pillTag}>
+                          {getCapabilityIntegrationLabel(selectedCapabilitySummary.integrationModel, t)}
+                        </Tag>
+                        <Tag className={styles.pillTag}>
+                          {getCapabilityDiscoveryModeLabel(selectedCapabilitySummary.discoveryMode, t)}
+                        </Tag>
+                        {selectedCapabilitySummary.actionSurfaces.length > 0 ? (
+                          selectedCapabilitySummary.actionSurfaces.map((actionSurface) => (
+                            <Tag key={actionSurface} className={styles.metricTag}>
+                              {getCapabilityActionSurfaceLabel(actionSurface, t)}
+                            </Tag>
+                          ))
+                        ) : (
+                          <Tag className={styles.statusTag}>
+                            {t('settings.channels.publication.capabilitySurface.none', {
+                              defaultValue: 'No official command surface',
+                            })}
+                          </Tag>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className='space-y-6px'>
