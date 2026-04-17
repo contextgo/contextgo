@@ -76,6 +76,14 @@ type MemoryCandidateDraft = {
   executionBacked: boolean;
 };
 
+type FrozenMountedState = Readonly<{
+  preparedAt: number;
+  threadSummary?: string;
+  mountedSections: ContextPack['sections'];
+  mountedProfiles: readonly ProfileSegment[];
+  pinnedInstructions: readonly string[];
+}>;
+
 const CONTEXT_BUDGET_TOKENS = 420;
 const MAX_THREAD_SUMMARY_MESSAGES = 6;
 const HUMAN_REVIEW_SCORE_THRESHOLD = 32;
@@ -417,6 +425,22 @@ function buildContextUsageEvidence(provenance: ContextPack['provenance'] | undef
   return evidence;
 }
 
+function buildFrozenMountedState(input: {
+  preparedAt: number;
+  threadSummary?: string;
+  mountedSections: ContextPack['sections'];
+  mountedProfiles: readonly ProfileSegment[];
+  pinnedInstructions: readonly string[];
+}): FrozenMountedState {
+  return {
+    preparedAt: input.preparedAt,
+    threadSummary: input.threadSummary,
+    mountedSections: input.mountedSections.map((section) => ({ ...section })),
+    mountedProfiles: input.mountedProfiles.map((profile) => ({ ...profile })),
+    pinnedInstructions: [...input.pinnedInstructions],
+  };
+}
+
 export class ContextRuntimeService {
   constructor(
     private readonly contextService: ContextServiceImpl,
@@ -524,6 +548,18 @@ export class ContextRuntimeService {
       MAX_THREAD_SUMMARY_MESSAGES,
       'DESC'
     ).data;
+    const mountedProfiles = await this.getSessionCompactionMountedProfiles(spaceId, input.conversation.id);
+    const pinnedInstructions = ['Prefer space-consistent answers and reuse approved workflows when relevant.'] as const;
+    const mountedState = buildFrozenMountedState({
+      preparedAt,
+      threadSummary: buildThreadSummary([...recentMessages].toReversed()),
+      mountedSections: [
+        ...(sessionWorkingContextSection ? [sessionWorkingContextSection] : []),
+        ...(projectAssemblyOverlay?.mountedSections ?? []),
+      ],
+      mountedProfiles,
+      pinnedInstructions,
+    });
     const retrieval = await this.contextService.retrieve({
       spaceId,
       threadId: input.conversation.id,
@@ -543,15 +579,7 @@ export class ContextRuntimeService {
       threadId: input.conversation.id,
       retrieval,
       budgetTokens: CONTEXT_BUDGET_TOKENS,
-      overlays: {
-        threadSummary: buildThreadSummary([...recentMessages].toReversed()),
-        mountedSections: [
-          ...(sessionWorkingContextSection ? [sessionWorkingContextSection] : []),
-          ...(projectAssemblyOverlay?.mountedSections ?? []),
-        ],
-        mountedProfiles: await this.getSessionCompactionMountedProfiles(spaceId, input.conversation.id),
-        pinnedInstructions: ['Prefer space-consistent answers and reuse approved workflows when relevant.'],
-      },
+      overlays: mountedState,
     });
 
     const contextBlock = buildContextPackPrompt(assembled.pack);
