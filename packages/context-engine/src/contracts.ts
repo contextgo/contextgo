@@ -179,7 +179,7 @@ export type ContextEnginePolicySet = {
   forgetting: ForgettingPolicy;
 };
 
-export type ContextEngineDependencies = {
+export type ContextEngineProviderDependencies = {
   sources: ContextSourceStore;
   documents: DocumentSnapshotStore;
   chunks: ChunkStore;
@@ -187,6 +187,22 @@ export type ContextEngineDependencies = {
   candidates: MemoryCandidateStore;
   profiles: ProfileStore;
   operations: OperationLogStore;
-  policies: ContextEnginePolicySet;
   vectorIndex?: VectorIndexProvider;
 };
+
+export type ContextEnginePolicyDependencies = {
+  policies: ContextEnginePolicySet;
+};
+
+export type ContextEngineDependencies = ContextEngineProviderDependencies & ContextEnginePolicyDependencies;
+
+export function splitContextEngineDependencies(deps: ContextEngineDependencies): {
+  provider: ContextEngineProviderDependencies;
+  policies: ContextEnginePolicySet;
+} {
+  const { policies, ...provider } = deps;
+  return {
+    provider,
+    policies,
+  };
+}
