@@ -75,7 +75,7 @@ function sanitizePathSegment(value: string): string {
   const normalized = value
     .normalize('NFKC')
     .trim()
-    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ')
+    .replace(/[<>:"/\\|?*\p{Cc}]/gu, ' ')
     .replace(/\s+/g, '-')
     .replace(/^-+|-+$/g, '')
     .replace(/\.+$/g, '');
