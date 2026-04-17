@@ -182,3 +182,10 @@ export type ContextPack = {
   provenance: ContextPackProvenance;
   generatedAt: Timestamp;
 };
+
+export const CONTEXT_ENTITY_FAMILIES = {
+  raw: ['SourceRecord', 'DocumentSnapshot'],
+  retrieval: ['ChunkRecord'],
+  semantic: ['MemoryEntry', 'MemoryCandidateEntry', 'ProfileSegment'],
+  assembly: ['ContextPack'],
+} as const;

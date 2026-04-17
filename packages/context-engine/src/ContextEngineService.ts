@@ -8,6 +8,9 @@ import {
   type AssembleContextPackInput,
   type AssembleContextPackResult,
   type ContextEngineDependencies,
+  type ContextEnginePolicySet,
+  type ContextEngineProviderDependencies,
+  splitContextEngineDependencies,
   type EvaluateCompactionInput,
   type EvaluatePromotionInput,
   type IContextService,
@@ -204,7 +207,14 @@ function toVectorTierSet(input: RetrieveContextInput): readonly VectorIndexTier[
 }
 
 export class ContextEngineService implements IContextService {
-  constructor(protected readonly deps: ContextEngineDependencies) {}
+  protected readonly provider: ContextEngineProviderDependencies;
+  protected readonly policies: ContextEnginePolicySet;
+
+  constructor(protected readonly deps: ContextEngineDependencies) {
+    const split = splitContextEngineDependencies(deps);
+    this.provider = split.provider;
+    this.policies = split.policies;
+  }
 
   async ingestSource(input: IngestSourceInput): Promise<IngestSourceResult> {
     const now = input.createdAt ?? ISO_NOW();
@@ -223,7 +233,7 @@ export class ContextEngineService implements IContextService {
       updatedAt: now,
     };
 
-    await this.deps.sources.upsert(source);
+    await this.provider.sources.upsert(source);
 
     const operations: ContextOperation[] = [
       makeOperation(input, 'source.ingested', source.id, {
@@ -248,7 +258,7 @@ export class ContextEngineService implements IContextService {
         createdAt: now,
       };
 
-      await this.deps.documents.save(snapshot);
+      await this.provider.documents.save(snapshot);
       operations.push(
         makeOperation(input, 'document.snapshotted', snapshot.id, {
           sourceId: source.id,
@@ -258,7 +268,7 @@ export class ContextEngineService implements IContextService {
     }
 
     for (const operation of operations) {
-      await this.deps.operations.append(operation);
+      await this.provider.operations.append(operation);
     }
 
     return {
@@ -275,10 +285,10 @@ export class ContextEngineService implements IContextService {
     const includeChunks = input.includeChunks ?? false;
 
     const [allMemories, allProfiles, allSources, documents] = await Promise.all([
-      this.deps.memories.listBySpace(input.spaceId),
-      input.includeProfiles === false ? Promise.resolve([]) : this.deps.profiles.listBySpace(input.spaceId),
-      input.includeSources === false ? Promise.resolve([]) : this.deps.sources.listBySpace(input.spaceId),
-      includeChunks ? this.deps.documents.listBySpace(input.spaceId) : Promise.resolve([]),
+      this.provider.memories.listBySpace(input.spaceId),
+      input.includeProfiles === false ? Promise.resolve([]) : this.provider.profiles.listBySpace(input.spaceId),
+      input.includeSources === false ? Promise.resolve([]) : this.provider.sources.listBySpace(input.spaceId),
+      includeChunks ? this.provider.documents.listBySpace(input.spaceId) : Promise.resolve([]),
     ]);
     const activeSources = allSources.filter((source) => source.status === 'active');
     const activeSourceIds = new Set(activeSources.map((source) => source.id));
@@ -305,7 +315,7 @@ export class ContextEngineService implements IContextService {
         if (!activeSourceIds.has(document.sourceId)) {
           continue;
         }
-        const chunks = await this.deps.chunks.listByDocument(document.id);
+        const chunks = await this.provider.chunks.listByDocument(document.id);
         for (const chunk of chunks) {
           chunkById.set(chunk.id, chunk);
           documentByChunkId.set(chunk.id, document);
@@ -332,8 +342,8 @@ export class ContextEngineService implements IContextService {
     }
 
     const vectorHits =
-      this.deps.vectorIndex && searchMode !== 'lexical'
-        ? await this.deps.vectorIndex.search({
+      this.provider.vectorIndex && searchMode !== 'lexical'
+        ? await this.provider.vectorIndex.search({
             spaceId: input.spaceId,
             threadId: input.threadId,
             projectSlug: input.projectSlug,
@@ -547,7 +557,7 @@ export class ContextEngineService implements IContextService {
       },
       createdAt: pack.generatedAt,
     };
-    await this.deps.operations.append(operation);
+    await this.provider.operations.append(operation);
 
     return {
       pack,
@@ -556,14 +566,14 @@ export class ContextEngineService implements IContextService {
   }
 
   async evaluatePromotion(input: EvaluatePromotionInput) {
-    return decidePromotion(input.candidate, this.deps.policies.promotion);
+    return decidePromotion(input.candidate, this.policies.promotion);
   }
 
   async evaluateCompaction(input: EvaluateCompactionInput) {
-    return decideCompaction(input.candidate, this.deps.policies.compaction);
+    return decideCompaction(input.candidate, this.policies.compaction);
   }
 
   async assessForgetting(input: AssessForgettingInput) {
-    return assessForgetting(input.candidate, this.deps.policies.forgetting);
+    return assessForgetting(input.candidate, this.policies.forgetting);
   }
 }
