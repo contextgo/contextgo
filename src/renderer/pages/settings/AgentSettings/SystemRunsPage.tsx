@@ -501,7 +501,9 @@ const SystemRunsPage: React.FC = () => {
                 },
                 {
                   key: 'title',
-                  value: run.artifactTitle ? t('agent.contextEngine.artifactTitle', { title: run.artifactTitle }) : undefined,
+                  value: run.artifactTitle
+                    ? t('agent.contextEngine.artifactTitle', { title: run.artifactTitle })
+                    : undefined,
                 },
                 {
                   key: 'path',
@@ -547,7 +549,10 @@ const SystemRunsPage: React.FC = () => {
 
                   <div className={classNames('mt-12px', styles.systemRunsMetaGrid)}>
                     {renderDetailGroup(t('settings.systemRunsRoutingTitle', { defaultValue: 'Routing' }), routingRows)}
-                    {renderDetailGroup(t('settings.systemRunsArtifactTitle', { defaultValue: 'Artifact' }), artifactRows)}
+                    {renderDetailGroup(
+                      t('settings.systemRunsArtifactTitle', { defaultValue: 'Artifact' }),
+                      artifactRows
+                    )}
                   </div>
 
                   {run.recentEvents.length > 0 ? (

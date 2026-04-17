@@ -329,7 +329,9 @@ function buildProjectPromotionCandidate(
   return {
     projectSlug,
     summary: promotedSummaries[0],
-    detail: [...promotedSummaries.slice(1), ...usageEvidence.map((item) => `Usage evidence: ${item}`)].join('\n') || undefined,
+    detail:
+      [...promotedSummaries.slice(1), ...usageEvidence.map((item) => `Usage evidence: ${item}`)].join('\n') ||
+      undefined,
     sourceThreadIds: [threadId],
     confidence: Math.min(0.96, 0.88 + Math.min(0.06, usageEvidence.length * 0.02)),
   };
@@ -365,10 +367,7 @@ function normalizeCapabilityName(value: string): string {
   return normalizeText(value).toLowerCase();
 }
 
-function buildCapabilityUsageEvidence(
-  snapshot: ProjectCapabilitySnapshot | undefined,
-  text: string
-): string[] {
+function buildCapabilityUsageEvidence(snapshot: ProjectCapabilitySnapshot | undefined, text: string): string[] {
   if (!snapshot) {
     return [];
   }
@@ -438,7 +437,10 @@ export class ContextRuntimeService {
     private readonly spaceService: Pick<SpaceServiceImpl, 'getSpace'> = new SpaceServiceImpl(
       new SqliteSpaceRepository()
     ),
-    private readonly projectCapabilityService: Pick<ProjectCapabilityService, 'readSnapshot'> = new ProjectCapabilityService()
+    private readonly projectCapabilityService: Pick<
+      ProjectCapabilityService,
+      'readSnapshot'
+    > = new ProjectCapabilityService()
   ) {}
 
   private readonly pendingTurns = new Map<string, PendingTurn>();
@@ -505,11 +507,12 @@ export class ContextRuntimeService {
     const projectSlug = resolveConversationProjectSlug(input.conversation);
     const projectSnapshot = await this.loadProjectContextSnapshot(input.conversation, spaceId);
     const projectAssemblyOverlay = getProjectAssemblyOverlaySource(this.projectContextMirrorService, projectSnapshot);
-    const capabilitySnapshot = input.conversation.extra?.workingDirectory || input.conversation.extra?.workspace
-      ? await this.projectCapabilityService.readSnapshot(
-          input.conversation.extra?.workingDirectory || input.conversation.extra?.workspace || ''
-        )
-      : undefined;
+    const capabilitySnapshot =
+      input.conversation.extra?.workingDirectory || input.conversation.extra?.workspace
+        ? await this.projectCapabilityService.readSnapshot(
+            input.conversation.extra?.workingDirectory || input.conversation.extra?.workspace || ''
+          )
+        : undefined;
     const sessionWorkingContextSection = await this.vaultSyncService.readSessionWorkingContextSection({
       conversation: input.conversation,
     });

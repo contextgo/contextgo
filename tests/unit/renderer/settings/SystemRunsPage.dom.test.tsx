@@ -183,7 +183,9 @@ describe('SystemRunsPage', () => {
     expect(screen.getByText('Source: hook')).toBeInTheDocument();
     expect(screen.getByText('Artifact kind: session-context')).toBeInTheDocument();
     expect(screen.getByText('Artifact summary: Session working context refreshed.')).toBeInTheDocument();
-    expect(screen.getByText('Lifecycle summary: Planner delegate completed release validation synthesis.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Lifecycle summary: Planner delegate completed release validation synthesis.')
+    ).toBeInTheDocument();
     expect(
       screen.getByText('Artifacts: session_timeline · session_working_context · session_checkpoint')
     ).toBeInTheDocument();
@@ -362,13 +364,17 @@ describe('SystemRunsPage', () => {
     expect(within(proposalRun).getByTestId('system-run-event-qualifier-run-2-0')).toHaveTextContent('proposal');
     expect(within(sessionRun).getByTestId('system-run-event-qualifier-run-1-0')).toHaveTextContent('session-context');
     expect(within(sessionRun).getByTestId('system-run-event-kind-run-1-0')).toHaveTextContent('status');
-    expect(within(distillationRun).getByText('Artifact summary: Merged repeated space-level signals.')).toBeInTheDocument();
+    expect(
+      within(distillationRun).getByText('Artifact summary: Merged repeated space-level signals.')
+    ).toBeInTheDocument();
     expect(within(distillationRun).getByTestId('system-run-event-qualifier-run-3-0')).toHaveTextContent(
       'space-distillation'
     );
     expect(within(connectorRun).getByText('Source record: source-1')).toBeInTheDocument();
     expect(within(connectorRun).getByText('Ingest mode: incremental')).toBeInTheDocument();
     expect(within(connectorRun).getByText('Replay cursor: cursor-42')).toBeInTheDocument();
-    expect(within(connectorRun).getByText('Provenance summary: Merged 3 newly ingested browser records.')).toBeInTheDocument();
+    expect(
+      within(connectorRun).getByText('Provenance summary: Merged 3 newly ingested browser records.')
+    ).toBeInTheDocument();
   });
 });
