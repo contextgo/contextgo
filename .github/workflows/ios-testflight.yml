@@ -13,6 +13,11 @@ on:
         required: false
         default: false
         type: boolean
+      hosted_runner_label:
+        description: 'GitHub-hosted macOS label when use_hosted_runner is true'
+        required: false
+        default: 'macos-15'
+        type: string
   workflow_run:
     workflows:
       - Build and Release
@@ -41,4 +46,5 @@ jobs:
       source_ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.ref }}
       require_release_tag: ${{ github.event_name == 'workflow_run' }}
       use_hosted_runner: ${{ github.event_name == 'workflow_dispatch' && inputs.use_hosted_runner || false }}
+      hosted_runner_label: ${{ github.event_name == 'workflow_dispatch' && inputs.hosted_runner_label || 'macos-15' }}
     secrets: inherit
