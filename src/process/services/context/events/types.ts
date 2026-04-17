@@ -8,6 +8,7 @@ import type {
   ConnectorSource,
   ContextJob,
   ContextJobArtifact,
+  GovernanceLifecycleEnvelope,
   ProjectPromotionCandidate,
   SessionCompactionSnapshot,
   SessionSignal,
@@ -34,6 +35,10 @@ export type ContextEventMap = {
     threadId: string;
     projectSlug?: string;
     interruptedAt: number;
+    snapshot: SessionCompactionSnapshot;
+  };
+  'delegation.completed': GovernanceLifecycleEnvelope & {
+    delegationSummary: string;
     snapshot: SessionCompactionSnapshot;
   };
   'session.signal.detected': {

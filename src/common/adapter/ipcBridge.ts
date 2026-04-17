@@ -1591,10 +1591,13 @@ export interface IExtensionAgentActivityItem {
   assistantId?: string;
   systemOwner?: string;
   systemRole?: string;
+  governanceIdentity?: string;
   scopeLabel?: string;
   maintenanceKind?: string;
+  latestArtifactSummary?: string;
   artifactRelativePath?: string;
   artifactTitle?: string;
+  artifactTargets?: string[];
   recentEvents: IExtensionAgentActivityEvent[];
 }
 
@@ -1613,10 +1616,13 @@ export interface IExtensionSystemRunItem {
   assistantId?: string;
   systemOwner?: string;
   systemRole?: string;
+  governanceIdentity?: string;
   scopeLabel?: string;
   maintenanceKind?: string;
+  latestArtifactSummary?: string;
   artifactRelativePath?: string;
   artifactTitle?: string;
+  artifactTargets?: string[];
   threadId?: string;
   projectSlug?: string;
   reason?: string;
@@ -1687,6 +1693,7 @@ import type {
   IChannelBindingCatalog,
   IChannelPublicationSnapshot,
   IChannelBinding,
+  IChannelPublicationUpsertInput,
   IChannelPublicationCatalogRefreshResult,
   ChannelControlMode,
   IChannelContinuationRequest,
@@ -1788,8 +1795,10 @@ export const channel = {
     IBridgeResponse<IChannelBinding[]>,
     { channelAccountId?: string; connectorId?: string } | void
   >('channel.get-bindings'),
-  upsertBinding: bridge.buildProvider<IBridgeResponse, { binding: IChannelBinding }>('channel.upsert-binding'),
-  deleteBinding: bridge.buildProvider<IBridgeResponse, { bindingId: string }>('channel.delete-binding'),
+  upsertPublication: bridge.buildProvider<IBridgeResponse, { publication: IChannelPublicationUpsertInput }>(
+    'channel.upsert-publication'
+  ),
+  deletePublication: bridge.buildProvider<IBridgeResponse, { publicationId: string }>('channel.delete-publication'),
   prepareConversationPublication: bridge.buildProvider<IBridgeResponse<IAgentProfile>, { conversationId: string }>(
     'channel.prepare-conversation-publication'
   ),

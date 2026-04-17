@@ -15,6 +15,27 @@
 
 这份文档**不**定义最终 prompt 文本，也不定义每个身份最终加载哪些具体 packaged skills。它定义的是协议与边界，而不是最终素材清单。
 
+## Phase 1 状态
+
+- `Session Steward` 的最小治理协议已进入实现
+- `session_compaction` job 已携带治理身份元数据
+- `Session Steward` 已开始通过 `working-context` 与 session checkpoints 写出 vault artifacts
+- `Project Curator`、`Space Curator` 的 skill 装配和控制台观察面仍待后续实现
+
+## Phase 2 状态
+
+- `Project Curator` job 已携带 `project_doc / project_rules / project_skill` artifact targets
+- `Project Curator` 已开始通过 project proposal formatter 产出 append-first proposal notes
+- timer/manual project capability curation trigger 文案已切到 docs + proposals 语义
+- `Space Curator` 的 skill 装配、connector digestion 与 runtime console 仍待后续实现
+
+## Phase 3 状态
+
+- `Space Curator` job 已携带 `space_digest / profile_memory` artifact targets
+- `Space Curator` 已开始写出 space digest 与 profile-memory artifact
+- `connector_digest` 已开始输出 source-aware detail
+- runtime console 与完整的 temporal expiration policy 仍待后续实现
+
 ## 架构前提
 
 本文默认以下架构已经冻结：

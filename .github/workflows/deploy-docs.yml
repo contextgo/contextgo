@@ -1,0 +1,120 @@
+name: Deploy Docs Site
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/docs/**'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-docs-site-main
+  cancel-in-progress: true
+
+jobs:
+  deploy-docs:
+    name: Deploy docs.contextgo.io
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ github.workspace }}
+    env:
+      DOCS_CLOUDFLARE_PROJECT_NAME: ${{ vars.DOCS_CLOUDFLARE_PROJECT_NAME != '' && vars.DOCS_CLOUDFLARE_PROJECT_NAME || 'contextgo-docs' }}
+      DOCS_CLOUDFLARE_DEPLOY_BRANCH: ${{ vars.DOCS_CLOUDFLARE_DEPLOY_BRANCH != '' && vars.DOCS_CLOUDFLARE_DEPLOY_BRANCH || 'main' }}
+
+    steps:
+      - name: Verify Cloudflare deploy secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          missing_secrets=()
+
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            missing_secrets+=("CLOUDFLARE_API_TOKEN")
+          fi
+
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            missing_secrets+=("CLOUDFLARE_ACCOUNT_ID")
+          fi
+
+          if [ "${#missing_secrets[@]}" -gt 0 ]; then
+            echo "::error::Missing required GitHub Actions secrets: ${missing_secrets[*]}"
+            exit 1
+          fi
+
+      - name: Download source archive
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE="${RUNNER_TEMP}/contextgo-docs-source.tar.gz"
+          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-docs-source"
+
+          rm -rf "${EXTRACT_DIR}"
+
+          curl --fail --show-error --silent --location --http1.1 \
+            --retry 8 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 900 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            -o "${ARCHIVE}"
+
+          mkdir -p "${EXTRACT_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
+
+          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -z "${SOURCE_DIR}" ]; then
+            echo "::error::Failed to unpack source archive"
+            exit 1
+          fi
+
+          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install docs dependencies
+        run: npm ci
+        working-directory: ${{ github.workspace }}/apps/docs
+
+      - name: Build docs website
+        run: npm run build
+        working-directory: ${{ github.workspace }}/apps/docs
+
+      - name: Deploy docs to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy build --project-name "$DOCS_CLOUDFLARE_PROJECT_NAME" --branch "$DOCS_CLOUDFLARE_DEPLOY_BRANCH"
+        working-directory: ${{ github.workspace }}/apps/docs

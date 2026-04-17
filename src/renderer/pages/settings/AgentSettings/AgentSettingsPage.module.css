@@ -725,32 +725,81 @@
   gap: 8px;
 }
 
+.systemRunsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.systemRunsMetaGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.systemRunsMetaGroup {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--fill-2) 72%, var(--bg-1) 28%);
+}
+
+.systemRunsMetaGroupTitle {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.systemRunsMetaGroupBody {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .systemRunsDetailText {
   word-break: break-word;
 }
 
+.systemRunsEventStream {
+  display: grid;
+  gap: 6px;
+}
+
 .systemRunsEventRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--fill-2) 56%, var(--bg-1) 44%);
 }
 
-.systemRunsEventIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 12px;
-  min-width: 12px;
-  height: 20px;
+.systemRunsEventTimestamp {
   color: var(--text-tertiary);
-  line-height: 0;
-  flex-shrink: 0;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
 }
 
-.systemRunsEventText {
+.systemRunsEventQualifier {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.systemRunsEventQualifierArtifact {
+  color: rgb(var(--primary-6));
+}
+
+.systemRunsEventMessage {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 220px;
+  color: var(--text-primary);
   word-break: break-word;
 }
 

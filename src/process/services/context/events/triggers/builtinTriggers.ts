@@ -44,6 +44,18 @@ export const CONTEXT_ENGINE_BUILTIN_TRIGGERS: readonly ContextTriggerSpec[] = [
     defaultReason: 'Capture interruption signals before the session context drifts.',
   },
   {
+    id: 'lifecycle.delegation-completed',
+    kind: 'lifecycle',
+    source: 'lifecycle',
+    builder: 'session_compaction',
+    jobType: 'session_compaction',
+    scopeKind: 'conversation',
+    event: 'delegation.completed',
+    label: 'Delegation completed',
+    defaultPriority: 'medium',
+    defaultReason: 'Capture delegated execution evidence before session context drifts.',
+  },
+  {
     id: 'derived.project-promotion',
     kind: 'derived',
     source: 'derived',
@@ -101,7 +113,7 @@ export const CONTEXT_ENGINE_BUILTIN_TRIGGERS: readonly ContextTriggerSpec[] = [
     event: 'manual.space_memory_distillation',
     label: 'Manual space memory distillation',
     defaultPriority: 'medium',
-    defaultReason: 'Manually distill shared space memory from recent project activity.',
+    defaultReason: 'Manually distill shared space memory and profile signals from recent project activity.',
   },
   {
     id: 'manual.connector-digest',
@@ -125,7 +137,8 @@ export const CONTEXT_ENGINE_BUILTIN_TRIGGERS: readonly ContextTriggerSpec[] = [
     event: 'manual.project_capability_curation',
     label: 'Manual project capability curation',
     defaultPriority: 'medium',
-    defaultReason: 'Manually refresh the project capability mirror from local .contextgo automation.',
+    defaultReason:
+      'Manually refresh project docs, AGENTS append proposals, and skill proposals from local automation evidence.',
   },
   {
     id: 'timer.session-pattern-detection',
@@ -149,7 +162,7 @@ export const CONTEXT_ENGINE_BUILTIN_TRIGGERS: readonly ContextTriggerSpec[] = [
     event: 'timer.space_memory_distillation',
     label: 'Space memory distillation',
     defaultPriority: 'high',
-    defaultReason: 'Periodically distill shared space memory from recent activity.',
+    defaultReason: 'Periodically distill shared space memory and profile signals from recent project activity.',
   },
   {
     id: 'timer.connector-digest',
@@ -173,7 +186,7 @@ export const CONTEXT_ENGINE_BUILTIN_TRIGGERS: readonly ContextTriggerSpec[] = [
     event: 'timer.project_capability_curation',
     label: 'Project capability curation',
     defaultPriority: 'medium',
-    defaultReason: 'Periodically refresh the project capability mirror from local automation files.',
+    defaultReason: 'Periodically refresh project docs and append-first proposals from local automation evidence.',
   },
   {
     id: 'connector.connector-digest',

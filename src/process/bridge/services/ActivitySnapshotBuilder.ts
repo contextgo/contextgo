@@ -27,6 +27,7 @@ type MaintenanceRunMetadata = {
   assistantId?: string;
   systemOwner?: string;
   systemRole?: string;
+  governanceIdentity?: string;
   jobType?: string;
   threadId?: string;
   projectSlug?: string;
@@ -43,8 +44,10 @@ type MaintenanceRunMetadata = {
   };
   currentTask?: string;
   scopeLabel?: string;
+  latestArtifactSummary?: string;
   artifactRelativePath?: string;
   artifactTitle?: string;
+  artifactTargets?: string[];
   events?: Array<{
     kind: 'status' | 'tool' | 'message';
     text: string;
@@ -400,10 +403,13 @@ export class ActivitySnapshotBuilder {
         assistantId: snapshot.metadata.assistantId,
         systemOwner: snapshot.metadata.systemOwner,
         systemRole: snapshot.metadata.systemRole,
+        governanceIdentity: snapshot.metadata.governanceIdentity,
         scopeLabel: snapshot.metadata.scopeLabel,
         maintenanceKind: snapshot.metadata.jobType,
+        latestArtifactSummary: snapshot.metadata.latestArtifactSummary,
         artifactRelativePath: snapshot.metadata.artifactRelativePath,
         artifactTitle: snapshot.metadata.artifactTitle,
+        artifactTargets: snapshot.metadata.artifactTargets,
         recentEvents: snapshot.events,
       });
 
@@ -423,10 +429,13 @@ export class ActivitySnapshotBuilder {
         assistantId: snapshot.metadata.assistantId,
         systemOwner: snapshot.metadata.systemOwner,
         systemRole: snapshot.metadata.systemRole,
+        governanceIdentity: snapshot.metadata.governanceIdentity,
         scopeLabel: snapshot.metadata.scopeLabel,
         maintenanceKind: snapshot.metadata.jobType,
+        latestArtifactSummary: snapshot.metadata.latestArtifactSummary,
         artifactRelativePath: snapshot.metadata.artifactRelativePath,
         artifactTitle: snapshot.metadata.artifactTitle,
+        artifactTargets: snapshot.metadata.artifactTargets,
         threadId: snapshot.metadata.threadId || snapshot.run.conversationId,
         projectSlug: snapshot.metadata.projectSlug,
         reason: snapshot.metadata.reason,
