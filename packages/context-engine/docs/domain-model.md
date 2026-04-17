@@ -116,6 +116,18 @@ Space
 - 项目执行规则
 - 团队的默认审批约束
 
+### RetrievalTrace
+
+一次 retrieval 结果的结构化解释对象。
+
+它回答的是：
+
+- 这轮 query 命中了哪些 memory / chunk / profile / source
+- 每个命中主要来自 lexical、vector，还是 project affinity / entity link
+- retrieval 阶段当前保留下来的解释证据是什么
+
+它不是最终发送给 agent 的 payload，也不替代 `ContextPack.provenance`。
+
 ### ContextPack
 
 一次执行真正发送给 agent 的上下文载荷。
@@ -143,6 +155,10 @@ Space
 
 它应该是经过筛选、压缩、排序和裁剪后的结果，而不是简单把历史消息拼起来。
 
-### 4. `Space` 仍然高于记忆引擎
+### 4. `RetrievalTrace` 不等于 debug 日志
+
+它应该是稳定、可消费、可测试的解释对象，而不是散落在各层日志里的临时字符串。
+
+### 5. `Space` 仍然高于记忆引擎
 
 引擎服务于 `Space`，不反向定义 `Space`。
