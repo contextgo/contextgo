@@ -72,6 +72,10 @@ That compatibility is acceptable during migration, but all new built-in assistan
 - `design-director`
   - package root: `src/process/resources/assistant/design/design-director`
   - skill source: `src/process/resources/skills/design-director-pack`
+- `marketing-creative-studio`
+  - package root: `src/process/resources/assistant/creative/marketing-creative-studio`
+  - skill source: `src/process/resources/skills/marketing-creative-studio-pack`
+  - workspace automation: `.contextgo/commands.json`, `.contextgo/hooks/`, `.contextgo/hooks.json`, `.contextgo/schedules.json`
 - `pm-workbench`
   - package root: `src/process/resources/assistant/product/pm-workbench`
   - skill source: `src/process/resources/skills/pm-workbench-pack`

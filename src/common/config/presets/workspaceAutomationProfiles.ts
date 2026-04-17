@@ -754,6 +754,113 @@ const EMPTY_SCHEDULE_SEED: WorkspaceAutomationScheduleSeed = {
   conversationSchedules: [],
 };
 
+const MARKETING_CREATIVE_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the campaign objective, brand context state, audience, channels, and constraints before producing creatives.',
+    templateOverride:
+      'Restate the marketing task, identify the campaign objective, target audience, channels, and locales, separate brand facts from assumptions, and propose the shortest reliable path before generating any creative output.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify brand consistency, platform spec compliance, copy claims, and review gates before delivery.',
+    templateOverride:
+      'Verify the current campaign deliverable end to end. Re-check brand context alignment, theme pack consistency, per-platform spec compliance, copy claim substantiation, banned-term and mandatory-phrase coverage, locale variant integrity, and unresolved review gates. Summarize what is grounded, what is assumed, and what still needs operator or legal confirmation.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'marketing-normalize-brand',
+    enabled: true,
+    name: 'normalize-brand',
+    description:
+      'Normalize raw brand handbooks, official sites, and reference assets into a stable brand context object.',
+    template:
+      'Use the `marketing-context-normalizer` skill for this request. Inventory and categorize every brand source, distill identity, channel preferences, copy rules, visual primitives, and compliance markers, write the result back into `docs/brand/`, and surface unresolved gaps the operator still needs to confirm.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-build-theme',
+    enabled: true,
+    name: 'build-theme-pack',
+    description: 'Build a reusable brand theme pack or campaign theme overlay grounded in the normalized brand context.',
+    template:
+      'Use the `brand-theme-pack` and `marketing-context-normalizer` skills for this request. Decide whether the pack is a base theme or a campaign overlay, assemble palette, typography, motif, composition, and treatment rules from the brand context, map the theme to prioritized channels, write the pack into `docs/brand/themes/<theme-id>/`, and stamp every file with the brand context version.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-generate-ad-creative',
+    enabled: true,
+    name: 'generate-ad-creative',
+    description: 'Generate paid-ad creative variants sized to platform specs from the brand theme pack and brief.',
+    template:
+      'Use the `ad-creative-builder` and `brand-theme-pack` skills for this request. Confirm the brand context, theme pack, campaign brief, and target channels first, decide the variant matrix, look up per-channel platform specs and tone, generate creative variants for each placement, apply per-vertical recipes when relevant, and flag claims needing proof and compliance gates needing legal review.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-generate-social-batch',
+    enabled: true,
+    name: 'generate-social-batch',
+    description: 'Generate organic social asset batches across channels with per-platform tone and format.',
+    template:
+      'Use the `social-asset-batch` and `brand-theme-pack` skills for this request. Confirm inputs, decide the batch matrix, plan per-channel format from platform specs and channel tone, generate post variants with hook, caption, hashtags, visual direction, and alt text, sequence the batch by platform priority and stage, and flag review gates the operator must clear before publish.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-pair-visual-copy',
+    enabled: true,
+    name: 'pair-visual-copy',
+    description: 'Pair visual direction and copy into structured deliverables (PDP, email, one-pager, hero KV pack).',
+    template:
+      'Use the `visual-copy-pairing` and `brand-theme-pack` skills for this request. Pick the module sequence for the surface type, decide claim, body, proof, hero direction, composition, and CTA together per module, resolve hierarchy and the single primary CTA, write the deliverable into `docs/campaigns/<campaign-id>/visual-copy/`, and flag any claims still needing proof or compliance review.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-generate-variant-set',
+    enabled: true,
+    name: 'generate-variant-set',
+    description:
+      'Expand an approved campaign deliverable into a structured variant matrix across the axes the brief declares.',
+    template:
+      'Use the `campaign-variant-generator` skill for this request. Confirm the approved source deliverable and declared axis scope, decide the variant matrix without multiplying axes blindly, generate per-cell variants with explicit source deltas, mark stale variants when the source moved, prefer per-vertical breakdowns when applicable, and flag locale and compliance review gates.',
+  },
+  {
+    type: 'custom',
+    id: 'marketing-review-campaign',
+    enabled: true,
+    name: 'review-campaign',
+    description:
+      'Run the marketing review checklist on the current campaign batch before handing assets off for publish.',
+    template:
+      'Walk through `docs/review-checklist.md` for the current campaign batch. Re-check brand alignment, claim substantiation, platform spec compliance, accessibility, banned-term coverage, mandatory-phrase coverage, locale variant integrity, and compliance overlays for regulated categories. End with a clear pass/blocked verdict, the issues that must be fixed before publish, and the items that should route to legal or native review.',
+  },
+] as const;
+
 const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
   AgentPackageWorkspaceAutomationProfile,
   WorkspaceAutomationProfileDefinition
@@ -791,6 +898,11 @@ const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
   'finance-analyst': {
     label: 'Finance Analyst',
     commandSeeds: FINANCE_ANALYST_COMMAND_SEEDS,
+    scheduleSeed: EMPTY_SCHEDULE_SEED,
+  },
+  'marketing-creative-studio': {
+    label: 'Marketing Creative Studio',
+    commandSeeds: MARKETING_CREATIVE_STUDIO_COMMAND_SEEDS,
     scheduleSeed: EMPTY_SCHEDULE_SEED,
   },
 };

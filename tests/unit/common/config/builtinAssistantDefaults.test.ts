@@ -18,6 +18,9 @@ import {
 import { describe, expect, it } from 'vitest';
 
 const DESIGN_DIRECTOR_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-design-director')!;
+const MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-marketing-creative-studio'
+)!;
 const STARTUP_STRATEGIST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-startup-strategist')!;
 const OFFICE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-office-analyst')!;
 const FINANCE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-finance-analyst')!;
@@ -36,12 +39,16 @@ describe('builtinAssistantDefaults', () => {
     const financeAssistant = assistants.find((assistant) => assistant.id === 'builtin-finance-analyst');
     const officeAssistant = assistants.find((assistant) => assistant.id === 'builtin-office-analyst');
     const codingGuardAssistant = assistants.find((assistant) => assistant.id === 'builtin-karpathy-coding-guard');
+    const marketingCreativeStudioAssistant = assistants.find(
+      (assistant) => assistant.id === 'builtin-marketing-creative-studio'
+    );
 
-    expect(assistants).toHaveLength(9);
+    expect(assistants).toHaveLength(10);
     expect(assistants.map((assistant) => assistant.id)).toEqual([
       'builtin-morph-ppt',
       'builtin-startup-strategist',
       'builtin-design-director',
+      'builtin-marketing-creative-studio',
       'builtin-pm-workbench',
       'builtin-office-analyst',
       'builtin-finance-analyst',
@@ -93,6 +100,34 @@ describe('builtinAssistantDefaults', () => {
         'design-system-adaptation',
         'design-component-visual-spec',
         'design-handoff-brief',
+      ])
+    );
+    expect(marketingCreativeStudioAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'Marketing & Creative',
+          'zh-CN': '市场与创意',
+        },
+        harnessTagI18n: {
+          'en-US': 'Marketing Creative Studio',
+          'zh-CN': 'Marketing Creative Studio',
+        },
+      })
+    );
+    expect(marketingCreativeStudioAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'marketing-context-normalizer',
+        'brand-theme-pack',
+        'ad-creative-builder',
+        'social-asset-batch',
+        'visual-copy-pairing',
+        'campaign-variant-generator',
       ])
     );
     expect(startupAssistant).toEqual(
@@ -310,6 +345,9 @@ describe('builtinAssistantDefaults', () => {
     expect(resolveBuiltinAssistantEnabledSkills('builtin-morph-ppt', undefined)).toEqual(['morph-ppt']);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-design-director', undefined)).toEqual([
       ...DESIGN_DIRECTOR_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-marketing-creative-studio', undefined)).toEqual([
+      ...MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS,
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-startup-strategist', undefined)).toEqual([
       ...STARTUP_STRATEGIST_DEFAULT_SKILLS,
