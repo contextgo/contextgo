@@ -7,17 +7,15 @@ const openPreviewMock = vi.fn();
 const previewContextStateRef = {
   current: {
     isOpen: false,
-    activeTab: null as
-      | null
-      | {
-          id: string;
-          title: string;
-          content: string;
-          contentType: string;
-          metadata?: {
-            fileName?: string;
-          };
-        },
+    activeTab: null as null | {
+      id: string;
+      title: string;
+      content: string;
+      contentType: string;
+      metadata?: {
+        fileName?: string;
+      };
+    },
   },
 };
 const acpModelSelectorMock = vi.fn(() => <div data-testid='acp-model-selector' />);

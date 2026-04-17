@@ -32,10 +32,7 @@ import CreateGroupModal from '@renderer/pages/conversation/platforms/group/Creat
 import { emitter } from '@renderer/utils/emitter';
 import { iconColors } from '@renderer/styles/colors';
 import { dispatchSettingsNavDrawerEvent } from '@/renderer/pages/settings/components/settingsNavigation';
-import {
-  getWorkbenchTitlebarPrimarySlotId,
-  getWorkbenchToolbarSlotId,
-} from '@/renderer/pages/WorkbenchHost/slots';
+import { getWorkbenchTitlebarPrimarySlotId, getWorkbenchToolbarSlotId } from '@/renderer/pages/WorkbenchHost/slots';
 import './titlebar.css';
 
 interface TitlebarProps {

@@ -195,20 +195,24 @@ const capabilityState = useMemo(
 Then add lightweight indicators in `headerExtraNode`, for example:
 
 ```tsx
-{capabilityState?.workspace ? (
-  <ConversationCapabilitySurface
-    title='Workspace'
-    value={capabilityState.workspace.available ? capabilityState.workspace.label : undefined}
-    emptyLabel='No workspace linked'
-  />
-) : null}
-{capabilityState?.preview ? (
-  <ConversationCapabilitySurface
-    title='Preview'
-    value={capabilityState.preview.open ? capabilityState.preview.label : undefined}
-    emptyLabel='No active preview'
-  />
-) : null}
+{
+  capabilityState?.workspace ? (
+    <ConversationCapabilitySurface
+      title='Workspace'
+      value={capabilityState.workspace.available ? capabilityState.workspace.label : undefined}
+      emptyLabel='No workspace linked'
+    />
+  ) : null;
+}
+{
+  capabilityState?.preview ? (
+    <ConversationCapabilitySurface
+      title='Preview'
+      value={capabilityState.preview.open ? capabilityState.preview.label : undefined}
+      emptyLabel='No active preview'
+    />
+  ) : null;
+}
 ```
 
 - [ ] **Step 4: Replace the empty ChatSider fallback with an explicit workspace surface empty state**

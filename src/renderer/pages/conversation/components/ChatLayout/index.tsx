@@ -12,10 +12,7 @@ import { useTitleRename } from '@/renderer/pages/conversation/hooks/useTitleRena
 import { useWorkspaceCollapse } from '@/renderer/pages/conversation/hooks/useWorkspaceCollapse';
 import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { dispatchWorkspaceToggleEvent } from '@/renderer/utils/workspace/workspaceEvents';
-import {
-  getWorkbenchTitlebarPrimarySlotId,
-  getWorkbenchToolbarSlotId,
-} from '@/renderer/pages/WorkbenchHost/slots';
+import { getWorkbenchTitlebarPrimarySlotId, getWorkbenchToolbarSlotId } from '@/renderer/pages/WorkbenchHost/slots';
 import classNames from 'classnames';
 import { isMacEnvironment, isWindowsEnvironment } from '@/renderer/pages/conversation/utils/detectPlatform';
 import {

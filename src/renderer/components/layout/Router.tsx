@@ -243,9 +243,7 @@ const renderWorkbenchRoute = (params: {
 
   return (
     <Suspense fallback={<AppLoader />}>
-      <WorkbenchHost definition={params.definition}>
-        {withRouteFallback(params.loader, params.routePath)}
-      </WorkbenchHost>
+      <WorkbenchHost definition={params.definition}>{withRouteFallback(params.loader, params.routePath)}</WorkbenchHost>
     </Suspense>
   );
 };
@@ -368,13 +366,11 @@ const RoutedPanels: React.FC<{
         <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
         <Route
           path='/conversation/:id'
-          element={
-            renderWorkbenchRoute({
-              loader: loadConversation,
-              routePath: '/conversation/:id',
-              definition: conversationCoworkWorkbench,
-            })
-          }
+          element={renderWorkbenchRoute({
+            loader: loadConversation,
+            routePath: '/conversation/:id',
+            definition: conversationCoworkWorkbench,
+          })}
         />
         <Route path='/agents/*' element={withRouteFallback(loadAgentsPage, '/agents/*')} />
         <Route path='/skills-hub' element={withRouteFallback(loadSkillsHubSettings, '/skills-hub')} />
