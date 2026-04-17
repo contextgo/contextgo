@@ -1828,10 +1828,7 @@ const buildHomeDocument = (
   ].join('\n');
 };
 
-const buildProjectSourceGraphCanvas = (
-  project: ProjectContext,
-  capabilitySnapshot: ProjectCapabilitySnapshot
-): JsonCanvasFile => {
+const buildProjectSourceGraphCanvas = (space: TSpace, project: ProjectContext): JsonCanvasFile => {
   const canvasRelativePath = getProjectGraphRelativePath(project.folderName);
   const nodes: JsonCanvasFile['nodes'] = [
     withContextProjectionMetadata(
@@ -1850,7 +1847,7 @@ const buildProjectSourceGraphCanvas = (
         namespaceKind: CONTEXT_NAMESPACE_KIND.PROJECT,
         projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
         nodeId: getProjectRootNodeId(project.slug),
-        ownerNodeId: getProjectRootNodeId(project.slug),
+        ownerNodeId: getSpaceRootNodeId(space.id),
       })
     ),
     withContextProjectionMetadata(
@@ -3288,7 +3285,7 @@ export class SpaceVaultContextSyncService {
     await ensureFile(projectInsightsPath, nextInsightsDocument);
     await ensureFile(
       path.join(target.vaultPath, getProjectGraphRelativePath(target.project.folderName)),
-      JSON.stringify(buildProjectSourceGraphCanvas(target.project, capabilitySnapshot), null, 2) + '\n'
+      JSON.stringify(buildProjectSourceGraphCanvas(target.space, target.project), null, 2) + '\n'
     );
   }
 
