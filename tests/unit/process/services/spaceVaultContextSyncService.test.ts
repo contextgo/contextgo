@@ -138,6 +138,8 @@ describe('SpaceVaultContextSyncService', () => {
     );
     const sessionContent = await fs.readFile(sessionPath, 'utf8');
     expect(sessionContent).toContain('# Release Session (conv-1)');
+    expect(sessionContent).toContain('contextgoNamespace: session');
+    expect(sessionContent).toContain('contextgoProjection: semantic-context');
     expect(sessionContent).toContain('- Space doc: [[Home|My Space Space]]');
     expect(sessionContent).toContain('Projects/workspace/_context/sessions/conv-1/working-set');
     expect(sessionContent).toContain('## Rolling Summary');
@@ -621,6 +623,8 @@ describe('SpaceVaultContextSyncService', () => {
       'utf8'
     );
     expect(insightsContent).toContain('# workspace Insights');
+    expect(insightsContent).toContain('contextgoNamespace: project');
+    expect(insightsContent).toContain('contextgoProjection: semantic-context');
     expect(insightsContent).toContain('[[Projects/workspace/workspace|workspace]]');
     expect(insightsContent).toContain('[[Projects/workspace/Sessions/conv-1]]');
     expect(insightsContent).toContain('Prefer minimal diffs and explicit validation steps.');
