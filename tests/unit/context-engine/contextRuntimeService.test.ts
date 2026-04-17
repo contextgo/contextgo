@@ -331,7 +331,7 @@ describe('ContextRuntimeService', () => {
     });
   });
 
-  it('assembles and injects a context pack before user request content', async () => {
+  it('baseline[RT1]: assembles and injects a context pack before user request content', async () => {
     const service = new ContextRuntimeService(
       mockContextService as any,
       undefined,

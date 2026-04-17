@@ -213,7 +213,7 @@ describe('ActivitySnapshotBuilder', () => {
     expect(agent?.state).toBe('error');
   });
 
-  it('merges context engine maintenance runs into the snapshot', async () => {
+  it('baseline[MS1]: merges context engine maintenance runs into the snapshot', async () => {
     vi.mocked(repo.getUserConversations).mockResolvedValue({
       data: [],
       total: 0,
