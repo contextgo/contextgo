@@ -219,10 +219,19 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Prepare Python tool cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/hostedtoolcache"
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+        env:
+          AGENT_TOOLSDIRECTORY: ${{ runner.temp }}/hostedtoolcache
+          RUNNER_TOOL_CACHE: ${{ runner.temp }}/hostedtoolcache
 
       # Restore Electron/Electron-Builder caches before any build-related install
       - name: Cache Electron artifacts
