@@ -23,7 +23,7 @@ import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
 import ThoughtDisplay, { type ThoughtData } from '@/renderer/components/chat/ThoughtDisplay';
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
-import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { usePreviewComposer } from '@/renderer/pages/conversation/Preview';
 import {
   usePendingConversationMessages,
   type PendingConversationMessage,
@@ -86,7 +86,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
   const addOrUpdateMessage = useAddOrUpdateMessage();
-  const { setSendBoxHandler } = usePreviewContext();
+  const { setSendBoxHandler } = usePreviewComposer();
 
   const [running, setRunning] = useState(initialUiState.running);
   const [aiProcessing, setAiProcessing] = useState(initialUiState.aiProcessing); // New loading state for AI response

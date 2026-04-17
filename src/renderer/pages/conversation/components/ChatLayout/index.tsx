@@ -10,7 +10,7 @@ import { useLayoutConstraints } from '@/renderer/pages/conversation/hooks/useLay
 import { usePreviewAutoCollapse } from '@/renderer/pages/conversation/hooks/usePreviewAutoCollapse';
 import { useTitleRename } from '@/renderer/pages/conversation/hooks/useTitleRename';
 import { useWorkspaceCollapse } from '@/renderer/pages/conversation/hooks/useWorkspaceCollapse';
-import { PreviewPanel, usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { PreviewPanel, usePreviewSurface } from '@/renderer/pages/conversation/Preview';
 import { dispatchWorkspaceToggleEvent } from '@/renderer/utils/workspace/workspaceEvents';
 import { getWorkbenchTitlebarPrimarySlotId, getWorkbenchToolbarSlotId } from '@/renderer/pages/WorkbenchHost/slots';
 import classNames from 'classnames';
@@ -71,7 +71,7 @@ const ChatLayout: React.FC<{
   }, [isMobile, titlebarPrimarySlotId, toolbarSlotId]);
 
   // Preview panel state
-  const { isOpen: isPreviewOpen } = usePreviewContext();
+  const { isOpen: isPreviewOpen } = usePreviewSurface();
 
   // --- Hook A: workspace collapse ---
   const { rightSiderCollapsed, setRightSiderCollapsed } = useWorkspaceCollapse({

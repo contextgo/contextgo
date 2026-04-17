@@ -75,6 +75,20 @@ const createNormalConversation = (): TChatConversation =>
     },
   }) as TChatConversation;
 
+const createConversationSnapshot = (): TChatConversation =>
+  ({
+    id: 'snapshot-1',
+    type: 'acp',
+    name: 'Snapshot Session',
+    createTime: 1,
+    modifyTime: 1,
+    model: { provider: 'openai', model: 'gpt-4.1' },
+    extra: {
+      workspace: '/Users/bytedance/project/ContextGo',
+      customWorkspace: true,
+    },
+  }) as TChatConversation;
+
 describe('ConversationTabsContext', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -124,5 +138,23 @@ describe('ConversationTabsContext', () => {
 
     expect(result.current.openTabs.map((tab) => tab.id)).toEqual(['group-1', 'child-2']);
     expect(result.current.activeTabId).toBe('child-2');
+  });
+
+  it('does not churn tab state when reopening an unchanged conversation snapshot', () => {
+    const { result } = renderHook(() => useConversationTabs(), { wrapper });
+
+    act(() => {
+      result.current.openTabsForConversations([createConversationSnapshot()], 'snapshot-1');
+    });
+
+    const firstOpenTabs = result.current.openTabs;
+    expect(firstOpenTabs.map((tab) => tab.id)).toEqual(['snapshot-1']);
+
+    act(() => {
+      result.current.openTabsForConversations([createConversationSnapshot()], 'snapshot-1');
+    });
+
+    expect(result.current.openTabs).toBe(firstOpenTabs);
+    expect(result.current.activeTabId).toBe('snapshot-1');
   });
 });

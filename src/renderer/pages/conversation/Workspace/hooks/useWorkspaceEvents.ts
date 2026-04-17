@@ -125,17 +125,29 @@ export function useWorkspaceEvents(options: UseWorkspaceEventsOptions) {
    * Listen to agent response stream - auto refresh workspace (throttled)
    */
   useEffect(() => {
-    const handleGeminiResponse = (data: { type: string }) => {
+    const handleGeminiResponse = (data: { type: string; conversation_id?: string }) => {
+      if (data.conversation_id !== conversation_id) {
+        return;
+      }
+
       if (data.type === 'tool_group' || data.type === 'tool_call') {
         throttledRefresh();
       }
     };
-    const handleAcpResponse = (data: { type: string }) => {
+    const handleAcpResponse = (data: { type: string; conversation_id?: string }) => {
+      if (data.conversation_id !== conversation_id) {
+        return;
+      }
+
       if (data.type === 'acp_tool_call') {
         throttledRefresh();
       }
     };
-    const handleCodexResponse = (data: { type: string }) => {
+    const handleCodexResponse = (data: { type: string; conversation_id?: string }) => {
+      if (data.conversation_id !== conversation_id) {
+        return;
+      }
+
       if (data.type === 'codex_tool_call') {
         throttledRefresh();
       }
@@ -149,7 +161,7 @@ export function useWorkspaceEvents(options: UseWorkspaceEventsOptions) {
       unsubscribeAcp();
       unsubscribeCodex();
     };
-  }, [conversation_id, eventPrefix, throttledRefresh]);
+  }, [conversation_id, throttledRefresh]);
 
   /**
    * 监听手动刷新工作空间事件

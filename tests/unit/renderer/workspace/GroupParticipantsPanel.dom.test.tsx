@@ -48,7 +48,7 @@ vi.mock('@/renderer/utils/model/agentLogo', () => ({
 }));
 
 vi.mock('@/renderer/pages/conversation/Preview', () => ({
-  usePreviewContext: () => ({
+  usePreviewActions: () => ({
     openPreview: vi.fn(),
   }),
 }));

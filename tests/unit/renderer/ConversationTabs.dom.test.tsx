@@ -14,6 +14,7 @@ const navigateMock = vi.fn();
 const useParamsMock = vi.fn();
 const closePreviewMock = vi.fn();
 const getModelInfoInvokeMock = vi.fn();
+const probeModelInfoInvokeMock = vi.fn();
 const setModelInvokeMock = vi.fn();
 const responseStreamOnMock = vi.fn(() => vi.fn());
 const openclawGetModelInfoInvokeMock = vi.fn();
@@ -36,6 +37,7 @@ vi.mock('@/common', () => ({
     },
     acpConversation: {
       getModelInfo: { invoke: (...args: unknown[]) => getModelInfoInvokeMock(...args) },
+      probeModelInfo: { invoke: (...args: unknown[]) => probeModelInfoInvokeMock(...args) },
       setModel: { invoke: (...args: unknown[]) => setModelInvokeMock(...args) },
       responseStream: { on: (...args: unknown[]) => responseStreamOnMock(...args) },
     },
@@ -225,16 +227,21 @@ vi.mock('swr', () => ({
 }));
 
 vi.mock('@/renderer/pages/conversation/Preview', () => ({
-  usePreviewContext: () => ({
-    isOpen: false,
+  usePreviewActions: () => ({
     closePreview: closePreviewMock,
+  }),
+  usePreviewSurface: () => ({
+    isOpen: false,
+    activeTab: null,
+    activeTabId: null,
   }),
 }));
 
 vi.mock('@/renderer/pages/conversation/Preview/context', () => ({
-  usePreviewContext: () => ({
+  usePreviewSurface: () => ({
     isOpen: false,
-    closePreview: closePreviewMock,
+    activeTab: null,
+    activeTabId: null,
   }),
 }));
 
@@ -297,6 +304,21 @@ describe('ConversationTabs', () => {
           currentModelLabel: 'claude-3.7-sonnet',
           canSwitch: true,
           availableModels: [{ id: 'claude-3.7-sonnet', label: 'claude-3.7-sonnet' }],
+        },
+      },
+    });
+    probeModelInfoInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'claude-3.7-sonnet',
+          currentModelLabel: 'claude-3.7-sonnet',
+          canSwitch: true,
+          availableModels: [
+            { id: 'claude-3.7-sonnet', label: 'claude-3.7-sonnet' },
+            { id: 'claude-3.5-haiku', label: 'claude-3.5-haiku' },
+          ],
         },
       },
     });
@@ -615,6 +637,54 @@ describe('ConversationTabs', () => {
     });
 
     expect(screen.getByText('GPT-5 Mini')).toBeInTheDocument();
+  });
+
+  it('falls back to probing backend model info when only a persisted ACP model id is available', async () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+    configStorageGetMock.mockResolvedValueOnce(undefined);
+    getModelInfoInvokeMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'gemini-2.0-flash',
+          currentModelLabel: 'gemini-2.0-flash',
+          canSwitch: false,
+          availableModels: [],
+        },
+      },
+    });
+    probeModelInfoInvokeMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'gemini-2.0-flash',
+          currentModelLabel: 'Gemini 2.0 Flash',
+          canSwitch: true,
+          availableModels: [
+            { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+            { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+          ],
+        },
+      },
+    });
+
+    const { container } = render(
+      <AcpModelSelector conversationId='conv-codex-probe' backend='codex' initialModelId='gemini-2.0-flash' />
+    );
+
+    await waitFor(() => {
+      expect(probeModelInfoInvokeMock).toHaveBeenCalledWith({ backend: 'codex' });
+    });
+
+    await waitFor(() => {
+      const button = container.querySelector('button[title="gemini-2.0-flash"]');
+      expect(button).toBeTruthy();
+      expect(button?.hasAttribute('disabled')).toBe(false);
+    });
+
+    expect(screen.getByText('Gemini 2.5 Pro')).toBeInTheDocument();
   });
 
   it('keeps a native title on the Gemini model button for hover text', () => {

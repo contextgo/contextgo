@@ -5,14 +5,11 @@
  */
 
 import type { TChatConversation } from '@/common/config/storage';
-import type { PreviewMetadata } from '@/renderer/pages/conversation/Preview/context/PreviewContext';
 import React from 'react';
-import ConversationBrowserContextButton from './ConversationBrowserContextButton';
 import { renderWorkflowHeaderAddon } from './group/workflow/workflowUiRegistry';
 
 type HeaderAddonRenderContext = {
   conversation: TChatConversation;
-  openUrlPreview: (url: string, metadata?: PreviewMetadata) => void;
 };
 
 type HeaderAddonDefinition = {
@@ -22,13 +19,6 @@ type HeaderAddonDefinition = {
 };
 
 const headerAddonDefinitions: HeaderAddonDefinition[] = [
-  {
-    id: 'browser-context',
-    shouldRender: ({ conversation }) => conversation.type !== 'group',
-    render: ({ conversation, openUrlPreview }) => (
-      <ConversationBrowserContextButton conversation={conversation} onOpenUrl={openUrlPreview} />
-    ),
-  },
   {
     id: 'group-workflow',
     shouldRender: ({ conversation }) =>

@@ -25,7 +25,7 @@ vi.mock('@/renderer/hooks/context/ConversationContext', () => ({
 }));
 
 vi.mock('@/renderer/pages/conversation/Preview', () => ({
-  usePreviewContext: () => ({
+  usePreviewActions: () => ({
     openPreview: (...args: unknown[]) => openPreviewMock(...args),
   }),
 }));

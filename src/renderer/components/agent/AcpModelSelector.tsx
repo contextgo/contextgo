@@ -8,9 +8,9 @@ import { ipcBridge } from '@/common';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import { ConfigStorage } from '@/common/config/storage';
 import type { IProvider } from '@/common/config/storage';
-import type { AcpModelInfo } from '@/common/types/acpTypes';
+import type { AcpBackend, AcpModelInfo } from '@/common/types/acpTypes';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
-import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { usePreviewSurface } from '@/renderer/pages/conversation/Preview';
 import { getModelDisplayLabel, getModelLogo } from '@/renderer/utils/model/agentLogo';
 import { Button, Dropdown, Menu, Message } from '@arco-design/web-react';
 import { Brain } from '@icon-park/react';
@@ -50,6 +50,23 @@ const buildCodexPreservedModelInfo = (
   };
 };
 
+const applyEffectiveCurrentModel = (
+  info: AcpModelInfo,
+  preferredModelId?: string | null,
+  preferredModelLabel?: string | null
+): AcpModelInfo => {
+  const currentModelId = preferredModelId || info.currentModelId || null;
+  const matchedModel = info.availableModels.find(
+    (model) => normalizeModelLookupValue(model.id) === normalizeModelLookupValue(currentModelId)
+  );
+
+  return {
+    ...info,
+    currentModelId,
+    currentModelLabel: preferredModelLabel || matchedModel?.label || info.currentModelLabel || currentModelId,
+  };
+};
+
 /**
  * Model selector for ACP-based agents.
  * Fetches model info via IPC and listens for real-time updates via responseStream.
@@ -70,7 +87,7 @@ const AcpModelSelector: React.FC<{
   initialModelId?: string;
 }> = ({ conversationId, backend, initialModelId }) => {
   const { t } = useTranslation();
-  const { isOpen: isPreviewOpen } = usePreviewContext();
+  const { isOpen: isPreviewOpen } = usePreviewSurface();
   const layout = useLayoutContext();
   const [modelInfo, setModelInfo] = useState<AcpModelInfo | null>(null);
   const modelInfoRef = useRef(modelInfo);
@@ -83,12 +100,14 @@ const AcpModelSelector: React.FC<{
     let cancelled = false;
     setModelInfo(null);
     hasUserChangedModel.current = false;
+    const preferredModelId = initialModelId || null;
     ipcBridge.acpConversation.getModelInfo
       .invoke({ conversationId })
       .then((result) => {
         if (cancelled) return;
         if (result.success && result.data?.modelInfo) {
           const info = result.data.modelInfo;
+          const effectiveInfo = applyEffectiveCurrentModel(info, preferredModelId);
           if (backend === 'codex') {
             console.log('[AcpModelSelector][codex] Initial model info:', info);
           }
@@ -96,20 +115,21 @@ const AcpModelSelector: React.FC<{
           // canSwitch=false with empty availableModels. Prefer cached data
           // in that case to keep the dropdown functional.
           if (info.availableModels?.length > 0) {
-            setModelInfo(info);
+            setModelInfo(effectiveInfo);
           } else if (backend) {
-            void loadCachedModelInfo(backend, cancelled);
+            setModelInfo(effectiveInfo);
+            void loadCachedModelInfo(backend as AcpBackend, cancelled, preferredModelId);
           } else {
-            setModelInfo(info);
+            setModelInfo(effectiveInfo);
           }
         } else if (backend) {
           // Manager not yet created — load cached model list from storage
-          void loadCachedModelInfo(backend, cancelled);
+          void loadCachedModelInfo(backend as AcpBackend, cancelled, preferredModelId);
         }
       })
       .catch(() => {
         if (!cancelled && backend) {
-          void loadCachedModelInfo(backend, cancelled);
+          void loadCachedModelInfo(backend as AcpBackend, cancelled, preferredModelId);
         }
       });
 
@@ -117,7 +137,11 @@ const AcpModelSelector: React.FC<{
       cancelled = true;
     };
 
-    async function loadCachedModelInfo(backendKey: string, isCancelled: boolean) {
+    async function loadCachedModelInfo(
+      backendKey: AcpBackend,
+      isCancelled: boolean,
+      preferredCurrentModelId?: string | null
+    ) {
       try {
         const cached = await ConfigStorage.get('acp.cachedModels');
         if (isCancelled) return;
@@ -126,14 +150,18 @@ const AcpModelSelector: React.FC<{
           if (backendKey === 'codex') {
             console.log('[AcpModelSelector][codex] Loaded cached model info:', cachedInfo);
           }
-          const effectiveModelId = initialModelId || cachedInfo.currentModelId || null;
-          setModelInfo({
-            ...cachedInfo,
-            currentModelId: effectiveModelId,
-            currentModelLabel:
-              (effectiveModelId && cachedInfo.availableModels.find((m) => m.id === effectiveModelId)?.label) ||
-              effectiveModelId,
-          });
+          setModelInfo(applyEffectiveCurrentModel(cachedInfo, preferredCurrentModelId));
+          return;
+        }
+
+        const probed = await ipcBridge.acpConversation.probeModelInfo.invoke({ backend: backendKey });
+        if (isCancelled) return;
+        const probedInfo = probed.success ? probed.data?.modelInfo : null;
+        if (probedInfo?.availableModels?.length) {
+          if (backendKey === 'codex') {
+            console.log('[AcpModelSelector][codex] Probed model info:', probedInfo);
+          }
+          setModelInfo(applyEffectiveCurrentModel(probedInfo, preferredCurrentModelId));
         }
       } catch {
         // Silently ignore

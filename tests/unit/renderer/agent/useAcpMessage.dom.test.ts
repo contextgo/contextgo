@@ -245,4 +245,78 @@ describe('useAcpMessage', () => {
 
     expect(second.result.current.running).toBe(true);
   });
+
+  it('does not expose handshake-only agent_status transitions as a running turn', async () => {
+    const { result } = renderHook(() => useAcpMessage(CONVERSATION_ID));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.running).toBe(false);
+
+    act(() => {
+      capturedResponseListener?.({
+        type: 'agent_status',
+        msg_id: 'status-connecting',
+        conversation_id: CONVERSATION_ID,
+        data: {
+          status: 'connecting',
+        },
+      });
+    });
+
+    expect(result.current.running).toBe(false);
+    expect(result.current.acpStatus).toBe('connecting');
+
+    act(() => {
+      capturedResponseListener?.({
+        type: 'agent_status',
+        msg_id: 'status-session-active',
+        conversation_id: CONVERSATION_ID,
+        data: {
+          status: 'session_active',
+        },
+      });
+    });
+
+    expect(result.current.running).toBe(false);
+    expect(result.current.acpStatus).toBe('session_active');
+  });
+
+  it('keeps the turn running when session handshake updates arrive after the run has started', async () => {
+    const { result } = renderHook(() => useAcpMessage(CONVERSATION_ID));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      result.current.beginRun('send ACP message');
+      result.current.setAiProcessing(true);
+      capturedResponseListener?.({
+        type: 'start',
+        msg_id: 'start-1',
+        conversation_id: CONVERSATION_ID,
+        data: null,
+      });
+    });
+
+    expect(result.current.running).toBe(true);
+
+    act(() => {
+      capturedResponseListener?.({
+        type: 'agent_status',
+        msg_id: 'status-authenticated',
+        conversation_id: CONVERSATION_ID,
+        data: {
+          status: 'authenticated',
+        },
+      });
+    });
+
+    expect(result.current.running).toBe(true);
+    expect(result.current.aiProcessing).toBe(true);
+    expect(result.current.acpStatus).toBe('authenticated');
+  });
 });

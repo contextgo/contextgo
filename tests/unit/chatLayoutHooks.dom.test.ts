@@ -382,4 +382,27 @@ describe('useWorkspaceCollapse', () => {
 
     expect(result.current.rightSiderCollapsed).toBe(true);
   });
+
+  it('ignores workspace file-state events from other conversations', () => {
+    globalThis.localStorage.setItem(STORAGE_KEY, 'false');
+
+    const { result } = renderHook(() =>
+      useWorkspaceCollapse({ workspaceEnabled: true, isMobile: false, conversationId: 'conv-1' })
+    );
+
+    expect(result.current.rightSiderCollapsed).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent('contextgo-workspace-has-files', {
+          detail: {
+            hasFiles: false,
+            conversationId: 'conv-2',
+          },
+        })
+      );
+    });
+
+    expect(result.current.rightSiderCollapsed).toBe(false);
+  });
 });

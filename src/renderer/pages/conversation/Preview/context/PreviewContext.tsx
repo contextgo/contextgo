@@ -40,6 +40,19 @@ export interface PreviewTab {
   originalContent?: string; // 原始内容，用于对比 / Original content for comparison
 }
 
+export interface PreviewSurfaceTab {
+  id: string;
+  contentType: PreviewContentType;
+  metadata?: PreviewMetadata;
+  title: string;
+}
+
+export interface PreviewSurfaceValue {
+  activeTab: PreviewSurfaceTab | null;
+  activeTabId: string | null;
+  isOpen: boolean;
+}
+
 export interface PreviewContextValue {
   // 预览面板状态 / Preview panel state
   isOpen: boolean;
@@ -70,7 +83,24 @@ export interface PreviewContextValue {
   clearDomSnippets: () => void;
 }
 
+export interface PreviewActionsValue {
+  closePreview: PreviewContextValue['closePreview'];
+  openPreview: PreviewContextValue['openPreview'];
+}
+
+export interface PreviewComposerValue {
+  addToSendBox: PreviewContextValue['addToSendBox'];
+  setSendBoxHandler: PreviewContextValue['setSendBoxHandler'];
+  domSnippets: PreviewContextValue['domSnippets'];
+  addDomSnippet: PreviewContextValue['addDomSnippet'];
+  removeDomSnippet: PreviewContextValue['removeDomSnippet'];
+  clearDomSnippets: PreviewContextValue['clearDomSnippets'];
+}
+
 const PreviewContext = createContext<PreviewContextValue | null>(null);
+const PreviewSurfaceContext = createContext<PreviewSurfaceValue | null>(null);
+const PreviewActionsContext = createContext<PreviewActionsValue | null>(null);
+const PreviewComposerContext = createContext<PreviewComposerValue | null>(null);
 
 // 持久化 key / Persistence keys
 const PREVIEW_TABS_KEY = 'contextgo_preview_tabs';
@@ -496,6 +526,10 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const debounceTimers = new Map<string, NodeJS.Timeout>();
 
     const unsubscribe = ipcBridge.fileStream.contentUpdate.on(({ filePath, content, operation }) => {
+      if (!isOpen) {
+        return;
+      }
+
       // 如果是删除操作，立即处理，不需要防抖 / If delete operation, handle immediately without debounce
       if (operation === 'delete') {
         // 清除该文件的防抖定时器 / Clear debounce timer for this file
@@ -562,7 +596,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
       debounceTimers.forEach((timer) => clearTimeout(timer));
       debounceTimers.clear();
     };
-  }, [closeTab]); // 只依赖 closeTab，不依赖 tabs，避免重复订阅 / Only depend on closeTab, not tabs, to avoid re-subscribing
+  }, [closeTab, isOpen]); // 仅在 surface 打开时消费更新，避免隐藏预览驱动聊天页抖动 / Ignore hidden preview updates
 
   // File mtime polling: detect external file changes (Claude Code CLI, Gemini, etc.) by comparing lastModified.
   // Only polls the active tab to minimize IPC overhead; checks other tabs once on tab switch.
@@ -613,7 +647,7 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const activeTabRef = useRef<PreviewTab | null>(null);
   activeTabRef.current = activeTab;
 
-  const activeFilePath = activeTab?.metadata?.filePath;
+  const activeFilePath = isOpen ? activeTab?.metadata?.filePath : undefined;
 
   // Poll active tab every 1s
   useEffect(() => {
@@ -700,13 +734,87 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
     clearDomSnippets,
   ]);
 
-  return <PreviewContext.Provider value={previewContextValue}>{children}</PreviewContext.Provider>;
+  const previewSurfaceActiveTab = useMemo<PreviewSurfaceTab | null>(() => {
+    if (!activeTab) {
+      return null;
+    }
+
+    return {
+      id: activeTab.id,
+      contentType: activeTab.contentType,
+      metadata: activeTab.metadata,
+      title: activeTab.title,
+    };
+  }, [activeTabId, activeTab?.contentType, activeTab?.metadata, activeTab?.title]);
+
+  const previewSurfaceValue = useMemo<PreviewSurfaceValue>(
+    () => ({
+      activeTab: previewSurfaceActiveTab,
+      activeTabId,
+      isOpen,
+    }),
+    [activeTabId, isOpen, previewSurfaceActiveTab]
+  );
+
+  const previewActionsValue = useMemo<PreviewActionsValue>(
+    () => ({
+      closePreview,
+      openPreview,
+    }),
+    [closePreview, openPreview]
+  );
+
+  const previewComposerValue = useMemo<PreviewComposerValue>(
+    () => ({
+      addToSendBox,
+      setSendBoxHandler,
+      domSnippets,
+      addDomSnippet,
+      removeDomSnippet,
+      clearDomSnippets,
+    }),
+    [addDomSnippet, addToSendBox, clearDomSnippets, domSnippets, removeDomSnippet, setSendBoxHandler]
+  );
+
+  return (
+    <PreviewActionsContext.Provider value={previewActionsValue}>
+      <PreviewSurfaceContext.Provider value={previewSurfaceValue}>
+        <PreviewComposerContext.Provider value={previewComposerValue}>
+          <PreviewContext.Provider value={previewContextValue}>{children}</PreviewContext.Provider>
+        </PreviewComposerContext.Provider>
+      </PreviewSurfaceContext.Provider>
+    </PreviewActionsContext.Provider>
+  );
 };
 
 export const usePreviewContext = () => {
   const context = useContext(PreviewContext);
   if (!context) {
     throw new Error('usePreviewContext must be used within PreviewProvider');
+  }
+  return context;
+};
+
+export const usePreviewSurface = () => {
+  const context = useContext(PreviewSurfaceContext);
+  if (!context) {
+    throw new Error('usePreviewSurface must be used within PreviewProvider');
+  }
+  return context;
+};
+
+export const usePreviewActions = () => {
+  const context = useContext(PreviewActionsContext);
+  if (!context) {
+    throw new Error('usePreviewActions must be used within PreviewProvider');
+  }
+  return context;
+};
+
+export const usePreviewComposer = () => {
+  const context = useContext(PreviewComposerContext);
+  if (!context) {
+    throw new Error('usePreviewComposer must be used within PreviewProvider');
   }
   return context;
 };

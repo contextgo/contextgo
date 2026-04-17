@@ -15,7 +15,7 @@ import type {
 } from '@/common/config/storage';
 import { buildHarnessArtifactPaths } from '@/common/utils';
 import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
-import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { usePreviewActions } from '@/renderer/pages/conversation/Preview';
 import { getAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { Button, Message, Typography } from '@arco-design/web-react';
@@ -148,7 +148,7 @@ const GroupParticipantsPanel: React.FC<GroupParticipantsPanelProps> = ({
   status,
 }) => {
   const { t } = useTranslation();
-  const { openPreview } = usePreviewContext();
+  const { openPreview } = usePreviewActions();
 
   const isHarnessMode = collaboration?.mode === 'planner-generator-evaluator';
   const harnessCollaboration = isHarnessMode ? collaboration : undefined;

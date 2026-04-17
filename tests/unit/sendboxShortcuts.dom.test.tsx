@@ -45,6 +45,7 @@ vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
 
 vi.mock('@/renderer/pages/conversation/Preview', () => ({
   usePreviewContext: () => mockUsePreviewContext(),
+  usePreviewComposer: () => mockUsePreviewContext(),
 }));
 
 vi.mock('@/renderer/hooks/chat/useInputFocusRing', () => ({

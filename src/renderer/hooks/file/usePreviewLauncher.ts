@@ -8,7 +8,7 @@ import { ipcBridge } from '@/common';
 import { joinPath } from '@/common/chat/chatLib';
 import type { PreviewContentType } from '@/common/types/preview';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
-import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { usePreviewActions } from '@/renderer/pages/conversation/Preview';
 import {
   LARGE_TEXT_PREVIEW_MAX_LENGTH,
   LARGE_TEXT_PREVIEW_THRESHOLD,
@@ -69,7 +69,7 @@ interface PreviewLaunchOptions {
 export const usePreviewLauncher = () => {
   const conversationContext = useConversationContextSafe();
   const workspace = conversationContext?.workspace;
-  const { openPreview } = usePreviewContext();
+  const { openPreview } = usePreviewActions();
   const [loading, setLoading] = useState(false);
 
   /**

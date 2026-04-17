@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
-import { usePreviewContext } from '../../context/PreviewContext';
+import { usePreviewComposer } from '../../context/PreviewContext';
 import type { SelectionPosition } from '@/renderer/hooks/ui/useTextSelection';
 import { useTranslation } from 'react-i18next';
 
@@ -25,7 +25,7 @@ interface SelectionToolbarProps {
  */
 const SelectionToolbar: React.FC<SelectionToolbarProps> = ({ selectedText, position, onClear }) => {
   const { t } = useTranslation();
-  const { addToSendBox } = usePreviewContext();
+  const { addToSendBox } = usePreviewComposer();
 
   // 使用 Floating UI 定位工具栏（跟随鼠标位置）/ Use Floating UI to position toolbar (follow mouse position)
   const { refs, floatingStyles } = useFloating({

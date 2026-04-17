@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { render, renderHook, act } from '@testing-library/react';
 import React from 'react';
 
 // ── Mocks ───────────────────────────────────────────────────────────────────
@@ -24,7 +24,17 @@ const mockGetFileMetadata = vi.fn();
 const mockReadFile = vi.fn();
 const mockGetImageBase64 = vi.fn();
 const mockWriteFile = vi.fn();
-const mockContentUpdateOn = vi.fn(() => vi.fn());
+let capturedContentUpdateListener:
+  | ((payload: { filePath: string; content: string; operation?: 'write' | 'delete' }) => void)
+  | null = null;
+const mockContentUpdateOn = vi.fn(
+  (listener: (payload: { filePath: string; content: string; operation?: 'write' | 'delete' }) => void) => {
+    capturedContentUpdateListener = listener;
+    return () => {
+      capturedContentUpdateListener = null;
+    };
+  }
+);
 const mockPreviewOpenOn = vi.fn(() => vi.fn());
 
 vi.mock('@/common', () => ({
@@ -54,8 +64,11 @@ vi.mock('@/renderer/utils/emitter', () => ({
 
 // Import after mocks
 import {
+  usePreviewComposer,
   PreviewProvider,
+  usePreviewActions,
   usePreviewContext,
+  usePreviewSurface,
 } from '../../src/renderer/pages/conversation/Preview/context/PreviewContext';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -352,6 +365,7 @@ describe('PreviewContext — persisted preview tabs', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     localStorage.clear();
+    capturedContentUpdateListener = null;
   });
 
   afterEach(() => {
@@ -411,5 +425,158 @@ describe('PreviewContext — persisted preview tabs', () => {
 
     expect(persistedTabs).toHaveLength(1);
     expect(persistedTabs[0]?.contentType).toBe('code');
+  });
+
+  it('does not start background file polling for restored tabs while the preview surface is closed', async () => {
+    localStorage.setItem(
+      'contextgo_preview_tabs',
+      JSON.stringify([
+        {
+          id: 'code-tab',
+          title: 'index.ts',
+          content: 'export const ready = true;',
+          contentType: 'code',
+          metadata: {
+            filePath: '/workspace/index.ts',
+            language: 'typescript',
+          },
+        },
+      ])
+    );
+    localStorage.setItem('contextgo_preview_active_tab_id', 'code-tab');
+    mockGetFileMetadata.mockResolvedValue({ lastModified: 2000 });
+
+    renderHook(() => usePreviewContext(), { wrapper });
+
+    await act(async () => {
+      await tickPoll(1200);
+    });
+
+    expect(mockGetFileMetadata).not.toHaveBeenCalled();
+  });
+
+  it('ignores hidden file stream updates for restored tabs until the preview surface is reopened', async () => {
+    localStorage.setItem(
+      'contextgo_preview_tabs',
+      JSON.stringify([
+        {
+          id: 'code-tab',
+          title: 'index.ts',
+          content: 'export const ready = true;',
+          contentType: 'code',
+          metadata: {
+            filePath: '/workspace/index.ts',
+            language: 'typescript',
+          },
+        },
+      ])
+    );
+    localStorage.setItem('contextgo_preview_active_tab_id', 'code-tab');
+
+    const { result } = renderHook(() => usePreviewContext(), { wrapper });
+
+    act(() => {
+      capturedContentUpdateListener?.({
+        filePath: '/workspace/index.ts',
+        content: 'export const ready = false;',
+        operation: 'write',
+      });
+    });
+
+    await act(async () => {
+      await tickPoll(600);
+    });
+
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.activeTab?.content).toBe('export const ready = true;');
+  });
+});
+
+describe('PreviewContext — lightweight surface and action hooks', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    localStorage.clear();
+
+    mockGetFileMetadata.mockResolvedValue({ lastModified: 1000 });
+    mockReadFile.mockResolvedValue('file content');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    localStorage.clear();
+  });
+
+  it('does not rerender lightweight consumers when active tab content changes without surface changes', async () => {
+    const surfaceRenderSpy = vi.fn();
+    const actionsRenderSpy = vi.fn();
+    const composerRenderSpy = vi.fn();
+    const latestActions: { current: ReturnType<typeof usePreviewActions> | null } = {
+      current: null,
+    };
+
+    const SurfaceProbe = () => {
+      const surface = usePreviewSurface();
+      surfaceRenderSpy({
+        isOpen: surface.isOpen,
+        activeTabId: surface.activeTabId,
+        title: surface.activeTab?.title ?? null,
+      });
+      return null;
+    };
+
+    const ActionsProbe = () => {
+      const actions = usePreviewActions();
+      latestActions.current = actions;
+      actionsRenderSpy();
+      return null;
+    };
+
+    const ComposerProbe = () => {
+      const composer = usePreviewComposer();
+      composerRenderSpy({
+        domSnippetCount: composer.domSnippets.length,
+      });
+      return null;
+    };
+
+    render(
+      React.createElement(
+        PreviewProvider,
+        null,
+        React.createElement(SurfaceProbe),
+        React.createElement(ActionsProbe),
+        React.createElement(ComposerProbe)
+      )
+    );
+
+    expect(latestActions.current).not.toBeNull();
+
+    act(() => {
+      latestActions.current?.openPreview('initial', 'code', {
+        filePath: '/workspace/file.ts',
+        title: 'file.ts',
+        language: 'typescript',
+      });
+    });
+
+    await act(async () => {
+      await tickPoll();
+    });
+
+    surfaceRenderSpy.mockClear();
+    actionsRenderSpy.mockClear();
+    composerRenderSpy.mockClear();
+    mockGetFileMetadata.mockResolvedValue({ lastModified: 2000 });
+    mockReadFile.mockResolvedValue('updated content');
+
+    await act(async () => {
+      await tickPoll(1000);
+    });
+
+    expect(mockReadFile).toHaveBeenCalledWith({ path: '/workspace/file.ts' });
+    expect(surfaceRenderSpy).not.toHaveBeenCalled();
+    expect(actionsRenderSpy).not.toHaveBeenCalled();
+    expect(composerRenderSpy).not.toHaveBeenCalled();
   });
 });

@@ -48,6 +48,10 @@ export function useWorkspaceCollapse({
   // Current active conversation ID (for recording user manual operation preference)
   const currentConversationIdRef = useRef<string | undefined>(undefined);
 
+  useEffect(() => {
+    currentConversationIdRef.current = conversationId;
+  }, [conversationId]);
+
   // Mirror ref for collapse state
   const rightCollapsedRef = useRef(rightSiderCollapsed);
 
@@ -94,8 +98,12 @@ export function useWorkspaceCollapse({
       const detail = (event as CustomEvent<WorkspaceHasFilesDetail>).detail;
       const convId = detail.conversationId;
 
+      if (conversationId && convId && convId !== conversationId) {
+        return;
+      }
+
       // Update current conversation ID
-      currentConversationIdRef.current = convId;
+      currentConversationIdRef.current = convId || conversationId;
 
       // Mobile: always keep workspace collapsed to avoid covering main chat area
       if (isMobile) {
@@ -137,7 +145,7 @@ export function useWorkspaceCollapse({
     return () => {
       window.removeEventListener(WORKSPACE_HAS_FILES_EVENT, handleHasFiles);
     };
-  }, [isMobile, workspaceEnabled, rightSiderCollapsed]);
+  }, [conversationId, isMobile, workspaceEnabled, rightSiderCollapsed]);
 
   // Broadcast workspace state event
   useEffect(() => {

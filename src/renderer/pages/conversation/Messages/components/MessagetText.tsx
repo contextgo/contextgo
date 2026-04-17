@@ -8,8 +8,8 @@ import type { IMessageText } from '@/common/chat/chatLib';
 import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import { formatWorkflowRoleLabel, isBuiltInWorkflowRole } from '@/common/config/group';
 import { iconColors } from '@/renderer/styles/colors';
-import { Alert, Button, Message, Tooltip } from '@arco-design/web-react';
-import { Copy, DeleteOne, FileText, PreviewOpen, Write } from '@icon-park/react';
+import { Alert, Message } from '@arco-design/web-react';
+import { DeleteOne, FileText, PreviewOpen, Write } from '@icon-park/react';
 import classNames from 'classnames';
 import type { TFunction } from 'i18next';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -268,7 +268,6 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
     longPressReadyRef.current = false;
   };
   const canUseLongPressCopy = isMobile && hasTextBody;
-  const showCopyButton = !isMobile && !isUserMessage && hasTextBody;
 
   const handleLongPressStart = () => {
     if (!canUseLongPressCopy) {
@@ -293,19 +292,6 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
       handleCopy();
     }
   };
-
-  const copyButton = (
-    <Tooltip content={t('common.copy', { defaultValue: 'Copy' })}>
-      <Button
-        type='text'
-        size='mini'
-        aria-label={t('common.copy', { defaultValue: 'Copy' })}
-        icon={<Copy theme='outline' size='16' fill={iconColors.secondary} className='app-icon' />}
-        className='!min-w-24px !h-24px !p-4px !rd-4px hover:!bg-3 !transition-colors opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-within:opacity-100 focus-within:pointer-events-auto'
-        onClick={handleCopy}
-      />
-    </Tooltip>
-  );
 
   const scheduleMeta = message.content.scheduleMeta;
   const groupMeta = message.content.groupMeta;
@@ -378,7 +364,6 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   const bubbleClassName = classNames(
     'relative min-w-0 max-w-full [&>p:first-child]:mt-0px [&>p:last-child]:mb-0px md:max-w-780px',
     {
-      'pr-40px': showCopyButton,
       'bg-aou-2 p-8px': isUserMessage || scheduleMeta,
       'w-full': !(isUserMessage || scheduleMeta),
     }
@@ -693,7 +678,6 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
                 {data}
               </MarkdownView>
             )}
-            {showCopyButton && <div className='absolute top-8px right-8px z-1'>{copyButton}</div>}
           </div>
         )}
       </div>
