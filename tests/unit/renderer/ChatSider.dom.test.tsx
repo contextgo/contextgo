@@ -101,4 +101,28 @@ describe('ChatSider', () => {
       })
     );
   });
+
+  it('renders an explicit workspace capability empty state when no workspace is available', () => {
+    render(
+      <ChatSider
+        conversation={{
+          id: 'acp-no-workspace',
+          type: 'acp',
+          name: 'Claude Session',
+          model: {
+            platform: 'openai',
+            name: 'Test Model',
+            useModel: 'gpt-5',
+          },
+          createTime: 1,
+          modifyTime: 1,
+          extra: {
+            backend: 'claude',
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText(/No workspace linked/i)).toBeInTheDocument();
+  });
 });
