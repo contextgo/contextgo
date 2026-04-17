@@ -197,11 +197,11 @@ jobs:
         fromJSON(
           vars.BUILD_RUNNER_MODE == 'self-hosted' &&
           (
-            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
-            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
-            '["self-hosted","macOS"]'
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+            '["self-hosted","Linux"]'
           ) ||
-          '["macos-14"]'
+          '["ubuntu-latest"]'
         )
       }}
     steps:
