@@ -317,7 +317,9 @@ function buildProjectPromotionCandidate(
 
 function getProjectAssemblyOverlaySource(
   mirrorService: Pick<ProjectContextMirrorService, 'buildMountedSections'> & {
-    buildAssemblyOverlaySource?: (snapshot: ProjectContextSnapshot | undefined) => ProjectContextAssemblyOverlaySource | undefined;
+    buildAssemblyOverlaySource?: (
+      snapshot: ProjectContextSnapshot | undefined
+    ) => ProjectContextAssemblyOverlaySource | undefined;
   },
   snapshot: ProjectContextSnapshot | undefined
 ): ProjectContextAssemblyOverlaySource | undefined {
