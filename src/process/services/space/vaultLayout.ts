@@ -32,6 +32,9 @@ export const PROJECT_CAPABILITY_COMMANDS_DIR_NAME = 'commands';
 export const PROJECT_CAPABILITY_SCHEDULES_DIR_NAME = 'schedules';
 export const SESSION_WORKING_SET_FILE_NAME = 'working-set.md';
 
+export type ContextgoNamespace = 'space' | 'project' | 'session' | 'source' | 'capability';
+export type ContextgoProjection = 'semantic-context' | 'source-mirror' | 'capability-inventory';
+
 export type ConversationDocumentPaths = {
   sessionRelativePath: string;
   workingSetRelativePath: string;

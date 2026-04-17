@@ -121,6 +121,8 @@ describe('SpaceVaultContextSyncService', () => {
 
     const homeContent = await fs.readFile(path.join(vaultPath, 'Home.md'), 'utf8');
     expect(homeContent).toContain('# My Space Space');
+    expect(homeContent).toContain('contextgoNamespace: space');
+    expect(homeContent).toContain('contextgoProjection: semantic-context');
     expect(homeContent).toContain('[[Canvas/Space Overview|Space Overview Canvas]]');
     expect(homeContent).toContain('[[Projects/workspace/Sessions/conv-1|Release Session (conv-1)]]');
 
@@ -157,11 +159,15 @@ describe('SpaceVaultContextSyncService', () => {
     expect(homeContent).toContain(`[[Projects/${projectDir}/${projectDir}|workspace]]`);
     expect(sessionContent).toContain(`- Project doc: [[Projects/${projectDir}/${projectDir}|workspace]]`);
     const workingSetContent = await fs.readFile(sessionWorkingSetPath, 'utf8');
+    expect(workingSetContent).toContain('contextgoNamespace: session');
+    expect(workingSetContent).toContain('contextgoProjection: semantic-context');
     expect(workingSetContent).toContain('# Release Session Working Set');
     expect(workingSetContent).toContain('No active task distilled yet.');
 
     const projectContent = await fs.readFile(path.join(vaultPath, 'Projects', projectDir, `${projectDir}.md`), 'utf8');
     expect(projectContent).toContain('# workspace');
+    expect(projectContent).toContain('contextgoNamespace: project');
+    expect(projectContent).toContain('contextgoProjection: semantic-context');
     expect(projectContent).toContain('[[Projects/' + projectDir + '/Sources/AGENTS|Project Router]]');
     expect(projectContent).toContain('Projects/workspace/Sessions/conv-1');
     expect(projectContent).toContain('## Source Graph');
@@ -178,6 +184,8 @@ describe('SpaceVaultContextSyncService', () => {
       'utf8'
     );
     expect(baselineContent).toContain('# workspace Baseline');
+    expect(baselineContent).toContain('contextgoNamespace: project');
+    expect(baselineContent).toContain('contextgoProjection: semantic-context');
     expect(baselineContent).toContain('## Canonical Instructions');
     expect(baselineContent).toContain('## Project Overview');
 
@@ -185,6 +193,8 @@ describe('SpaceVaultContextSyncService', () => {
       path.join(vaultPath, 'Projects', projectDir, 'Sources', 'docs', 'guide.md'),
       'utf8'
     );
+    expect(sourceContent).toContain('contextgoNamespace: source');
+    expect(sourceContent).toContain('contextgoProjection: source-mirror');
     expect(sourceContent).toContain('> Mirrored from');
     expect(sourceContent).toContain('# Guide');
     expect(sourceContent).toContain('- Space doc: [[Home|My Space Space]]');
@@ -242,6 +252,8 @@ describe('SpaceVaultContextSyncService', () => {
 
     const homeContent = await fs.readFile(path.join(vaultPath, 'Home.md'), 'utf8');
     expect(homeContent).toContain('contextgoType: space');
+    expect(homeContent).toContain('contextgoNamespace: space');
+    expect(homeContent).toContain('contextgoProjection: semantic-context');
     expect(homeContent).toContain('spaceId: space-bootstrap');
     expect(homeContent).toContain('spaceName: Bootstrap Space');
     expect(homeContent).toContain('# Bootstrap Space Space');
@@ -399,6 +411,8 @@ describe('SpaceVaultContextSyncService', () => {
       'working-context.md'
     );
     const workingContextContent = await fs.readFile(workingContextPath, 'utf8');
+    expect(workingContextContent).toContain('contextgoNamespace: session');
+    expect(workingContextContent).toContain('contextgoProjection: semantic-context');
     expect(workingContextContent).toContain('## Compaction Provenance');
     expect(workingContextContent).toContain('- Operation: `session_compaction`');
     expect(workingContextContent).toContain('- Source profile: `session.compaction.conv-1`');
@@ -680,6 +694,8 @@ describe('SpaceVaultContextSyncService', () => {
       'utf8'
     );
     expect(capabilitiesContent).toContain('# workspace Capabilities');
+    expect(capabilitiesContent).toContain('contextgoNamespace: capability');
+    expect(capabilitiesContent).toContain('contextgoProjection: capability-inventory');
     expect(capabilitiesContent).toContain('- Skills: 1');
     expect(capabilitiesContent).toContain(
       '[[Projects/workspace/_context/capabilities/skills/Release-Guard|Release Guard]]'
@@ -690,6 +706,8 @@ describe('SpaceVaultContextSyncService', () => {
       'utf8'
     );
     expect(capabilityDocContent).toContain('contextgoType: project-capability');
+    expect(capabilityDocContent).toContain('contextgoNamespace: capability');
+    expect(capabilityDocContent).toContain('contextgoProjection: capability-inventory');
     expect(capabilityDocContent).toContain('- Capability kind: Skills');
     expect(capabilityDocContent).toContain('- Implicit invocation: enabled');
   });
