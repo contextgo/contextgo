@@ -76,6 +76,50 @@ export type RetrievedChunk = {
   vectorHits?: readonly VectorSearchHit[];
 };
 
+export type RetrievalTraceEntityKind = 'memory' | 'chunk' | 'profile' | 'source';
+
+export type RetrievalTraceReason =
+  | {
+      kind: 'lexical_match';
+      matchedTerms: readonly string[];
+    }
+  | {
+      kind: 'vector_match';
+      hitCount: number;
+      topScore: number;
+    }
+  | {
+      kind: 'project_affinity';
+      projectSlug: string;
+      scoreBoost: number;
+    }
+  | {
+      kind: 'profile_memory_link';
+      memoryIds: readonly MemoryEntryId[];
+    }
+  | {
+      kind: 'source_memory_link';
+      memoryIds: readonly MemoryEntryId[];
+    }
+  | {
+      kind: 'source_chunk_link';
+      chunkIds: readonly ChunkId[];
+    };
+
+export type RetrievalTraceEntry = {
+  entityKind: RetrievalTraceEntityKind;
+  entityId: string;
+  score: number;
+  reasons: readonly RetrievalTraceReason[];
+};
+
+export type RetrievalTrace = {
+  query: string;
+  queryTerms: readonly string[];
+  searchMode: 'lexical' | 'vector' | 'hybrid';
+  entries: readonly RetrievalTraceEntry[];
+};
+
 export type RetrieveContextInput = {
   spaceId: SpaceId;
   threadId?: ThreadId;
@@ -97,6 +141,7 @@ export type RetrieveContextResult = {
   profiles: readonly ProfileSegment[];
   sources: readonly SourceRecord[];
   totalEstimatedTokens: number;
+  trace: RetrievalTrace;
 };
 
 export type ContextAssemblyOverlays = {
