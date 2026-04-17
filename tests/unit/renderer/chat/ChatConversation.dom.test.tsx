@@ -447,12 +447,12 @@ describe('ChatConversation', () => {
     expect(screen.getByRole('button', { name: 'conversation.workspace.automation.action' })).toBeInTheDocument();
   });
 
-  it('renders the project skill market entry for workspace-backed conversations', () => {
+  it('does not render the standalone skill market entry for workspace-backed conversations', () => {
     const conversation = createConversation('acp', 'acp-skill-market-1');
 
     render(<ChatConversation conversation={conversation} />);
 
-    expect(screen.getByRole('button', { name: 'conversation.workspace.skillMarket.action' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'conversation.workspace.skillMarket.action' })).not.toBeInTheDocument();
   });
 
   it('opens the project automation modal from the header entry', async () => {
@@ -465,20 +465,6 @@ describe('ChatConversation', () => {
     await waitFor(() => {
       expect(screen.getByTestId('project-automation-modal')).toHaveTextContent('acp-automation-open');
     });
-  });
-
-  it('opens the project skill market modal from the header entry', async () => {
-    const conversation = createConversation('acp', 'acp-skill-market-open');
-
-    const { getByTestId } = render(<ChatConversation conversation={conversation} />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.skillMarket.action' }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('project-skill-market-modal')).toHaveTextContent('/tmp/acp-skill-market-open');
-    });
-
-    expect(getByTestId('chat-layout-header-extra')).not.toContainElement(screen.getByTestId('project-skill-market-modal'));
   });
 
   it('opens the unified automation modal without delegating to a separate hooks drawer event', async () => {

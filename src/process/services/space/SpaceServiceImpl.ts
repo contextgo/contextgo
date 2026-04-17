@@ -12,6 +12,7 @@ import type {
   SpaceVaultProviderRef,
   TSpace,
 } from '@/common/config/storage';
+import { normalizeManagedSlashCommandLibrary, type ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import { buildObsidianPathUri, buildObsidianVaultUri } from '@/common/utils/obsidianVaultOpen';
 import { uuid } from '@/common/utils';
 import { execFile } from 'node:child_process';
@@ -166,6 +167,32 @@ export class SpaceServiceImpl implements ISpaceService {
 
     await this.repo.updateSpace(id, updates);
     return this.getSpace(id);
+  }
+
+  async getSpaceCommandLibrary(id: string): Promise<ManagedSlashCommandRecord[]> {
+    const space = await this.repo.getSpace(id);
+    if (!space) {
+      return [];
+    }
+
+    return normalizeManagedSlashCommandLibrary(space.automation?.commands ?? []);
+  }
+
+  async saveSpaceCommandLibrary(id: string, commands: ManagedSlashCommandRecord[]): Promise<ManagedSlashCommandRecord[]> {
+    const existing = await this.repo.getSpace(id);
+    if (!existing) {
+      throw new Error('Space not found');
+    }
+
+    const normalizedCommands = normalizeManagedSlashCommandLibrary(commands);
+    await this.repo.updateSpace(id, {
+      automation: {
+        ...(existing.automation ?? {}),
+        commands: normalizedCommands,
+      },
+    });
+
+    return normalizedCommands;
   }
 
   async openSpaceVault(id: string): Promise<{

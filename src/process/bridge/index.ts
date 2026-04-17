@@ -57,7 +57,7 @@ export function initAllBridges(deps: BridgeDependencies): void {
   initShellBridge();
   initFsBridge();
   initFileWatchBridge();
-  initConversationBridge(deps.conversationService, deps.workerTaskManager);
+  initConversationBridge(deps.conversationService, deps.workerTaskManager, deps.spaceService);
   initApplicationBridge(deps.workerTaskManager);
   initCloudBridge();
   initGeminiConversationBridge(deps.workerTaskManager);

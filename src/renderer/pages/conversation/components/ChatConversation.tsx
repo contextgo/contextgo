@@ -9,13 +9,12 @@ import type { IProvider, TChatConversation, TProviderWithModel } from '@/common/
 import { channel } from '@/common/adapter/ipcBridge';
 import { uuid } from '@/common/utils';
 import addChatIcon from '@/renderer/assets/icons/add-chat.svg';
-import ProjectSkillMarketModal from '@/renderer/pages/conversation/ProjectSkillMarketModal';
 import ProjectAutomationModal from '@/renderer/pages/schedule/components/ProjectAutomationModal';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { iconColors } from '@/renderer/styles/colors';
 import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
 import { Button, Dropdown, Menu, Message, Tooltip, Typography } from '@arco-design/web-react';
-import { ConnectionPoint, History, Search, SettingTwo } from '@icon-park/react';
+import { ConnectionPoint, History, SettingTwo } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -237,41 +236,6 @@ const ProjectAutomationEntryButton: React.FC<{ conversation: TChatConversation }
   );
 };
 
-const ProjectSkillMarketEntryButton: React.FC<{ conversation: TChatConversation; onOpen: () => void }> = ({
-  conversation,
-  onOpen,
-}) => {
-  const { t } = useTranslation();
-  const workspacePath = getConversationWorkspacePath(conversation);
-
-  if (!workspacePath) {
-    return null;
-  }
-
-  return (
-    <>
-      <Tooltip content={t('conversation.workspace.skillMarket.action')}>
-        <Button
-          type='text'
-          size='small'
-          className='app-header-pill-button chat-header-publish-pill !h-auto !w-auto !min-w-0'
-          aria-label={t('conversation.workspace.skillMarket.action')}
-          onClick={onOpen}
-        >
-          <span className='app-header-pill'>
-            <span className='app-header-pill__icon'>
-              <Search theme='outline' size={16} fill={iconColors.primary} />
-            </span>
-            <span className='hidden md:inline text-12px text-t-primary'>
-              {t('conversation.workspace.skillMarket.action')}
-            </span>
-          </span>
-        </Button>
-      </Tooltip>
-    </>
-  );
-};
-
 const _AssociatedConversation: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
   const { data } = useSWR(['getAssociateConversation', conversation_id], () =>
     ipcBridge.conversation.getAssociateConversation.invoke({ conversation_id })
@@ -370,10 +334,7 @@ type GeminiConversation = Extract<TChatConversation, { type: 'gemini' }>;
 const GeminiConversationPanel: React.FC<{
   conversation: GeminiConversation;
   sliderTitle: React.ReactNode;
-  skillMarketVisible: boolean;
-  onOpenSkillMarket: () => void;
-  onCloseSkillMarket: () => void;
-}> = ({ conversation, sliderTitle, skillMarketVisible, onOpenSkillMarket, onCloseSkillMarket }) => {
+}> = ({ conversation, sliderTitle }) => {
   // Save model selection to conversation via IPC
   const onSelectModel = useCallback(
     async (_provider: IProvider, modelName: string) => {
@@ -400,14 +361,11 @@ const GeminiConversationPanel: React.FC<{
           <PublishAgentEntryButton conversation={conversation} />
         </div>
         <div className='shrink-0'>
-          <ProjectSkillMarketEntryButton conversation={conversation} onOpen={onOpenSkillMarket} />
-        </div>
-        <div className='shrink-0'>
           <ProjectAutomationEntryButton conversation={conversation} />
         </div>
       </div>
     ),
-    [conversation, onOpenSkillMarket]
+    [conversation]
   );
 
   const chatLayoutProps = {
@@ -426,20 +384,9 @@ const GeminiConversationPanel: React.FC<{
   };
 
   return (
-    <>
-      <ChatLayout {...chatLayoutProps} conversationId={conversation.id}>
-        <GeminiChat
-          conversation_id={conversation.id}
-          workspace={conversation.extra.workspace}
-          modelSelection={modelSelection}
-        />
-      </ChatLayout>
-      <ProjectSkillMarketModal
-        visible={skillMarketVisible}
-        workspacePath={conversation.extra.workspace}
-        onClose={onCloseSkillMarket}
-      />
-    </>
+    <ChatLayout {...chatLayoutProps} conversationId={conversation.id}>
+      <GeminiChat conversation_id={conversation.id} workspace={conversation.extra.workspace} modelSelection={modelSelection} />
+    </ChatLayout>
   );
 };
 
@@ -448,18 +395,9 @@ const ChatConversation: React.FC<{
 }> = ({ conversation }) => {
   const { t } = useTranslation();
   const workspaceEnabled = Boolean(conversation?.extra?.workspace);
-  const [skillMarketModalVisible, setSkillMarketModalVisible] = useState(false);
 
   const isGeminiConversation = conversation?.type === 'gemini';
   const isGroupConversation = conversation?.type === 'group';
-
-  const handleOpenSkillMarket = useCallback(() => {
-    setSkillMarketModalVisible(true);
-  }, []);
-
-  const handleCloseSkillMarket = useCallback(() => {
-    setSkillMarketModalVisible(false);
-  }, []);
 
   const conversationNode = useMemo(() => {
     if (!conversation || isGeminiConversation) return null;
@@ -495,10 +433,6 @@ const ChatConversation: React.FC<{
   const { info: presetAssistantInfo, isLoading: isLoadingPreset } = usePresetAssistantInfo(
     isGeminiConversation || isGroupConversation ? undefined : conversation
   );
-
-  useEffect(() => {
-    setSkillMarketModalVisible(false);
-  }, [conversation?.id]);
 
   const sliderTitle: React.ReactNode = null;
 
@@ -560,18 +494,13 @@ const ChatConversation: React.FC<{
         ) : null}
         {conversation ? (
           <div className='shrink-0'>
-            <ProjectSkillMarketEntryButton conversation={conversation} onOpen={handleOpenSkillMarket} />
-          </div>
-        ) : null}
-        {conversation ? (
-          <div className='shrink-0'>
             <ProjectAutomationEntryButton conversation={conversation} />
           </div>
         ) : null}
         {conversation ? renderConversationHeaderAddons({ conversation }) : null}
       </div>
     ),
-    [conversation, handleOpenSkillMarket]
+    [conversation]
   );
 
   if (conversation && conversation.type === 'gemini') {
@@ -582,9 +511,6 @@ const ChatConversation: React.FC<{
         key={conversation.id}
         conversation={conversation}
         sliderTitle={sliderTitle}
-        skillMarketVisible={skillMarketModalVisible}
-        onOpenSkillMarket={handleOpenSkillMarket}
-        onCloseSkillMarket={handleCloseSkillMarket}
       />
     );
   }
@@ -614,28 +540,19 @@ const ChatConversation: React.FC<{
           };
 
   return (
-    <>
-      <ChatLayout
-        title={conversation?.name}
-        {...chatLayoutProps}
-        headerLeft={modelSelector}
-        headerExtra={headerExtraNode}
-        siderTitle={sliderTitle}
-        sider={<ChatSider conversation={conversation} />}
-        workspaceEnabled={workspaceEnabled}
-        workspacePath={conversation?.extra?.workspace}
-        conversationId={conversation?.id}
-      >
-        {conversationNode}
-      </ChatLayout>
-      {conversation?.extra?.workspace ? (
-        <ProjectSkillMarketModal
-          visible={skillMarketModalVisible}
-          workspacePath={conversation.extra.workspace}
-          onClose={handleCloseSkillMarket}
-        />
-      ) : null}
-    </>
+    <ChatLayout
+      title={conversation?.name}
+      {...chatLayoutProps}
+      headerLeft={modelSelector}
+      headerExtra={headerExtraNode}
+      siderTitle={sliderTitle}
+      sider={<ChatSider conversation={conversation} />}
+      workspaceEnabled={workspaceEnabled}
+      workspacePath={conversation?.extra?.workspace}
+      conversationId={conversation?.id}
+    >
+      {conversationNode}
+    </ChatLayout>
   );
 };
 

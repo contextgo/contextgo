@@ -2,8 +2,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tmp') } }));
 
-const { readWorkspaceCommandLibraryMock } = vi.hoisted(() => ({
+const { readWorkspaceCommandLibraryMock, mockContextRuntimeService } = vi.hoisted(() => ({
   readWorkspaceCommandLibraryMock: vi.fn(async () => null),
+  mockContextRuntimeService: {
+    registerConversation: vi.fn(async () => {}),
+    removeConversationContext: vi.fn(async () => {}),
+    recordConversationStopped: vi.fn(async () => {}),
+    prepareOutgoingTurn: vi.fn(
+      async ({
+        agentInput,
+        agentContent,
+      }: {
+        agentInput: string;
+        agentContent: string;
+      }) => ({
+        agentInput,
+        agentContent,
+      })
+    ),
+  },
 }));
 
 // Capture provider handlers so tests can invoke them directly
@@ -116,6 +133,11 @@ vi.mock('@process/task/agentUtils', () => ({
   prepareFirstMessage: (...args: unknown[]) => prepareFirstMessageMock(...args),
 }));
 
+vi.mock('@process/services/context/contextServiceSingleton', () => ({
+  contextService: {},
+  contextRuntimeService: mockContextRuntimeService,
+}));
+
 vi.mock('@process/bridge/services/AssistantHookRuntime', () => ({
   AssistantHookRuntime: vi.fn(function AssistantHookRuntime() {
     return {
@@ -130,6 +152,7 @@ vi.mock('@process/utils/tray', () => ({
 
 import { initConversationBridge } from '../../src/process/bridge/conversationBridge';
 import type { IConversationService } from '../../src/process/services/IConversationService';
+import type { ISpaceService } from '../../src/process/services/space/ISpaceService';
 import type { IWorkerTaskManager } from '../../src/process/task/IWorkerTaskManager';
 import type { TChatConversation } from '../../src/common/config/storage';
 
@@ -159,13 +182,38 @@ function makeTaskManager(overrides?: Partial<IWorkerTaskManager>): IWorkerTaskMa
   };
 }
 
-function makeConversation(id: string, workspace = '/ws'): TChatConversation {
-  return { id, type: 'gemini', name: 'test', extra: { workspace } } as unknown as TChatConversation;
+function makeSpaceService(overrides?: Partial<ISpaceService>): ISpaceService {
+  return {
+    getSpace: vi.fn(async () => undefined),
+    listSpaces: vi.fn(async () => []),
+    createSpace: vi.fn(async () => {
+      throw new Error('not implemented');
+    }),
+    updateSpace: vi.fn(async () => undefined),
+    getSpaceCommandLibrary: vi.fn(async () => []),
+    saveSpaceCommandLibrary: vi.fn(async () => []),
+    openSpaceVault: vi.fn(async () => ({ opened: true, fallback: 'none', target: '/tmp/vault', obsidianInstalled: true })),
+    renameSpace: vi.fn(async () => {}),
+    archiveSpace: vi.fn(async () => {}),
+    ensureDefaultSpace: vi.fn(async () => ({
+      id: 'space-default',
+      name: 'Default Space',
+      engine: 'vault',
+      createTime: 1,
+      modifyTime: 1,
+    })),
+    ...overrides,
+  };
+}
+
+function makeConversation(id: string, workspace = '/ws', spaceId = 'space-1'): TChatConversation {
+  return { id, type: 'gemini', name: 'test', extra: { workspace, spaceId } } as unknown as TChatConversation;
 }
 
 describe('conversationBridge', () => {
   let service: IConversationService;
   let taskManager: IWorkerTaskManager;
+  let spaceService: ISpaceService;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -178,7 +226,8 @@ describe('conversationBridge', () => {
     // Re-register providers by re-initializing the bridge
     service = makeService();
     taskManager = makeTaskManager();
-    initConversationBridge(service, taskManager);
+    spaceService = makeSpaceService();
+    initConversationBridge(service, taskManager, spaceService);
   });
 
   describe('getAssociateConversation — listAllConversations path', () => {
@@ -240,7 +289,7 @@ describe('conversationBridge', () => {
       const rejectingTaskManager = makeTaskManager({
         getOrBuildTask: vi.fn().mockRejectedValue(new Error('Conversation not found: new-id')),
       });
-      initConversationBridge(service, rejectingTaskManager);
+      initConversationBridge(service, rejectingTaskManager, spaceService);
 
       // Should complete without throwing / unhandled rejection
       const result = await handlers['createWithConversation']({
@@ -381,7 +430,7 @@ describe('conversationBridge', () => {
 
   describe('getSlashCommands', () => {
     it('returns workspace-managed libraries even when runtime commands are skipped', async () => {
-      vi.mocked(service.getConversation).mockResolvedValue(makeConversation('c1', '/workspace'));
+      vi.mocked(service.getConversation).mockResolvedValue(makeConversation('c1', '/workspace', 'space-1'));
       readWorkspaceCommandLibraryMock.mockResolvedValue([
         {
           id: 'plan',
@@ -424,7 +473,79 @@ describe('conversationBridge', () => {
         description: 'Workspace triage',
         template: 'Use workspace triage.',
       });
+      expect(spaceService.getSpaceCommandLibrary).toHaveBeenCalledWith('space-1');
       expect(readWorkspaceCommandLibraryMock).toHaveBeenCalledWith('/workspace');
+    });
+
+    it('merges Space commands before project-local commands and lets project-local override by name case-insensitively', async () => {
+      vi.mocked(service.getConversation).mockResolvedValue(makeConversation('c1', '/workspace', 'space-commands'));
+      vi.mocked(spaceService.getSpaceCommandLibrary).mockResolvedValue([
+        {
+          id: 'space-plan',
+          enabled: true,
+          name: 'plan',
+          description: 'Shared Space plan',
+          template: 'Use the shared Space plan template.',
+        },
+        {
+          id: 'space-verify',
+          enabled: true,
+          name: 'verify',
+          description: 'Shared Space verify',
+          template: 'Run the shared Space verification checklist.',
+        },
+      ]);
+      readWorkspaceCommandLibraryMock.mockResolvedValue([
+        {
+          id: 'project-plan',
+          enabled: true,
+          name: 'PLAN',
+          description: 'Project-local override',
+          template: 'Use the project-local plan template.',
+        },
+        {
+          id: 'project-ship',
+          enabled: true,
+          name: 'ship',
+          description: 'Project-local ship',
+          template: 'Ship the current change safely.',
+        },
+      ]);
+
+      const handler = handlers['getSlashCommands'];
+      const result = (await handler({
+        conversation_id: 'c1',
+        includeRuntimeCommands: false,
+      })) as {
+        success: boolean;
+        data: { commands: Array<{ name: string }>; managedLibrary: Array<Record<string, unknown>> };
+      };
+
+      expect(result.success).toBe(true);
+      expect(result.data.commands).toEqual([]);
+      expect(result.data.managedLibrary).toEqual([
+        {
+          id: 'space-verify',
+          enabled: true,
+          name: 'verify',
+          description: 'Shared Space verify',
+          template: 'Run the shared Space verification checklist.',
+        },
+        {
+          id: 'project-plan',
+          enabled: true,
+          name: 'PLAN',
+          description: 'Project-local override',
+          template: 'Use the project-local plan template.',
+        },
+        {
+          id: 'project-ship',
+          enabled: true,
+          name: 'ship',
+          description: 'Project-local ship',
+          template: 'Ship the current change safely.',
+        },
+      ]);
     });
 
     it('returns no managed commands when the conversation has no workspace', async () => {
@@ -432,7 +553,7 @@ describe('conversationBridge', () => {
         id: 'c1',
         type: 'gemini',
         name: 'No Workspace',
-        extra: {},
+        extra: { spaceId: 'space-1' },
       } as unknown as TChatConversation);
 
       const handler = handlers['getSlashCommands'];
@@ -447,6 +568,7 @@ describe('conversationBridge', () => {
       expect(result.success).toBe(true);
       expect(result.data.commands).toEqual([]);
       expect(result.data.managedLibrary).toEqual([]);
+      expect(spaceService.getSpaceCommandLibrary).toHaveBeenCalledWith('space-1');
       expect(readWorkspaceCommandLibraryMock).not.toHaveBeenCalled();
     });
 
@@ -456,7 +578,7 @@ describe('conversationBridge', () => {
         id: 'acp-1',
         type: 'acp',
         name: 'ACP',
-        extra: { workspace: '/workspace' },
+        extra: { workspace: '/workspace', spaceId: 'space-1' },
       } as unknown as TChatConversation);
       vi.mocked(taskManager.getTask).mockReturnValue({
         type: 'acp',

@@ -233,4 +233,28 @@ describe('ProjectSkillMarketModal', () => {
       expect(searchSkillMarketInvokeMock).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('supports embedded rendering inside the automation skills tab', async () => {
+    render(
+      <ProjectSkillMarketModal
+        visible={true}
+        workspacePath='/tmp/workspace'
+        variant='embedded'
+        onClose={() => undefined}
+      />
+    );
+
+    await waitFor(() => {
+      expect(searchSkillMarketInvokeMock).toHaveBeenCalledWith({
+        query: '',
+        limit: 12,
+        offset: 0,
+        forceRefresh: false,
+        view: 'curated',
+      });
+    });
+
+    expect(await screen.findByText('Market Skill')).toBeInTheDocument();
+    expect(screen.queryByTestId('settings-sub-modal')).not.toBeInTheDocument();
+  });
 });

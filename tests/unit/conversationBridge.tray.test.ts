@@ -42,6 +42,27 @@ const mockWorkerTaskManager = {
   listTasks: vi.fn(() => []),
 };
 
+const mockSpaceService = {
+  getSpace: vi.fn(async () => undefined),
+  listSpaces: vi.fn(async () => []),
+  createSpace: vi.fn(async () => {
+    throw new Error('not implemented');
+  }),
+  updateSpace: vi.fn(async () => undefined),
+  getSpaceCommandLibrary: vi.fn(async () => []),
+  saveSpaceCommandLibrary: vi.fn(async () => []),
+  openSpaceVault: vi.fn(async () => ({ opened: true, fallback: 'none', target: '/tmp/vault', obsidianInstalled: true })),
+  renameSpace: vi.fn(async () => {}),
+  archiveSpace: vi.fn(async () => {}),
+  ensureDefaultSpace: vi.fn(async () => ({
+    id: 'space-default',
+    name: 'Default Space',
+    engine: 'vault',
+    createTime: 1,
+    modifyTime: 1,
+  })),
+};
+
 const registerMocks = () => {
   vi.doMock('@/agent/gemini', () => ({
     GeminiAgent: class {},
@@ -131,7 +152,7 @@ const registerMocks = () => {
 let initConversationBridge: typeof import('@process/bridge/conversationBridge').initConversationBridge;
 
 const getProvider = async (key: string): Promise<Provider> => {
-  initConversationBridge(mockConversationService as any, mockWorkerTaskManager as any);
+  initConversationBridge(mockConversationService as any, mockWorkerTaskManager as any, mockSpaceService as any);
 
   const provider = handlers[key];
   if (!provider) {

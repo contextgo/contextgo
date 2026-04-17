@@ -59,7 +59,18 @@ function makeRepo(overrides: Partial<IConversationRepository> = {}): IConversati
 function makeSpaceService(overrides: Partial<ISpaceService> = {}): ISpaceService {
   return {
     getSpace: vi.fn(),
-    openSpaceVault: vi.fn(async () => ({ opened: true, fallback: 'none', target: '/tmp/vault' })),
+    listSpaces: vi.fn(async () => []),
+    createSpace: vi.fn(async () => ({
+      id: 'space-created',
+      name: 'Created Space',
+      engine: 'vault',
+      createTime: 1,
+      modifyTime: 1,
+    })),
+    updateSpace: vi.fn(async () => undefined),
+    getSpaceCommandLibrary: vi.fn(async () => []),
+    saveSpaceCommandLibrary: vi.fn(async () => []),
+    openSpaceVault: vi.fn(async () => ({ opened: true, fallback: 'none', target: '/tmp/vault', obsidianInstalled: true })),
     renameSpace: vi.fn(),
     archiveSpace: vi.fn(),
     ensureDefaultSpace: vi.fn(async () => ({

@@ -8,22 +8,33 @@ const getProjectCapabilitySnapshotMock = vi.fn();
 const useScheduleJobsMock = vi.fn();
 const {
   managedCommandLibraryEditorState,
+  projectSkillMarketState,
   readFileInvokeMock,
+  getSpaceCommandLibraryInvokeMock,
+  saveSpaceCommandLibraryInvokeMock,
   writeFileInvokeMock,
   readSkillContentInvokeMock,
-  getSlashCommandsInvokeMock,
   translationMockState,
 } = vi.hoisted(() => ({
   managedCommandLibraryEditorState: {
-    current: null as null | {
+    current: [] as Array<{
+      titleText: string;
       loadLibrary: () => Promise<unknown>;
       saveLibrary: (nextLibrary: unknown[]) => Promise<void>;
+    }>,
+  },
+  projectSkillMarketState: {
+    current: null as null | {
+      variant?: 'modal' | 'embedded';
+      visible: boolean;
+      workspacePath: string;
     },
   },
   readFileInvokeMock: vi.fn(),
+  getSpaceCommandLibraryInvokeMock: vi.fn(async () => []),
+  saveSpaceCommandLibraryInvokeMock: vi.fn(async () => []),
   writeFileInvokeMock: vi.fn(),
   readSkillContentInvokeMock: vi.fn(),
-  getSlashCommandsInvokeMock: vi.fn(async () => ({ success: true, data: { managedLibrary: [], commands: [] } })),
   translationMockState: {
     unstableIdentity: false,
   },
@@ -58,12 +69,17 @@ vi.mock('@/common', () => ({
       readSkillContent: { invoke: (...args: unknown[]) => readSkillContentInvokeMock(...args) },
       writeFile: { invoke: (...args: unknown[]) => writeFileInvokeMock(...args) },
     },
+    space: {
+      getCommandLibrary: {
+        invoke: (...args: unknown[]) => getSpaceCommandLibraryInvokeMock(...args),
+      },
+      saveCommandLibrary: {
+        invoke: (...args: unknown[]) => saveSpaceCommandLibraryInvokeMock(...args),
+      },
+    },
     conversation: {
       getProjectCapabilitySnapshot: {
         invoke: (...args: unknown[]) => getProjectCapabilitySnapshotMock(...args),
-      },
-      getSlashCommands: {
-        invoke: (...args: unknown[]) => getSlashCommandsInvokeMock(...args),
       },
       update: { invoke: vi.fn(async () => true) },
     },
@@ -99,9 +115,39 @@ vi.mock('@/renderer/hooks/agent/usePresetAssistantInfo', () => ({
 
 vi.mock('@/renderer/pages/settings/ToolsSettings/ManagedCommandLibraryEditor', () => ({
   __esModule: true,
-  default: (props: { loadLibrary: () => Promise<unknown>; saveLibrary: (nextLibrary: unknown[]) => Promise<void> }) => {
-    managedCommandLibraryEditorState.current = props;
-    return <div data-testid='managed-command-library-editor' />;
+  default: (props: {
+    title?: React.ReactNode;
+    loadLibrary: () => Promise<unknown>;
+    saveLibrary: (nextLibrary: unknown[]) => Promise<void>;
+  }) => {
+    const titleText = typeof props.title === 'string' ? props.title : '';
+    managedCommandLibraryEditorState.current.push({
+      titleText,
+      loadLibrary: props.loadLibrary,
+      saveLibrary: props.saveLibrary,
+    });
+    return <div data-testid='managed-command-library-editor'>{titleText}</div>;
+  },
+}));
+
+vi.mock('@/renderer/pages/conversation/ProjectSkillMarketModal', () => ({
+  __esModule: true,
+  default: ({
+    visible,
+    workspacePath,
+    variant,
+  }: {
+    visible: boolean;
+    workspacePath: string;
+    variant?: 'modal' | 'embedded';
+    onClose?: () => void;
+  }) => {
+    projectSkillMarketState.current = {
+      visible,
+      workspacePath,
+      variant,
+    };
+    return visible ? <div data-testid='project-skill-market-panel'>{`${variant ?? 'modal'}:${workspacePath}`}</div> : null;
   },
 }));
 
@@ -265,6 +311,7 @@ const conversation: TChatConversation = {
   modifyTime: 1,
   extra: {
     workspace: '/tmp/workspace',
+    spaceId: 'space-1',
     backend: 'codex',
     enabledSkills: ['release-guard'],
     enabledHooks: ['continuity-handoff'],
@@ -274,7 +321,8 @@ const conversation: TChatConversation = {
 describe('ProjectAutomationModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    managedCommandLibraryEditorState.current = null;
+    managedCommandLibraryEditorState.current = [];
+    projectSkillMarketState.current = null;
     translationMockState.unstableIdentity = false;
     readFileInvokeMock.mockImplementation(async ({ path }: { path: string }) => {
       if (path === '/tmp/workspace/.contextgo/runtime.json') {
@@ -297,13 +345,22 @@ describe('ProjectAutomationModal', () => {
 
       return '[]';
     });
+    getSpaceCommandLibraryInvokeMock.mockResolvedValue([
+      {
+        id: 'space-plan',
+        enabled: true,
+        name: 'plan',
+        description: 'Shared Space plan',
+        template: 'Use the shared Space plan template.',
+      },
+    ]);
+    saveSpaceCommandLibraryInvokeMock.mockResolvedValue([]);
     readSkillContentInvokeMock.mockResolvedValue({
       success: true,
       data: {
         content: '---\nname: release-guard\ndescription: Keep release work narrow.\n---\n\n## Usage\n\nStay focused.\n',
       },
     });
-    getSlashCommandsInvokeMock.mockResolvedValue({ success: true, data: { managedLibrary: [], commands: [] } });
     writeFileInvokeMock.mockReset();
     writeFileInvokeMock.mockResolvedValue(undefined);
     messageApiMock.success.mockReset();
@@ -375,6 +432,7 @@ describe('ProjectAutomationModal', () => {
     expect(screen.getByText('.contextgo/skills/release-guard')).toBeInTheDocument();
     expect(screen.getByText('Requires command-line tool `git`')).toBeInTheDocument();
     expect(screen.getByText(/Release Guard Assistant/)).toBeInTheDocument();
+    expect(screen.getByTestId('project-skill-market-panel')).toHaveTextContent('embedded:/tmp/workspace');
   });
 
   it('does not repeatedly reload project skills when translation hook identity changes across renders', async () => {
@@ -497,11 +555,67 @@ describe('ProjectAutomationModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'settings.commands.title' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('managed-command-library-editor')).toBeInTheDocument();
-      expect(managedCommandLibraryEditorState.current).not.toBeNull();
+      expect(screen.getAllByTestId('managed-command-library-editor')).toHaveLength(2);
     });
 
-    await expect(managedCommandLibraryEditorState.current!.loadLibrary()).resolves.toEqual([]);
-    expect(getSlashCommandsInvokeMock).not.toHaveBeenCalled();
+    const projectLocalEditor = managedCommandLibraryEditorState.current.find(
+      (editor) => editor.titleText === 'Project Local Commands'
+    );
+
+    expect(projectLocalEditor).toBeDefined();
+    await expect(projectLocalEditor!.loadLibrary()).resolves.toEqual([]);
+  });
+
+  it('loads and saves separate Space and project-local command libraries', async () => {
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'settings.commands.title' }));
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('managed-command-library-editor')).toHaveLength(2);
+    });
+
+    const spaceEditor = managedCommandLibraryEditorState.current.find((editor) => editor.titleText === 'Space Commands');
+    const projectLocalEditor = managedCommandLibraryEditorState.current.find(
+      (editor) => editor.titleText === 'Project Local Commands'
+    );
+
+    expect(spaceEditor).toBeDefined();
+    expect(projectLocalEditor).toBeDefined();
+
+    await expect(spaceEditor!.loadLibrary()).resolves.toEqual([
+      {
+        id: 'space-plan',
+        enabled: true,
+        name: 'plan',
+        description: 'Shared Space plan',
+        template: 'Use the shared Space plan template.',
+      },
+    ]);
+    expect(getSpaceCommandLibraryInvokeMock).toHaveBeenCalledWith({ id: 'space-1' });
+
+    await spaceEditor!.saveLibrary([
+      {
+        id: 'space-review',
+        enabled: true,
+        name: 'review',
+        description: 'Shared review command',
+        template: 'Review the change against the shared Space checklist.',
+      },
+    ]);
+    expect(saveSpaceCommandLibraryInvokeMock).toHaveBeenCalledWith({
+      id: 'space-1',
+      commands: [
+        {
+          id: 'space-review',
+          enabled: true,
+          name: 'review',
+          description: 'Shared review command',
+          template: 'Review the change against the shared Space checklist.',
+        },
+      ],
+    });
+
+    await expect(projectLocalEditor!.loadLibrary()).resolves.toEqual([]);
   });
 });
