@@ -13,6 +13,8 @@ import { SpaceServiceImpl } from './SpaceServiceImpl';
 import {
   CANVAS_DIR,
   CONTEXT_ENGINE_SYSTEM_DIR,
+  type ContextgoNamespace,
+  type ContextgoProjection,
   DEFAULT_SPACE_CANVAS_PATH,
   getConversationDocumentPaths,
   getOperationLogDailyRelativePath,
@@ -502,6 +504,20 @@ const frontmatter = (record: Record<string, string | number | undefined>): strin
   return ['---', ...lines, '---', ''].join('\n');
 };
 
+const withContextProjectionMetadata = (
+  record: Record<string, string | number | undefined>,
+  metadata: {
+    namespace: ContextgoNamespace;
+    projection: ContextgoProjection;
+  }
+): Record<string, string | number | undefined> => {
+  return {
+    ...record,
+    contextgoNamespace: metadata.namespace,
+    contextgoProjection: metadata.projection,
+  };
+};
+
 const parseFrontmatter = (content: string | undefined): FrontmatterRecord => {
   if (!content?.startsWith('---\n')) {
     return {};
@@ -811,79 +827,114 @@ const buildSourceGraphList = (project: ProjectContext, sourceRelativePaths: stri
 };
 
 const buildSourceDocFrontmatter = (project: ProjectContext, sourceDoc: SourceDoc, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'source',
-    title: sourceDoc.noteTitle,
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    sourcePath: sourceDoc.sourcePath,
-    relativePath: sourceDoc.relativePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'source',
+        title: sourceDoc.noteTitle,
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        sourcePath: sourceDoc.sourcePath,
+        relativePath: sourceDoc.relativePath,
+        updatedAt,
+      },
+      { namespace: 'source', projection: 'source-mirror' }
+    )
+  );
 };
 
 const buildProjectFrontmatter = (project: ProjectContext, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'project',
-    title: getProjectNoteTitle(project.name),
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project',
+        title: getProjectNoteTitle(project.name),
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        updatedAt,
+      },
+      { namespace: 'project', projection: 'semantic-context' }
+    )
+  );
 };
 
 const buildProjectInsightsFrontmatter = (project: ProjectContext, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'project-insights',
-    title: getProjectInsightsTitle(project.name),
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-insights',
+        title: getProjectInsightsTitle(project.name),
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        updatedAt,
+      },
+      { namespace: 'project', projection: 'semantic-context' }
+    )
+  );
 };
 
 const buildProjectInsightsFrontmatterFromBinding = (project: ProjectBinding, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'project-insights',
-    title: getProjectInsightsTitle(project.name),
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-insights',
+        title: getProjectInsightsTitle(project.name),
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        updatedAt,
+      },
+      { namespace: 'project', projection: 'semantic-context' }
+    )
+  );
 };
 
 const buildProjectBaselineFrontmatter = (project: ProjectContext, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'project-baseline',
-    title: getProjectBaselineTitle(project.name),
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-baseline',
+        title: getProjectBaselineTitle(project.name),
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        updatedAt,
+      },
+      { namespace: 'project', projection: 'semantic-context' }
+    )
+  );
 };
 
 const buildProjectCapabilitiesFrontmatter = (project: ProjectContext, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'project-capabilities',
-    title: getProjectCapabilitiesTitle(project.name),
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-capabilities',
+        title: getProjectCapabilitiesTitle(project.name),
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        updatedAt,
+      },
+      { namespace: 'capability', projection: 'capability-inventory' }
+    )
+  );
 };
 const buildSessionFrontmatter = (
   conversation: TChatConversation,
   project: ProjectContext | undefined,
   updatedAt: string
 ): string => {
-  return frontmatter({
-    contextgoType: 'session',
-    conversationId: conversation.id,
-    spaceId: conversation.extra?.spaceId,
-    projectSlug: project?.slug,
-    workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'session',
+        conversationId: conversation.id,
+        spaceId: conversation.extra?.spaceId,
+        projectSlug: project?.slug,
+        workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
+        updatedAt,
+      },
+      { namespace: 'session', projection: 'semantic-context' }
+    )
+  );
 };
 
 const buildSessionWorkingSetFrontmatter = (
@@ -891,14 +942,19 @@ const buildSessionWorkingSetFrontmatter = (
   project: ProjectContext | undefined,
   updatedAt: string
 ): string => {
-  return frontmatter({
-    contextgoType: 'session-working-set',
-    conversationId: conversation.id,
-    spaceId: conversation.extra?.spaceId,
-    projectSlug: project?.slug,
-    workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'session-working-set',
+        conversationId: conversation.id,
+        spaceId: conversation.extra?.spaceId,
+        projectSlug: project?.slug,
+        workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
+        updatedAt,
+      },
+      { namespace: 'session', projection: 'semantic-context' }
+    )
+  );
 };
 
 const buildSessionWorkingContextFrontmatter = (
@@ -906,25 +962,35 @@ const buildSessionWorkingContextFrontmatter = (
   project: ProjectContext | undefined,
   updatedAt: string
 ): string => {
-  return frontmatter({
-    contextgoType: 'session-working-context',
-    conversationId: conversation.id,
-    spaceId: conversation.extra?.spaceId,
-    projectSlug: project?.slug,
-    workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'session-working-context',
+        conversationId: conversation.id,
+        spaceId: conversation.extra?.spaceId,
+        projectSlug: project?.slug,
+        workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
+        updatedAt,
+      },
+      { namespace: 'session', projection: 'semantic-context' }
+    )
+  );
 };
 
 const buildHomeFrontmatter = (space: TSpace, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'space',
-    title: getSpaceNoteTitle(space.name),
-    spaceId: space.id,
-    spaceName: space.name,
-    engine: space.engine,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'space',
+        title: getSpaceNoteTitle(space.name),
+        spaceId: space.id,
+        spaceName: space.name,
+        engine: space.engine,
+        updatedAt,
+      },
+      { namespace: 'space', projection: 'semantic-context' }
+    )
+  );
 };
 
 const buildSourceDocument = async (
@@ -1082,15 +1148,20 @@ const buildProjectCapabilityDocument = (
 ): ProjectCapabilityDoc => {
   const title = getCapabilityDisplayName(capability);
   const relativePath = getProjectCapabilityRelativePath(project, capability);
-  const frontmatterBlock = frontmatter({
-    contextgoType: 'project-capability',
-    title,
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    capabilityKind: capability.kind,
-    capabilityId: capability.id,
-    updatedAt,
-  });
+  const frontmatterBlock = frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-capability',
+        title,
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        capabilityKind: capability.kind,
+        capabilityId: capability.id,
+        updatedAt,
+      },
+      { namespace: 'capability', projection: 'capability-inventory' }
+    )
+  );
 
   const detailLines: string[] = [];
 
