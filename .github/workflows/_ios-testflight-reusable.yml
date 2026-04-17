@@ -17,6 +17,11 @@ on:
         required: false
         default: false
         type: boolean
+      hosted_runner_label:
+        description: 'GitHub-hosted macOS label to use when use_hosted_runner is true'
+        required: false
+        default: macos-15
+        type: string
 
 jobs:
   build-and-upload:
@@ -24,6 +29,8 @@ jobs:
     runs-on: >-
       ${{
         fromJSON(
+          inputs.use_hosted_runner &&
+          format('["{0}"]', inputs.hosted_runner_label) ||
           !inputs.use_hosted_runner &&
           (
             vars.SELF_HOSTED_IOS_RUNNER_LABELS_JSON != '' &&
@@ -37,7 +44,7 @@ jobs:
             vars.SELF_HOSTED_IOS_RUNNER_LABELS_JSON ||
             vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON
           ) ||
-          '["macos-14"]'
+          '["macos-15"]'
         )
       }}
 
