@@ -229,6 +229,35 @@ describe('ContextEngineService', () => {
     expect(result.pack.sections.some((item) => item.kind === 'thread-state')).toBe(true);
     expect(result.omittedEntityIds.length).toBeGreaterThan(0);
     expect(result.pack.provenance.memoryIds).toContain('memory-1');
+    expect(result.trace).toEqual(
+      expect.objectContaining({
+        budgetTokens: 35,
+        spentTokens: expect.any(Number),
+        mountedState: {
+          threadSummaryIncluded: true,
+          mountedSectionIds: [],
+          mountedProfileIds: [],
+          pinnedInstructionCount: 1,
+        },
+        entries: expect.arrayContaining([
+          expect.objectContaining({
+            sectionKind: 'instruction',
+            source: 'pinned_instruction',
+            outcome: 'kept',
+          }),
+          expect.objectContaining({
+            sectionKind: 'thread-state',
+            source: 'thread_summary',
+            outcome: 'kept',
+          }),
+          expect.objectContaining({
+            outcome: 'omitted',
+            omissionReason: 'budget',
+          }),
+        ]),
+      })
+    );
+    expect(result.trace.spentTokens).toBeLessThanOrEqual(35);
   });
 
   it('filters memory retrieval by tier when requested', async () => {

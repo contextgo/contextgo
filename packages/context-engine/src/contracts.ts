@@ -9,6 +9,7 @@ import type {
   ChunkId,
   ChunkRecord,
   ContextPack,
+  ContextPackSectionKind,
   ContextTier,
   DocumentSnapshot,
   DocumentSnapshotId,
@@ -163,9 +164,45 @@ export type AssembleContextPackInput = {
   pinnedInstructions?: readonly string[];
 };
 
+export type AssemblyTraceEntrySource =
+  | 'thread_summary'
+  | 'mounted_section'
+  | 'mounted_profile'
+  | 'pinned_instruction'
+  | 'retrieved_profile'
+  | 'retrieved_memory'
+  | 'retrieved_chunk'
+  | 'retrieved_source';
+
+export type AssemblyTraceEntry = {
+  sectionId: string;
+  sectionKind: ContextPackSectionKind;
+  source: AssemblyTraceEntrySource;
+  tokenCount: number;
+  priority: number;
+  outcome: 'kept' | 'omitted';
+  omissionReason?: 'budget';
+};
+
+export type AssemblyTraceMountedState = {
+  threadSummaryIncluded: boolean;
+  mountedSectionIds: readonly string[];
+  mountedProfileIds: readonly ProfileSegmentId[];
+  pinnedInstructionCount: number;
+};
+
+export type AssemblyTrace = {
+  traceId: string;
+  budgetTokens: number;
+  spentTokens: number;
+  mountedState: AssemblyTraceMountedState;
+  entries: readonly AssemblyTraceEntry[];
+};
+
 export type AssembleContextPackResult = {
   pack: ContextPack;
   omittedEntityIds: readonly string[];
+  trace: AssemblyTrace;
 };
 
 export type ExternalMemoryStrategyGovernanceScope = 'session_steward' | 'project_curator' | 'space_curator';
