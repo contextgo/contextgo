@@ -1626,6 +1626,7 @@ export interface IExtensionSystemRunItem {
   threadId?: string;
   projectSlug?: string;
   reason?: string;
+  lifecycleSummary?: string;
   source?: string;
   triggerLabel?: string;
   triggerEvent?: string;

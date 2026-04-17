@@ -407,6 +407,15 @@ const SystemRunsPage: React.FC = () => {
                     : undefined,
                 },
                 {
+                  key: 'lifecycle-summary',
+                  value: run.lifecycleSummary
+                    ? t('settings.systemRunsLifecycleSummary', {
+                        summary: run.lifecycleSummary,
+                        defaultValue: `Lifecycle summary: ${run.lifecycleSummary}`,
+                      })
+                    : undefined,
+                },
+                {
                   key: 'source',
                   value: run.source
                     ? t('settings.systemRunsSource', {

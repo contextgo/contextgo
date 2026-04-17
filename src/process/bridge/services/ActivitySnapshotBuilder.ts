@@ -32,6 +32,7 @@ type MaintenanceRunMetadata = {
   threadId?: string;
   projectSlug?: string;
   reason?: string;
+  lifecycleSummary?: string;
   source?: string;
   trigger?: {
     label?: string;
@@ -439,6 +440,7 @@ export class ActivitySnapshotBuilder {
         threadId: snapshot.metadata.threadId || snapshot.run.conversationId,
         projectSlug: snapshot.metadata.projectSlug,
         reason: snapshot.metadata.reason,
+        lifecycleSummary: snapshot.metadata.lifecycleSummary,
         source: snapshot.metadata.source,
         triggerLabel: snapshot.metadata.trigger?.label,
         triggerEvent: snapshot.metadata.trigger?.event,

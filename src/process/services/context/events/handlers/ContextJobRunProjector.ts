@@ -35,6 +35,7 @@ type MaintenanceRunMetadata = {
   threadId?: string;
   projectSlug?: string;
   reason?: string;
+  lifecycleSummary?: string;
   source?: string;
   trigger?: ContextJob['trigger'];
   executionBoundary?: ContextJob['executionBoundary'];
@@ -199,6 +200,10 @@ async function upsertRun(input: {
       threadId: input.job.threadId,
       projectSlug: input.job.projectSlug,
       reason: input.job.reason,
+      lifecycleSummary:
+        typeof input.job.payload.lifecycleSummary === 'string'
+          ? input.job.payload.lifecycleSummary
+          : existingMetadata.lifecycleSummary,
       source: input.job.source,
       trigger: input.job.trigger,
       executionBoundary: input.job.executionBoundary,

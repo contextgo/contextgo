@@ -118,6 +118,7 @@ describe('SystemRunsPage', () => {
         artifactTitle: 'Session working context',
         artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
         reason: 'Session compaction triggered by repeated requests.',
+        lifecycleSummary: 'Planner delegate completed release validation synthesis.',
         source: 'hook',
         triggerLabel: 'Context window prepared',
         triggerEvent: 'context.window.prepared',
@@ -182,6 +183,7 @@ describe('SystemRunsPage', () => {
     expect(screen.getByText('Source: hook')).toBeInTheDocument();
     expect(screen.getByText('Artifact kind: session-context')).toBeInTheDocument();
     expect(screen.getByText('Artifact summary: Session working context refreshed.')).toBeInTheDocument();
+    expect(screen.getByText('Lifecycle summary: Planner delegate completed release validation synthesis.')).toBeInTheDocument();
     expect(
       screen.getByText('Artifacts: session_timeline · session_working_context · session_checkpoint')
     ).toBeInTheDocument();
