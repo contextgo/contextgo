@@ -425,6 +425,42 @@ const SystemRunsPage: React.FC = () => {
                     : undefined,
                 },
                 {
+                  key: 'source-record',
+                  value: run.sourceRecordId
+                    ? t('settings.systemRunsSourceRecord', {
+                        sourceRecordId: run.sourceRecordId,
+                        defaultValue: `Source record: ${run.sourceRecordId}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'ingest-mode',
+                  value: run.ingestMode
+                    ? t('settings.systemRunsIngestMode', {
+                        ingestMode: run.ingestMode,
+                        defaultValue: `Ingest mode: ${run.ingestMode}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'replay-cursor',
+                  value: run.replayFromCursor
+                    ? t('settings.systemRunsReplayCursor', {
+                        replayFromCursor: run.replayFromCursor,
+                        defaultValue: `Replay cursor: ${run.replayFromCursor}`,
+                      })
+                    : undefined,
+                },
+                {
+                  key: 'provenance-summary',
+                  value: run.provenanceSummary
+                    ? t('settings.systemRunsProvenanceSummary', {
+                        summary: run.provenanceSummary,
+                        defaultValue: `Provenance summary: ${run.provenanceSummary}`,
+                      })
+                    : undefined,
+                },
+                {
                   key: 'governance',
                   value: run.governanceIdentity
                     ? t('settings.systemRunsGovernance', {
