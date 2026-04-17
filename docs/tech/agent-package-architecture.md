@@ -127,12 +127,28 @@ After workspace bootstrap, the product-owned state must live under:
 Runtime-native directories remain derived views:
 
 ```text
-.agents/skills  -> projection of .contextgo/skills
+.codex/skills   -> projection of .contextgo/skills
 .claude/skills  -> projection of .contextgo/skills
 .gemini/skills  -> projection of .contextgo/skills
 ```
 
 ContextGo must not treat runtime-native directories as the source of truth for package installation.
+
+### Current project Skill Market install behavior
+
+For the project-scoped Skill Market entry:
+
+- installation lands in `<workspace>/.contextgo/skills/<skill-name>` first
+- runtime-native directories may then be synchronized as projections for supported runtimes
+- this means seeing `.claude/skills`, `.gemini/skills`, or `.codex/skills` after install does **not** imply those directories were the installation source of truth
+
+Current implementation note:
+
+- Skill Market catalog/config metadata is cached in memory for short TTL windows
+- downloaded skill archives are **not** persisted in a reusable package cache across projects
+- installing the same remote skill into another project currently triggers another archive download, then extracts into that project's `.contextgo/skills`
+
+For the verified runtime-native surface matrix, see [docs/conventions/runtime-support.md](../conventions/runtime-support.md).
 
 Project-root documentation is a separate category:
 
@@ -262,7 +278,7 @@ Project-level scaffold files such as runtime entry docs and starter `docs/` file
 
 Supported runtimes may receive projected skills into their native directories, for example:
 
-- `.agents/skills`
+- `.codex/skills`
 - `.claude/skills`
 - `.gemini/skills`
 - `.opencode/skills`
@@ -327,7 +343,7 @@ The frontend must not rely on:
 
 - scanning runtime-native directories
 - inferring package structure from incidental file presence
-- treating `.agents/skills`, `.claude/skills`, or runtime root docs as the source of truth
+- treating `.codex/skills`, `.claude/skills`, or runtime root docs as the source of truth
 
 If the product needs a new visible section, the protocol should be extended first and the renderer should follow that protocol.
 

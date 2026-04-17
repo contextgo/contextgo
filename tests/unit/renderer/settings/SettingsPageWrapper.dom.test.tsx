@@ -117,7 +117,7 @@ describe('SettingsPageWrapper', () => {
       isMobile: true,
     });
 
-    render(
+    const { container } = render(
       <MemoryRouter initialEntries={['/settings/runtime']}>
         <Routes>
           <Route
@@ -134,6 +134,7 @@ describe('SettingsPageWrapper', () => {
 
     expect(await screen.findByText('runtime content')).toBeInTheDocument();
     expect(screen.queryByRole('tablist', { name: 'settings.title' })).toBeNull();
+    expect(container.querySelector('.settings-page-wrapper')).toHaveClass('settings-page-wrapper--mobile-compact');
 
     await act(async () => {
       window.dispatchEvent(new CustomEvent(SETTINGS_NAV_DRAWER_EVENT, { detail: { open: true } }));

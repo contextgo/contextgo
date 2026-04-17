@@ -1,0 +1,9 @@
+{
+  "name": "brand-input-watcher",
+  "description": "Detect new brand kits, official site links, product page screenshots, or competitor visuals and prompt the operator to normalize a brand context before generating creatives.",
+  "version": "1.0.0",
+  "executionType": "prompt-transform",
+  "events": ["before_user_prompt"],
+  "category": "marketing",
+  "tags": ["brand", "context", "marketing", "intake"]
+}

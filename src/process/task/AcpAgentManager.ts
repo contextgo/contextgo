@@ -304,7 +304,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
           customArgs = customAgentConfig.acpArgs;
           customEnv = {
             ...runtimeEnv,
-            ...(customAgentConfig.env || {}),
+            ...customAgentConfig.env,
           };
         }
       } else if (data.backend !== 'custom') {

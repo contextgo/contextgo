@@ -2223,7 +2223,7 @@ export function initFsBridge(): void {
       return {
         success: true,
         data,
-        msg: `Skill "${data.skillName}" installed to workspace successfully`,
+        msg: `Skill "${data.skillName}" installed to workspace: ${data.installedPath}`,
       };
     } catch (error) {
       console.error('[fsBridge] Failed to install Skill Market skill to workspace:', error);
