@@ -277,6 +277,7 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
   const isChannelMode = mode === 'channels';
   const [selectedFamilyId, setSelectedFamilyId] = useState('');
   const [selectedChannelId, setSelectedChannelId] = useState('');
+  const [mobileDetailVisible, setMobileDetailVisible] = useState(false);
   const [pluginStatuses, setPluginStatuses] = useState<IChannelPluginStatus[]>([]);
   const [channelAccounts, setChannelAccounts] = useState<IChannelAccount[]>([]);
   const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
@@ -816,6 +817,12 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
     );
   }, [isChannelMode, selectedFamily]);
 
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileDetailVisible(false);
+    }
+  }, [isMobile]);
+
   const resolvedChannelId = useMemo(
     () =>
       selectedFamily?.channels.some((entry) => entry.id === selectedChannelId)
@@ -843,6 +850,28 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
     : null;
   const canCreateInstance = !!selectedFamily && isBuiltinChannelType(selectedFamily.id);
   const canDeleteInstance = !!selectedChannelAccount;
+  const isMobileChannelLayout = isChannelMode && isMobile;
+  const showMobileDetail = isMobileChannelLayout && mobileDetailVisible && !!selectedChannel && !!selectedStatus;
+
+  const handleSelectFamily = useCallback(
+    (familyId: string) => {
+      setSelectedFamilyId(familyId);
+      if (isMobile) {
+        setMobileDetailVisible(false);
+      }
+    },
+    [isMobile]
+  );
+
+  const handleSelectChannel = useCallback(
+    (channelId: string) => {
+      setSelectedChannelId(channelId);
+      if (isMobile) {
+        setMobileDetailVisible(true);
+      }
+    },
+    [isMobile]
+  );
 
   const buildChannelAccountPayload = useCallback(
     (status: IChannelPluginStatus, overrides?: Partial<IChannelAccount>): IChannelAccount => {
@@ -1032,10 +1061,13 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       setSelectedFamilyId(selectedFamily.id);
       await loadChannelState();
       setSelectedChannelId(nextId);
+      if (isMobile) {
+        setMobileDetailVisible(true);
+      }
     } catch (error) {
       Message.error(getErrorMessage(error));
     }
-  }, [loadChannelState, selectedFamily, t]);
+  }, [isMobile, loadChannelState, selectedFamily, t]);
 
   const handleSaveInstance = useCallback(async () => {
     if (!selectedStatus) {
@@ -1117,12 +1149,241 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
       : t('settings.agentEntryDesc', { defaultValue: 'Manage reusable IM channel accounts here.' });
   const useSplitColumnScroll = mode === 'channels' && isPageMode && !isMobile;
 
+  const detailContent =
+    selectedChannel && selectedStatus ? (
+      <div className={styles.detailCard} data-testid={showMobileDetail ? 'channel-mobile-detail' : undefined}>
+        <div className={styles.detailHeader}>
+          <div className={styles.detailHeaderMain}>
+            <ChannelLogo
+              title={selectedChannel.title}
+              channelId={selectedChannel.id}
+              familyId={selectedChannel.familyId}
+              icon={selectedChannel.icon}
+              size='large'
+            />
+            <div className={styles.detailHeaderCopy}>
+              <h3 className={styles.detailTitle} title={selectedChannel.title}>
+                {selectedChannel.title}
+              </h3>
+              <div className={styles.detailSubtitle} title={selectedFamily?.description}>
+                {selectedFamily?.description}
+              </div>
+              {selectedStatus.botUsername ? (
+                <div className={styles.detailBadges}>
+                  <Tag className={styles.usernameTag} title={`@${selectedStatus.botUsername}`}>
+                    @{selectedStatus.botUsername}
+                  </Tag>
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <div className={styles.detailActions}>
+            <Switch
+              checked={selectedStatus.enabled}
+              disabled={loadingMap[selectedLoadingKey]}
+              onChange={(checked) => void handleToggleChannel(selectedStatus, checked)}
+            />
+            <Button onClick={() => void handleSaveInstance()} loading={loadingMap[selectedLoadingKey]}>
+              {t('common.save', { defaultValue: 'Save' })}
+            </Button>
+            {canDeleteInstance ? (
+              <Button
+                status='danger'
+                onClick={() => void handleDeleteInstance()}
+                loading={loadingMap[selectedLoadingKey]}
+              >
+                {t('common.delete', { defaultValue: 'Delete' })}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className={styles.setupCard}>
+          <div className={styles.setupHeader}>
+            <div className={styles.sectionHeader}>
+              <h3 className={styles.sectionTitle}>
+                {t('settings.channels.setupFlowTitle', { defaultValue: 'Setup flow' })}
+              </h3>
+              <div className={styles.sectionDescription}>
+                {selectedPairingComplete
+                  ? t('settings.channels.setupCompleteDescription', {
+                      defaultValue:
+                        'This instance has completed at least one pairing. It now counts as successfully added and can be used for publication.',
+                    })
+                  : t('settings.channels.setupPendingDescription', {
+                      defaultValue:
+                        'Only the instance shell exists so far. Finish configuration, enable the runtime, and approve at least one pairing request in order. The instance is not considered successfully added until pairing succeeds.',
+                    })}
+              </div>
+            </div>
+            {selectedPrimaryState ? (
+              <Tag className={styles.metricTag}>{getChannelPrimaryStatusLabel(selectedPrimaryState, t)}</Tag>
+            ) : null}
+          </div>
+          <div className={styles.setupSteps}>
+            <div className={styles.setupStep}>
+              <div className={styles.setupStepIndex}>1</div>
+              <div className={styles.setupStepBody}>
+                <div className={styles.setupStepTitle}>
+                  {t('settings.channels.setupStepConfigure', {
+                    defaultValue: 'Configure credentials or sign in',
+                  })}
+                </div>
+                <Tag className={styles.statusTag}>{getConfiguredLabel(Boolean(selectedChannel.configured), t)}</Tag>
+              </div>
+            </div>
+            <div className={styles.setupStep}>
+              <div className={styles.setupStepIndex}>2</div>
+              <div className={styles.setupStepBody}>
+                <div className={styles.setupStepTitle}>
+                  {t('settings.channels.setupStepEnable', {
+                    defaultValue: 'Enable the channel runtime',
+                  })}
+                </div>
+                <Tag className={styles.statusTag}>{getEnabledLabel(selectedStatus.enabled, t)}</Tag>
+              </div>
+            </div>
+            <div className={styles.setupStep}>
+              <div className={styles.setupStepIndex}>3</div>
+              <div className={styles.setupStepBody}>
+                <div className={styles.setupStepTitle}>
+                  {t('settings.channels.setupStepPair', {
+                    defaultValue: 'Approve a pairing request',
+                  })}
+                </div>
+                <Tag className={styles.statusTag}>{getPairingLabel(selectedPairedCount, t)}</Tag>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className='grid gap-12px mt-16px md:grid-cols-[minmax(0,1fr)_160px]'>
+          <div className='space-y-6px'>
+            <div className='text-13px font-600 text-t-primary'>
+              {t('settings.channels.instanceNameLabel', { defaultValue: 'Instance name' })}
+            </div>
+            <Input
+              value={selectedNameDraft}
+              onChange={(value) => {
+                setInstanceNameDrafts((prev) => ({ ...prev, [selectedChannel.id]: value }));
+              }}
+              placeholder={t('settings.channels.instanceNamePlaceholder', {
+                defaultValue: 'Enter instance name',
+              })}
+            />
+          </div>
+          <div className='space-y-6px'>
+            <div className='text-13px font-600 text-t-primary'>
+              {t('settings.channels.instanceStatusLabel', { defaultValue: 'Runtime status' })}
+            </div>
+            <Input value={selectedStatus.status} disabled />
+          </div>
+        </div>
+
+        <div className='space-y-8px mt-16px'>
+          <div className='text-13px font-600 text-t-primary'>
+            {t('settings.channels.instanceDetailsTitle', { defaultValue: 'Instance details' })}
+          </div>
+          <div className='text-12px text-t-tertiary leading-relaxed'>
+            {selectedPairingComplete
+              ? t('settings.channels.instanceDetailsHint', {
+                  defaultValue:
+                    'This instance has completed pairing and can now be used for transport, authorization, and peer discovery. Formal Agent publication is still managed in Agent Publish.',
+                })
+              : t('settings.channels.instanceDraftHint', {
+                  defaultValue:
+                    'Creating the instance only starts the onboarding flow. Finish credentials or login, enable it, and complete at least one pairing. The instance is only considered added after pairing succeeds, and only then can it be used for publication.',
+                })}
+          </div>
+        </div>
+
+        <div className='mt-16px'>{selectedChannel.content}</div>
+      </div>
+    ) : null;
+
+  const instanceListContent = selectedFamily ? (
+    <div className={styles.instanceCard}>
+      <div className={styles.sectionHeader}>
+        <h3 className={styles.sectionTitle}>
+          {t('settings.channels.instanceListTitle', { defaultValue: 'Instances' })}
+        </h3>
+        <div className={styles.sectionDescription}>
+          {t('settings.channels.instanceListDescription', {
+            defaultValue: 'Each channel instance has its own configuration, enablement, and pairing flow.',
+          })}
+        </div>
+      </div>
+
+      <div className={styles.instanceList}>
+        {selectedFamily.channels.length === 0 ? (
+          <div className={styles.instanceEmptyState}>
+            <Empty
+              description={t('settings.channels.emptyInstances', {
+                defaultValue: 'No channel instances yet',
+              })}
+            />
+          </div>
+        ) : (
+          selectedFamily.channels.map((entry) => {
+            const status = pluginStatusById.get(entry.id);
+            const isActive = entry.id === resolvedChannelId;
+            const primaryState = getChannelPrimaryState(
+              Boolean(entry.configured),
+              Boolean(status?.enabled),
+              entry.pairedCount ?? 0
+            );
+            return (
+              <Button
+                key={entry.id}
+                type='text'
+                onClick={() => handleSelectChannel(entry.id)}
+                className={classNames(styles.instanceButton, isActive && styles.instanceButtonActive)}
+                data-testid={`channel-instance-trigger-${entry.id}`}
+              >
+                <div className={styles.instanceButtonInner}>
+                  <ChannelLogo
+                    title={entry.title}
+                    channelId={entry.id}
+                    familyId={entry.familyId}
+                    icon={entry.icon}
+                    size='small'
+                  />
+                  <div className={styles.instanceMeta}>
+                    <div className={styles.instanceHeadingRow}>
+                      <div className={styles.instanceName} title={entry.title}>
+                        {entry.title}
+                      </div>
+                    </div>
+                    <div className={styles.instanceDescription} title={entry.description}>
+                      {entry.description}
+                    </div>
+                    <div className={styles.instanceMetaRow}>
+                      <Tag className={styles.metricTag}>{getChannelPrimaryStatusLabel(primaryState, t)}</Tag>
+                      {entry.pairedCount ? <Tag className={styles.pillTag}>{getPairingLabel(entry.pairedCount, t)}</Tag> : null}
+                      {status?.botUsername ? (
+                        <Tag className={styles.usernameTag} title={`@${status.botUsername}`}>
+                          @{status.botUsername}
+                        </Tag>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </Button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  ) : (
+    <Empty description={t('settings.channels.selectFirst')} />
+  );
+
   return (
     <ContextGoScrollArea
       className={classNames(isPageMode && 'h-full', useSplitColumnScroll && 'overflow-hidden')}
       disableOverflow={useSplitColumnScroll}
     >
-      <div className={classNames('px-[10px] md:px-[18px] pb-20px', useSplitColumnScroll && styles.pageLayout)}>
+      <div className={classNames('px-0 md:px-[18px] pb-20px', useSplitColumnScroll && styles.pageLayout)}>
         <div className={styles.pageHeader}>
           <h2 className='text-20px font-500 text-t-primary m-0'>{pageTitle}</h2>
           <div className='space-y-8px mt-10px'>
@@ -1132,77 +1393,47 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
 
         {mode === 'channels' ? (
           <>
-            <div className={styles.shell}>
-              <aside className={styles.sidebarCard}>
-                <div className={styles.sectionHeader}>
-                  <h3 className={styles.sectionTitle}>
-                    {t('settings.channels.familyListTitle', { defaultValue: 'Channel types' })}
-                  </h3>
-                  <div className={styles.sectionDescription}>
-                    {t('settings.channels.familyListDescription', {
-                      defaultValue: 'Choose one IM type first, then manage its channel instances on the right.',
-                    })}
-                  </div>
-                </div>
-
-                <div className={styles.familyList}>
-                  {families.length === 0 ? (
-                    <Empty description={t('settings.channels.selectFirst')} />
-                  ) : (
-                    families.map((family) => {
+            {isMobileChannelLayout ? (
+              showMobileDetail ? (
+                <section className={styles.mobileDetailView}>
+                  <Button
+                    type='text'
+                    className={styles.mobileBackButton}
+                    onClick={() => setMobileDetailVisible(false)}
+                    data-testid='channel-mobile-back'
+                  >
+                    {t('common.back', { defaultValue: 'Back' })}
+                  </Button>
+                  {detailContent}
+                </section>
+              ) : (
+                <section className={styles.mobileListView} data-testid='channel-mobile-list'>
+                  <div className={styles.mobileFamilyRail}>
+                    {families.map((family) => {
                       const isActive = family.id === resolvedFamilyId;
                       return (
                         <Button
                           key={family.id}
                           type='text'
-                          onClick={() => setSelectedFamilyId(family.id)}
-                          className={classNames(styles.familyButton, isActive && styles.familyButtonActive)}
+                          onClick={() => handleSelectFamily(family.id)}
+                          className={classNames(styles.mobileFamilyChip, isActive && styles.mobileFamilyChipActive)}
+                          data-testid={`channel-family-trigger-${family.id}`}
                         >
-                          <div className={styles.familyButtonInner}>
-                            <ChannelLogo title={family.title} familyId={family.id} size='small' />
-                            <div className={styles.familyMeta}>
-                              <div className={styles.familyTitleRow}>
-                                <div className={styles.familyTitle} title={family.title}>
-                                  {family.title}
-                                </div>
-                                <Tag className={styles.countTag}>{family.channels.length}</Tag>
-                              </div>
-                              <div className={styles.familyDescription} title={family.description}>
-                                {family.description}
-                              </div>
-                            </div>
-                          </div>
+                          <span className={styles.mobileFamilyChipLabel}>{family.title}</span>
+                          <span className={styles.mobileFamilyChipCount}>{family.channels.length}</span>
                         </Button>
                       );
-                    })
-                  )}
-                </div>
-              </aside>
+                    })}
+                  </div>
 
-              <section className={styles.detailColumn}>
-                {selectedFamily ? (
-                  <>
-                    <div className={styles.heroCard}>
-                      <div className={styles.heroRow}>
-                        <div className={styles.heroMain}>
-                          <ChannelLogo title={selectedFamily.title} familyId={selectedFamily.id} size='large' />
-                          <div className={styles.heroCopy}>
-                            <h3 className={styles.heroTitle} title={selectedFamily.title}>
-                              {selectedFamily.title}
-                            </h3>
-                            <div className={styles.heroDescription} title={selectedFamily.description}>
-                              {selectedFamily.description}
-                            </div>
-                            <div className={styles.heroBadges}>
-                              <Tag className={styles.metricTag}>
-                                {t('settings.channels.instanceListTitle', { defaultValue: 'Instances' })}:{' '}
-                                {selectedFamily.channels.length}
-                              </Tag>
-                              <Tag className={styles.metricTag}>
-                                {t('settings.channels.readyCount', { defaultValue: 'Ready' })}:{' '}
-                                {selectedFamily.readyCount}
-                              </Tag>
-                            </div>
+                  {selectedFamily ? (
+                    <>
+                      <div className={styles.mobileFamilySummary}>
+                        <div className={styles.mobileFamilySummaryMain}>
+                          <ChannelLogo title={selectedFamily.title} familyId={selectedFamily.id} size='small' />
+                          <div className={styles.mobileFamilySummaryCopy}>
+                            <div className={styles.mobileFamilySummaryTitle}>{selectedFamily.title}</div>
+                            <div className={styles.mobileFamilySummaryDescription}>{selectedFamily.description}</div>
                           </div>
                         </div>
                         {canCreateInstance ? (
@@ -1211,245 +1442,103 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
                           </Button>
                         ) : null}
                       </div>
+                      {instanceListContent}
+                    </>
+                  ) : (
+                    <Empty description={t('settings.channels.selectFirst')} />
+                  )}
+                </section>
+              )
+            ) : (
+              <div className={styles.shell}>
+                <aside className={styles.sidebarCard}>
+                  <div className={styles.sectionHeader}>
+                    <h3 className={styles.sectionTitle}>
+                      {t('settings.channels.familyListTitle', { defaultValue: 'Channel types' })}
+                    </h3>
+                    <div className={styles.sectionDescription}>
+                      {t('settings.channels.familyListDescription', {
+                        defaultValue: 'Choose one IM type first, then manage its channel instances on the right.',
+                      })}
                     </div>
+                  </div>
 
-                    <div className={styles.instanceCard}>
-                      <div className={styles.sectionHeader}>
-                        <h3 className={styles.sectionTitle}>
-                          {t('settings.channels.instanceListTitle', { defaultValue: 'Instances' })}
-                        </h3>
-                        <div className={styles.sectionDescription}>
-                          {t('settings.channels.instanceListDescription', {
-                            defaultValue:
-                              'Each channel instance has its own configuration, enablement, and pairing flow.',
-                          })}
-                        </div>
-                      </div>
-
-                      <div className={styles.instanceList}>
-                        {selectedFamily.channels.length === 0 ? (
-                          <div className={styles.instanceEmptyState}>
-                            <Empty
-                              description={t('settings.channels.emptyInstances', {
-                                defaultValue: 'No channel instances yet',
-                              })}
-                            />
-                          </div>
-                        ) : (
-                          selectedFamily.channels.map((entry) => {
-                            const status = pluginStatusById.get(entry.id);
-                            const isActive = entry.id === resolvedChannelId;
-                            const primaryState = getChannelPrimaryState(
-                              Boolean(entry.configured),
-                              Boolean(status?.enabled),
-                              entry.pairedCount ?? 0
-                            );
-                            return (
-                              <Button
-                                key={entry.id}
-                                type='text'
-                                onClick={() => setSelectedChannelId(entry.id)}
-                                className={classNames(styles.instanceButton, isActive && styles.instanceButtonActive)}
-                              >
-                                <div className={styles.instanceButtonInner}>
-                                  <ChannelLogo
-                                    title={entry.title}
-                                    channelId={entry.id}
-                                    familyId={entry.familyId}
-                                    icon={entry.icon}
-                                    size='small'
-                                  />
-                                  <div className={styles.instanceMeta}>
-                                    <div className={styles.instanceHeadingRow}>
-                                      <div className={styles.instanceName} title={entry.title}>
-                                        {entry.title}
-                                      </div>
-                                    </div>
-                                    <div className={styles.instanceDescription} title={entry.description}>
-                                      {entry.description}
-                                    </div>
-                                    <div className={styles.instanceMetaRow}>
-                                      <Tag className={styles.metricTag}>
-                                        {getChannelPrimaryStatusLabel(primaryState, t)}
-                                      </Tag>
-                                      {entry.pairedCount ? (
-                                        <Tag className={styles.pillTag}>{getPairingLabel(entry.pairedCount, t)}</Tag>
-                                      ) : null}
-                                      {status?.botUsername ? (
-                                        <Tag className={styles.usernameTag} title={`@${status.botUsername}`}>
-                                          @{status.botUsername}
-                                        </Tag>
-                                      ) : null}
-                                    </div>
+                  <div className={styles.familyList}>
+                    {families.length === 0 ? (
+                      <Empty description={t('settings.channels.selectFirst')} />
+                    ) : (
+                      families.map((family) => {
+                        const isActive = family.id === resolvedFamilyId;
+                        return (
+                          <Button
+                            key={family.id}
+                            type='text'
+                            onClick={() => handleSelectFamily(family.id)}
+                            className={classNames(styles.familyButton, isActive && styles.familyButtonActive)}
+                          >
+                            <div className={styles.familyButtonInner}>
+                              <ChannelLogo title={family.title} familyId={family.id} size='small' />
+                              <div className={styles.familyMeta}>
+                                <div className={styles.familyTitleRow}>
+                                  <div className={styles.familyTitle} title={family.title}>
+                                    {family.title}
                                   </div>
+                                  <Tag className={styles.countTag}>{family.channels.length}</Tag>
                                 </div>
-                              </Button>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
+                                <div className={styles.familyDescription} title={family.description}>
+                                  {family.description}
+                                </div>
+                              </div>
+                            </div>
+                          </Button>
+                        );
+                      })
+                    )}
+                  </div>
+                </aside>
 
-                    {selectedChannel && selectedStatus ? (
-                      <div className={styles.detailCard}>
-                        <div className={styles.detailHeader}>
-                          <div className={styles.detailHeaderMain}>
-                            <ChannelLogo
-                              title={selectedChannel.title}
-                              channelId={selectedChannel.id}
-                              familyId={selectedChannel.familyId}
-                              icon={selectedChannel.icon}
-                              size='large'
-                            />
-                            <div className={styles.detailHeaderCopy}>
-                              <h3 className={styles.detailTitle} title={selectedChannel.title}>
-                                {selectedChannel.title}
+                <section className={styles.detailColumn}>
+                  {selectedFamily ? (
+                    <>
+                      <div className={styles.heroCard}>
+                        <div className={styles.heroRow}>
+                          <div className={styles.heroMain}>
+                            <ChannelLogo title={selectedFamily.title} familyId={selectedFamily.id} size='large' />
+                            <div className={styles.heroCopy}>
+                              <h3 className={styles.heroTitle} title={selectedFamily.title}>
+                                {selectedFamily.title}
                               </h3>
-                              <div className={styles.detailSubtitle} title={selectedFamily.description}>
+                              <div className={styles.heroDescription} title={selectedFamily.description}>
                                 {selectedFamily.description}
                               </div>
-                              {selectedStatus.botUsername ? (
-                                <div className={styles.detailBadges}>
-                                  <Tag className={styles.usernameTag} title={`@${selectedStatus.botUsername}`}>
-                                    @{selectedStatus.botUsername}
-                                  </Tag>
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                          <div className={styles.detailActions}>
-                            <Switch
-                              checked={selectedStatus.enabled}
-                              disabled={loadingMap[selectedLoadingKey]}
-                              onChange={(checked) => void handleToggleChannel(selectedStatus, checked)}
-                            />
-                            <Button onClick={() => void handleSaveInstance()} loading={loadingMap[selectedLoadingKey]}>
-                              {t('common.save', { defaultValue: 'Save' })}
-                            </Button>
-                            {canDeleteInstance ? (
-                              <Button
-                                status='danger'
-                                onClick={() => void handleDeleteInstance()}
-                                loading={loadingMap[selectedLoadingKey]}
-                              >
-                                {t('common.delete', { defaultValue: 'Delete' })}
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <div className={styles.setupCard}>
-                          <div className={styles.setupHeader}>
-                            <div className={styles.sectionHeader}>
-                              <h3 className={styles.sectionTitle}>
-                                {t('settings.channels.setupFlowTitle', { defaultValue: 'Setup flow' })}
-                              </h3>
-                              <div className={styles.sectionDescription}>
-                                {selectedPairingComplete
-                                  ? t('settings.channels.setupCompleteDescription', {
-                                      defaultValue:
-                                        'This instance has completed at least one pairing. It now counts as successfully added and can be used for publication.',
-                                    })
-                                  : t('settings.channels.setupPendingDescription', {
-                                      defaultValue:
-                                        'Only the instance shell exists so far. Finish configuration, enable the runtime, and approve at least one pairing request in order. The instance is not considered successfully added until pairing succeeds.',
-                                    })}
-                              </div>
-                            </div>
-                            {selectedPrimaryState ? (
-                              <Tag className={styles.metricTag}>
-                                {getChannelPrimaryStatusLabel(selectedPrimaryState, t)}
-                              </Tag>
-                            ) : null}
-                          </div>
-                          <div className={styles.setupSteps}>
-                            <div className={styles.setupStep}>
-                              <div className={styles.setupStepIndex}>1</div>
-                              <div className={styles.setupStepBody}>
-                                <div className={styles.setupStepTitle}>
-                                  {t('settings.channels.setupStepConfigure', {
-                                    defaultValue: 'Configure credentials or sign in',
-                                  })}
-                                </div>
-                                <Tag className={styles.statusTag}>
-                                  {getConfiguredLabel(Boolean(selectedChannel.configured), t)}
+                              <div className={styles.heroBadges}>
+                                <Tag className={styles.metricTag}>
+                                  {t('settings.channels.instanceListTitle', { defaultValue: 'Instances' })}:{' '}
+                                  {selectedFamily.channels.length}
+                                </Tag>
+                                <Tag className={styles.metricTag}>
+                                  {t('settings.channels.readyCount', { defaultValue: 'Ready' })}: {selectedFamily.readyCount}
                                 </Tag>
                               </div>
                             </div>
-                            <div className={styles.setupStep}>
-                              <div className={styles.setupStepIndex}>2</div>
-                              <div className={styles.setupStepBody}>
-                                <div className={styles.setupStepTitle}>
-                                  {t('settings.channels.setupStepEnable', {
-                                    defaultValue: 'Enable the channel runtime',
-                                  })}
-                                </div>
-                                <Tag className={styles.statusTag}>{getEnabledLabel(selectedStatus.enabled, t)}</Tag>
-                              </div>
-                            </div>
-                            <div className={styles.setupStep}>
-                              <div className={styles.setupStepIndex}>3</div>
-                              <div className={styles.setupStepBody}>
-                                <div className={styles.setupStepTitle}>
-                                  {t('settings.channels.setupStepPair', {
-                                    defaultValue: 'Approve a pairing request',
-                                  })}
-                                </div>
-                                <Tag className={styles.statusTag}>{getPairingLabel(selectedPairedCount, t)}</Tag>
-                              </div>
-                            </div>
                           </div>
+                          {canCreateInstance ? (
+                            <Button type='primary' onClick={() => void handleCreateInstance()}>
+                              {t('settings.channels.addInstance', { defaultValue: 'Add and pair' })}
+                            </Button>
+                          ) : null}
                         </div>
-
-                        <div className='grid gap-12px mt-16px md:grid-cols-[minmax(0,1fr)_160px]'>
-                          <div className='space-y-6px'>
-                            <div className='text-13px font-600 text-t-primary'>
-                              {t('settings.channels.instanceNameLabel', { defaultValue: 'Instance name' })}
-                            </div>
-                            <Input
-                              value={selectedNameDraft}
-                              onChange={(value) => {
-                                setInstanceNameDrafts((prev) => ({ ...prev, [selectedChannel.id]: value }));
-                              }}
-                              placeholder={t('settings.channels.instanceNamePlaceholder', {
-                                defaultValue: 'Enter instance name',
-                              })}
-                            />
-                          </div>
-                          <div className='space-y-6px'>
-                            <div className='text-13px font-600 text-t-primary'>
-                              {t('settings.channels.instanceStatusLabel', { defaultValue: 'Runtime status' })}
-                            </div>
-                            <Input value={selectedStatus.status} disabled />
-                          </div>
-                        </div>
-
-                        <div className='space-y-8px mt-16px'>
-                          <div className='text-13px font-600 text-t-primary'>
-                            {t('settings.channels.instanceDetailsTitle', { defaultValue: 'Instance details' })}
-                          </div>
-                          <div className='text-12px text-t-tertiary leading-relaxed'>
-                            {selectedPairingComplete
-                              ? t('settings.channels.instanceDetailsHint', {
-                                  defaultValue:
-                                    'This instance has completed pairing and can now be used for transport, authorization, and peer discovery. Formal Agent publication is still managed in Agent Publish.',
-                                })
-                              : t('settings.channels.instanceDraftHint', {
-                                  defaultValue:
-                                    'Creating the instance only starts the onboarding flow. Finish credentials or login, enable it, and complete at least one pairing. The instance is only considered added after pairing succeeds, and only then can it be used for publication.',
-                                })}
-                          </div>
-                        </div>
-
-                        <div className='mt-16px'>{selectedChannel.content}</div>
                       </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <Empty description={t('settings.channels.selectFirst')} />
-                )}
-              </section>
-            </div>
+
+                      {instanceListContent}
+                      {detailContent}
+                    </>
+                  ) : (
+                    <Empty description={t('settings.channels.selectFirst')} />
+                  )}
+                </section>
+              </div>
+            )}
           </>
         ) : (
           <div className='mt-18px space-y-16px'>
