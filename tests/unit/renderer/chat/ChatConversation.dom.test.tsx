@@ -4,6 +4,20 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const openPreviewMock = vi.fn();
+const previewContextStateRef = {
+  current: {
+    isOpen: false,
+    activeTab: null as null | {
+      id: string;
+      title: string;
+      content: string;
+      contentType: string;
+      metadata?: {
+        fileName?: string;
+      };
+    },
+  },
+};
 const acpModelSelectorMock = vi.fn(() => <div data-testid='acp-model-selector' />);
 const navigateMock = vi.fn();
 const mockPrepareConversationPublicationInvoke = vi.fn();
@@ -53,6 +67,8 @@ vi.mock('react-router-dom', () => ({
 
 vi.mock('@/renderer/pages/conversation/Preview', () => ({
   usePreviewContext: () => ({
+    isOpen: previewContextStateRef.current.isOpen,
+    activeTab: previewContextStateRef.current.activeTab,
     openPreview: openPreviewMock,
   }),
 }));
@@ -253,6 +269,10 @@ const createConversation = (type: TChatConversation['type'], id: string): TChatC
 describe('ChatConversation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    previewContextStateRef.current = {
+      isOpen: false,
+      activeTab: null,
+    };
     mockConversationWarmupInvoke.mockResolvedValue(undefined);
     mockGetAssociateConversationInvoke.mockResolvedValue([]);
     mockPrepareConversationPublicationInvoke.mockResolvedValue({
@@ -381,10 +401,10 @@ describe('ChatConversation', () => {
     );
   });
 
-  it('does not render the browser context header button when the conversation has no bound browser context', () => {
+  it('renders the browser capability addon even before a browser context is bound', () => {
     render(<ChatConversation conversation={createConversation('acp', 'acp-no-browser')} />);
 
-    expect(screen.queryByTestId('browser-context-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('browser-context-button')).toBeInTheDocument();
   });
 
   it('renders the browser context header button when the conversation is already bound to a browser context', () => {
@@ -399,6 +419,41 @@ describe('ChatConversation', () => {
     render(<ChatConversation conversation={conversation} />);
 
     expect(screen.getByTestId('browser-context-button')).toBeInTheDocument();
+  });
+
+  it('shows the workspace capability surface state when the conversation has a workspace', () => {
+    const conversation = {
+      ...createConversation('acp', 'acp-workspace-capability'),
+      extra: {
+        workspace: '/tmp/capability-workspace',
+        backend: 'claude',
+      },
+    } as TChatConversation;
+
+    render(<ChatConversation conversation={conversation} />);
+
+    expect(screen.getByText('Workspace')).toBeInTheDocument();
+    expect(screen.getByText(/capability-workspace/i)).toBeInTheDocument();
+  });
+
+  it('shows the preview capability surface state when preview is currently open', () => {
+    previewContextStateRef.current = {
+      isOpen: true,
+      activeTab: {
+        id: 'preview-1',
+        title: 'README.md',
+        content: '# README',
+        contentType: 'markdown',
+        metadata: {
+          fileName: 'README.md',
+        },
+      },
+    };
+
+    render(<ChatConversation conversation={createConversation('acp', 'acp-preview-capability')} />);
+
+    expect(screen.getByText('Preview')).toBeInTheDocument();
+    expect(screen.getByText('README.md')).toBeInTheDocument();
   });
 
   it('writes publication intent into url search when opening the agent publish page', async () => {

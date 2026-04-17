@@ -44,6 +44,19 @@ const getHomeUrl = (asset?: TBrowserContextAsset): string | undefined => {
   return typeof homeUrl === 'string' && homeUrl.trim() ? homeUrl.trim() : undefined;
 };
 
+const truncateBrowserLabel = (label: string): string => {
+  const trimmed = label.trim();
+  if (trimmed.length <= 28) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, 27).trimEnd()}…`;
+};
+
+const getBrowserChipLabel = (assetLabel?: string): string => {
+  return assetLabel ? `Browser: ${truncateBrowserLabel(assetLabel)}` : 'Browser';
+};
+
 const ConversationBrowserContextButton: React.FC<ConversationBrowserContextButtonProps> = ({
   conversation,
   onOpenUrl,
@@ -54,10 +67,39 @@ const ConversationBrowserContextButton: React.FC<ConversationBrowserContextButto
   const [startUrl, setStartUrl] = useState('https://');
   const [draft, setDraft] = useState<BrowserContextDraft | null>(null);
   const [boundAssetId, setBoundAssetId] = useState(conversation.extra?.browserContextAssetId);
+  const [boundAssetLabel, setBoundAssetLabel] = useState<string | null>(null);
 
   useEffect(() => {
     setBoundAssetId(conversation.extra?.browserContextAssetId);
   }, [conversation.extra?.browserContextAssetId]);
+
+  useEffect(() => {
+    if (!boundAssetId) {
+      setBoundAssetLabel(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    void ipcBridge.browserContext.get
+      .invoke({ id: boundAssetId })
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+
+        setBoundAssetLabel(result.success && result.data?.label ? result.data.label : null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBoundAssetLabel(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boundAssetId]);
 
   const defaultAssetLabel = useMemo(() => {
     const normalizedName = conversation.name.trim();
@@ -139,6 +181,35 @@ const ConversationBrowserContextButton: React.FC<ConversationBrowserContextButto
       Message.error(error instanceof Error ? error.message : t('conversation.browser.openFailed'));
     }
   }, [boundAssetId, conversation.extra?.spaceId, defaultAssetLabel, openBrowserPreview, t]);
+
+  const handleConfigureBrowser = useCallback(async () => {
+    const spaceId = conversation.extra?.spaceId;
+    if (!spaceId || !boundAssetId) {
+      return;
+    }
+
+    try {
+      const bindableResponse = await ipcBridge.browserContext.assertBindable.invoke({
+        id: boundAssetId,
+        spaceId,
+      });
+      if (!bindableResponse.success || !bindableResponse.data) {
+        Message.warning(bindableResponse.msg || t('conversation.browser.openFailed'));
+        return;
+      }
+
+      const asset = bindableResponse.data;
+      setDraft({
+        id: asset.id,
+        label: asset.label,
+        metadata: asset.metadata,
+      });
+      setStartUrl(getHomeUrl(asset) || 'https://');
+      setVisible(true);
+    } catch (error) {
+      Message.error(error instanceof Error ? error.message : t('conversation.browser.openFailed'));
+    }
+  }, [boundAssetId, conversation.extra?.spaceId, t]);
 
   const handleConfirm = useCallback(async () => {
     const spaceId = conversation.extra?.spaceId;
@@ -231,12 +302,21 @@ const ConversationBrowserContextButton: React.FC<ConversationBrowserContextButto
     t,
   ]);
 
+  const isBound = Boolean(boundAssetId);
+  const chipLabel = getBrowserChipLabel(boundAssetLabel ?? undefined);
+
   return (
     <>
-      <Tooltip content={t('conversation.browser.open')}>
-        <Button
-          size='mini'
-          icon={
+      <div className='app-icon-row gap-6px'>
+        <Tooltip content={t('conversation.browser.open')}>
+          <Button
+            size='mini'
+            className='app-icon-row'
+            aria-label={chipLabel}
+            onClick={() => {
+              void handleOpenBrowser();
+            }}
+          >
             <Earth
               theme='outline'
               size='14'
@@ -245,12 +325,24 @@ const ConversationBrowserContextButton: React.FC<ConversationBrowserContextButto
               strokeLinejoin='miter'
               strokeLinecap='square'
             />
-          }
-          onClick={() => {
-            void handleOpenBrowser();
-          }}
-        />
-      </Tooltip>
+            <span title={chipLabel}>{chipLabel}</span>
+          </Button>
+        </Tooltip>
+
+        {isBound ? (
+          <Tooltip content={t('conversation.browser.configureTitle')}>
+            <Button
+              size='mini'
+              aria-label='configure browser'
+              onClick={() => {
+                void handleConfigureBrowser();
+              }}
+            >
+              <span>{t('common.configure', { defaultValue: 'Configure' })}</span>
+            </Button>
+          </Tooltip>
+        ) : null}
+      </div>
 
       <ContextGoModal
         visible={visible}

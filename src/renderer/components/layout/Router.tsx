@@ -27,10 +27,13 @@ import {
   resolveAuthenticatedStartupPath,
   shouldPreferOfficialRemoteShell,
 } from '@renderer/utils/officialRemote';
+import { conversationCoworkWorkbench } from '@renderer/pages/WorkbenchHost/definitions';
+import type { WorkbenchDefinition } from '@renderer/pages/WorkbenchHost/types';
 
 type LazyRouteLoader = () => Promise<{ default: React.ComponentType }>;
 
 const loadConversation = () => import('@renderer/pages/conversation');
+const loadWorkbenchHost = () => import('@renderer/pages/WorkbenchHost');
 const loadConnectorsPage = () => import('@renderer/pages/connectors');
 const loadGuid = () => import('@renderer/pages/guid');
 const loadGlobalScheduleSettings = () => import('@renderer/pages/schedule/GlobalScheduleSettings');
@@ -231,6 +234,20 @@ const withRouteFallback = (loader: LazyRouteLoader, routePath: string) => (
   <RecoverableLazyRoute key={routePath} loader={loader} routePath={routePath} />
 );
 
+const renderWorkbenchRoute = (params: {
+  loader: LazyRouteLoader;
+  routePath: string;
+  definition: WorkbenchDefinition;
+}) => {
+  const WorkbenchHost = React.lazy(loadWorkbenchHost);
+
+  return (
+    <Suspense fallback={<AppLoader />}>
+      <WorkbenchHost definition={params.definition}>{withRouteFallback(params.loader, params.routePath)}</WorkbenchHost>
+    </Suspense>
+  );
+};
+
 const ProtectedLayout: React.FC<{
   status: ReturnType<typeof useAuth>['status'];
 }> = ({ status }) => {
@@ -347,7 +364,14 @@ const RoutedPanels: React.FC<{
           element={withRouteFallback(loadConnectorsPage, '/connectors/:connectorId')}
         />
         <Route path={CONVERSATION_SEARCH_ROUTE} element={<ConversationSearchPage />} />
-        <Route path='/conversation/:id' element={withRouteFallback(loadConversation, '/conversation/:id')} />
+        <Route
+          path='/conversation/:id'
+          element={renderWorkbenchRoute({
+            loader: loadConversation,
+            routePath: '/conversation/:id',
+            definition: conversationCoworkWorkbench,
+          })}
+        />
         <Route path='/agents/*' element={withRouteFallback(loadAgentsPage, '/agents/*')} />
         <Route path='/skills-hub' element={withRouteFallback(loadSkillsHubSettings, '/skills-hub')} />
         <Route path='/settings/gemini' element={withRouteFallback(loadGeminiSettings, '/settings/gemini')} />

@@ -137,11 +137,16 @@ import ChatLayout from '@/renderer/pages/conversation/components/ChatLayout';
 describe('ChatLayout mobile header composition', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    document.body.innerHTML = `
+      <div id="shell-titlebar-primary-slot"></div>
+      <div id="shell-toolbar-slot"></div>
+    `;
 
     useLayoutContextMock.mockReturnValue({
       isMobile: true,
       siderCollapsed: true,
       setSiderCollapsed: vi.fn(),
+      activeWorkbenchDefinition: null,
     });
 
     usePreviewContextMock.mockReturnValue({
@@ -212,5 +217,42 @@ describe('ChatLayout mobile header composition', () => {
     expect(contextRow).toBeTruthy();
     expect(contextRow?.querySelector('.chat-layout-mobile-toolbar')).toBeTruthy();
     expect(container.querySelector('.chat-layout-header--mobile-unified')).toBeNull();
+  });
+
+  it('mounts desktop header and toolbar content into workbench-defined shell slots', () => {
+    useLayoutContextMock.mockReturnValue({
+      isMobile: false,
+      siderCollapsed: false,
+      setSiderCollapsed: vi.fn(),
+      activeWorkbenchDefinition: {
+        kind: 'conversation-cowork',
+        capabilities: ['chat', 'preview', 'workspace', 'browser'],
+        shellContract: {
+          shellStyle: 'conversation',
+          titlebar: {
+            primarySlotId: 'shell-titlebar-primary-slot',
+          },
+          toolbar: {
+            slotId: 'shell-toolbar-slot',
+          },
+        },
+      },
+    });
+
+    render(
+      <ChatLayout
+        title='Conversation 1'
+        sider={<div>workspace</div>}
+        headerLeft={<div>model-pill</div>}
+        headerExtra={<div>toolbar-extra</div>}
+        workspaceEnabled={true}
+        conversationId='conv-1'
+      >
+        <div>chat-body</div>
+      </ChatLayout>
+    );
+
+    expect(document.getElementById('shell-titlebar-primary-slot')).toHaveTextContent('model-pill');
+    expect(document.getElementById('shell-toolbar-slot')).toHaveTextContent('toolbar-extra');
   });
 });
