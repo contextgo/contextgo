@@ -8,6 +8,11 @@ on:
         required: false
         default: 'main'
         type: string
+      use_hosted_runner:
+        description: 'Force GitHub-hosted macOS runner for this manual run'
+        required: false
+        default: false
+        type: boolean
   workflow_run:
     workflows:
       - Build and Release
@@ -35,4 +40,5 @@ jobs:
     with:
       source_ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.ref }}
       require_release_tag: ${{ github.event_name == 'workflow_run' }}
+      use_hosted_runner: ${{ github.event_name == 'workflow_dispatch' && inputs.use_hosted_runner || false }}
     secrets: inherit

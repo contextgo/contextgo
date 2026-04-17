@@ -12,6 +12,11 @@ on:
         required: false
         default: false
         type: boolean
+      use_hosted_runner:
+        description: 'Force GitHub-hosted macOS runner instead of self-hosted labels'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-and-upload:
@@ -19,6 +24,7 @@ jobs:
     runs-on: >-
       ${{
         fromJSON(
+          !inputs.use_hosted_runner &&
           (
             vars.SELF_HOSTED_IOS_RUNNER_LABELS_JSON != '' &&
             vars.SELF_HOSTED_IOS_RUNNER_LABELS_JSON ||
