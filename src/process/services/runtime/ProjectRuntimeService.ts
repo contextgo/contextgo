@@ -8,11 +8,13 @@ import type { ProjectRuntimePolicy, ProjectRuntimeResolvedSource } from '@/commo
 import { getProjectRuntimeRoot } from './ProjectRuntimePaths';
 import { importProjectLocalRuntime, type RuntimeImportResult } from './runtimeImporters';
 import { readProjectRuntimePolicy, writeProjectRuntimePolicy } from './runtimePolicyStore';
+import { getProjectRuntimeEnv } from '@process/utils/shellEnv';
 
 export type ResolvedProjectRuntime = {
   policy: ProjectRuntimePolicy;
   effectiveSource: ProjectRuntimeResolvedSource;
   runtimeRoot: string;
+  runtimeEnv: Record<string, string>;
 };
 
 const buildDefaultProjectRuntimePolicy = (): ProjectRuntimePolicy => ({
@@ -33,6 +35,10 @@ type ProjectRuntimeServiceDeps = {
   importLocalRuntime?: (workspace: string, policy: ProjectRuntimePolicy) => Promise<RuntimeImportResult>;
 };
 
+type ResolveProjectRuntimeOptions = {
+  persistDefaultPolicy?: boolean;
+};
+
 export class ProjectRuntimeService {
   private readonly readPolicy;
   private readonly writePolicy;
@@ -44,13 +50,18 @@ export class ProjectRuntimeService {
     this.importLocalRuntime = deps.importLocalRuntime ?? importProjectLocalRuntime;
   }
 
-  async resolve(workspace: string): Promise<ResolvedProjectRuntime> {
+  async resolve(workspace: string, options: ResolveProjectRuntimeOptions = {}): Promise<ResolvedProjectRuntime> {
     const existingPolicy = await this.readPolicy(workspace);
     const policy = existingPolicy ?? buildDefaultProjectRuntimePolicy();
 
     const runtimeRoot = getProjectRuntimeRoot(workspace);
+    const runtimeEnv = getProjectRuntimeEnv({
+      workspace,
+      runtimeRoot,
+    });
+    const shouldPersistPolicy = options.persistDefaultPolicy !== false;
 
-    if (!existingPolicy) {
+    if (!existingPolicy && shouldPersistPolicy) {
       await this.writePolicy(workspace, policy);
     }
 
@@ -59,6 +70,7 @@ export class ProjectRuntimeService {
         policy,
         effectiveSource: 'model_center',
         runtimeRoot,
+        runtimeEnv,
       };
     }
 
@@ -75,12 +87,15 @@ export class ProjectRuntimeService {
         lastImportedAt: imported.lastImportedAt,
       };
 
-      await this.writePolicy(workspace, nextPolicy);
+      if (shouldPersistPolicy) {
+        await this.writePolicy(workspace, nextPolicy);
+      }
 
       return {
         policy: nextPolicy,
         effectiveSource: nextPolicy.resolvedSource,
         runtimeRoot,
+        runtimeEnv,
       };
     }
 
@@ -88,6 +103,7 @@ export class ProjectRuntimeService {
       policy,
       effectiveSource: policy.resolvedSource,
       runtimeRoot,
+      runtimeEnv,
     };
   }
 }

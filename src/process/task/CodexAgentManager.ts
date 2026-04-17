@@ -39,7 +39,7 @@ import {
   getConfiguredCodexMcpProtocolVersion,
   setAppConfig,
 } from '@/common/utils/appConfig';
-import { getProjectRuntimeRoot } from '@process/services/runtime/ProjectRuntimePaths';
+import { ProjectRuntimeService } from '@process/services/runtime/ProjectRuntimeService';
 
 const APP_CLIENT_NAME = getConfiguredAppClientName();
 const APP_CLIENT_VERSION = getConfiguredAppClientVersion();
@@ -100,6 +100,9 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
     // 使用 SessionManager 来管理连接状态 - 参考 ACP 的模式
     // Use async bootstrap to read config and initialize agent
     this.bootstrap = (async () => {
+      const runtimeWorkspace = data.workspace || process.cwd();
+      const resolvedRuntime = await new ProjectRuntimeService().resolve(runtimeWorkspace);
+
       // 设置 Codex Agent 的应用配置，使用 Electron API 在主进程中
       try {
         const electronModule = await import('electron');
@@ -147,8 +150,9 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
       this.agent = new CodexAgent({
         id: data.conversation_id,
         cliPath: data.cliPath,
-        workingDir: data.workspace || process.cwd(),
-        runtimeRoot: getProjectRuntimeRoot(data.workspace || process.cwd()),
+        workingDir: runtimeWorkspace,
+        runtimeRoot: resolvedRuntime.runtimeRoot,
+        runtimeEnv: resolvedRuntime.runtimeEnv,
         eventHandler,
         sessionManager,
         fileOperationHandler,

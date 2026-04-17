@@ -34,6 +34,7 @@ export interface CodexAgentConfig {
   cliPath?: string; // e.g. 'codex' or absolute path
   workingDir: string;
   runtimeRoot?: string;
+  runtimeEnv?: Record<string, string>;
   eventHandler: CodexEventHandler;
   sessionManager: CodexSessionManager;
   fileOperationHandler: CodexFileOperationHandler;
@@ -52,6 +53,7 @@ export class CodexAgent {
   private readonly cliPath?: string;
   private readonly workingDir: string;
   private readonly runtimeRoot?: string;
+  private readonly runtimeEnv?: Record<string, string>;
   private readonly eventHandler: CodexEventHandler;
   private readonly sessionManager: CodexSessionManager;
   private readonly fileOperationHandler: CodexFileOperationHandler;
@@ -72,6 +74,7 @@ export class CodexAgent {
     this.cliPath = cfg.cliPath;
     this.workingDir = cfg.workingDir;
     this.runtimeRoot = cfg.runtimeRoot;
+    this.runtimeEnv = cfg.runtimeEnv;
     this.eventHandler = cfg.eventHandler;
     this.sessionManager = cfg.sessionManager;
     this.fileOperationHandler = cfg.fileOperationHandler;
@@ -91,6 +94,7 @@ export class CodexAgent {
       await this.conn.start(this.cliPath || 'codex', this.workingDir, [], {
         yoloMode: this.yoloMode,
         runtimeRoot: this.runtimeRoot,
+        env: this.runtimeEnv,
       });
 
       // Wait for MCP server to be fully ready
