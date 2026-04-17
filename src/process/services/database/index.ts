@@ -731,9 +731,9 @@ export class AionUIDatabase {
       const row = spaceToRow(space, userId || this.defaultUserId);
       const stmt = this.db.prepare(`
         INSERT INTO spaces (
-          id, user_id, name, engine, description, members_json, permissions_policy_json, provider_ref_json, is_default, archived_at, created_at, updated_at
+          id, user_id, name, engine, description, members_json, permissions_policy_json, provider_ref_json, automation_json, is_default, archived_at, created_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -745,6 +745,7 @@ export class AionUIDatabase {
         row.members_json ?? '[]',
         row.permissions_policy_json ?? '{}',
         row.provider_ref_json ?? null,
+        row.automation_json ?? '{}',
         row.is_default,
         row.archived_at ?? null,
         row.created_at,
@@ -823,7 +824,18 @@ export class AionUIDatabase {
   updateSpace(
     spaceId: string,
     updates: Partial<
-      Pick<TSpace, 'name' | 'engine' | 'description' | 'members' | 'permissionsPolicy' | 'isDefault' | 'archivedAt'>
+      Pick<
+        TSpace,
+        | 'name'
+        | 'engine'
+        | 'description'
+        | 'members'
+        | 'permissionsPolicy'
+        | 'providerRef'
+        | 'automation'
+        | 'isDefault'
+        | 'archivedAt'
+      >
     >
   ): IQueryResult<boolean> {
     try {
@@ -849,6 +861,7 @@ export class AionUIDatabase {
             members_json = ?,
             permissions_policy_json = ?,
             provider_ref_json = ?,
+            automation_json = ?,
             is_default = ?,
             archived_at = ?,
             updated_at = ?
@@ -862,6 +875,7 @@ export class AionUIDatabase {
         row.members_json ?? '[]',
         row.permissions_policy_json ?? '{}',
         row.provider_ref_json ?? null,
+        row.automation_json ?? '{}',
         row.is_default,
         row.archived_at ?? null,
         row.updated_at,

@@ -15,6 +15,7 @@ type ProjectSkillMarketModalProps = {
   visible: boolean;
   workspacePath: string;
   onClose: () => void;
+  variant?: 'modal' | 'embedded';
 };
 
 const normalizePath = (value: string): string => value.replace(/\\/g, '/').replace(/\/+$/, '');
@@ -33,7 +34,12 @@ const resolveWorkspaceInstalledSkillNames = (skills: SkillInfo[], workspaceSkill
   );
 };
 
-const ProjectSkillMarketModal: React.FC<ProjectSkillMarketModalProps> = ({ visible, workspacePath, onClose }) => {
+const ProjectSkillMarketModal: React.FC<ProjectSkillMarketModalProps> = ({
+  visible,
+  workspacePath,
+  onClose,
+  variant = 'modal',
+}) => {
   const { t } = useTranslation();
   const [messageApi, messageContext] = Message.useMessage();
   const [marketSkills, setMarketSkills] = useState<SkillMarketItem[]>([]);
@@ -205,28 +211,20 @@ const ProjectSkillMarketModal: React.FC<ProjectSkillMarketModalProps> = ({ visib
     // Depend only on the state that should trigger market searching.
   }, [marketQuery, marketView, visible]);
 
-  return (
-    <SettingsSubModal
-      visible={visible}
-      title={t('conversation.workspace.skillMarket.title', { defaultValue: 'Project Skill Market' })}
-      onCancel={onClose}
-      footer={null}
-      unmountOnExit
-      style={{ width: 'min(980px, calc(100vw - 32px))' }}
-      contentStyle={{ padding: '12px 24px 24px', maxHeight: 'min(82vh, 900px)', overflow: 'auto' }}
-    >
+  const content = (
+    <>
       {messageContext}
       <div className='flex flex-col gap-16px'>
         <div className='rounded-16px border border-solid border-[var(--color-border-2)] bg-[var(--color-fill-1)] p-16px'>
           <div className='flex flex-col gap-12px md:flex-row md:items-start md:justify-between'>
             <div className='min-w-0'>
               <Typography.Text className='text-14px font-semibold text-t-primary'>
-                {t('conversation.workspace.skillMarket.title', { defaultValue: 'Project Skill Market' })}
+                {t('conversation.workspace.skillMarket.title', { defaultValue: 'Skill Market' })}
               </Typography.Text>
               <Typography.Paragraph className='mb-0 mt-8px text-t-secondary'>
                 {t('conversation.workspace.skillMarket.description', {
                   defaultValue:
-                    'Discover remote skills and install them directly into the current project automation surface.',
+                    'Discover remote skills and install them directly into the current workspace skill library.',
                 })}
               </Typography.Paragraph>
               <Typography.Paragraph className='mb-0 mt-8px text-t-secondary'>
@@ -355,6 +353,24 @@ const ProjectSkillMarketModal: React.FC<ProjectSkillMarketModalProps> = ({ visib
           )}
         </div>
       </div>
+    </>
+  );
+
+  if (variant === 'embedded') {
+    return visible ? content : null;
+  }
+
+  return (
+    <SettingsSubModal
+      visible={visible}
+      title={t('conversation.workspace.skillMarket.title', { defaultValue: 'Skill Market' })}
+      onCancel={onClose}
+      footer={null}
+      unmountOnExit
+      style={{ width: 'min(980px, calc(100vw - 32px))' }}
+      contentStyle={{ padding: '12px 24px 24px', maxHeight: 'min(82vh, 900px)', overflow: 'auto' }}
+    >
+      {content}
     </SettingsSubModal>
   );
 };

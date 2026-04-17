@@ -20,6 +20,14 @@ export function initSpaceBridge(spaceService: ISpaceService): void {
     return spaceService.createSpace(name, description);
   });
 
+  ipcBridge.space.getCommandLibrary.provider(async ({ id }) => {
+    return spaceService.getSpaceCommandLibrary(id);
+  });
+
+  ipcBridge.space.saveCommandLibrary.provider(async ({ id, commands }) => {
+    return spaceService.saveSpaceCommandLibrary(id, commands);
+  });
+
   ipcBridge.space.openVault.provider(async ({ id }) => {
     return spaceService.openSpaceVault(id);
   });

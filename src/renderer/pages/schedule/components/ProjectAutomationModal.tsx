@@ -22,6 +22,7 @@ import {
   getConversationEnabledHooks,
   resolveConversationHookBackend,
 } from '@/renderer/pages/conversation/Workspace/utils/sessionHooks';
+import ProjectSkillMarketModal from '@/renderer/pages/conversation/ProjectSkillMarketModal';
 import ManagedCommandLibraryEditor from '@/renderer/pages/settings/ToolsSettings/ManagedCommandLibraryEditor';
 import { emitter } from '@/renderer/utils/emitter';
 import {
@@ -229,6 +230,7 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
   const [runtimePolicy, setRuntimePolicy] = useState<ProjectRuntimePolicy>(createDefaultRuntimePolicy);
   const directCreateContext = useMemo(() => getScheduleDirectCreateContext(conversation), [conversation]);
   const workspacePath = useMemo(() => getConversationWorkspacePath(conversation), [conversation]);
+  const spaceId = conversation.extra?.spaceId;
   const automationPaths = useMemo(
     () => (workspacePath ? getWorkspaceAutomationPaths(workspacePath) : null),
     [workspacePath]
@@ -317,6 +319,14 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
     }
   }, [automationPaths]);
 
+  const loadSpaceCommandLibrary = useCallback(async (): Promise<ManagedSlashCommandRecord[]> => {
+    if (!spaceId) {
+      return [];
+    }
+
+    return ipcBridge.space.getCommandLibrary.invoke({ id: spaceId });
+  }, [spaceId]);
+
   const saveProjectCommandLibrary = useCallback(
     async (nextLibrary: ManagedSlashCommandRecord[]) => {
       if (!automationPaths) {
@@ -329,6 +339,20 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
       });
     },
     [automationPaths]
+  );
+
+  const saveSpaceCommandLibrary = useCallback(
+    async (nextLibrary: ManagedSlashCommandRecord[]) => {
+      if (!spaceId) {
+        return;
+      }
+
+      await ipcBridge.space.saveCommandLibrary.invoke({
+        id: spaceId,
+        commands: nextLibrary,
+      });
+    },
+    [spaceId]
   );
 
   const loadRuntimePolicy = useCallback(async () => {
@@ -934,6 +958,16 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                     )}
                   </AutomationSectionCard>
                 </AutomationPanel>
+                {workspacePath ? (
+                  <div className='mt-16px'>
+                    <ProjectSkillMarketModal
+                      visible={visible && activeTab === 'skills'}
+                      workspacePath={workspacePath}
+                      variant='embedded'
+                      onClose={() => undefined}
+                    />
+                  </div>
+                ) : null}
               </div>
             </Tabs.TabPane>
 
@@ -1076,37 +1110,103 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
 
             <Tabs.TabPane key='commands' title={t('settings.commands.title')}>
               <div className='mt-8px'>
-                {automationPaths ? (
+                {spaceId ? (
                   <ManagedCommandLibraryEditor
                     variant='embedded'
-                    title={t('conversation.workspace.automation.commandsTitle')}
-                    description={t('conversation.workspace.automation.commandsDescription')}
-                    usageHint={t('conversation.workspace.automation.commandsUsageHint')}
-                    loadLibrary={loadProjectCommandLibrary}
-                    saveLibrary={saveProjectCommandLibrary}
+                    title={t('conversation.workspace.automation.spaceCommandsTitle', {
+                      defaultValue: 'Space Commands',
+                    })}
+                    description={t('conversation.workspace.automation.spaceCommandsDescription', {
+                      defaultValue:
+                        'These commands are stored with the bound Space and are applied before project-local commands.',
+                    })}
+                    usageHint={t('conversation.workspace.automation.spaceCommandsUsageHint', {
+                      defaultValue:
+                        'Project Local Commands can override a Space command by slash name, case-insensitively.',
+                    })}
+                    loadLibrary={loadSpaceCommandLibrary}
+                    saveLibrary={saveSpaceCommandLibrary}
                     onLibraryChanged={() => {
                       emitter.emit('commands.library.updated');
                     }}
                     headerMeta={
                       <Typography.Text type='secondary'>
-                        {t('conversation.workspace.automation.commandsPathHint', {
-                          path: automationPaths.commandsFile,
+                        {t('conversation.workspace.automation.spaceCommandsStorageHint', {
+                          defaultValue: 'Stored in the current Space record.',
                         })}
                       </Typography.Text>
                     }
                   />
                 ) : (
                   <AutomationPanel
-                    title={t('conversation.workspace.automation.commandsTitle')}
-                    description={t('conversation.workspace.automation.commandsDescription')}
+                    title={t('conversation.workspace.automation.spaceCommandsTitle', {
+                      defaultValue: 'Space Commands',
+                    })}
+                    description={t('conversation.workspace.automation.spaceCommandsDescription', {
+                      defaultValue:
+                        'These commands are stored with the bound Space and are applied before project-local commands.',
+                    })}
                     icon={<Command theme='outline' size='18' className='app-icon text-t-primary' />}
                   >
                     <AutomationSectionCard>
                       <Typography.Paragraph className='mb-0 text-t-secondary'>
-                        {t('conversation.workspace.automation.workspaceUnavailable')}
+                        {t('conversation.workspace.automation.spaceUnavailable', {
+                          defaultValue:
+                            'This conversation is not bound to a Space yet, so Space Commands are unavailable.',
+                        })}
                       </Typography.Paragraph>
                     </AutomationSectionCard>
                   </AutomationPanel>
+                )}
+                {automationPaths ? (
+                  <div className='mt-16px'>
+                    <ManagedCommandLibraryEditor
+                      variant='embedded'
+                      title={t('conversation.workspace.automation.projectCommandsTitle', {
+                        defaultValue: 'Project Local Commands',
+                      })}
+                      description={t('conversation.workspace.automation.projectCommandsDescription', {
+                        defaultValue:
+                          'These commands are saved into `.contextgo/commands.json` for the current workspace and override Space Commands with the same slash name.',
+                      })}
+                      usageHint={t('conversation.workspace.automation.projectCommandsUsageHint', {
+                        defaultValue:
+                          'Use project-local commands for workspace-specific overrides and private slash templates.',
+                      })}
+                      loadLibrary={loadProjectCommandLibrary}
+                      saveLibrary={saveProjectCommandLibrary}
+                      onLibraryChanged={() => {
+                        emitter.emit('commands.library.updated');
+                      }}
+                      headerMeta={
+                        <Typography.Text type='secondary'>
+                          {t('conversation.workspace.automation.projectCommandsPathHint', {
+                            defaultValue: 'Saved to: {{path}}',
+                            path: automationPaths.commandsFile,
+                          })}
+                        </Typography.Text>
+                      }
+                    />
+                  </div>
+                ) : (
+                  <div className='mt-16px'>
+                    <AutomationPanel
+                      title={t('conversation.workspace.automation.projectCommandsTitle', {
+                        defaultValue: 'Project Local Commands',
+                      })}
+                      description={t('conversation.workspace.automation.projectCommandsDescription', {
+                        defaultValue:
+                          'These commands are saved into `.contextgo/commands.json` for the current workspace and override Space Commands with the same slash name.',
+                      })}
+                      icon={<Command theme='outline' size='18' className='app-icon text-t-primary' />}
+                    >
+                      <AutomationSectionCard>
+                        <Typography.Paragraph className='mb-0 text-t-secondary'>
+                          {t('conversation.workspace.automation.workspaceUnavailable')}
+                        </Typography.Paragraph>
+                      </AutomationSectionCard>
+                    </AutomationPanel>
+                  </div>
                 )}
               </div>
             </Tabs.TabPane>

@@ -67,6 +67,7 @@ export function initSchema(db: ISqliteDriver): void {
     members_json TEXT NOT NULL DEFAULT '[]',
     permissions_policy_json TEXT NOT NULL DEFAULT '{}',
     provider_ref_json TEXT,
+    automation_json TEXT NOT NULL DEFAULT '{}',
     is_default INTEGER NOT NULL DEFAULT 0,
     archived_at INTEGER,
     created_at INTEGER NOT NULL,
@@ -76,6 +77,7 @@ export function initSchema(db: ISqliteDriver): void {
   ensureColumn(db, 'spaces', 'members_json', `members_json TEXT NOT NULL DEFAULT '[]'`);
   ensureColumn(db, 'spaces', 'permissions_policy_json', `permissions_policy_json TEXT NOT NULL DEFAULT '{}'`);
   ensureColumn(db, 'spaces', 'provider_ref_json', 'provider_ref_json TEXT');
+  ensureColumn(db, 'spaces', 'automation_json', `automation_json TEXT NOT NULL DEFAULT '{}'`);
   db.exec('CREATE INDEX IF NOT EXISTS idx_spaces_user_id ON spaces(user_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_spaces_user_updated ON spaces(user_id, updated_at DESC)');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_spaces_default_per_user ON spaces(user_id) WHERE is_default = 1');
