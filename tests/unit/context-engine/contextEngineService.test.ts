@@ -148,6 +148,44 @@ describe('ContextEngineService', () => {
     expect(result.sources.map((item) => item.id)).toContain('source-1');
     expect(result.chunks).toEqual([]);
     expect(result.totalEstimatedTokens).toBeGreaterThan(0);
+    expect(result.trace).toEqual(
+      expect.objectContaining({
+        query: 'How should I debug Vitest failures?',
+        searchMode: 'hybrid',
+        entries: expect.arrayContaining([
+          expect.objectContaining({
+            entityKind: 'memory',
+            entityId: 'memory-1',
+            reasons: expect.arrayContaining([
+              expect.objectContaining({
+                kind: 'lexical_match',
+                matchedTerms: expect.arrayContaining(['vitest']),
+              }),
+            ]),
+          }),
+          expect.objectContaining({
+            entityKind: 'profile',
+            entityId: 'profile-1',
+            reasons: expect.arrayContaining([
+              expect.objectContaining({
+                kind: 'profile_memory_link',
+                memoryIds: ['memory-1'],
+              }),
+            ]),
+          }),
+          expect.objectContaining({
+            entityKind: 'source',
+            entityId: 'source-1',
+            reasons: expect.arrayContaining([
+              expect.objectContaining({
+                kind: 'source_memory_link',
+                memoryIds: ['memory-1'],
+              }),
+            ]),
+          }),
+        ]),
+      })
+    );
   });
 
   it('baseline[A1]: assembles a task-scoped context pack and omits lower-priority sections beyond budget', async () => {
@@ -282,6 +320,30 @@ describe('ContextEngineService', () => {
     expect(result.memories[0]?.vectorHits?.[0]?.kind).toBe('memory');
     expect(result.chunks[0]?.chunk.id).toBe('chunk-1');
     expect(result.sources.map((item) => item.id)).toContain('source-1');
+    expect(result.trace.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityKind: 'memory',
+          entityId: 'memory-1',
+          reasons: expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'vector_match',
+              hitCount: 1,
+            }),
+          ]),
+        }),
+        expect.objectContaining({
+          entityKind: 'chunk',
+          entityId: 'chunk-1',
+          reasons: expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'vector_match',
+              hitCount: 1,
+            }),
+          ]),
+        }),
+      ])
+    );
   });
 
   it('boosts same-project vector hits when projectSlug is provided', async () => {
@@ -366,6 +428,21 @@ describe('ContextEngineService', () => {
     });
 
     expect(result.chunks[0]?.chunk.id).toBe('chunk-project-a');
+    expect(result.trace.entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          entityKind: 'chunk',
+          entityId: 'chunk-project-a',
+          reasons: expect.arrayContaining([
+            expect.objectContaining({
+              kind: 'project_affinity',
+              projectSlug: 'project-a',
+              scoreBoost: 18,
+            }),
+          ]),
+        }),
+      ])
+    );
   });
 
   it('keeps mounted assembly overlay sections at the top of the assembled pack', async () => {
@@ -381,6 +458,12 @@ describe('ContextEngineService', () => {
         profiles: [],
         sources: [],
         totalEstimatedTokens: 0,
+        trace: {
+          query: 'empty assembly retrieval',
+          queryTerms: [],
+          searchMode: 'hybrid',
+          entries: [],
+        },
       },
       budgetTokens: 120,
       overlays: {

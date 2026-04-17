@@ -20,6 +20,9 @@ import {
   type IngestSourceResult,
   type RetrieveContextInput,
   type RetrieveContextResult,
+  type RetrievalTrace,
+  type RetrievalTraceEntry,
+  type RetrievalTraceReason,
   type RetrievedChunk,
   type RetrievedMemory,
   type AssessForgettingInput,
@@ -35,6 +38,7 @@ import type {
   ContextTier,
   DocumentSnapshot,
   MemoryEntry,
+  ProfileSegment,
   SourceRecord,
 } from './domain';
 import type { ContextOperation, ContextOperationType } from './operations';
@@ -162,6 +166,173 @@ function scoreProjectAffinity(
 
 function dedupe<T>(items: readonly T[]): T[] {
   return [...new Set(items)];
+}
+
+function buildLexicalTraceReason(matchedTerms: readonly string[]): RetrievalTraceReason | null {
+  if (matchedTerms.length === 0) {
+    return null;
+  }
+
+  return {
+    kind: 'lexical_match',
+    matchedTerms: dedupe(matchedTerms),
+  };
+}
+
+function buildVectorTraceReason(vectorHits: readonly VectorSearchHit[]): RetrievalTraceReason | null {
+  if (vectorHits.length === 0) {
+    return null;
+  }
+
+  return {
+    kind: 'vector_match',
+    hitCount: vectorHits.length,
+    topScore: vectorHits[0]?.score ?? 0,
+  };
+}
+
+function buildProjectAffinityTraceReason(
+  metadata: Readonly<Record<string, string | number | boolean>> | undefined,
+  projectSlug: string | undefined,
+  scoreBoost: number
+): RetrievalTraceReason | null {
+  if (!projectSlug || scoreBoost <= 0 || metadata?.projectSlug !== projectSlug) {
+    return null;
+  }
+
+  return {
+    kind: 'project_affinity',
+    projectSlug,
+    scoreBoost,
+  };
+}
+
+function buildMemoryTraceEntry(
+  item: RetrievedMemory,
+  projectSlug: string | undefined,
+  projectAffinityScore: number
+): RetrievalTraceEntry {
+  const reasons = [
+    buildLexicalTraceReason(item.matchedBy),
+    buildVectorTraceReason(item.vectorHits ?? []),
+    buildProjectAffinityTraceReason(item.vectorHits?.[0]?.metadata, projectSlug, projectAffinityScore),
+  ].filter((reason): reason is RetrievalTraceReason => reason !== null);
+
+  return {
+    entityKind: 'memory',
+    entityId: item.memory.id,
+    score: item.score,
+    reasons,
+  };
+}
+
+function buildChunkTraceEntry(
+  item: RetrievedChunk,
+  projectSlug: string | undefined,
+  projectAffinityScore: number
+): RetrievalTraceEntry {
+  const reasons = [
+    buildLexicalTraceReason(item.matchedBy),
+    buildVectorTraceReason(item.vectorHits ?? []),
+    buildProjectAffinityTraceReason(item.vectorHits?.[0]?.metadata, projectSlug, projectAffinityScore),
+  ].filter((reason): reason is RetrievalTraceReason => reason !== null);
+
+  return {
+    entityKind: 'chunk',
+    entityId: item.chunk.id,
+    score: item.score,
+    reasons,
+  };
+}
+
+function buildProfileTraceEntry(profile: ProfileSegment, memoryIds: readonly string[]): RetrievalTraceEntry {
+  return {
+    entityKind: 'profile',
+    entityId: profile.id,
+    score: memoryIds.length * 10 + Math.round(profile.confidence * 20),
+    reasons: [
+      {
+        kind: 'profile_memory_link',
+        memoryIds,
+      },
+    ],
+  };
+}
+
+function buildSourceTraceEntry(
+  source: SourceRecord,
+  queryTerms: readonly string[],
+  relatedMemoryIds: readonly string[],
+  relatedChunkIds: readonly string[]
+): RetrievalTraceEntry {
+  const sourceText = `${source.title ?? ''} ${source.tags.join(' ')}`.toLowerCase();
+  const lexicalTerms = queryTerms.filter((term) => sourceText.includes(term));
+  const reasons = [
+    buildLexicalTraceReason(lexicalTerms),
+    relatedMemoryIds.length > 0
+      ? ({
+          kind: 'source_memory_link',
+          memoryIds: dedupe(relatedMemoryIds),
+        } satisfies RetrievalTraceReason)
+      : null,
+    relatedChunkIds.length > 0
+      ? ({
+          kind: 'source_chunk_link',
+          chunkIds: dedupe(relatedChunkIds),
+        } satisfies RetrievalTraceReason)
+      : null,
+  ].filter((reason): reason is RetrievalTraceReason => reason !== null);
+
+  return {
+    entityKind: 'source',
+    entityId: source.id,
+    score: lexicalTerms.length * 8 + relatedMemoryIds.length * 10 + relatedChunkIds.length * 10,
+    reasons,
+  };
+}
+
+function buildRetrievalTrace(
+  input: RetrieveContextInput,
+  memories: readonly RetrievedMemory[],
+  chunks: readonly RetrievedChunk[],
+  profiles: readonly ProfileSegment[],
+  sources: readonly SourceRecord[],
+  documentByChunkId: ReadonlyMap<string, DocumentSnapshot>
+): RetrievalTrace {
+  const memoryTraceEntries = memories.map((item) => {
+    const projectAffinityScore = scoreProjectAffinity(item.vectorHits?.[0]?.metadata, input.projectSlug);
+    return buildMemoryTraceEntry(item, input.projectSlug, projectAffinityScore);
+  });
+
+  const chunkTraceEntries = chunks.map((item) => {
+    const projectAffinityScore = scoreProjectAffinity(item.vectorHits?.[0]?.metadata, input.projectSlug);
+    return buildChunkTraceEntry(item, input.projectSlug, projectAffinityScore);
+  });
+
+  const profileTraceEntries = profiles.map((profile) => {
+    const linkedMemoryIds = profile.memoryIds.filter((memoryId: string) =>
+      memories.some((item) => item.memory.id === memoryId)
+    );
+    return buildProfileTraceEntry(profile, linkedMemoryIds);
+  });
+
+  const sourceTraceEntries = sources.map((source) => {
+    const relatedMemoryIds = memories
+      .filter((item) => item.memory.sourceIds.includes(source.id))
+      .map((item) => item.memory.id);
+    const relatedChunkIds = chunks
+      .filter((item) => documentByChunkId.get(item.chunk.id)?.sourceId === source.id)
+      .map((item) => item.chunk.id);
+
+    return buildSourceTraceEntry(source, normalizeQueryTerms(input.query), relatedMemoryIds, relatedChunkIds);
+  });
+
+  return {
+    query: input.query,
+    queryTerms: normalizeQueryTerms(input.query),
+    searchMode: input.searchMode ?? 'hybrid',
+    entries: [...memoryTraceEntries, ...chunkTraceEntries, ...profileTraceEntries, ...sourceTraceEntries],
+  };
 }
 
 function resolveAssemblyOverlays(input: AssembleContextPackInput): ContextAssemblyOverlays {
@@ -476,12 +647,15 @@ export class ContextEngineService implements IContextService {
       profiles.reduce((sum, item) => sum + estimateTokenCount(item.summary), 0) +
       sources.reduce((sum, item) => sum + estimateTokenCount(`${item.title ?? ''} ${item.tags.join(' ')}`), 0);
 
+    const trace = buildRetrievalTrace(input, memories, chunks, profiles, sources, documentByChunkId);
+
     return {
       memories,
       chunks,
       profiles,
       sources,
       totalEstimatedTokens,
+      trace,
     };
   }
 
