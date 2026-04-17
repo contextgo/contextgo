@@ -164,7 +164,10 @@ const Layout: React.FC<{
   const isConversationDetailRoute = location.pathname.startsWith('/conversation/');
   const isMobileShellRuntime = !isElectronDesktop() && isMobileShellWebView();
   const workspaceAvailable = isConversationDetailRoute;
-  const activeWorkbenchDefinition = useMemo(() => getWorkbenchDefinitionForPath(location.pathname), [location.pathname]);
+  const activeWorkbenchDefinition = useMemo(
+    () => getWorkbenchDefinitionForPath(location.pathname),
+    [location.pathname]
+  );
   const mobileTopChromeMode = useMemo(() => resolveMobileTopChromeMode(location.pathname), [location.pathname]);
   const collapsedRef = useRef(collapsed);
   const lastCssRef = useRef('');

@@ -232,9 +232,7 @@ const renderWorkbenchRoute = (params: {
 
   return (
     <Suspense fallback={<AppLoader />}>
-      <WorkbenchHost definition={params.definition}>
-        {withRouteFallback(params.loader, params.routePath)}
-      </WorkbenchHost>
+      <WorkbenchHost definition={params.definition}>{withRouteFallback(params.loader, params.routePath)}</WorkbenchHost>
     </Suspense>
   );
 };
@@ -245,13 +243,11 @@ And update the conversation route:
 ```tsx
 <Route
   path='/conversation/:id'
-  element={
-    renderWorkbenchRoute({
-      loader: loadConversation,
-      routePath: '/conversation/:id',
-      definition: conversationCoworkWorkbench,
-    })
-  }
+  element={renderWorkbenchRoute({
+    loader: loadConversation,
+    routePath: '/conversation/:id',
+    definition: conversationCoworkWorkbench,
+  })}
 />
 ```
 
