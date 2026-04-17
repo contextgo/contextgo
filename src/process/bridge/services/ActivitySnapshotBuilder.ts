@@ -17,9 +17,16 @@ import type { IChannelRun } from '@process/channels/types';
 import { getDatabase } from '@process/services/database';
 import type { IConversationRepository } from '@process/services/database/IConversationRepository';
 import type { IWorkerTaskManager } from '@process/task/IWorkerTaskManager';
+import type { ContextOperation } from '../../../../packages/context-engine/src/operations';
 
 const STATUS_TO_SYNCING = new Set(['connecting', 'connected', 'authenticated']);
 const CONTEXT_ENGINE_BACKEND = 'context-engine';
+
+type LatestAssemblyTraceMetadata = {
+  retrievalTraceId?: string;
+  assemblyTraceId?: string;
+  mountedStateMode?: 'frozen-snapshot';
+};
 
 type MaintenanceRunMetadata = {
   kind?: string;
@@ -137,6 +144,28 @@ const toEventText = (message: TMessage): { kind: 'status' | 'tool' | 'message'; 
 
   return null;
 };
+
+function readLatestAssemblyTraceMetadata(
+  operations: readonly ContextOperation[],
+  threadId: string
+): LatestAssemblyTraceMetadata | undefined {
+  const latest = [...operations]
+    .reverse()
+    .find((operation) => operation.type === 'context.assembled' && operation.threadId === threadId);
+
+  if (!latest) {
+    return undefined;
+  }
+
+  return {
+    retrievalTraceId:
+      typeof latest.payload.retrievalTraceId === 'string' ? latest.payload.retrievalTraceId : undefined,
+    assemblyTraceId:
+      typeof latest.payload.assemblyTraceId === 'string' ? latest.payload.assemblyTraceId : undefined,
+    mountedStateMode:
+      latest.payload.mountedStateMode === 'frozen-snapshot' ? latest.payload.mountedStateMode : undefined,
+  };
+}
 
 const rankedState: Record<AgentActivityState, number> = {
   error: 5,
@@ -274,6 +303,7 @@ export class ActivitySnapshotBuilder {
       const extra = conv.extra as { isHealthCheck?: boolean; groupMeta?: { hiddenFromHistory?: boolean } } | undefined;
       return extra?.isHealthCheck !== true && extra?.groupMeta?.hiddenFromHistory !== true;
     });
+    const db = await getDatabase();
 
     const byAgent = new Map<string, IExtensionAgentActivityItem>();
     const systemRuns: IExtensionSystemRunItem[] = [];
@@ -309,6 +339,18 @@ export class ActivitySnapshotBuilder {
           | { status?: string }
           | undefined;
         const state = mapStatusToState(runtimeStatus, lastStatus?.status, events);
+        const spaceId =
+          typeof conversation.extra?.spaceId === 'string' && conversation.extra.spaceId.trim()
+            ? conversation.extra.spaceId
+            : undefined;
+        const traceMetadata =
+          spaceId && conversation.id
+            ? readLatestAssemblyTraceMetadata(
+                ((db.listContextOperations(spaceId).success ? db.listContextOperations(spaceId).data : []) ??
+                  []) as readonly ContextOperation[],
+                conversation.id
+              )
+            : undefined;
 
         return {
           conversation,
@@ -318,6 +360,7 @@ export class ActivitySnapshotBuilder {
           lastStatus: lastStatus?.status,
           state,
           events,
+          traceMetadata,
         };
       })
     );
@@ -343,11 +386,12 @@ export class ActivitySnapshotBuilder {
         lastStatus: snapshot.lastStatus,
         currentTask: snapshot.events[0]?.text || getDefaultTaskLabel(snapshot.runtimeStatus),
         runType: 'interactive',
+        retrievalTraceId: snapshot.traceMetadata?.retrievalTraceId,
+        assemblyTraceId: snapshot.traceMetadata?.assemblyTraceId,
+        mountedStateMode: snapshot.traceMetadata?.mountedStateMode,
         recentEvents: snapshot.events,
       });
     }
-
-    const db = await getDatabase();
     const runsResult = db.listChannelRuns({
       backend: CONTEXT_ENGINE_BACKEND,
       limit: 40,

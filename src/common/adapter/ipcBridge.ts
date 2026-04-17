@@ -1598,6 +1598,9 @@ export interface IExtensionAgentActivityItem {
   artifactRelativePath?: string;
   artifactTitle?: string;
   artifactTargets?: string[];
+  retrievalTraceId?: string;
+  assemblyTraceId?: string;
+  mountedStateMode?: 'frozen-snapshot';
   recentEvents: IExtensionAgentActivityEvent[];
 }
 
@@ -1631,6 +1634,9 @@ export interface IExtensionSystemRunItem {
   triggerEvent?: string;
   executionBoundaryPath?: string;
   executionBoundaryLabel?: string;
+  retrievalTraceId?: string;
+  assemblyTraceId?: string;
+  mountedStateMode?: 'frozen-snapshot';
   recentEvents: IExtensionAgentActivityEvent[];
 }
 

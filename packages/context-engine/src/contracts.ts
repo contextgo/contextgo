@@ -75,6 +75,7 @@ export type RetrievalCollectionTrace = {
 };
 
 export type RetrievalTrace = {
+  traceId: string;
   scope: {
     spaceId: SpaceId;
     threadId?: ThreadId;
@@ -124,6 +125,7 @@ export type RetrieveContextResult = {
 };
 
 export type AssemblyTrace = {
+  traceId: string;
   mountedSectionIds: readonly string[];
   mountedProfileIds: readonly string[];
   pinnedInstructionIds: readonly string[];

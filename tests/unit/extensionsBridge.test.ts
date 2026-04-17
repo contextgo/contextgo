@@ -188,6 +188,60 @@ describe('ActivitySnapshotBuilder', () => {
     expect(snapshot.agents).toHaveLength(2);
   });
 
+  it('projects latest retrieval and assembly trace metadata for interactive conversations', async () => {
+    const conversations = [
+      makeConversation({
+        id: 'c-trace',
+        extra: {
+          spaceId: 'space-1',
+        } as any,
+      }),
+    ];
+    vi.mocked(repo.getUserConversations).mockResolvedValue({
+      data: conversations,
+      total: 1,
+      hasMore: false,
+    });
+    vi.mocked(repo.getMessages).mockResolvedValue({
+      data: [],
+      total: 0,
+      hasMore: false,
+    });
+    vi.mocked(getDatabase).mockResolvedValue({
+      listContextOperations: vi.fn(() => ({
+        success: true,
+        data: [
+          {
+            id: 'op-1',
+            spaceId: 'space-1',
+            threadId: 'c-trace',
+            actor: { kind: 'system', id: 'context-engine' },
+            type: 'context.assembled',
+            entityId: 'pack-1',
+            payload: {
+              retrievalTraceId: 'retrieval-trace-1',
+              assemblyTraceId: 'assembly-trace-1',
+              mountedStateMode: 'frozen-snapshot',
+            },
+            createdAt: '2026-04-17T00:00:00.000Z',
+          },
+        ],
+      })),
+      listChannelRuns: vi.fn(() => ({ success: true, data: [] })),
+      getAgentProfile: vi.fn(() => ({ success: true, data: null })),
+    } as never);
+
+    const snapshot = await new ActivitySnapshotBuilder(repo, taskManager).build();
+
+    expect(snapshot.agents[0]).toEqual(
+      expect.objectContaining({
+        retrievalTraceId: 'retrieval-trace-1',
+        assemblyTraceId: 'assembly-trace-1',
+        mountedStateMode: 'frozen-snapshot',
+      })
+    );
+  });
+
   it('maps error events to error state', async () => {
     const conversations = [makeConversation({ id: 'c1' })];
     vi.mocked(repo.getUserConversations).mockResolvedValue({

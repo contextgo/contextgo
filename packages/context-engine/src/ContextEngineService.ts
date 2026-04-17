@@ -215,6 +215,7 @@ function buildRetrievalTrace(input: {
   ];
 
   return {
+    traceId: createId('retrieval-trace'),
     scope: {
       spaceId: input.request.spaceId,
       threadId: input.request.threadId,
@@ -227,6 +228,22 @@ function buildRetrievalTrace(input: {
     droppedEvidenceIds,
     collectionCandidates,
   };
+}
+
+function resolveRetrievalTrace(input: AssembleContextPackInput): RetrievalTrace {
+  return (
+    input.retrieval.trace ?? {
+      traceId: createId('retrieval-trace'),
+      scope: {
+        spaceId: input.spaceId,
+        threadId: input.threadId,
+      },
+      selectedCollections: [],
+      keptEvidenceIds: [],
+      droppedEvidenceIds: [],
+      collectionCandidates: [],
+    }
+  );
 }
 
 function resolveMountedState(input: AssembleContextPackInput): MountedStateTrace {
@@ -559,6 +576,7 @@ export class ContextEngineService implements IContextService {
     const sections: ContextPackSection[] = [];
     const overlays = resolveAssemblyOverlays(input);
     const mountedState = resolveMountedState(input);
+    const retrievalTrace = resolveRetrievalTrace(input);
     const pinnedInstructionIds: string[] = [];
 
     if (overlays.threadSummary) {
@@ -652,12 +670,15 @@ export class ContextEngineService implements IContextService {
         sectionCount: pack.sections.length,
         omittedEntityIds,
         budgetTokens: input.budgetTokens,
+        retrievalTraceId: retrievalTrace.traceId,
+        mountedStateMode: mountedState.mode,
       },
       createdAt: pack.generatedAt,
     };
     await this.deps.operations.append(operation);
 
     const trace: AssemblyTrace = {
+      traceId: createId('assembly-trace'),
       mountedSectionIds: mountedState.mountedSectionIds,
       mountedProfileIds: mountedState.mountedProfileIds,
       pinnedInstructionIds,
@@ -666,6 +687,16 @@ export class ContextEngineService implements IContextService {
       budgetTokens: input.budgetTokens,
       mountedState,
     };
+
+    await this.deps.operations.append({
+      ...operation,
+      id: createId('op'),
+      entityId: trace.traceId,
+      payload: {
+        ...operation.payload,
+        assemblyTraceId: trace.traceId,
+      },
+    });
 
     return {
       pack,
