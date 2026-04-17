@@ -247,24 +247,38 @@ jobs:
           PROXY_HOST="$(node -e "console.log(new URL(process.env.PROXY_URL).hostname)")"
           PROXY_PORT="$(node -e "const url = new URL(process.env.PROXY_URL); console.log(url.port || (url.protocol === 'https:' ? '443' : '80'))")"
           NON_PROXY="${NO_PROXY:-${no_proxy:-}}"
-          GRADLE_PROXY_OPTS="-Dhttp.proxyHost=${PROXY_HOST} -Dhttp.proxyPort=${PROXY_PORT} -Dhttps.proxyHost=${PROXY_HOST} -Dhttps.proxyPort=${PROXY_PORT}"
+          PROXY_JVM_OPTS="-Dhttp.proxyHost=${PROXY_HOST} -Dhttp.proxyPort=${PROXY_PORT} -Dhttps.proxyHost=${PROXY_HOST} -Dhttps.proxyPort=${PROXY_PORT}"
 
           if [ -n "${NON_PROXY}" ]; then
             JAVA_NON_PROXY_HOSTS="$(printf '%s' "${NON_PROXY}" | sed 's/,/|/g')"
-            GRADLE_PROXY_OPTS="${GRADLE_PROXY_OPTS} -Dhttp.nonProxyHosts=${JAVA_NON_PROXY_HOSTS} -Dhttps.nonProxyHosts=${JAVA_NON_PROXY_HOSTS}"
+            PROXY_JVM_OPTS="${PROXY_JVM_OPTS} -Dhttp.nonProxyHosts=${JAVA_NON_PROXY_HOSTS} -Dhttps.nonProxyHosts=${JAVA_NON_PROXY_HOSTS}"
           fi
 
+          FINAL_GRADLE_OPTS="${PROXY_JVM_OPTS}"
           if [ -n "${GRADLE_OPTS:-}" ]; then
-            GRADLE_PROXY_OPTS="${GRADLE_OPTS} ${GRADLE_PROXY_OPTS}"
+            FINAL_GRADLE_OPTS="${GRADLE_OPTS} ${FINAL_GRADLE_OPTS}"
+          fi
+
+          FINAL_JAVA_TOOL_OPTIONS="${PROXY_JVM_OPTS}"
+          if [ -n "${JAVA_TOOL_OPTIONS:-}" ]; then
+            FINAL_JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} ${FINAL_JAVA_TOOL_OPTIONS}"
           fi
 
           {
             echo "GRADLE_OPTS<<EOF"
-            echo "${GRADLE_PROXY_OPTS}"
+            echo "${FINAL_GRADLE_OPTS}"
+            echo "EOF"
+            echo "JAVA_TOOL_OPTIONS<<EOF"
+            echo "${FINAL_JAVA_TOOL_OPTIONS}"
             echo "EOF"
           } >> "${GITHUB_ENV}"
 
           echo "Configured Gradle proxy from runner environment."
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
 
       - name: Build Android shell
         shell: bash
