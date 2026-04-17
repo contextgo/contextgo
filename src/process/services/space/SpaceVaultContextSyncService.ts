@@ -12,8 +12,12 @@ import { ProjectCapabilityService } from './ProjectCapabilityService';
 import { SpaceServiceImpl } from './SpaceServiceImpl';
 import {
   CANVAS_DIR,
+  CONTEXT_NAMESPACE,
+  CONTEXT_NAMESPACE_KIND,
+  CONTEXT_PROJECTION_LAYER,
   CONTEXT_ENGINE_SYSTEM_DIR,
   DEFAULT_SPACE_CANVAS_PATH,
+  getProjectNamespaceNodeId,
   getConversationDocumentPaths,
   getOperationLogDailyRelativePath,
   getConnectorDigestRelativePath,
@@ -27,7 +31,10 @@ import {
   getProjectSessionStateRelativeDir,
   getProjectSessionsRelativeDir,
   getProjectSourceRelativePath,
+  getSessionNamespaceNodeId,
+  getSpaceNamespaceNodeId,
   getSpaceMemoryRelativePath,
+  joinContextNodeId,
   OPERATIONS_DIR,
   PROJECT_CAPABILITY_COMMANDS_DIR_NAME,
   PROJECT_CAPABILITY_HOOKS_DIR_NAME,
@@ -41,6 +48,7 @@ import {
   SYSTEM_DIR,
   sanitizeVaultPathSegment,
 } from './vaultLayout';
+import type { ContextNamespace, ContextNamespaceKind, ContextProjectionLayer } from './vaultLayout';
 import { isSpaceVaultProviderRef } from './vaultBinding';
 import { SqliteSpaceRepository } from '@process/services/database/space/SqliteSpaceRepository';
 import { formatProjectCuratorProposal } from '@process/services/context/jobs/ProjectCuratorProposalFormatter';
@@ -273,9 +281,20 @@ type ProjectCuratorProposalWriteInput = {
   timestamp: string;
 };
 
+type ContextProjectionMetadata = {
+  contextgoNamespace: ContextNamespace;
+  contextgoNamespaceKind: ContextNamespaceKind;
+  contextgoProjectionLayer: ContextProjectionLayer;
+  contextgoNodeId: string;
+  contextgoOwnerNodeId: string;
+};
+
+type JsonCanvasNode = Record<string, unknown> & ContextProjectionMetadata;
+type JsonCanvasEdge = Record<string, unknown>;
+
 type JsonCanvasFile = {
-  nodes: Array<Record<string, unknown>>;
-  edges: Array<Record<string, unknown>>;
+  nodes: JsonCanvasNode[];
+  edges: JsonCanvasEdge[];
 };
 
 type SessionTimelineEvent = {
@@ -308,6 +327,67 @@ const createProjectFolderName = (workspacePath: string): string => {
 };
 
 export const createWorkspaceProjectSlug = (workspacePath: string): string => createProjectSlug(workspacePath);
+
+const buildContextProjectionMetadata = (input: {
+  namespace: ContextNamespace;
+  namespaceKind: ContextNamespaceKind;
+  projectionLayer: ContextProjectionLayer;
+  nodeId: string;
+  ownerNodeId?: string;
+}): ContextProjectionMetadata => {
+  return {
+    contextgoNamespace: input.namespace,
+    contextgoNamespaceKind: input.namespaceKind,
+    contextgoProjectionLayer: input.projectionLayer,
+    contextgoNodeId: input.nodeId,
+    contextgoOwnerNodeId: input.ownerNodeId || input.nodeId,
+  };
+};
+
+const withContextProjectionMetadata = <T extends Record<string, unknown>>(
+  record: T,
+  metadata: ContextProjectionMetadata
+): T & ContextProjectionMetadata => {
+  return {
+    ...record,
+    ...metadata,
+  };
+};
+
+const getProjectRootNodeId = (projectSlug: string): string => getProjectNamespaceNodeId(projectSlug);
+
+const getProjectSemanticNodeId = (projectSlug: string, key: string): string => {
+  return joinContextNodeId(getProjectRootNodeId(projectSlug), key);
+};
+
+const getProjectSourceNodeId = (projectSlug: string, sourceRelativePath: string): string => {
+  return joinContextNodeId(getProjectRootNodeId(projectSlug), 'source', toPosixRelativePath(sourceRelativePath));
+};
+
+const getProjectCapabilityIndexNodeId = (projectSlug: string): string => {
+  return joinContextNodeId(getProjectRootNodeId(projectSlug), 'capabilities');
+};
+
+const getProjectCapabilityNodeId = (projectSlug: string, capability: ProjectCapabilityRecord): string => {
+  return joinContextNodeId(
+    getProjectRootNodeId(projectSlug),
+    'capability',
+    capability.kind,
+    sanitizeVaultPathSegment(capability.id)
+  );
+};
+
+const getSessionRootNodeId = (conversationId: string): string => getSessionNamespaceNodeId(conversationId);
+
+const getSessionArtifactNodeId = (conversationId: string, key: string): string => {
+  return joinContextNodeId(getSessionRootNodeId(conversationId), key);
+};
+
+const getSpaceRootNodeId = (spaceId: string): string => getSpaceNamespaceNodeId(spaceId);
+
+const getSpaceArtifactNodeId = (spaceId: string, key: string): string => {
+  return joinContextNodeId(getSpaceRootNodeId(spaceId), key);
+};
 
 const stripMarkdownExtension = (value: string): string => value.replace(/\.(md|canvas)$/i, '');
 
@@ -377,6 +457,52 @@ const sanitizeSessionTitle = (value: string | undefined, fallback: string): stri
 
 const toCanvasFileReference = (_canvasRelativePath: string, targetRelativePath: string): string => {
   return toPosixRelativePath(targetRelativePath);
+};
+
+const createCanvasFileNode = (input: {
+  id: string;
+  canvasRelativePath: string;
+  targetRelativePath: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+  metadata: ContextProjectionMetadata;
+}): JsonCanvasNode => {
+  return {
+    id: input.id,
+    type: 'file',
+    file: toCanvasFileReference(input.canvasRelativePath, input.targetRelativePath),
+    x: input.x,
+    y: input.y,
+    width: input.width,
+    height: input.height,
+    color: input.color,
+    ...input.metadata,
+  };
+};
+
+const createCanvasEdge = (input: {
+  id: string;
+  fromNode: string;
+  fromSide: string;
+  toNode: string;
+  toSide: string;
+  color: string;
+  label: string;
+  projectionLayer: ContextProjectionLayer;
+}): JsonCanvasEdge => {
+  return {
+    id: input.id,
+    fromNode: input.fromNode,
+    fromSide: input.fromSide,
+    toNode: input.toNode,
+    toSide: input.toSide,
+    color: input.color,
+    label: input.label,
+    contextgoProjectionLayer: input.projectionLayer,
+  };
 };
 
 const getSessionContextRootRelativePath = (conversationId: string, projectFolderName?: string): string => {
@@ -738,79 +864,158 @@ const buildSourceGraphList = (project: ProjectContext, sourceRelativePaths: stri
 };
 
 const buildSourceDocFrontmatter = (project: ProjectContext, sourceDoc: SourceDoc, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'source',
-    title: sourceDoc.noteTitle,
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    sourcePath: sourceDoc.sourcePath,
-    relativePath: sourceDoc.relativePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'source',
+        title: sourceDoc.noteTitle,
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        sourcePath: sourceDoc.sourcePath,
+        relativePath: sourceDoc.relativePath,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SOURCE_MIRROR,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SOURCE_MIRROR,
+        nodeId: getProjectSourceNodeId(project.slug, sourceDoc.relativePath),
+        ownerNodeId: getProjectRootNodeId(project.slug),
+      })
+    )
+  );
 };
 
-const buildProjectFrontmatter = (project: ProjectContext, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'project',
-    title: getProjectNoteTitle(project.name),
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    updatedAt,
-  });
+const buildProjectFrontmatter = (project: ProjectContext, spaceId: string, updatedAt: string): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project',
+        title: getProjectNoteTitle(project.name),
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.PROJECT,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getProjectRootNodeId(project.slug),
+        ownerNodeId: getSpaceRootNodeId(spaceId),
+      })
+    )
+  );
 };
 
 const buildProjectInsightsFrontmatter = (project: ProjectContext, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'project-insights',
-    title: getProjectInsightsTitle(project.name),
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-insights',
+        title: getProjectInsightsTitle(project.name),
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getProjectSemanticNodeId(project.slug, 'insights'),
+        ownerNodeId: getProjectRootNodeId(project.slug),
+      })
+    )
+  );
 };
 
 const buildProjectInsightsFrontmatterFromBinding = (project: ProjectBinding, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'project-insights',
-    title: getProjectInsightsTitle(project.name),
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-insights',
+        title: getProjectInsightsTitle(project.name),
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getProjectSemanticNodeId(project.slug, 'insights'),
+        ownerNodeId: getProjectRootNodeId(project.slug),
+      })
+    )
+  );
 };
 
 const buildProjectBaselineFrontmatter = (project: ProjectContext, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'project-baseline',
-    title: getProjectBaselineTitle(project.name),
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-baseline',
+        title: getProjectBaselineTitle(project.name),
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getProjectSemanticNodeId(project.slug, 'baseline'),
+        ownerNodeId: getProjectRootNodeId(project.slug),
+      })
+    )
+  );
 };
 
 const buildProjectCapabilitiesFrontmatter = (project: ProjectContext, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'project-capabilities',
-    title: getProjectCapabilitiesTitle(project.name),
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-capabilities',
+        title: getProjectCapabilitiesTitle(project.name),
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.CAPABILITY_INVENTORY,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.CAPABILITY_INVENTORY,
+        nodeId: getProjectCapabilityIndexNodeId(project.slug),
+        ownerNodeId: getProjectRootNodeId(project.slug),
+      })
+    )
+  );
 };
 const buildSessionFrontmatter = (
   conversation: TChatConversation,
   project: ProjectContext | undefined,
   updatedAt: string
 ): string => {
-  return frontmatter({
-    contextgoType: 'session',
-    conversationId: conversation.id,
-    spaceId: conversation.extra?.spaceId,
-    projectSlug: project?.slug,
-    workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'session',
+        conversationId: conversation.id,
+        spaceId: conversation.extra?.spaceId,
+        projectSlug: project?.slug,
+        workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.SESSION,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SESSION,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getSessionRootNodeId(conversation.id),
+        ownerNodeId: project?.slug
+          ? getProjectRootNodeId(project.slug)
+          : getSpaceRootNodeId(conversation.extra?.spaceId ?? 'unknown'),
+      })
+    )
+  );
 };
 
 const buildSessionWorkingSetFrontmatter = (
@@ -818,14 +1023,25 @@ const buildSessionWorkingSetFrontmatter = (
   project: ProjectContext | undefined,
   updatedAt: string
 ): string => {
-  return frontmatter({
-    contextgoType: 'session-working-set',
-    conversationId: conversation.id,
-    spaceId: conversation.extra?.spaceId,
-    projectSlug: project?.slug,
-    workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'session-working-set',
+        conversationId: conversation.id,
+        spaceId: conversation.extra?.spaceId,
+        projectSlug: project?.slug,
+        workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.SESSION,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getSessionArtifactNodeId(conversation.id, 'working-set'),
+        ownerNodeId: getSessionRootNodeId(conversation.id),
+      })
+    )
+  );
 };
 
 const buildSessionWorkingContextFrontmatter = (
@@ -833,25 +1049,46 @@ const buildSessionWorkingContextFrontmatter = (
   project: ProjectContext | undefined,
   updatedAt: string
 ): string => {
-  return frontmatter({
-    contextgoType: 'session-working-context',
-    conversationId: conversation.id,
-    spaceId: conversation.extra?.spaceId,
-    projectSlug: project?.slug,
-    workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'session-working-context',
+        conversationId: conversation.id,
+        spaceId: conversation.extra?.spaceId,
+        projectSlug: project?.slug,
+        workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.SESSION,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getSessionArtifactNodeId(conversation.id, 'working-context'),
+        ownerNodeId: getSessionRootNodeId(conversation.id),
+      })
+    )
+  );
 };
 
 const buildHomeFrontmatter = (space: TSpace, updatedAt: string): string => {
-  return frontmatter({
-    contextgoType: 'space',
-    title: getSpaceNoteTitle(space.name),
-    spaceId: space.id,
-    spaceName: space.name,
-    engine: space.engine,
-    updatedAt,
-  });
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'space',
+        title: getSpaceNoteTitle(space.name),
+        spaceId: space.id,
+        spaceName: space.name,
+        engine: space.engine,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.SPACE,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SPACE,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getSpaceRootNodeId(space.id),
+      })
+    )
+  );
 };
 
 const buildSourceDocument = async (
@@ -997,6 +1234,7 @@ const buildProjectCapabilitiesDocument = (
     '## Notes',
     '',
     '- These documents mirror the project-local .contextgo capability surface into the space vault.',
+    '- Runtime-native skill directories remain projections only.',
     '- The project directory remains the source of truth; vault notes exist for browsing, linking, and graphing.',
     '',
   ].join('\n');
@@ -1009,15 +1247,26 @@ const buildProjectCapabilityDocument = (
 ): ProjectCapabilityDoc => {
   const title = getCapabilityDisplayName(capability);
   const relativePath = getProjectCapabilityRelativePath(project, capability);
-  const frontmatterBlock = frontmatter({
-    contextgoType: 'project-capability',
-    title,
-    projectSlug: project.slug,
-    workspace: project.workspacePath,
-    capabilityKind: capability.kind,
-    capabilityId: capability.id,
-    updatedAt,
-  });
+  const frontmatterBlock = frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-capability',
+        title,
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        capabilityKind: capability.kind,
+        capabilityId: capability.id,
+        updatedAt,
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.CAPABILITY_INVENTORY,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.CAPABILITY_INVENTORY,
+        nodeId: getProjectCapabilityNodeId(project.slug, capability),
+        ownerNodeId: getProjectRootNodeId(project.slug),
+      })
+    )
+  );
 
   const detailLines: string[] = [];
 
@@ -1156,7 +1405,7 @@ const buildProjectDocument = (
     : ['- No source graph available yet.', ''];
 
   return [
-    buildProjectFrontmatter(project, updatedAt),
+    buildProjectFrontmatter(project, space.id, updatedAt),
     GENERATED_MARKER,
     `# ${getProjectNoteTitle(project.name)}`,
     '',
@@ -1644,36 +1893,82 @@ const buildProjectSourceGraphCanvas = (
 ): JsonCanvasFile => {
   const canvasRelativePath = getProjectGraphRelativePath(project.folderName);
   const nodes: JsonCanvasFile['nodes'] = [
-    {
-      id: `project-${project.slug}`,
-      type: 'file',
-      file: toCanvasFileReference(canvasRelativePath, project.relativePath),
-      x: 0,
-      y: 0,
-      width: 360,
-      height: 220,
-      color: '2',
-    },
-    {
-      id: `project-capabilities-${project.slug}`,
-      type: 'file',
-      file: toCanvasFileReference(canvasRelativePath, getProjectCapabilitiesRelativePath(project.folderName)),
-      x: 520,
-      y: 0,
-      width: 360,
-      height: 220,
-      color: '3',
-    },
+    withContextProjectionMetadata(
+      {
+        id: `project-${project.slug}`,
+        type: 'file',
+        file: toCanvasFileReference(canvasRelativePath, project.relativePath),
+        x: 0,
+        y: 0,
+        width: 360,
+        height: 220,
+        color: '2',
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.PROJECT,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getProjectRootNodeId(project.slug),
+        ownerNodeId: getProjectRootNodeId(project.slug),
+      })
+    ),
+    withContextProjectionMetadata(
+      {
+        id: `project-baseline-${project.slug}`,
+        type: 'file',
+        file: toCanvasFileReference(canvasRelativePath, getProjectBaselineRelativePath(project.folderName)),
+        x: 520,
+        y: 0,
+        width: 360,
+        height: 220,
+        color: '4',
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getProjectSemanticNodeId(project.slug, 'baseline'),
+        ownerNodeId: getProjectRootNodeId(project.slug),
+      })
+    ),
+    withContextProjectionMetadata(
+      {
+        id: `project-insights-${project.slug}`,
+        type: 'file',
+        file: toCanvasFileReference(canvasRelativePath, getProjectInsightsRelativePath(project.folderName)),
+        x: 940,
+        y: 0,
+        width: 360,
+        height: 220,
+        color: '5',
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: getProjectSemanticNodeId(project.slug, 'insights'),
+        ownerNodeId: getProjectRootNodeId(project.slug),
+      })
+    ),
   ];
   const edges: JsonCanvasFile['edges'] = [
     {
-      id: `edge-project-capabilities-${project.slug}`,
+      id: `edge-project-baseline-${project.slug}`,
       fromNode: `project-${project.slug}`,
       fromSide: 'right',
-      toNode: `project-capabilities-${project.slug}`,
+      toNode: `project-baseline-${project.slug}`,
       toSide: 'left',
-      color: '3',
-      label: 'capabilities',
+      color: '4',
+      label: 'semantic-context',
+    },
+    {
+      id: `edge-project-insights-${project.slug}`,
+      fromNode: `project-${project.slug}`,
+      fromSide: 'right',
+      toNode: `project-insights-${project.slug}`,
+      toSide: 'left',
+      color: '5',
+      label: 'semantic-context',
     },
   ];
 
@@ -1683,19 +1978,30 @@ const buildProjectSourceGraphCanvas = (
     const row = Math.floor(index / 3);
     const x = column * 420;
     const y = row * 260 + 340;
-    nodes.push({
-      id: nodeId,
-      type: 'file',
-      file: toCanvasFileReference(
-        canvasRelativePath,
-        getProjectSourceRelativePath(project.folderName, sourceDoc.relativePath)
-      ),
-      x,
-      y,
-      width: 360,
-      height: 180,
-      color: sourceDoc.relativePath === 'AGENTS.md' ? '4' : sourceDoc.backlinks.length > 0 ? '5' : '6',
-    });
+    nodes.push(
+      withContextProjectionMetadata(
+        {
+          id: nodeId,
+          type: 'file',
+          file: toCanvasFileReference(
+            canvasRelativePath,
+            getProjectSourceRelativePath(project.folderName, sourceDoc.relativePath)
+          ),
+          x,
+          y,
+          width: 360,
+          height: 180,
+          color: sourceDoc.relativePath === 'AGENTS.md' ? '4' : sourceDoc.backlinks.length > 0 ? '5' : '6',
+        },
+        buildContextProjectionMetadata({
+          namespace: CONTEXT_NAMESPACE.PROJECT,
+          namespaceKind: CONTEXT_NAMESPACE_KIND.SOURCE_MIRROR,
+          projectionLayer: CONTEXT_PROJECTION_LAYER.SOURCE_MIRROR,
+          nodeId: getProjectSourceNodeId(project.slug, sourceDoc.relativePath),
+          ownerNodeId: getProjectRootNodeId(project.slug),
+        })
+      )
+    );
     edges.push({
       id: `edge-project-${stableHash(sourceDoc.relativePath)}`,
       fromNode: `project-${project.slug}`,
@@ -1703,7 +2009,7 @@ const buildProjectSourceGraphCanvas = (
       toNode: nodeId,
       toSide: 'top',
       color: '2',
-      label: 'source',
+      label: 'source-mirror',
     });
   });
 
@@ -1722,20 +2028,62 @@ const buildProjectSourceGraphCanvas = (
     }
   }
 
+  nodes.push(
+    withContextProjectionMetadata(
+      {
+        id: `project-capabilities-${project.slug}`,
+        type: 'file',
+        file: toCanvasFileReference(canvasRelativePath, getProjectCapabilitiesRelativePath(project.folderName)),
+        x: 1360,
+        y: 0,
+        width: 360,
+        height: 220,
+        color: '3',
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.PROJECT,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.CAPABILITY_INVENTORY,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.CAPABILITY_INVENTORY,
+        nodeId: getProjectCapabilityIndexNodeId(project.slug),
+        ownerNodeId: getProjectRootNodeId(project.slug),
+      })
+    )
+  );
+  edges.push({
+    id: `edge-project-capabilities-${project.slug}`,
+    fromNode: `project-${project.slug}`,
+    fromSide: 'right',
+    toNode: `project-capabilities-${project.slug}`,
+    toSide: 'left',
+    color: '3',
+    label: 'capability-inventory',
+  });
+
   getProjectCapabilityRecords(capabilitySnapshot).forEach((capability, index) => {
     const nodeId = `capability-${capability.kind}-${stableHash(capability.id)}`;
     const column = index % 2;
     const row = Math.floor(index / 2);
-    nodes.push({
-      id: nodeId,
-      type: 'file',
-      file: toCanvasFileReference(canvasRelativePath, getProjectCapabilityRelativePath(project, capability)),
-      x: 1040 + column * 420,
-      y: row * 220,
-      width: 360,
-      height: 180,
-      color: getCapabilityNodeColor(capability.kind),
-    });
+    nodes.push(
+      withContextProjectionMetadata(
+        {
+          id: nodeId,
+          type: 'file',
+          file: toCanvasFileReference(canvasRelativePath, getProjectCapabilityRelativePath(project, capability)),
+          x: 1780 + column * 420,
+          y: row * 220,
+          width: 360,
+          height: 180,
+          color: getCapabilityNodeColor(capability.kind),
+        },
+        buildContextProjectionMetadata({
+          namespace: CONTEXT_NAMESPACE.PROJECT,
+          namespaceKind: CONTEXT_NAMESPACE_KIND.CAPABILITY_INVENTORY,
+          projectionLayer: CONTEXT_PROJECTION_LAYER.CAPABILITY_INVENTORY,
+          nodeId: getProjectCapabilityNodeId(project.slug, capability),
+          ownerNodeId: getProjectCapabilityIndexNodeId(project.slug),
+        })
+      )
+    );
     edges.push({
       id: `edge-capability-${stableHash(`${capability.kind}:${capability.id}`)}`,
       fromNode: `project-capabilities-${project.slug}`,
@@ -1743,7 +2091,7 @@ const buildProjectSourceGraphCanvas = (
       toNode: nodeId,
       toSide: 'left',
       color: getCapabilityNodeColor(capability.kind),
-      label: capability.kind,
+      label: 'capability-inventory',
     });
   });
 
@@ -1752,16 +2100,25 @@ const buildProjectSourceGraphCanvas = (
 
 const buildSpaceCanvas = (projects: ProjectMeta[], sessions: SessionMeta[]): JsonCanvasFile => {
   const nodes: JsonCanvasFile['nodes'] = [
-    {
-      id: 'space-home',
-      type: 'file',
-      file: toCanvasFileReference(DEFAULT_SPACE_CANVAS_PATH, 'Home.md'),
-      x: 0,
-      y: 0,
-      width: 420,
-      height: 260,
-      color: '4',
-    },
+    withContextProjectionMetadata(
+      {
+        id: 'space-home',
+        type: 'file',
+        file: toCanvasFileReference(DEFAULT_SPACE_CANVAS_PATH, 'Home.md'),
+        x: 0,
+        y: 0,
+        width: 420,
+        height: 260,
+        color: '4',
+      },
+      buildContextProjectionMetadata({
+        namespace: CONTEXT_NAMESPACE.SPACE,
+        namespaceKind: CONTEXT_NAMESPACE_KIND.SPACE,
+        projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+        nodeId: 'space:home',
+        ownerNodeId: 'space:home',
+      })
+    ),
   ];
   const edges: JsonCanvasFile['edges'] = [];
   const projectSessions = new Map<string, SessionMeta[]>();
@@ -1781,16 +2138,27 @@ const buildSpaceCanvas = (projects: ProjectMeta[], sessions: SessionMeta[]): Jso
     const projectNodeId = `project-${project.slug}`;
     const projectSessionsList = projectSessions.get(project.slug) || [];
     const projectY = projectIndex * Math.max(260, projectSessionsList.length * 220 + 120) + 420;
-    nodes.push({
-      id: projectNodeId,
-      type: 'file',
-      file: toCanvasFileReference(DEFAULT_SPACE_CANVAS_PATH, project.relativePath),
-      x: 0,
-      y: projectY,
-      width: 420,
-      height: 220,
-      color: '2',
-    });
+    nodes.push(
+      withContextProjectionMetadata(
+        {
+          id: projectNodeId,
+          type: 'file',
+          file: toCanvasFileReference(DEFAULT_SPACE_CANVAS_PATH, project.relativePath),
+          x: 0,
+          y: projectY,
+          width: 420,
+          height: 220,
+          color: '2',
+        },
+        buildContextProjectionMetadata({
+          namespace: CONTEXT_NAMESPACE.PROJECT,
+          namespaceKind: CONTEXT_NAMESPACE_KIND.PROJECT,
+          projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+          nodeId: getProjectNamespaceNodeId(project.slug),
+          ownerNodeId: 'space:home',
+        })
+      )
+    );
     edges.push({
       id: `edge-space-${project.slug}`,
       fromNode: 'space-home',
@@ -1803,16 +2171,27 @@ const buildSpaceCanvas = (projects: ProjectMeta[], sessions: SessionMeta[]): Jso
 
     projectSessionsList.forEach((session, sessionIndex) => {
       const sessionNodeId = `session-${session.conversationId}`;
-      nodes.push({
-        id: sessionNodeId,
-        type: 'file',
-        file: toCanvasFileReference(DEFAULT_SPACE_CANVAS_PATH, session.relativePath),
-        x: 560,
-        y: projectY + sessionIndex * 220,
-        width: 380,
-        height: 180,
-        color: '6',
-      });
+      nodes.push(
+        withContextProjectionMetadata(
+          {
+            id: sessionNodeId,
+            type: 'file',
+            file: toCanvasFileReference(DEFAULT_SPACE_CANVAS_PATH, session.relativePath),
+            x: 560,
+            y: projectY + sessionIndex * 220,
+            width: 380,
+            height: 180,
+            color: '6',
+          },
+          buildContextProjectionMetadata({
+            namespace: CONTEXT_NAMESPACE.SESSION,
+            namespaceKind: CONTEXT_NAMESPACE_KIND.SESSION,
+            projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+            nodeId: getSessionNamespaceNodeId(session.conversationId),
+            ownerNodeId: getProjectNamespaceNodeId(project.slug),
+          })
+        )
+      );
       edges.push({
         id: `edge-${project.slug}-${session.conversationId}`,
         fromNode: projectNodeId,
@@ -1830,16 +2209,27 @@ const buildSpaceCanvas = (projects: ProjectMeta[], sessions: SessionMeta[]): Jso
   const unboundSessions = projectSessions.get('__unbound__') || [];
   unboundSessions.forEach((session, index) => {
     const sessionNodeId = `session-${session.conversationId}`;
-    nodes.push({
-      id: sessionNodeId,
-      type: 'file',
-      file: toCanvasFileReference(DEFAULT_SPACE_CANVAS_PATH, session.relativePath),
-      x: 560,
-      y: index * 220 + 420,
-      width: 380,
-      height: 180,
-      color: '5',
-    });
+    nodes.push(
+      withContextProjectionMetadata(
+        {
+          id: sessionNodeId,
+          type: 'file',
+          file: toCanvasFileReference(DEFAULT_SPACE_CANVAS_PATH, session.relativePath),
+          x: 560,
+          y: index * 220 + 420,
+          width: 380,
+          height: 180,
+          color: '5',
+        },
+        buildContextProjectionMetadata({
+          namespace: CONTEXT_NAMESPACE.SESSION,
+          namespaceKind: CONTEXT_NAMESPACE_KIND.SESSION,
+          projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+          nodeId: getSessionNamespaceNodeId(session.conversationId),
+          ownerNodeId: 'space:home',
+        })
+      )
+    );
     edges.push({
       id: `edge-space-${session.conversationId}`,
       fromNode: 'space-home',
@@ -2500,7 +2890,24 @@ export class SpaceVaultContextSyncService {
       bullets: input.bullets,
       detail: input.detail,
     });
-    await ensureFile(absolutePath, body);
+    const content = `${frontmatter(
+      withContextProjectionMetadata(
+        {
+          contextgoType: 'profile-memory',
+          title,
+          spaceId: input.spaceId,
+          updatedAt: input.timestamp,
+        },
+        buildContextProjectionMetadata({
+          namespace: CONTEXT_NAMESPACE.SPACE,
+          namespaceKind: CONTEXT_NAMESPACE_KIND.SEMANTIC_CONTEXT,
+          projectionLayer: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+          nodeId: getSpaceArtifactNodeId(input.spaceId, 'profile-memory'),
+          ownerNodeId: getSpaceRootNodeId(input.spaceId),
+        })
+      )
+    )}${body}`;
+    await ensureFile(absolutePath, content);
 
     return {
       title,

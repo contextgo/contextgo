@@ -177,6 +177,8 @@ describe('SpaceVaultContextSyncService', () => {
       path.join(vaultPath, 'Projects', projectDir, '_context', 'baseline.md'),
       'utf8'
     );
+    expect(baselineContent).toContain('contextgoNamespaceKind: semantic-context');
+    expect(baselineContent).toContain('contextgoProjectionLayer: semantic-context');
     expect(baselineContent).toContain('# workspace Baseline');
     expect(baselineContent).toContain('## Canonical Instructions');
     expect(baselineContent).toContain('## Project Overview');
@@ -185,6 +187,8 @@ describe('SpaceVaultContextSyncService', () => {
       path.join(vaultPath, 'Projects', projectDir, 'Sources', 'docs', 'guide.md'),
       'utf8'
     );
+    expect(sourceContent).toContain('contextgoNamespaceKind: source-mirror');
+    expect(sourceContent).toContain('contextgoProjectionLayer: source-mirror');
     expect(sourceContent).toContain('> Mirrored from');
     expect(sourceContent).toContain('# Guide');
     expect(sourceContent).toContain('- Space doc: [[Home|My Space Space]]');
@@ -202,9 +206,16 @@ describe('SpaceVaultContextSyncService', () => {
         (node: { file?: string }) => node.file === 'Projects/' + projectDir + '/' + projectDir + '.md'
       )
     ).toBe(true);
+    expect(
+      graphCanvas.nodes.some((node: { file?: string }) => node.file === 'Projects/' + projectDir + '/_context/baseline.md')
+    ).toBe(true);
+    expect(
+      graphCanvas.nodes.some((node: { file?: string }) => node.file === 'Projects/' + projectDir + '/Project Insights.md')
+    ).toBe(true);
     expect(graphCanvas.nodes.some((node: { file?: string }) => node.file?.includes('Sources/docs/guide.md'))).toBe(
       true
     );
+    expect(graphCanvas.nodes.some((node: { file?: string }) => node.file?.includes('_context/capabilities'))).toBe(false);
     expect(graphCanvas.edges.some((edge: { label?: string }) => edge.label === 'ref')).toBe(true);
 
     const canvas = JSON.parse(await fs.readFile(path.join(vaultPath, 'Canvas', 'Space Overview.canvas'), 'utf8'));
@@ -242,6 +253,10 @@ describe('SpaceVaultContextSyncService', () => {
 
     const homeContent = await fs.readFile(path.join(vaultPath, 'Home.md'), 'utf8');
     expect(homeContent).toContain('contextgoType: space');
+    expect(homeContent).toContain('contextgoNamespaceKind: space');
+    expect(homeContent).toContain('contextgoProjectionLayer: semantic-context');
+    expect(homeContent).toContain('contextgoNodeId: space:space-bootstrap');
+    expect(homeContent).toContain('contextgoOwnerNodeId: space:space-bootstrap');
     expect(homeContent).toContain('spaceId: space-bootstrap');
     expect(homeContent).toContain('spaceName: Bootstrap Space');
     expect(homeContent).toContain('# Bootstrap Space Space');
@@ -252,6 +267,105 @@ describe('SpaceVaultContextSyncService', () => {
 
     const canvas = JSON.parse(await fs.readFile(path.join(vaultPath, 'Canvas', 'Space Overview.canvas'), 'utf8'));
     expect(canvas.nodes.some((node: { file?: string }) => node.file === 'Home.md')).toBe(true);
+  });
+
+  it('writes explicit namespace and projection metadata for semantic, source, and capability layers', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(path.join(workspacePath, 'docs'), { recursive: true });
+    await fs.mkdir(path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'agents'), {
+      recursive: true,
+    });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+    await fs.writeFile(path.join(workspacePath, 'README.md'), '# Workspace\n\nRelease workspace.\n', 'utf8');
+    await fs.writeFile(path.join(workspacePath, 'docs', 'guide.md'), '# Guide\n\nSee [[README]].\n', 'utf8');
+    await fs.writeFile(
+      path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'SKILL.md'),
+      ['---', 'name: Release Guard', 'description: Keep rollout changes narrow.', '---', '', '# Release Guard'].join(
+        '\n'
+      ),
+      'utf8'
+    );
+    await fs.writeFile(
+      path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'agents', 'openai.yaml'),
+      ['policy:', '  allow_implicit_invocation: true', ''].join('\n'),
+      'utf8'
+    );
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+    const projectSlug = createWorkspaceProjectSlug(workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+    await service.writeSessionWorkingContext({
+      conversation: conversation as any,
+      timestamp: '2026-04-23T13:10:00.000Z',
+      currentTask: 'Keep the projection model explicit.',
+      stableStrategies: ['Prefer semantic context over raw mirrors in default surfaces.'],
+      failureModes: ['Capability mirrors can look like runtime state if unlabeled.'],
+      pendingConstraints: ['Do not add a new renderer surface in this change.'],
+      signalKinds: ['context_window_prepared'],
+      pressure: 42,
+      sourceProfileKey: 'session.compaction.conv-1',
+    });
+
+    const projectContent = await fs.readFile(path.join(vaultPath, 'Projects', 'workspace', 'workspace.md'), 'utf8');
+    expect(projectContent).toContain('contextgoNamespaceKind: project');
+    expect(projectContent).toContain('contextgoProjectionLayer: semantic-context');
+    expect(projectContent).toContain(`contextgoNodeId: project:${projectSlug}`);
+    expect(projectContent).toContain('contextgoOwnerNodeId: space:space-1');
+
+    const baselineContent = await fs.readFile(
+      path.join(vaultPath, 'Projects', 'workspace', '_context', 'baseline.md'),
+      'utf8'
+    );
+    expect(baselineContent).toContain('contextgoNamespaceKind: semantic-context');
+    expect(baselineContent).toContain('contextgoProjectionLayer: semantic-context');
+    expect(baselineContent).toContain(`contextgoNodeId: project:${projectSlug}:baseline`);
+    expect(baselineContent).toContain(`contextgoOwnerNodeId: project:${projectSlug}`);
+
+    const sourceContent = await fs.readFile(path.join(vaultPath, 'Projects', 'workspace', 'Sources', 'AGENTS.md'), 'utf8');
+    expect(sourceContent).toContain('contextgoNamespaceKind: source-mirror');
+    expect(sourceContent).toContain('contextgoProjectionLayer: source-mirror');
+    expect(sourceContent).toContain(`contextgoNodeId: project:${projectSlug}:source:AGENTS.md`);
+    expect(sourceContent).toContain(`contextgoOwnerNodeId: project:${projectSlug}`);
+
+    const capabilitiesContent = await fs.readFile(
+      path.join(vaultPath, 'Projects', 'workspace', '_context', 'Capabilities.md'),
+      'utf8'
+    );
+    expect(capabilitiesContent).toContain('contextgoNamespaceKind: capability-inventory');
+    expect(capabilitiesContent).toContain('contextgoProjectionLayer: capability-inventory');
+    expect(capabilitiesContent).toContain(`contextgoNodeId: project:${projectSlug}:capabilities`);
+    expect(capabilitiesContent).toContain(`contextgoOwnerNodeId: project:${projectSlug}`);
+    expect(capabilitiesContent).toContain('Runtime-native skill directories remain projections only.');
+
+    const workingContextContent = await fs.readFile(
+      path.join(vaultPath, 'Projects', 'workspace', '_context', 'sessions', 'conv-1', 'working-context.md'),
+      'utf8'
+    );
+    expect(workingContextContent).toContain('contextgoNamespaceKind: semantic-context');
+    expect(workingContextContent).toContain('contextgoProjectionLayer: semantic-context');
+    expect(workingContextContent).toContain('contextgoNodeId: session:conv-1:working-context');
+    expect(workingContextContent).toContain('contextgoOwnerNodeId: session:conv-1');
   });
 
   it('writes and reads a session working set section', async () => {
@@ -596,16 +710,19 @@ describe('SpaceVaultContextSyncService', () => {
       'utf8'
     );
     expect(capabilitiesContent).toContain('# workspace Capabilities');
+    expect(capabilitiesContent).toContain('contextgoProjectionLayer: capability-inventory');
     expect(capabilitiesContent).toContain('- Skills: 1');
     expect(capabilitiesContent).toContain(
       '[[Projects/workspace/_context/capabilities/skills/Release-Guard|Release Guard]]'
     );
+    expect(capabilitiesContent).toContain('Runtime-native skill directories remain projections only.');
 
     const capabilityDocContent = await fs.readFile(
       path.join(vaultPath, 'Projects', 'workspace', '_context', 'capabilities', 'skills', 'Release-Guard.md'),
       'utf8'
     );
     expect(capabilityDocContent).toContain('contextgoType: project-capability');
+    expect(capabilityDocContent).toContain('contextgoProjectionLayer: capability-inventory');
     expect(capabilityDocContent).toContain('- Capability kind: Skills');
     expect(capabilityDocContent).toContain('- Implicit invocation: enabled');
   });
@@ -711,9 +828,100 @@ describe('SpaceVaultContextSyncService', () => {
 
     const profilePath = path.join(vaultPath, artifact!.relativePath);
     const profileContent = await fs.readFile(profilePath, 'utf8');
+    expect(profileContent).toContain('contextgoNamespaceKind: semantic-context');
+    expect(profileContent).toContain('contextgoProjectionLayer: semantic-context');
+    expect(profileContent).toContain('contextgoNodeId: space:space-1:profile-memory');
+    expect(profileContent).toContain('contextgoOwnerNodeId: space:space-1');
     expect(profileContent).toContain('# Profile Memory');
     expect(profileContent).toContain('Observed across 3 project summaries.');
     expect(profileContent).toContain('Carry this preference into future project contexts.');
+  });
+
+  it('lays out the project graph canvas by projection layer with semantic context first', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(path.join(workspacePath, 'docs'), { recursive: true });
+    await fs.mkdir(path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'agents'), {
+      recursive: true,
+    });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n\n- Start at [[README]].\n', 'utf8');
+    await fs.writeFile(path.join(workspacePath, 'README.md'), '# Workspace\n\nSee [[docs/guide]].\n', 'utf8');
+    await fs.writeFile(path.join(workspacePath, 'docs', 'guide.md'), '# Guide\n\nSee [[README]].\n', 'utf8');
+    await fs.writeFile(
+      path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'SKILL.md'),
+      ['---', 'name: Release Guard', 'description: Keep rollout changes narrow.', '---', '', '# Release Guard'].join(
+        '\n'
+      ),
+      'utf8'
+    );
+    await fs.writeFile(
+      path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'agents', 'openai.yaml'),
+      ['policy:', '  allow_implicit_invocation: true', ''].join('\n'),
+      'utf8'
+    );
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    await service.ensureConversationContext({ conversation: makeConversation(space.id, workspacePath) as any });
+
+    const graphCanvas = JSON.parse(
+      await fs.readFile(path.join(vaultPath, 'Projects', 'workspace', 'Project Graph.canvas'), 'utf8')
+    ) as {
+      nodes: Array<Record<string, number | string>>;
+      edges: Array<Record<string, string>>;
+    };
+
+    const projectNode = graphCanvas.nodes.find((node) => node.file === 'Projects/workspace/workspace.md');
+    const baselineNode = graphCanvas.nodes.find((node) => node.file === 'Projects/workspace/_context/baseline.md');
+    const insightsNode = graphCanvas.nodes.find((node) => node.file === 'Projects/workspace/Project Insights.md');
+    const sourceNode = graphCanvas.nodes.find((node) => node.file === 'Projects/workspace/Sources/AGENTS.md');
+    expect(projectNode).toEqual(
+      expect.objectContaining({
+        contextgoNamespaceKind: 'project',
+        contextgoProjectionLayer: 'semantic-context',
+      })
+    );
+    expect(baselineNode).toEqual(
+      expect.objectContaining({
+        contextgoNamespaceKind: 'semantic-context',
+        contextgoProjectionLayer: 'semantic-context',
+      })
+    );
+    expect(insightsNode).toEqual(
+      expect.objectContaining({
+        contextgoNamespaceKind: 'semantic-context',
+        contextgoProjectionLayer: 'semantic-context',
+      })
+    );
+    expect(sourceNode).toEqual(
+      expect.objectContaining({
+        contextgoNamespaceKind: 'source-mirror',
+        contextgoProjectionLayer: 'source-mirror',
+      })
+    );
+
+    expect(Number(baselineNode?.y)).toBeLessThan(Number(sourceNode?.y));
+    expect(graphCanvas.nodes.some((node) => String(node.file).includes('_context/capabilities'))).toBe(true);
+    expect(graphCanvas.edges.some((edge) => edge.label === 'semantic-context')).toBe(true);
+    expect(graphCanvas.edges.some((edge) => edge.label === 'source-mirror')).toBe(true);
+    expect(graphCanvas.edges.some((edge) => edge.label === 'capability-inventory')).toBe(true);
   });
 
   it('sanitizes imported session titles so graph nodes stay readable', async () => {
