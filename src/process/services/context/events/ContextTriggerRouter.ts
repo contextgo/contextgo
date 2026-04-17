@@ -175,6 +175,8 @@ export class ContextTriggerRouter {
             label: trigger.label,
           }),
         triggeredAt: input.firedAt,
+        reasonOverride: input.reason,
+        lifecycleSummary: input.sourceSummary ?? input.reason,
       });
 
       if (job) {
