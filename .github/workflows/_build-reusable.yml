@@ -220,18 +220,34 @@ jobs:
           bun-version: latest
 
       - name: Prepare Python tool cache
+        if: runner.environment != 'self-hosted' || runner.os != 'macOS'
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "${RUNNER_TEMP}/hostedtoolcache"
 
       - name: Setup Python
+        if: runner.environment != 'self-hosted' || runner.os != 'macOS'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
         env:
           AGENT_TOOLSDIRECTORY: ${{ runner.temp }}/hostedtoolcache
           RUNNER_TOOL_CACHE: ${{ runner.temp }}/hostedtoolcache
+
+      - name: Use system Python (self-hosted macOS)
+        if: runner.environment == 'self-hosted' && runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHON_BIN="$(command -v python3)"
+          if [ -z "${PYTHON_BIN}" ]; then
+            echo "::error::python3 is not available on this self-hosted macOS runner."
+            exit 1
+          fi
+          echo "PYTHON=${PYTHON_BIN}" >> "${GITHUB_ENV}"
+          echo "Using system Python: ${PYTHON_BIN}"
+          "${PYTHON_BIN}" --version
 
       # Restore Electron/Electron-Builder caches before any build-related install
       - name: Cache Electron artifacts
