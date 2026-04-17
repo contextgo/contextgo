@@ -92,7 +92,7 @@ jobs:
           cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
 
@@ -183,7 +183,7 @@ jobs:
           cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
 
@@ -252,7 +252,7 @@ jobs:
       # Restore Electron/Electron-Builder caches before any build-related install
       - name: Cache Electron artifacts
         id: electron-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ${{ runner.temp }}/.cache/electron
@@ -269,12 +269,22 @@ jobs:
         run: echo "electron-cache-hit=${{ steps.electron-cache.outputs.cache-hit }}"
 
       - name: Install dependencies
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          retry_wait_seconds: 30
-          command: bun install --no-frozen-lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          attempts=3
+          delay=30
+          for attempt in $(seq 1 "${attempts}"); do
+            if bun install --no-frozen-lockfile; then
+              exit 0
+            fi
+            if [ "${attempt}" -eq "${attempts}" ]; then
+              echo "::error::bun install failed after ${attempts} attempts."
+              exit 1
+            fi
+            echo "bun install failed on attempt ${attempt}/${attempts}; retrying in ${delay}s..."
+            sleep "${delay}"
+          done
 
       - name: Run postinstall
         run: bun run postinstall || true
@@ -287,14 +297,22 @@ jobs:
       - name: Install MSVC ARM64 toolchain (Windows ARM64 only)
         if: matrix.platform == 'windows-arm64'
         continue-on-error: true
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 20
-          max_attempts: 3
-          retry_wait_seconds: 60
-          shell: pwsh
-          command: |
+        shell: pwsh
+        run: |
+          $attempts = 3
+          $delaySeconds = 60
+          for ($attempt = 1; $attempt -le $attempts; $attempt++) {
             choco install visualstudio2022buildtools --yes --params "'--add Microsoft.VisualStudio.Component.VC.Tools.ARM64 --add Microsoft.VisualStudio.Component.Windows11SDK.22000 --includeRecommended --includeOptional'"
+            if ($LASTEXITCODE -eq 0) {
+              exit 0
+            }
+            if ($attempt -eq $attempts) {
+              Write-Warning "MSVC ARM64 toolchain install failed after $attempts attempts."
+              exit $LASTEXITCODE
+            }
+            Write-Warning "MSVC ARM64 toolchain install failed on attempt $attempt/$attempts; retrying in $delaySeconds seconds..."
+            Start-Sleep -Seconds $delaySeconds
+          }
 
       - name: Setup Windows build environment (for Windows only)
         if: startsWith(matrix.platform, 'windows')
@@ -606,12 +624,22 @@ jobs:
       # Linux: 标准构建，无特殊错误处理
       - name: Build with electron-builder (Linux)
         if: matrix.platform == 'linux'
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 60
-          max_attempts: 2
-          retry_wait_seconds: 60
-          command: ${{ matrix.command }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          attempts=2
+          delay=60
+          for attempt in $(seq 1 "${attempts}"); do
+            if ${{ matrix.command }}; then
+              exit 0
+            fi
+            if [ "${attempt}" -eq "${attempts}" ]; then
+              echo "::error::Linux build command failed after ${attempts} attempts."
+              exit 1
+            fi
+            echo "Linux build command failed on attempt ${attempt}/${attempts}; retrying in ${delay}s..."
+            sleep "${delay}"
+          done
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           npm_config_arch: ${{ matrix.arch }}
@@ -754,6 +782,54 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Prune self-hosted runner caches (non-Windows)
+        if: runner.environment == 'self-hosted' && always() && !startsWith(matrix.platform, 'windows')
+        shell: bash
+        run: |
+          set +e
+
+          prune_children() {
+            local dir="$1"
+            local days="$2"
+            if [ -d "${dir}" ]; then
+              find "${dir}" -mindepth 1 -maxdepth 1 -mtime "+${days}" -exec rm -rf {} +
+            fi
+          }
+
+          prune_children "${RUNNER_TEMP}/.cache/electron" 14
+          prune_children "${RUNNER_TEMP}/.cache/electron-builder" 14
+          prune_children "${HOME}/.cache/electron" 14
+          prune_children "${HOME}/.cache/electron-builder" 14
+
+          find "${RUNNER_TEMP}" -maxdepth 1 \
+            \( -name 'contextgo-*' -o -name 'contextgo-source*' -o -name '*.p12' -o -name '*.mobileprovision*' \) \
+            -mtime +2 -exec rm -rf {} +
+
+      - name: Prune self-hosted runner caches (Windows)
+        if: runner.environment == 'self-hosted' && always() && startsWith(matrix.platform, 'windows')
+        shell: pwsh
+        run: |
+          $targets = @(
+            Join-Path $env:RUNNER_TEMP '.cache\electron',
+            Join-Path $env:RUNNER_TEMP '.cache\electron-builder',
+            Join-Path $env:LOCALAPPDATA 'electron-builder\Cache'
+          )
+
+          foreach ($target in $targets) {
+            if (Test-Path $target) {
+              Get-ChildItem -Path $target -Force -ErrorAction SilentlyContinue |
+                Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-14) } |
+                Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+          Get-ChildItem -Path $env:RUNNER_TEMP -Force -ErrorAction SilentlyContinue |
+            Where-Object {
+              $_.LastWriteTime -lt (Get-Date).AddDays(-2) -and
+              ($_.Name -like 'contextgo-*' -or $_.Name -like 'contextgo-source*' -or $_.Name -like '*.p12')
+            } |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
   build-summary:
     name: Build Summary
     runs-on: ${{ fromJSON(inputs.control_runner) }}
@@ -762,7 +838,7 @@ jobs:
 
     steps:
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
 

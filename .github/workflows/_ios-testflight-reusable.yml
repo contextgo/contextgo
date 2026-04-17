@@ -50,14 +50,14 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.source_ref }}
           fetch-depth: 1
           fetch-tags: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
 
@@ -375,3 +375,4 @@ jobs:
           if [ -n "${PROFILE_UUID:-}" ]; then
             rm -f "${HOME}/Library/Developer/Xcode/UserData/Provisioning Profiles/${PROFILE_UUID}.mobileprovision" 2>/dev/null || true
           fi
+          rm -rf "${RUNNER_TEMP}/ios-testflight" 2>/dev/null || true
