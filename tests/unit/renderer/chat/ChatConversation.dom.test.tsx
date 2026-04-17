@@ -470,13 +470,15 @@ describe('ChatConversation', () => {
   it('opens the project skill market modal from the header entry', async () => {
     const conversation = createConversation('acp', 'acp-skill-market-open');
 
-    render(<ChatConversation conversation={conversation} />);
+    const { getByTestId } = render(<ChatConversation conversation={conversation} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.skillMarket.action' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('project-skill-market-modal')).toHaveTextContent('/tmp/acp-skill-market-open');
     });
+
+    expect(getByTestId('chat-layout-header-extra')).not.toContainElement(screen.getByTestId('project-skill-market-modal'));
   });
 
   it('opens the unified automation modal without delegating to a separate hooks drawer event', async () => {

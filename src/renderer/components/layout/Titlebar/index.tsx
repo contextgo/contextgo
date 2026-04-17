@@ -52,6 +52,33 @@ const formatMobileShellConversationTitle = (title: string): string => {
   return `${normalizedTitle.slice(0, MOBILE_SHELL_CONVERSATION_TITLE_MAX_LENGTH - 1).trimEnd()}…`;
 };
 
+const MobileCreateGroupModalHost: React.FC<{
+  visible: boolean;
+  onCancel: () => void;
+}> = ({ visible, onCancel }) => {
+  const { cliAgents, presetAssistants } = useConversationAgents();
+  const { activeTab, openTab } = useConversationTabs();
+  const selectedSpaceId = useSelectedSpaceId();
+  const navigate = useNavigate();
+
+  return (
+    <CreateGroupModal
+      visible={visible}
+      workspace={activeTab?.workspace || ''}
+      spaceId={selectedSpaceId ?? undefined}
+      cliAgents={cliAgents}
+      presetAssistants={presetAssistants}
+      onCancel={onCancel}
+      onCreated={(conversation) => {
+        onCancel();
+        openTab(conversation);
+        void navigate(`/conversation/${conversation.id}`);
+        emitter.emit('chat.history.refresh');
+      }}
+    />
+  );
+};
+
 const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }) => {
   const { t } = useTranslation();
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
@@ -67,9 +94,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const isDesktopRuntime = isElectronDesktop();
   const isMacRuntime = isDesktopRuntime && isMacOS();
   const isMobileShellRuntime = !isDesktopRuntime && isMobileShellWebView();
-  const { cliAgents, presetAssistants } = useConversationAgents();
-  const { activeTab, openTab, openTabs } = useConversationTabs();
-  const selectedSpaceId = useSelectedSpaceId();
+  const { openTabs } = useConversationTabs();
 
   // 监听工作空间折叠状态，保持按钮图标一致 / Sync workspace collapsed state for toggle button
   useEffect(() => {
@@ -619,7 +644,6 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
     );
   }
 
-  const activeWorkspace = activeTab?.workspace || '';
   const createEntryMenu = (
     <Menu
       onClickMenuItem={(key) => {
@@ -736,20 +760,9 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
           {showWindowControls && <WindowControls />}
         </div>
       </div>
-      <CreateGroupModal
-        visible={groupModalVisible}
-        workspace={activeWorkspace}
-        spaceId={selectedSpaceId ?? undefined}
-        cliAgents={cliAgents}
-        presetAssistants={presetAssistants}
-        onCancel={() => setGroupModalVisible(false)}
-        onCreated={(conversation) => {
-          setGroupModalVisible(false);
-          openTab(conversation);
-          void navigate(`/conversation/${conversation.id}`);
-          emitter.emit('chat.history.refresh');
-        }}
-      />
+      {groupModalVisible ? (
+        <MobileCreateGroupModalHost visible={groupModalVisible} onCancel={() => setGroupModalVisible(false)} />
+      ) : null}
     </>
   );
 };

@@ -9,6 +9,8 @@ const navigateMock = vi.fn();
 const isFullScreenInvokeMock = vi.fn();
 const fullScreenChangedOnMock = vi.fn(() => vi.fn());
 const useConversationTabsMock = vi.fn();
+const useConversationAgentsMock = vi.fn();
+const useSelectedSpaceIdMock = vi.fn();
 const remoteAccessTargetRef = {
   current: {
     mode: 'local',
@@ -54,7 +56,7 @@ vi.mock('@/renderer/utils/platform', () => ({
 }));
 
 vi.mock('@/renderer/hooks/context/useSelectedSpace', () => ({
-  useSelectedSpaceId: () => 'space-selected',
+  useSelectedSpaceId: () => useSelectedSpaceIdMock(),
 }));
 
 vi.mock('@/renderer/hooks/context/RemoteAccessContext', () => ({
@@ -66,10 +68,7 @@ vi.mock('@/renderer/hooks/context/RemoteAccessContext', () => ({
 }));
 
 vi.mock('@renderer/pages/conversation/hooks/useConversationAgents', () => ({
-  useConversationAgents: () => ({
-    cliAgents: [],
-    presetAssistants: [],
-  }),
+  useConversationAgents: () => useConversationAgentsMock(),
 }));
 
 vi.mock('@renderer/pages/conversation/hooks/ConversationTabsContext', () => ({
@@ -154,6 +153,11 @@ describe('Titlebar', () => {
     isMacOSMock = true;
     isMobileShellWebViewMock = false;
     isFullScreenInvokeMock.mockResolvedValue(false);
+    useConversationAgentsMock.mockReturnValue({
+      cliAgents: [],
+      presetAssistants: [],
+    });
+    useSelectedSpaceIdMock.mockReturnValue('space-selected');
     useConversationTabsMock.mockReturnValue({
       activeTab: null,
       openTab: vi.fn(),
@@ -272,6 +276,32 @@ describe('Titlebar', () => {
     expect(conversationContent).toBeTruthy();
     expect(container.querySelector('#app-titlebar-chat-slot')).toBeTruthy();
     expect(conversationContent?.querySelector('.app-titlebar__drag-spacer')).toBeTruthy();
+  });
+
+  it('does not subscribe mobile create-group data on desktop conversation routes', async () => {
+    renderTitlebar('/conversation/conv-1', {
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+      layoutValue: {
+        activeWorkbenchDefinition: {
+          kind: 'conversation-cowork',
+          capabilities: ['chat', 'preview', 'workspace', 'browser'],
+          shellContract: {
+            shellStyle: 'conversation',
+            titlebar: {
+              primarySlotId: 'app-titlebar-chat-slot',
+            },
+            toolbar: {
+              slotId: 'app-titlebar-toolbar-slot',
+            },
+          },
+        } as never,
+      },
+    });
+
+    expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+    expect(useConversationAgentsMock).not.toHaveBeenCalled();
+    expect(useSelectedSpaceIdMock).not.toHaveBeenCalled();
   });
 
   it('renders shell slots defined by the active conversation workbench contract', async () => {
