@@ -156,6 +156,7 @@ jobs:
     env:
       CONTEXTGO_RELEASE_REPO: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
       NEXT_PUBLIC_CONTEXTGO_GITHUB_URL: ${{ vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL != '' && vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL || 'https://github.com/contextgo' }}
+      NEXT_PUBLIC_DOCS_SITE_URL: ${{ vars.NEXT_PUBLIC_DOCS_SITE_URL != '' && vars.NEXT_PUBLIC_DOCS_SITE_URL || 'https://docs.contextgo.io' }}
       CONTEXTGO_ANDROID_URL: ${{ vars.CONTEXTGO_ANDROID_URL }}
       CONTEXTGO_IOS_URL: ${{ vars.CONTEXTGO_IOS_URL }}
       CONTEXTGO_IOS_LABEL: ${{ vars.CONTEXTGO_IOS_LABEL }}

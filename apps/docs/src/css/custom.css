@@ -1,0 +1,30 @@
+:root {
+  --ifm-color-primary: #0f766e;
+  --ifm-color-primary-dark: #0d6a63;
+  --ifm-color-primary-darker: #0c645d;
+  --ifm-color-primary-darkest: #0a534d;
+  --ifm-color-primary-light: #118278;
+  --ifm-color-primary-lighter: #12887d;
+  --ifm-color-primary-lightest: #17a091;
+  --ifm-background-color: #f7f8f4;
+  --ifm-font-family-base: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  --ifm-heading-font-family: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  --ifm-code-font-size: 95%;
+  --ifm-navbar-background-color: rgba(247, 248, 244, 0.92);
+  --ifm-footer-background-color: #18312d;
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #5fc4b6;
+  --ifm-background-color: #101816;
+  --ifm-navbar-background-color: rgba(16, 24, 22, 0.92);
+}
+
+.hero--primary {
+  background: linear-gradient(135deg, #113c36 0%, #1f5c55 55%, #dceee7 100%);
+}
+
+.theme-doc-markdown header + p,
+.theme-doc-markdown h2 + p {
+  max-width: 52rem;
+}

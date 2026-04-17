@@ -40,6 +40,7 @@ jspm_packages/
 package-lock.json
 yarn.lock
 !apps/web/package-lock.json
+!apps/docs/package-lock.json
 
 # TypeScript v1 declaration files
 typings/
