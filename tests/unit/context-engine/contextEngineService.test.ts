@@ -111,7 +111,7 @@ describe('ContextEngineService', () => {
     expect(latestCursor?.operationId).toBe(result.operations[1]?.id);
   });
 
-  it('retrieves accepted memories and matching profiles for a query', async () => {
+  it('baseline[R1]: retrieves accepted memories and matching profiles for a query', async () => {
     const dependencies = createInMemoryContextEngineDependencies({
       sources: [makeSource('source-1', 'Debugging notes')],
       memories: [
@@ -150,7 +150,7 @@ describe('ContextEngineService', () => {
     expect(result.totalEstimatedTokens).toBeGreaterThan(0);
   });
 
-  it('assembles a task-scoped context pack and omits lower-priority sections beyond budget', async () => {
+  it('baseline[A1]: assembles a task-scoped context pack and omits lower-priority sections beyond budget', async () => {
     const dependencies = createInMemoryContextEngineDependencies({
       sources: [makeSource('source-1', 'Debugging notes')],
       memories: [
