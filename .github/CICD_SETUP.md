@@ -217,8 +217,9 @@ CONTEXTGO_OIDC_SIGNING_KEY_ID=contextgo-auth-1
 
 1. 打开 Xcode 或 Keychain Access
 2. 查看已安装的开发者证书
-3. 证书名称类似："Developer ID Application: Your Name (TEAM_ID)"
-4. 复制完整证书名称作为 `IDENTITY`
+3. 证书名称通常类似：`Developer ID Application: Your Name (TEAM_ID)`
+4. GitHub Actions 的 `IDENTITY` 推荐填写：`Your Name (TEAM_ID)`
+5. 如果你直接复制了 Keychain 里的完整名称也可以，release build 脚本会自动去掉 `Developer ID Application:` 前缀
 
 ## 使用方法
 
