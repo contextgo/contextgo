@@ -7,7 +7,7 @@ Use this file as the workspace entry point for durable collaboration guidance. K
 ## Workspace Model
 
 - `.contextgo/` is the installed workspace state for this package.
-- Runtime-native directories such as `.claude/skills` or `.codex/skills` are projections only.
+- Runtime-native directories such as `.claude/skills` or `.agents/skills` are projections only.
 - `docs/` is a progressive-disclosure context surface. Load the relevant docs when the task touches that area.
 
 ## Context Routing

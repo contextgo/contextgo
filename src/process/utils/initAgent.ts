@@ -44,7 +44,7 @@ const AGENT_SKILLS_DIRS: Record<string, string[]> = {
   // Verified native skill discovery support:
   gemini: ['.gemini/skills'],
   claude: ['.claude/skills'],
-  codex: ['.codex/skills'],
+  codex: ['.agents/skills'],
   opencode: ['.opencode/skills'],
 };
 

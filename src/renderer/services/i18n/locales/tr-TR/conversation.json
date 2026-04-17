@@ -244,7 +244,32 @@
       "skillsAvailableTitle": "Workspace Skills",
       "skillsAvailableDescription": "Skills discovered from the project-local `.contextgo/skills` directory.",
       "skillsEmpty": "No project-local skills were found in this workspace.",
-      "skillsLoadFailed": "Failed to load project skills"
+      "skillsLoadFailed": "Failed to load project skills",
+      "runtime": {
+        "title": "Çalışma zamanı",
+        "description": "Bu çalışma alanı için tek bir proje düzeyi runtime policy kontrol edin. ContextGo bunu `.contextgo/runtime.json` içinde saklar ve bu dosyayı gerçek kaynak olarak kullanır.",
+        "policyPathHint": "Politika dosyası: {{path}}",
+        "runtimeRootHint": "Geçerli backend yapılandırma kökü: {{path}}",
+        "saveAction": "Çalışma zamanı politikasını kaydet",
+        "modeTitle": "Çalışma zamanı modu",
+        "modeDescription": "Bu projenin çalışma zamanı yapılandırmasını ve model erişimini nasıl çözeceğini seçin.",
+        "currentSource": "Geçerli etkin kaynak: {{source}}",
+        "currentMode": "Geçerli mod: {{mode}}",
+        "loading": "Çalışma zamanı politikası yükleniyor...",
+        "saving": "Kaydediliyor...",
+        "loadFailed": "Proje çalışma zamanı politikası yüklenemedi.",
+        "saveSuccess": "Proje çalışma zamanı politikası kaydedildi.",
+        "saveFailed": "Proje çalışma zamanı politikası kaydedilemedi.",
+        "source": {
+          "imported": "İçe aktarılan yerel çalışma zamanı",
+          "modelCenter": "ContextGo model merkezi"
+        },
+        "mode": {
+          "projectManaged": "ContextGo model merkezini kullan",
+          "importLocal": "Yerel Runtime yapılandırmasını içe aktar",
+          "auto": "Otomatik"
+        }
+      }
     },
     "skillMarket": {
       "action": "Skill Market",

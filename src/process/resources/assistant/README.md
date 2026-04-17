@@ -47,7 +47,7 @@ outputs in `entryDocument.runtimeEntryProjections`.
 
 Bundled packages install into workspace-owned `.contextgo/` state first.
 
-Runtime-native directories such as `.codex/skills` or `.claude/skills` are projections only.
+Runtime-native directories such as `.agents/skills` or `.claude/skills` are projections only.
 
 Do not model `hooks`, `commands`, or `schedules` as runtime-owned package state.
 

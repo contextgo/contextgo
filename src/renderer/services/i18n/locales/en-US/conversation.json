@@ -399,7 +399,32 @@
       "skillsAvailableTitle": "Workspace Skills",
       "skillsAvailableDescription": "Skills discovered from the project-local `.contextgo/skills` directory.",
       "skillsEmpty": "No project-local skills were found in this workspace.",
-      "skillsLoadFailed": "Failed to load project skills"
+      "skillsLoadFailed": "Failed to load project skills",
+      "runtime": {
+        "title": "Runtime",
+        "description": "Control one project-level runtime policy for this workspace. ContextGo stores it in `.contextgo/runtime.json` and uses that file as the source of truth.",
+        "policyPathHint": "Policy file: {{path}}",
+        "runtimeRootHint": "Current backend config root: {{path}}",
+        "saveAction": "Save runtime policy",
+        "modeTitle": "Runtime mode",
+        "modeDescription": "Choose how this project resolves runtime config and model access.",
+        "currentSource": "Current effective source: {{source}}",
+        "currentMode": "Current mode: {{mode}}",
+        "loading": "Loading runtime policy...",
+        "saving": "Saving...",
+        "loadFailed": "Failed to load the project runtime policy.",
+        "saveSuccess": "Project runtime policy saved.",
+        "saveFailed": "Failed to save the project runtime policy.",
+        "source": {
+          "imported": "Imported local runtime",
+          "modelCenter": "ContextGo model center"
+        },
+        "mode": {
+          "projectManaged": "Use ContextGo model center",
+          "importLocal": "Import local runtime config",
+          "auto": "Automatic"
+        }
+      }
     },
     "skillMarket": {
       "action": "Skill Market",

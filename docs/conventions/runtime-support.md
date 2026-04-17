@@ -39,7 +39,7 @@ The supported runtimes above share the same product-level assistant package mode
 
 - package-root `AGENTS.md` and package `docs/` are product-facing package surfaces shared across supported runtimes
 - `.contextgo/` is the canonical workspace installation root for assistant package state
-- runtime-native directories such as `.codex/skills` or `.claude/skills` are projections only
+- runtime-native directories such as `.agents/skills` or `.claude/skills` are projections only
 - only skills should be projected into runtime-native directories
 - `hooks`, `commands`, and `schedules` remain ContextGo-native automation owned by `.contextgo/`
 

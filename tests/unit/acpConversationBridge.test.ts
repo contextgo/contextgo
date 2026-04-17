@@ -316,7 +316,7 @@ describe('acpConversationBridge', () => {
 
   it('returns project runtime config entries when a workspace is provided', async () => {
     const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
-      return targetPath === '/tmp/project/.contextgo/runtime/codex/config.toml';
+      return targetPath === '/tmp/project/.contextgo/codex/config.toml';
     });
 
     const result = await handlers['getManagedRuntimeConfigLocation']({ backend: 'codex', workspace: '/tmp/project' });
@@ -328,12 +328,12 @@ describe('acpConversationBridge', () => {
         entries: [
           {
             kind: 'config',
-            path: '/tmp/project/.contextgo/runtime/codex/config.toml',
+            path: '/tmp/project/.contextgo/codex/config.toml',
             exists: true,
           },
           {
             kind: 'auth',
-            path: '/tmp/project/.contextgo/runtime/codex/auth.json',
+            path: '/tmp/project/.contextgo/codex/auth.json',
             exists: false,
           },
         ],

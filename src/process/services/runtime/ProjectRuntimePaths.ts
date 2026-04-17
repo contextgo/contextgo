@@ -7,7 +7,7 @@
 import path from 'node:path';
 import type { ProjectRuntimeBackend } from '@/common/types/projectRuntime';
 
-export const getProjectRuntimeRoot = (workspace: string): string => path.join(workspace, '.contextgo', 'runtime');
+export const getProjectRuntimeRoot = (workspace: string): string => path.join(workspace, '.contextgo');
 
 export const getProjectRuntimePolicyPath = (workspace: string): string =>
   path.join(getProjectRuntimeRoot(workspace), 'runtime.json');

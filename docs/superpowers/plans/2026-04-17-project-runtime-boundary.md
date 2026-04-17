@@ -4,7 +4,7 @@
 
 **Goal:** Make project runtime execution stop consuming global runtime state by default, while adding one project-level runtime policy that can use ContextGo model center, import local runtime config, or auto-resolve between the two.
 
-**Architecture:** Introduce a project-owned runtime root under `.contextgo/runtime/` plus a `ProjectRuntimeService` that resolves effective runtime policy, materializes runtime-specific config, and builds project-scoped env vars. Tighten skills so runtime discovery only sees project-owned state, then rewire Claude/Codex/OpenCode/Gemini launch and config resolution to use the project boundary rather than global home directories.
+**Architecture:** Introduce a project-owned runtime root under `.contextgo/` plus a `ProjectRuntimeService` that resolves effective runtime policy, materializes runtime-specific config, and builds project-scoped env vars. Tighten skills so runtime discovery only sees project-owned state, then rewire Claude/Codex/OpenCode/Gemini launch and config resolution to use the project boundary rather than global home directories.
 
 **Tech Stack:** TypeScript, Electron main process services, React settings UI, Vitest 4, Bun.
 
@@ -30,11 +30,11 @@ import {
 } from '@process/services/runtime/ProjectRuntimePaths';
 
 describe('ProjectRuntimePaths', () => {
-  it('resolves the project runtime root under .contextgo/runtime', () => {
-    expect(getProjectRuntimeRoot('/workspace/app')).toBe('/workspace/app/.contextgo/runtime');
-    expect(getProjectRuntimePolicyPath('/workspace/app')).toBe('/workspace/app/.contextgo/runtime/runtime.json');
-    expect(getProjectRuntimeSkillsDir('/workspace/app')).toBe('/workspace/app/.contextgo/runtime/skills');
-    expect(getProjectRuntimeConfigDir('/workspace/app', 'codex')).toBe('/workspace/app/.contextgo/runtime/codex');
+  it('resolves the project runtime root under .contextgo', () => {
+    expect(getProjectRuntimeRoot('/workspace/app')).toBe('/workspace/app/.contextgo');
+    expect(getProjectRuntimePolicyPath('/workspace/app')).toBe('/workspace/app/.contextgo/runtime.json');
+    expect(getProjectRuntimeSkillsDir('/workspace/app')).toBe('/workspace/app/.contextgo/skills');
+    expect(getProjectRuntimeConfigDir('/workspace/app', 'codex')).toBe('/workspace/app/.contextgo/codex');
   });
 });
 ```
@@ -75,7 +75,7 @@ export type ProjectRuntimePolicy = {
 import path from 'node:path';
 import type { ProjectRuntimeBackend } from '@/common/types/projectRuntime';
 
-export const getProjectRuntimeRoot = (workspace: string): string => path.join(workspace, '.contextgo', 'runtime');
+export const getProjectRuntimeRoot = (workspace: string): string => path.join(workspace, '.contextgo');
 export const getProjectRuntimePolicyPath = (workspace: string): string =>
   path.join(getProjectRuntimeRoot(workspace), 'runtime.json');
 export const getProjectRuntimeSkillsDir = (workspace: string): string =>
@@ -131,7 +131,7 @@ it('returns project-managed model center state without reading global runtime fi
 
   expect(resolved.policy.mode).toBe('project_managed');
   expect(resolved.effectiveSource).toBe('model_center');
-  expect(resolved.runtimeRoot).toBe('/workspace/app/.contextgo/runtime');
+  expect(resolved.runtimeRoot).toBe('/workspace/app/.contextgo');
 });
 
 it('imports local runtime config when mode is import_local_runtime', async () => {
@@ -309,7 +309,7 @@ it('materializes enabled skills into the project runtime skills dir instead of l
 
   expect(symlinkCalls).not.toContainEqual({
     source: '/mock/user/skills/pptx',
-    target: '/tmp/workspace/.contextgo/runtime/skills/pptx',
+    target: '/tmp/workspace/.contextgo/skills/pptx',
     type: 'junction',
   });
 });
@@ -337,7 +337,7 @@ Expected: FAIL because `setupAssistantWorkspace()` still uses global skill roots
 
 ```ts
 // src/process/utils/initAgent.ts
-const WORKSPACE_RUNTIME_ROOT = path.join('.contextgo', 'runtime');
+const WORKSPACE_RUNTIME_ROOT = '.contextgo';
 const WORKSPACE_RUNTIME_SKILLS_DIR = path.join(WORKSPACE_RUNTIME_ROOT, 'skills');
 
 const getWorkspaceRuntimeSkillsDir = (workspace: string): string =>
@@ -356,7 +356,7 @@ const dirsToScan = [workspaceRuntimeSkillsDir];
 
 ```ts
 // src/process/task/agentUtils.ts
-const skillsDir = path.join(workspace, '.contextgo', 'runtime', 'skills');
+const skillsDir = path.join(workspace, '.contextgo', 'skills');
 ```
 
 - [ ] **Step 4: Re-run the skill-related tests**
@@ -398,22 +398,22 @@ it('does not pass shell-global runtime auth variables through getEnhancedEnv whe
 
   const env = getProjectRuntimeEnv({
     workspace: '/workspace/app',
-    runtimeRoot: '/workspace/app/.contextgo/runtime',
+    runtimeRoot: '/workspace/app/.contextgo',
     injectedEnv: { OPENAI_API_KEY: 'project-openai-key' },
   });
 
-  expect(env.HOME).toBe('/workspace/app/.contextgo/runtime');
-  expect(env.XDG_CONFIG_HOME).toBe('/workspace/app/.contextgo/runtime');
+  expect(env.HOME).toBe('/workspace/app/.contextgo');
+  expect(env.XDG_CONFIG_HOME).toBe('/workspace/app/.contextgo');
   expect(env.OPENAI_API_KEY).toBe('project-openai-key');
   expect(env.CODEX_API_KEY).toBeUndefined();
 });
 
 it('resolves codex config and auth paths from the project runtime root', () => {
-  expect(getCodexConfigPath('/workspace/app/.contextgo/runtime')).toBe(
-    '/workspace/app/.contextgo/runtime/codex/config.toml'
+  expect(getCodexConfigPath('/workspace/app/.contextgo')).toBe(
+    '/workspace/app/.contextgo/codex/config.toml'
   );
-  expect(getCodexAuthPath('/workspace/app/.contextgo/runtime')).toBe(
-    '/workspace/app/.contextgo/runtime/codex/auth.json'
+  expect(getCodexAuthPath('/workspace/app/.contextgo')).toBe(
+    '/workspace/app/.contextgo/codex/auth.json'
   );
 });
 ```
@@ -487,7 +487,7 @@ if (this.extra.backend === 'claude') {
 ```ts
 // src/process/task/GeminiAgentManager.ts
 // Stop exposing global getSkillsDir() as the worker-facing skill source.
-skillsDir: path.join(this.workspace, '.contextgo', 'runtime', 'skills'),
+skillsDir: path.join(this.workspace, '.contextgo', 'skills'),
 ```
 
 - [ ] **Step 5: Re-run the targeted shell and bridge tests**
@@ -533,12 +533,12 @@ it('opens project runtime config entries instead of home-directory config paths'
       entries: [
         {
           kind: 'config',
-          path: '/workspace/app/.contextgo/runtime/codex/config.toml',
+          path: '/workspace/app/.contextgo/codex/config.toml',
           exists: true,
         },
         {
           kind: 'auth',
-          path: '/workspace/app/.contextgo/runtime/codex/auth.json',
+          path: '/workspace/app/.contextgo/codex/auth.json',
           exists: true,
         },
       ],
@@ -551,7 +551,7 @@ it('opens project runtime config entries instead of home-directory config paths'
 
   await waitFor(() => {
     expect(readFileInvokeMock).toHaveBeenCalledWith({
-      path: '/workspace/app/.contextgo/runtime/codex/config.toml',
+      path: '/workspace/app/.contextgo/codex/config.toml',
     });
   });
 });
@@ -590,7 +590,7 @@ const entries = resolveManagedRuntimeConfigEntries(backend, runtimeRoot);
 // src/renderer/pages/settings/AgentSettings/CustomAcpAgent.tsx
 <Typography.Text>
   {t('settings.runtimeManager.projectRuntimeHint', {
-    defaultValue: 'This runtime reads project-owned config under .contextgo/runtime.',
+    defaultValue: 'This runtime reads project-owned config under .contextgo.',
   })}
 </Typography.Text>
 ```

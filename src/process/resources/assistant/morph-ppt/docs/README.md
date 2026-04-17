@@ -38,7 +38,7 @@ should be written back into the project folder instead of staying ephemeral.
 - `.contextgo/skills`
   - installs the `morph-ppt` skill into the workspace-owned skill root
 - runtime-native directories
-  - may receive projected skills such as `.codex/skills`, but those are compatibility projections only
+  - may receive projected skills such as `.agents/skills`, but those are compatibility projections only
 - `.contextgo/commands.json`, `.contextgo/hooks.json`, `.contextgo/hooks/`, `.contextgo/schedules.json`
   - this package does not currently own package-specific seeds for those surfaces
 

@@ -153,7 +153,7 @@ const buildScheduleItems = (assistantId: string): AssistantWorkspaceScheduleItem
       label: 'Conversation schedules',
       profile,
       installSurface: payload.installSurface,
-      runtimeSurface: '.contextgo/runtime/schedules',
+      runtimeSurface: '.contextgo/schedules',
       entryCount,
       payloadPreview,
       summary:

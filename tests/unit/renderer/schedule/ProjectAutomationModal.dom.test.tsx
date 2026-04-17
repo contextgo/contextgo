@@ -9,6 +9,7 @@ const useScheduleJobsMock = vi.fn();
 const {
   managedCommandLibraryEditorState,
   readFileInvokeMock,
+  writeFileInvokeMock,
   readSkillContentInvokeMock,
   getSlashCommandsInvokeMock,
   translationMockState,
@@ -20,13 +21,23 @@ const {
     },
   },
   readFileInvokeMock: vi.fn(),
+  writeFileInvokeMock: vi.fn(),
   readSkillContentInvokeMock: vi.fn(),
   getSlashCommandsInvokeMock: vi.fn(async () => ({ success: true, data: { managedLibrary: [], commands: [] } })),
   translationMockState: {
     unstableIdentity: false,
   },
 }));
-const tMock = (key: string, options?: { defaultValue?: string; path?: string }) => options?.defaultValue ?? key;
+const tMock = (key: string, options?: Record<string, unknown> & { defaultValue?: string }) => {
+  const template = options?.defaultValue ?? key;
+  return Object.entries(options ?? {}).reduce((result, [optionKey, optionValue]) => {
+    if (optionKey === 'defaultValue' || optionValue === undefined || optionValue === null) {
+      return result;
+    }
+
+    return result.replace(new RegExp(`{{${optionKey}}}`, 'g'), String(optionValue));
+  }, template);
+};
 const messageApiMock = {
   success: vi.fn(),
   error: vi.fn(),
@@ -45,7 +56,7 @@ vi.mock('@/common', () => ({
       listAvailableHooks: { invoke: vi.fn(async () => []) },
       readFile: { invoke: (...args: unknown[]) => readFileInvokeMock(...args) },
       readSkillContent: { invoke: (...args: unknown[]) => readSkillContentInvokeMock(...args) },
-      writeFile: { invoke: vi.fn() },
+      writeFile: { invoke: (...args: unknown[]) => writeFileInvokeMock(...args) },
     },
     conversation: {
       getProjectCapabilitySnapshot: {
@@ -265,7 +276,27 @@ describe('ProjectAutomationModal', () => {
     vi.clearAllMocks();
     managedCommandLibraryEditorState.current = null;
     translationMockState.unstableIdentity = false;
-    readFileInvokeMock.mockResolvedValue('[]');
+    readFileInvokeMock.mockImplementation(async ({ path }: { path: string }) => {
+      if (path === '/tmp/workspace/.contextgo/runtime.json') {
+        return JSON.stringify(
+          {
+            version: 1,
+            mode: 'auto',
+            resolvedSource: 'model_center',
+            providerProtocol: 'openai',
+            baseUrl: null,
+            apiKeyRef: null,
+            defaultModel: null,
+            importedFrom: null,
+            lastImportedAt: null,
+          },
+          null,
+          2
+        );
+      }
+
+      return '[]';
+    });
     readSkillContentInvokeMock.mockResolvedValue({
       success: true,
       data: {
@@ -273,6 +304,8 @@ describe('ProjectAutomationModal', () => {
       },
     });
     getSlashCommandsInvokeMock.mockResolvedValue({ success: true, data: { managedLibrary: [], commands: [] } });
+    writeFileInvokeMock.mockReset();
+    writeFileInvokeMock.mockResolvedValue(undefined);
     messageApiMock.success.mockReset();
     messageApiMock.error.mockReset();
     useScheduleJobsMock.mockReturnValue({
@@ -356,6 +389,34 @@ describe('ProjectAutomationModal', () => {
     await waitFor(() => {
       expect(listAvailableSkillsMock).toHaveBeenCalledTimes(1);
       expect(getProjectCapabilitySnapshotMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('loads the project runtime policy from .contextgo/runtime.json', async () => {
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Runtime' }));
+
+    await waitFor(() => {
+      expect(readFileInvokeMock).toHaveBeenCalledWith({ path: '/tmp/workspace/.contextgo/runtime.json' });
+    });
+
+    expect(await screen.findByText('Automatic')).toBeInTheDocument();
+    expect(screen.getAllByText(/\.contextgo\/runtime\.json/).length).toBeGreaterThan(0);
+  });
+
+  it('writes the selected runtime mode back to .contextgo/runtime.json', async () => {
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Runtime' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Use ContextGo model center' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save runtime policy' }));
+
+    await waitFor(() => {
+      expect(writeFileInvokeMock).toHaveBeenCalledWith({
+        path: '/tmp/workspace/.contextgo/runtime.json',
+        data: expect.stringContaining('"mode": "project_managed"'),
+      });
     });
   });
 
