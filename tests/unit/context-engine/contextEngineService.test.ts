@@ -1,3 +1,6 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   ContextEngineService,
@@ -8,6 +11,7 @@ import {
   type ProfileSegment,
   type SourceRecord,
 } from '../../../packages/context-engine/src/index';
+import { ProjectContextMirrorService } from '../../../src/process/services/space/ProjectContextMirrorService';
 
 const SPACE_ID = 'space-1';
 
@@ -79,6 +83,11 @@ function makeProfile(overrides: Partial<ProfileSegment> & Pick<ProfileSegment, '
     createdAt: overrides.createdAt ?? '2026-03-30T00:00:00.000Z',
     updatedAt: overrides.updatedAt ?? '2026-03-30T00:00:00.000Z',
   };
+}
+
+async function writeTestDocument(filePath: string, content: string): Promise<void> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, content, 'utf8');
 }
 
 describe('ContextEngineService', () => {
@@ -172,8 +181,10 @@ describe('ContextEngineService', () => {
       threadId: 'thread-1',
       retrieval,
       budgetTokens: 35,
-      threadSummary: 'Current task: fix the flaky Vitest suite before release.',
-      pinnedInstructions: ['Prefer surgical changes and keep tool output concise.'],
+      overlays: {
+        threadSummary: 'Current task: fix the flaky Vitest suite before release.',
+        pinnedInstructions: ['Prefer surgical changes and keep tool output concise.'],
+      },
     });
 
     expect(result.pack.sections[0]?.kind).toBe('instruction');
@@ -357,7 +368,7 @@ describe('ContextEngineService', () => {
     expect(result.chunks[0]?.chunk.id).toBe('chunk-project-a');
   });
 
-  it('keeps mounted sections at the top of the assembled pack', async () => {
+  it('keeps mounted assembly overlay sections at the top of the assembled pack', async () => {
     const dependencies = createInMemoryContextEngineDependencies();
     const service = new ContextEngineService(dependencies);
 
@@ -372,21 +383,23 @@ describe('ContextEngineService', () => {
         totalEstimatedTokens: 0,
       },
       budgetTokens: 120,
-      mountedSections: [
-        {
-          kind: 'profile',
-          id: 'mounted-project',
-          summary: 'Project wiki says to keep diffs minimal.',
-          tokenCount: 12,
-          priority: 94,
-        },
-      ],
-      mountedProfiles: [
-        makeProfile({
-          id: 'profile-compact-1',
-          summary: 'Session compaction summary for current thread.',
-        }),
-      ],
+      overlays: {
+        mountedSections: [
+          {
+            kind: 'profile',
+            id: 'mounted-project',
+            summary: 'Project wiki says to keep diffs minimal.',
+            tokenCount: 12,
+            priority: 94,
+          },
+        ],
+        mountedProfiles: [
+          makeProfile({
+            id: 'profile-compact-1',
+            summary: 'Session compaction summary for current thread.',
+          }),
+        ],
+      },
     });
 
     expect(result.pack.sections[0]).toEqual(
@@ -454,5 +467,76 @@ describe('ContextEngineService', () => {
 
     expect(result.sources.map((item) => item.id)).not.toContain('source-archived');
     expect(result.chunks.map((item) => item.chunk.id)).toEqual([]);
+  });
+});
+
+describe('ProjectContextMirrorService', () => {
+  it('exposes mirrored project docs as an explicit assembly overlay source', async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-project-mirror-'));
+    const workspacePath = path.join(tempRoot, 'workspace');
+    const vaultPath = path.join(tempRoot, 'vault');
+    const projectFolder = path.join(vaultPath, 'Projects', 'workspace');
+
+    try {
+      await writeTestDocument(
+        path.join(projectFolder, '_context', 'baseline.md'),
+        '# Baseline\n\nPrefer stable flows.'
+      );
+      await writeTestDocument(path.join(projectFolder, 'workspace.md'), '# Workspace\n\nKeep diffs minimal.');
+      await writeTestDocument(path.join(projectFolder, 'Project Insights.md'), '# Insights\n\nVerify changes locally.');
+      await writeTestDocument(path.join(projectFolder, 'Sources', 'AGENTS.md'), '# AGENTS\n\nRead AGENTS.md first.');
+
+      const service = new ProjectContextMirrorService({
+        archiveSource: async () => undefined,
+        indexTextDocument: async () => ({ snapshot: { id: 'doc-1' }, chunks: [] }),
+        ingestSource: async (input) => ({ source: { id: input.sourceId ?? 'source-1' }, chunkIds: [], operations: [] }),
+        listSources: async () => [],
+      } as any);
+
+      const snapshot = await service.syncProjectContext({
+        conversation: {
+          extra: {
+            workingDirectory: workspacePath,
+          },
+        } as any,
+        spaceId: SPACE_ID,
+        vaultPath,
+      });
+
+      expect(snapshot?.assemblyOverlaySource).toMatchObject({
+        overlaySource: 'project-context-mirror',
+        projectSlug: snapshot?.projectSlug,
+      });
+      expect(snapshot?.assemblyOverlaySource.projectSections.map((section) => section.kind)).toEqual([
+        'profile',
+        'profile',
+        'profile',
+      ]);
+      expect(snapshot?.assemblyOverlaySource.sourceSections.map((section) => section.kind)).toEqual(['source']);
+      expect(snapshot?.assemblyOverlaySource.mountedSections.map((section) => section.kind)).toEqual([
+        'profile',
+        'profile',
+        'profile',
+        'source',
+      ]);
+      expect(service.buildMountedSections(snapshot)).toEqual([
+        ...(snapshot?.assemblyOverlaySource.projectSections ?? []),
+        ...(snapshot?.assemblyOverlaySource.sourceSections ?? []),
+      ]);
+    } finally {
+      await fs.rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('returns no explicit assembly overlay source when no project snapshot exists', () => {
+    const service = new ProjectContextMirrorService({
+      archiveSource: async () => undefined,
+      indexTextDocument: async () => ({ snapshot: { id: 'doc-1' }, chunks: [] }),
+      ingestSource: async (input) => ({ source: { id: input.sourceId ?? 'source-1' }, chunkIds: [], operations: [] }),
+      listSources: async () => [],
+    } as any);
+
+    expect(service.buildAssemblyOverlaySource(undefined)).toBeUndefined();
+    expect(service.buildMountedSections(undefined)).toEqual([]);
   });
 });

@@ -51,6 +51,14 @@ export type IngestSourceResult = {
   snapshot?: DocumentSnapshot;
   chunkIds: readonly ChunkId[];
   operations: readonly ContextOperation[];
+  lifecycle: IngestionLifecycle;
+};
+
+export type IngestionLifecycle = {
+  sourceRegistered: boolean;
+  snapshotPersisted: boolean;
+  chunksPrepared: boolean;
+  indexReady: boolean;
 };
 
 export type RetrievedMemory = {
@@ -91,11 +99,19 @@ export type RetrieveContextResult = {
   totalEstimatedTokens: number;
 };
 
+export type ContextAssemblyOverlays = {
+  threadSummary?: string;
+  mountedSections?: ContextPack['sections'];
+  mountedProfiles?: readonly ProfileSegment[];
+  pinnedInstructions?: readonly string[];
+};
+
 export type AssembleContextPackInput = {
   spaceId: SpaceId;
   threadId?: ThreadId;
   retrieval: RetrieveContextResult;
   budgetTokens: number;
+  overlays?: ContextAssemblyOverlays;
   threadSummary?: string;
   mountedSections?: ContextPack['sections'];
   mountedProfiles?: readonly ProfileSegment[];
