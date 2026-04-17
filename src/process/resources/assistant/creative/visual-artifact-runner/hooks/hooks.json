@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json.schemastore.org/contextgo-hooks.json",
+  "hooks": {
+    "PreExport": [
+      {
+        "id": "pre:export:font-availability",
+        "matcher": "*",
+        "description": "Block export when a referenced font cannot resolve and no documented substitute exists.",
+        "severity": "block"
+      },
+      {
+        "id": "pre:export:image-availability",
+        "matcher": "*",
+        "description": "Block export when a referenced image, chart, or icon is missing.",
+        "severity": "block"
+      },
+      {
+        "id": "pre:export:layout-overflow",
+        "matcher": "*",
+        "description": "Block export when a chart or block overflows its slot or violates the recipe margin.",
+        "severity": "block"
+      },
+      {
+        "id": "pre:export:heading-hierarchy",
+        "matcher": "*",
+        "description": "Block export when heading levels are not a valid tree.",
+        "severity": "block"
+      },
+      {
+        "id": "pre:export:theme-token-coverage",
+        "matcher": "*",
+        "description": "Block export when a theme token cannot be resolved.",
+        "severity": "block"
+      }
+    ],
+    "PostExport": [
+      {
+        "id": "post:export:build-notes",
+        "matcher": "*",
+        "description": "Emit build-notes.md covering input shape, recipe, theme, mode, and key decisions.",
+        "severity": "info"
+      },
+      {
+        "id": "post:export:asset-inventory",
+        "matcher": "*",
+        "description": "Emit assets.json covering every embedded image, chart, and font.",
+        "severity": "info"
+      },
+      {
+        "id": "post:export:failure-pages",
+        "matcher": "*",
+        "description": "Emit failures.json covering any pages or slides that did not pass QC.",
+        "severity": "info"
+      },
+      {
+        "id": "post:export:pdf-routing",
+        "matcher": "pdf-input",
+        "description": "Record the PDF classification decision (summary distillation versus visual reconstruction).",
+        "severity": "info"
+      }
+    ]
+  }
+}

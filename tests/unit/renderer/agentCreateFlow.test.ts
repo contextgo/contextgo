@@ -38,6 +38,70 @@ describe('buildCapabilityRecommendation', () => {
     expect(recommendation.linkedPackagePresetId).toBe('builtin-finance-analyst');
     expect(recommendation.defaultSkills.length).toBeGreaterThan(0);
   });
+
+  it('should recommend marketing creative studio for campaign asset intent', () => {
+    const draft: AgentCreateIntentDraft = {
+      workDescription: 'Build a multi-platform ad creative batch for campaign launch',
+      audience: 'Growth marketing',
+      output: 'Campaign variants and social assets',
+      workStyle: 'create',
+      recurrence: 'frequent',
+    };
+
+    const recommendation = buildCapabilityRecommendation(draft);
+
+    expect(recommendation.linkedPackagePresetId).toBe('builtin-marketing-creative-studio');
+    expect(recommendation.defaultSkills).toEqual(
+      expect.arrayContaining(['marketing-context-normalizer', 'ad-creative-builder', 'campaign-variant-generator'])
+    );
+    expect(recommendation.commandCount).toBeGreaterThan(0);
+  });
+
+  it('should recommend motion studio for storyboard and render intent', () => {
+    const draft: AgentCreateIntentDraft = {
+      workDescription: 'Plan a storyboard and render social cutdowns for a launch video',
+      audience: 'Growth and brand team',
+      output: 'Storyboard JSON, renders, and QC report',
+      workStyle: 'create',
+      recurrence: 'frequent',
+    };
+
+    const recommendation = buildCapabilityRecommendation(draft);
+
+    expect(recommendation.linkedPackagePresetId).toBe('builtin-motion-studio');
+    expect(recommendation.packageLabel).toBe('Motion Studio');
+    expect(recommendation.defaultSkills).toEqual(
+      expect.arrayContaining([
+        'motion-storyboard',
+        'motion-scene-builder',
+        'motion-poster-builder',
+        'motion-render-ops',
+        'motion-qc',
+      ])
+    );
+    expect(recommendation.commandCount).toBeGreaterThan(0);
+    expect(recommendation.runtime).toBe('codex');
+  });
+
+  it('should recommend visual artifact runner for deck/pdf artifact requests', () => {
+    const draft: AgentCreateIntentDraft = {
+      workDescription: 'Convert this PDF report into a polished deck artifact with QC and export notes',
+      audience: 'Leadership team',
+      output: 'Deck',
+      workStyle: 'create',
+      recurrence: 'frequent',
+    };
+
+    const recommendation = buildCapabilityRecommendation(draft);
+
+    expect(recommendation.linkedPackagePresetId).toBe('builtin-visual-artifact-runner');
+    expect(recommendation.defaultSkills).toEqual(
+      expect.arrayContaining(['deck-from-brief', 'pdf-to-deck', 'report-to-infographic', 'artifact-qc'])
+    );
+    expect(recommendation.commandCount).toBeGreaterThan(0);
+    expect(recommendation.scheduleCount).toBe(0);
+    expect(recommendation.packageLabel).toBe('Visual Artifact Runner');
+  });
 });
 
 describe('buildCreateFlowSummary', () => {

@@ -262,6 +262,37 @@ describe('workspaceAutomation harness bootstrap', () => {
     await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
   });
 
+  it('creates Motion Studio workspace commands without engineering hooks for a motion studio conversation workspace', async () => {
+    const workspaceDir = path.join(tempRoot, 'workspace-motion');
+    await fs.mkdir(workspaceDir, { recursive: true });
+
+    await ensureHarnessWorkspaceAutomationForConversation({
+      type: 'acp',
+      extra: {
+        workspace: workspaceDir,
+        presetAssistantId: 'builtin-motion-studio',
+      },
+    } as any);
+
+    const commandsFile = getWorkspaceCommandsFile(workspaceDir);
+    expect(commandsFile).not.toBeNull();
+
+    const commandLibrary = await readCommandLibrary(workspaceDir);
+    expect(commandLibrary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'plan', name: 'plan' }),
+        expect.objectContaining({ id: 'verify', name: 'verify' }),
+        expect.objectContaining({ id: 'motion-storyboard-video', name: 'storyboard-video' }),
+        expect.objectContaining({ id: 'motion-build-poster', name: 'build-motion-poster' }),
+        expect.objectContaining({ id: 'motion-render-video', name: 'render-video' }),
+        expect.objectContaining({ id: 'motion-render-social-cut', name: 'render-social-cut' }),
+        expect.objectContaining({ id: 'motion-qc-pass', name: 'motion-qc' }),
+      ])
+    );
+
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
+  });
+
   it('creates Office Analyst workspace commands without engineering hooks for an office analyst conversation workspace', async () => {
     const workspaceDir = path.join(tempRoot, 'workspace-office');
     await fs.mkdir(workspaceDir, { recursive: true });
@@ -329,6 +360,37 @@ describe('workspaceAutomation harness bootstrap', () => {
           id: 'finance-write-investment-memo',
           name: 'write-investment-memo',
         }),
+      ])
+    );
+
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
+  });
+
+  it('creates Visual Artifact Runner workspace commands without engineering hooks for a visual artifact conversation workspace', async () => {
+    const workspaceDir = path.join(tempRoot, 'workspace-visual-artifact');
+    await fs.mkdir(workspaceDir, { recursive: true });
+
+    await ensureHarnessWorkspaceAutomationForConversation({
+      type: 'acp',
+      extra: {
+        workspace: workspaceDir,
+        presetAssistantId: 'builtin-visual-artifact-runner',
+      },
+    } as any);
+
+    const commandsFile = getWorkspaceCommandsFile(workspaceDir);
+    expect(commandsFile).not.toBeNull();
+
+    const commandLibrary = await readCommandLibrary(workspaceDir);
+    expect(commandLibrary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'plan', name: 'plan' }),
+        expect.objectContaining({ id: 'verify', name: 'verify' }),
+        expect.objectContaining({ id: 'var-deck-from-brief', name: 'deck-from-brief' }),
+        expect.objectContaining({ id: 'var-deck-from-pdf', name: 'deck-from-pdf' }),
+        expect.objectContaining({ id: 'var-artifact-infographic', name: 'artifact-infographic' }),
+        expect.objectContaining({ id: 'var-artifact-theme', name: 'artifact-theme' }),
+        expect.objectContaining({ id: 'var-artifact-qc', name: 'artifact-qc' }),
       ])
     );
 

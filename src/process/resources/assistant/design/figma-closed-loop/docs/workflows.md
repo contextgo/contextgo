@@ -4,14 +4,14 @@ Figma Closed Loop ships six executable workflows. Each one corresponds to a pack
 
 ## Workflow Map
 
-| Workflow                   | Skill                              | Command              | Phase   |
-| -------------------------- | ---------------------------------- | -------------------- | ------- |
-| New Figma file scaffold    | `figma-file-bootstrap`             | `/figma-new-file`    | Phase 1 |
-| Push code page to Figma    | `figma-screen-generate`            | `/figma-push-screen` | Phase 1 |
-| Sync component library     | `figma-library-sync`               | `/figma-sync-library` | Phase 1 |
-| Sync design system rules   | `figma-design-system-rules-sync`   | `/figma-sync-rules`  | Phase 1 |
-| Implementation handoff     | `figma-implementation-handoff`     | `/figma-implement`   | Phase 2 |
-| Drift audit                | `figma-drift-audit`                | `/figma-audit-drift` | Phase 3 |
+| Workflow                 | Skill                            | Command               | Phase   |
+| ------------------------ | -------------------------------- | --------------------- | ------- |
+| New Figma file scaffold  | `figma-file-bootstrap`           | `/figma-new-file`     | Phase 1 |
+| Push code page to Figma  | `figma-screen-generate`          | `/figma-push-screen`  | Phase 1 |
+| Sync component library   | `figma-library-sync`             | `/figma-sync-library` | Phase 1 |
+| Sync design system rules | `figma-design-system-rules-sync` | `/figma-sync-rules`   | Phase 1 |
+| Implementation handoff   | `figma-implementation-handoff`   | `/figma-implement`    | Phase 2 |
+| Drift audit              | `figma-drift-audit`              | `/figma-audit-drift`  | Phase 3 |
 
 ## Phase 1: Code -> Figma Sync
 
