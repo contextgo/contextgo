@@ -52,6 +52,7 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
 
   const containerClass = classNames(
     'settings-page-wrapper secondary-page-frame w-full min-h-full box-border overflow-y-auto',
+    isMobile && 'settings-page-wrapper--mobile-compact',
     className
   );
 

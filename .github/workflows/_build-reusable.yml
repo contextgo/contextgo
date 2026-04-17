@@ -493,8 +493,8 @@ jobs:
           rm -f /tmp/*.dmg 2>/dev/null || true
           echo "Cleanup complete"
 
-      # macOS: Build with notarization - DMG failure = CI failure, notarization failure = warning only
-      # macOS: 构建并公证 - DMG 失败 = CI 失败，公证失败 = 仅警告
+      # macOS: Build with notarization - DMG failure = CI failure, notarization failure = CI failure
+      # macOS: 构建并公证 - DMG 失败 = CI 失败，公证失败 = CI 失败
       - name: Build with electron-builder (macOS)
         if: startsWith(matrix.platform, 'macos')
         id: macos-build
@@ -520,21 +520,18 @@ jobs:
             exit 0
           fi
 
-          # Build failed - check if it's just notarization failure
+          # Build failed - surface notarization failures as release blockers
           if [ "$DMG_EXISTS" = true ]; then
-            # DMG exists but build failed - likely notarization issue
             if grep -qiE "notariz|staple" "${RUNNER_TEMP}/build.log"; then
-              echo "⚠️ DMG created but notarization failed"
+              echo "❌ DMG created but notarization failed"
               echo "notarization_status=failed" >> $GITHUB_OUTPUT
-              echo "::warning title=Notarization Failed::DMG was built and signed successfully, but **notarization failed**."
+              echo "::error title=Notarization Failed::DMG was built and signed successfully, but notarization failed."
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "## ⚠️ Notarization Warning" >> $GITHUB_STEP_SUMMARY
+              echo "## ❌ Notarization Failed" >> $GITHUB_STEP_SUMMARY
               echo "DMG was built and signed successfully, but **notarization failed**." >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "Users may see Gatekeeper warnings when opening the app for the first time." >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-              echo "To fix: Right-click the app → Open → Open" >> $GITHUB_STEP_SUMMARY
-              exit 0  # Allow CI to continue
+              echo "This release is blocked until notarization succeeds." >> $GITHUB_STEP_SUMMARY
+              exit 1
             fi
           fi
 

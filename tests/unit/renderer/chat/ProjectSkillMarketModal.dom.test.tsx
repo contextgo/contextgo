@@ -151,7 +151,7 @@ describe('ProjectSkillMarketModal', () => {
         installedPath: '/tmp/workspace/.contextgo/skills/market-skill',
         archiveUrl: 'https://www.skillmarket.com.cn/packages/market-skill.zip',
       },
-      msg: 'Skill "market-skill" installed to workspace successfully',
+      msg: 'Skill "market-skill" installed to workspace: /tmp/workspace/.contextgo/skills/market-skill',
     });
   });
 
@@ -190,7 +190,7 @@ describe('ProjectSkillMarketModal', () => {
           installedPath: '/tmp/workspace/.contextgo/skills/market-skill',
           archiveUrl: 'https://www.skillmarket.com.cn/packages/market-skill.zip',
         },
-        msg: 'Skill "market-skill" installed to workspace successfully',
+        msg: 'Skill "market-skill" installed to workspace: /tmp/workspace/.contextgo/skills/market-skill',
       };
     });
 

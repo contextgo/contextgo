@@ -223,7 +223,7 @@ describe('initAgent — skill support', () => {
       'Use this file as the workspace entry point for durable collaboration guidance. Keep it short. Put details that only matter for specific kinds of work under `docs/`.\n\n' +
       '## Workspace Model\n\n' +
       '- `.contextgo/` is the installed workspace state for this package.\n' +
-      '- Runtime-native directories such as `.claude/skills` or `.agents/skills` are projections only.\n' +
+      '- Runtime-native directories such as `.claude/skills` or `.codex/skills` are projections only.\n' +
       '- `docs/` is a progressive-disclosure context surface. Load the relevant docs when the task touches that area.\n\n' +
       '## Context Routing\n\n' +
       '- Read `docs/README.md` for the workspace documentation map.\n' +
@@ -490,7 +490,7 @@ describe('initAgent — skill support', () => {
 
       expect(symlinkCalls).toContainEqual({
         source: '/tmp/workspace/.contextgo/skills',
-        target: '/tmp/workspace/.agents/skills',
+        target: '/tmp/workspace/.codex/skills',
         type: 'junction',
       });
       expect(copyFileCalls).toContainEqual({
@@ -533,7 +533,7 @@ describe('initAgent — skill support', () => {
 
       expect(symlinkCalls).toContainEqual({
         source: '/tmp/workspace/.contextgo/skills',
-        target: '/tmp/workspace/.agents/skills',
+        target: '/tmp/workspace/.codex/skills',
         type: 'junction',
       });
       expect(copyFileCalls).toContainEqual({
@@ -673,7 +673,7 @@ describe('initAgent — skill support', () => {
 
       expect(symlinkCalls).toContainEqual({
         source: '/tmp/workspace/.contextgo/skills',
-        target: '/tmp/workspace/.agents/skills',
+        target: '/tmp/workspace/.codex/skills',
         type: 'junction',
       });
       expect(copyFileCalls).toContainEqual({
@@ -728,11 +728,11 @@ describe('initAgent — skill support', () => {
         enabledSkills: ['test-skill'],
       });
 
-      // backend 'codex' takes priority -> .agents/skills
-      expect(mkdirCalls).toContain('/tmp/workspace/.agents');
+      // backend 'codex' takes priority -> .codex/skills
+      expect(mkdirCalls).toContain('/tmp/workspace/.codex');
       expect(symlinkCalls).toContainEqual({
         source: '/tmp/workspace/.contextgo/skills',
-        target: '/tmp/workspace/.agents/skills',
+        target: '/tmp/workspace/.codex/skills',
         type: 'junction',
       });
     });
@@ -1036,7 +1036,7 @@ describe('initAgent — skill support', () => {
       expect(mkdirCalls).toContain('/tmp/project-workspace/.contextgo/skills');
       expect(symlinkCalls).toContainEqual({
         source: '/tmp/project-workspace/.contextgo/skills',
-        target: '/tmp/project-workspace/.agents/skills',
+        target: '/tmp/project-workspace/.codex/skills',
         type: 'junction',
       });
       expect(copyFileCalls).toContainEqual({
