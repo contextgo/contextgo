@@ -1,0 +1,133 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "marketing-creative-studio",
+  "assistantPresetId": "builtin-marketing-creative-studio",
+  "displayName": "Marketing Creative Studio",
+  "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "workspace"
+        }
+      ],
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "campaign brief to multi-channel marketing asset output",
+        "brand context normalization and visual-copy pairing for marketing surfaces",
+        "industry vertical asset recipes for ecommerce, SaaS, presales, and event campaigns"
+      ],
+      "suggestedArtifacts": [
+        "brand context briefs",
+        "campaign asset packs",
+        "social batch outputs",
+        "ad creative variant sets"
+      ],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/brand/README.md",
+          "target": "docs/brand/README.md"
+        },
+        {
+          "source": "workspace/docs/campaigns/README.md",
+          "target": "docs/campaigns/README.md"
+        },
+        {
+          "source": "workspace/docs/assets/README.md",
+          "target": "docs/assets/README.md"
+        }
+      ]
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/marketing-creative-studio-pack"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "marketing-context-normalizer",
+        "brand-theme-pack",
+        "ad-creative-builder",
+        "social-asset-batch",
+        "visual-copy-pairing",
+        "campaign-variant-generator"
+      ],
+      "packagedSkillNames": [
+        "marketing-context-normalizer",
+        "brand-theme-pack",
+        "ad-creative-builder",
+        "social-asset-batch",
+        "visual-copy-pairing",
+        "campaign-variant-generator"
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "marketing-creative-studio"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "marketing-creative-studio"
+    },
+    "hooks": {
+      "logicalId": "hooks",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "hooks"
+        }
+      ],
+      "installSurface": ".contextgo/hooks/",
+      "selectionSurface": ".contextgo/hooks.json",
+      "runtimeProjection": "none"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "marketing-creative-studio"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "marketing-creative-studio"
+    }
+  }
+}

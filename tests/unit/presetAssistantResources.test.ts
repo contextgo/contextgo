@@ -15,6 +15,9 @@ import {
 } from '../../src/common/config/presets/bundledAgentPackageRegistry';
 
 const DESIGN_DIRECTOR_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-design-director')!;
+const MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-marketing-creative-studio'
+)!;
 const STARTUP_STRATEGIST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-startup-strategist')!;
 const OFFICE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-office-analyst')!;
 const FINANCE_ANALYST_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-finance-analyst')!;
@@ -224,6 +227,33 @@ describe('loadPresetAssistantResources', () => {
       rules: 'builtin rules',
       skills: '',
       enabledSkills: [...DESIGN_DIRECTOR_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to builtin marketing creative preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-marketing-creative-studio',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS],
       enabledHooks: undefined,
     });
   });
