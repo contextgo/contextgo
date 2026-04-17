@@ -495,6 +495,86 @@ describe('ContextRuntimeService', () => {
     );
   });
 
+  it('freezes mounted state before assembly and before current-turn ingestion', async () => {
+    const previousTurnText = 'Previous release context stays mounted until this turn snapshot is prepared.';
+    const currentUserInput = 'New request: change the release checklist for this handoff.';
+    mockDb.getConversationMessages.mockReturnValue({
+      data: [
+        {
+          id: 'm-prev',
+          conversation_id: 'conv-1',
+          type: 'text',
+          position: 'right',
+          content: { content: previousTurnText },
+          createdAt: 1,
+        },
+      ],
+    });
+    mockVaultSyncService.readSessionWorkingContextSection.mockResolvedValue({
+      kind: 'profile',
+      id: 'session-working-context:conv-1',
+      summary: 'Current Task\nUse the frozen release checklist snapshot.',
+      priority: 96,
+      tokenCount: 18,
+    });
+    mockContextService.listProfiles.mockResolvedValue([
+      {
+        id: 'profile-compact-1',
+        spaceId: 'space-1',
+        key: 'session.compaction.conv-1',
+        summary: 'Compacted session summary for the active release thread.',
+        memoryIds: ['memory-1'],
+        confidence: 0.88,
+        state: 'active',
+        createdAt: '2026-04-08T00:00:00.000Z',
+        updatedAt: '2026-04-08T00:10:00.000Z',
+      },
+    ]);
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      undefined,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
+
+    await service.prepareOutgoingTurn({
+      conversation: makeConversation(),
+      userInput: currentUserInput,
+      agentInput: currentUserInput,
+      agentContent: `[User Request]\n${currentUserInput}`,
+      msgId: 'msg-frozen-mounted-state',
+    });
+
+    expect(mockContextService.assemble).toHaveBeenCalledWith(
+      expect.objectContaining({
+        overlays: expect.objectContaining({
+          preparedAt: expect.any(Number),
+          threadSummary: expect.stringContaining(previousTurnText),
+          mountedSections: expect.arrayContaining([
+            expect.objectContaining({ id: 'session-working-context:conv-1' }),
+            expect.objectContaining({ id: 'profile:Projects/workspace/workspace.md' }),
+            expect.objectContaining({ id: 'source:Projects/workspace/Sources/AGENTS.md' }),
+          ]),
+          mountedProfiles: [
+            expect.objectContaining({
+              id: 'profile-compact-1',
+              key: 'session.compaction.conv-1',
+            }),
+          ],
+          pinnedInstructions: ['Prefer space-consistent answers and reuse approved workflows when relevant.'],
+        }),
+      })
+    );
+    expect(mockContextService.assemble.mock.calls[0]?.[0]?.overlays?.threadSummary).not.toContain(
+      currentUserInput
+    );
+    expect(mockContextService.assemble.mock.invocationCallOrder[0]).toBeLessThan(
+      mockContextService.ingestSource.mock.invocationCallOrder[0]
+    );
+  });
+
   it('auto-promotes strong candidates into durable memories', async () => {
     const service = new ContextRuntimeService(
       mockContextService as any,
