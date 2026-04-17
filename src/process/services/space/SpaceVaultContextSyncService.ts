@@ -383,12 +383,12 @@ const normalizeSessionArtifactTargets = (targets: readonly string[] | undefined)
 const hasCompactionProvenance = (input: SessionCompactionProvenanceInput): boolean => {
   return Boolean(
     input.sourceProfileKey ||
-      input.compactionJobId ||
-      input.lifecycleSummary ||
-      input.artifactTargets?.length ||
-      input.sessionTimelineRelativePath ||
-      input.workingContextRelativePath ||
-      input.checkpointRelativePath
+    input.compactionJobId ||
+    input.lifecycleSummary ||
+    input.artifactTargets?.length ||
+    input.sessionTimelineRelativePath ||
+    input.workingContextRelativePath ||
+    input.checkpointRelativePath
   );
 };
 
@@ -1506,18 +1506,20 @@ const buildSessionWorkingSetDocument = (input: {
     .join('\n');
 };
 
-const buildSessionWorkingContextDocument = (input: {
-  conversation: TChatConversation;
-  project: ProjectContext | undefined;
-  space: TSpace;
-  updatedAt: string;
-  currentTask?: string;
-  stableStrategies: readonly string[];
-  failureModes: readonly string[];
-  pendingConstraints: readonly string[];
-  signalKinds: readonly string[];
-  pressure: number;
-} & SessionCompactionProvenanceInput): string => {
+const buildSessionWorkingContextDocument = (
+  input: {
+    conversation: TChatConversation;
+    project: ProjectContext | undefined;
+    space: TSpace;
+    updatedAt: string;
+    currentTask?: string;
+    stableStrategies: readonly string[];
+    failureModes: readonly string[];
+    pendingConstraints: readonly string[];
+    signalKinds: readonly string[];
+    pressure: number;
+  } & SessionCompactionProvenanceInput
+): string => {
   const sessionTitle = sanitizeSessionTitle(input.conversation.name, input.conversation.id);
   const sessionNoteTitle = getSessionNoteTitle(sessionTitle, input.conversation.id);
   const paths = getConversationDocumentPaths(input.conversation.id, input.project?.folderName);
