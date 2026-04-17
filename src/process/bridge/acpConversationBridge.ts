@@ -34,7 +34,7 @@ import path from 'node:path';
 import { safeExec, safeExecFile } from '@process/utils/safeExec';
 import { getEnhancedEnv } from '@process/utils/shellEnv';
 import { contextRuntimeService } from '@process/services/context/contextServiceSingleton';
-import { getProjectRuntimeRoot } from '@process/services/runtime/ProjectRuntimePaths';
+import { ProjectRuntimeService } from '@process/services/runtime/ProjectRuntimeService';
 
 const refreshTrayMenuSafely = async (): Promise<void> => {
   try {
@@ -409,7 +409,13 @@ export function initAcpConversationBridge(
 
   ipcBridge.acpConversation.getManagedRuntimeConfigLocation.provider(async ({ backend, workspace }) => {
     try {
-      const runtimeRoot = workspace ? getProjectRuntimeRoot(workspace) : undefined;
+      const runtimeRoot = workspace
+        ? (
+            await new ProjectRuntimeService().resolve(workspace, {
+              persistDefaultPolicy: false,
+            })
+          ).runtimeRoot
+        : undefined;
       const entries = resolveManagedRuntimeConfigEntries(backend, runtimeRoot);
       if (entries.length === 0) {
         return { success: true, data: null };

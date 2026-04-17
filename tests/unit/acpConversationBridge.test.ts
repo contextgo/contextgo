@@ -124,7 +124,9 @@ vi.mock('../../src/process/agent/codex/connection/CodexConnection', () => ({
   getCodexConfigPath: vi.fn((runtimeRoot?: string) =>
     runtimeRoot ? `${runtimeRoot}/codex/config.toml` : '/Users/tester/.codex/config.toml'
   ),
-  getCodexAuthPath: vi.fn((runtimeRoot?: string) => (runtimeRoot ? `${runtimeRoot}/codex/auth.json` : '/Users/tester/.codex/auth.json')),
+  getCodexAuthPath: vi.fn((runtimeRoot?: string) =>
+    runtimeRoot ? `${runtimeRoot}/codex/auth.json` : '/Users/tester/.codex/auth.json'
+  ),
 }));
 
 vi.mock('../../src/process/task/AcpAgentManager', () => ({ default: class AcpAgentManager {} }));
@@ -143,6 +145,12 @@ vi.mock('../../src/process/utils/tray', () => ({
 const safeExecMock = vi.fn(async () => ({ stdout: '', stderr: '' }));
 const safeExecFileMock = vi.fn(async () => ({ stdout: '', stderr: '' }));
 const getEnhancedEnvMock = vi.fn(() => ({ PATH: '/usr/bin' }));
+const getProjectRuntimeEnvMock = vi.fn(({ runtimeRoot }: { runtimeRoot: string }) => ({
+  PATH: '/usr/bin',
+  HOME: runtimeRoot,
+  XDG_CONFIG_HOME: runtimeRoot,
+  XDG_DATA_HOME: runtimeRoot,
+}));
 
 vi.mock('../../src/process/utils/safeExec', () => ({
   safeExec: (...args: unknown[]) => safeExecMock(...args),
@@ -151,6 +159,7 @@ vi.mock('../../src/process/utils/safeExec', () => ({
 
 vi.mock('../../src/process/utils/shellEnv', () => ({
   getEnhancedEnv: (...args: unknown[]) => getEnhancedEnvMock(...args),
+  getProjectRuntimeEnv: (...args: unknown[]) => getProjectRuntimeEnvMock(...args),
 }));
 
 const listSessionsMock = vi.fn(async () => []);
@@ -203,6 +212,7 @@ describe('acpConversationBridge', () => {
     safeExecMock.mockResolvedValue({ stdout: '', stderr: '' });
     safeExecFileMock.mockReset();
     safeExecFileMock.mockResolvedValue({ stdout: '', stderr: '' });
+    getProjectRuntimeEnvMock.mockClear();
     hoisted.managedRuntimeInstallEventEmit.mockReset();
     hoisted.openClawAgentStart.mockReset();
     hoisted.openClawAgentStart.mockResolvedValue(undefined);

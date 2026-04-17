@@ -10,7 +10,7 @@ import { accessSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 import { dirname, join } from 'path';
 import type { CodexEventParams } from '@/common/types/codex/types';
-import { loadFullShellEnvironment, mergePaths } from '@process/utils/shellEnv';
+import { getEnhancedEnv } from '@process/utils/shellEnv';
 import { globalErrorService, fromNetworkError } from '../core/ErrorService';
 import { JSONRPC_VERSION } from '@/common/types/acpTypes';
 
@@ -189,30 +189,22 @@ export class CodexConnection {
     cliPath: string,
     cwd: string,
     args: string[] = [],
-    options?: { yoloMode?: boolean; runtimeRoot?: string }
+    options?: { yoloMode?: boolean; runtimeRoot?: string; env?: Record<string, string> }
   ): Promise<void> {
     console.log(`[Codex-Startup] ===== Codex startup diagnostics =====`);
     console.log(`[Codex-Startup] cliPath=${cliPath}, cwd=${cwd}, platform=${process.platform}`);
     console.log(`[Codex-Startup] process.env.PATH (first 200): ${(process.env.PATH || '(empty)').substring(0, 200)}`);
 
-    // Build full shell environment for Codex (needs complete env, not just whitelisted vars)
-    const fullShellEnv = loadFullShellEnvironment();
-    const shellVarCount = Object.keys(fullShellEnv).length;
-    console.log(`[Codex-Startup] Full shell env: ${shellVarCount} vars loaded`);
-
-    const mergedPath = mergePaths(process.env.PATH, fullShellEnv.PATH);
-    console.log(`[Codex-Startup] Merged PATH (first 300): ${mergedPath.substring(0, 300)}`);
-
     const cleanEnv: Record<string, string> = {
-      ...process.env,
-      ...fullShellEnv,
-      PATH: mergedPath,
+      ...(options?.env ?? getEnhancedEnv()),
     } as Record<string, string>;
     delete cleanEnv.NODE_OPTIONS;
     delete cleanEnv.NODE_INSPECT;
     delete cleanEnv.NODE_DEBUG;
+    const mergedPath = cleanEnv.PATH || process.env.PATH || '';
+    console.log(`[Codex-Startup] Effective PATH (first 300): ${mergedPath.substring(0, 300)}`);
 
-    // Check if cliPath is discoverable on the merged PATH
+    // Check if cliPath is discoverable on the effective PATH
     const pathDirs = mergedPath.split(process.platform === 'win32' ? ';' : ':');
     const cliBasename = cliPath.includes('/') ? null : cliPath; // only check bare commands
     if (cliBasename) {
@@ -264,6 +256,7 @@ export class CodexConnection {
           stdio: ['pipe', 'pipe', 'pipe'],
           env: {
             ...cleanEnv,
+            PATH: mergedPath,
             CODEX_NO_INTERACTIVE: '1',
             CODEX_AUTO_CONTINUE: '1',
           },
