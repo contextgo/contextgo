@@ -32,6 +32,49 @@ export const PROJECT_CAPABILITY_COMMANDS_DIR_NAME = 'commands';
 export const PROJECT_CAPABILITY_SCHEDULES_DIR_NAME = 'schedules';
 export const SESSION_WORKING_SET_FILE_NAME = 'working-set.md';
 
+export const CONTEXT_NAMESPACE = {
+  SPACE: 'space',
+  PROJECT: 'project',
+  SESSION: 'session',
+} as const;
+
+export type ContextNamespace = (typeof CONTEXT_NAMESPACE)[keyof typeof CONTEXT_NAMESPACE];
+
+export const CONTEXT_PROJECTION_LAYER = {
+  SEMANTIC_CONTEXT: 'semantic-context',
+  SOURCE_MIRROR: 'source-mirror',
+  CAPABILITY_INVENTORY: 'capability-inventory',
+} as const;
+
+export type ContextProjectionLayer = (typeof CONTEXT_PROJECTION_LAYER)[keyof typeof CONTEXT_PROJECTION_LAYER];
+
+export const CONTEXT_NAMESPACE_KIND = {
+  SPACE: CONTEXT_NAMESPACE.SPACE,
+  PROJECT: CONTEXT_NAMESPACE.PROJECT,
+  SESSION: CONTEXT_NAMESPACE.SESSION,
+  SEMANTIC_CONTEXT: CONTEXT_PROJECTION_LAYER.SEMANTIC_CONTEXT,
+  SOURCE_MIRROR: CONTEXT_PROJECTION_LAYER.SOURCE_MIRROR,
+  CAPABILITY_INVENTORY: CONTEXT_PROJECTION_LAYER.CAPABILITY_INVENTORY,
+} as const;
+
+export type ContextNamespaceKind = (typeof CONTEXT_NAMESPACE_KIND)[keyof typeof CONTEXT_NAMESPACE_KIND];
+
+export const getSpaceNamespaceNodeId = (spaceId: string): string => {
+  return [CONTEXT_NAMESPACE.SPACE, sanitizeVaultPathSegment(spaceId)].join(':');
+};
+
+export const getProjectNamespaceNodeId = (projectSlug: string): string => {
+  return [CONTEXT_NAMESPACE.PROJECT, sanitizeVaultPathSegment(projectSlug)].join(':');
+};
+
+export const getSessionNamespaceNodeId = (conversationId: string): string => {
+  return [CONTEXT_NAMESPACE.SESSION, sanitizeVaultPathSegment(conversationId)].join(':');
+};
+
+export const joinContextNodeId = (rootNodeId: string, ...segments: string[]): string => {
+  return [rootNodeId, ...segments.filter(Boolean)].join(':');
+};
+
 export type ConversationDocumentPaths = {
   sessionRelativePath: string;
   workingSetRelativePath: string;

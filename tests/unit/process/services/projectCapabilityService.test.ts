@@ -224,4 +224,50 @@ describe('ProjectCapabilityService', () => {
       })
     );
   });
+
+  it('treats runtime-native skill directories as projections and keeps .contextgo authoritative', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-project-capability-'));
+    tempDirs.push(root);
+
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'agents'), { recursive: true });
+    await fs.mkdir(path.join(workspacePath, '.claude', 'skills', 'shadow-skill'), { recursive: true });
+    await fs.mkdir(path.join(workspacePath, '.agents', 'skills', 'shadow-skill'), { recursive: true });
+
+    await fs.writeFile(
+      path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'SKILL.md'),
+      ['---', 'name: Release Guard', 'description: Canonical package-owned skill.', '---', '', '# Release Guard'].join(
+        '\n'
+      ),
+      'utf8'
+    );
+    await fs.writeFile(
+      path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'agents', 'openai.yaml'),
+      ['policy:', '  allow_implicit_invocation: true', ''].join('\n'),
+      'utf8'
+    );
+    await fs.writeFile(
+      path.join(workspacePath, '.claude', 'skills', 'shadow-skill', 'SKILL.md'),
+      ['---', 'name: Shadow Skill', 'description: Projection only.', '---', '', '# Shadow Skill'].join('\n'),
+      'utf8'
+    );
+    await fs.writeFile(
+      path.join(workspacePath, '.agents', 'skills', 'shadow-skill', 'SKILL.md'),
+      ['---', 'name: Shadow Skill', 'description: Projection only.', '---', '', '# Shadow Skill'].join('\n'),
+      'utf8'
+    );
+
+    const service = new ProjectCapabilityService();
+    const snapshot = await service.readSnapshot(workspacePath);
+
+    expect(snapshot?.automationRootRelativePath).toBe('.contextgo');
+    expect(snapshot?.counts.skill).toBe(1);
+    expect(snapshot?.skills).toEqual([
+      expect.objectContaining({
+        id: 'release-guard',
+        name: 'Release Guard',
+        workspaceRelativePath: '.contextgo/skills/release-guard',
+      }),
+    ]);
+  });
 });
