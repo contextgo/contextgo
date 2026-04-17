@@ -232,6 +232,40 @@ jobs:
             echo "ANDROID_KEYSTORE_PATH=${KEYSTORE_PATH}" >> "${GITHUB_ENV}"
           fi
 
+      - name: Configure Gradle proxy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PROXY_URL="${HTTPS_PROXY:-${https_proxy:-${HTTP_PROXY:-${http_proxy:-}}}}"
+          if [ -z "${PROXY_URL}" ]; then
+            echo "No HTTP proxy detected for Gradle."
+            exit 0
+          fi
+
+          export PROXY_URL
+          PROXY_HOST="$(node -e "console.log(new URL(process.env.PROXY_URL).hostname)")"
+          PROXY_PORT="$(node -e "const url = new URL(process.env.PROXY_URL); console.log(url.port || (url.protocol === 'https:' ? '443' : '80'))")"
+          NON_PROXY="${NO_PROXY:-${no_proxy:-}}"
+          GRADLE_PROXY_OPTS="-Dhttp.proxyHost=${PROXY_HOST} -Dhttp.proxyPort=${PROXY_PORT} -Dhttps.proxyHost=${PROXY_HOST} -Dhttps.proxyPort=${PROXY_PORT}"
+
+          if [ -n "${NON_PROXY}" ]; then
+            JAVA_NON_PROXY_HOSTS="$(printf '%s' "${NON_PROXY}" | sed 's/,/|/g')"
+            GRADLE_PROXY_OPTS="${GRADLE_PROXY_OPTS} -Dhttp.nonProxyHosts=${JAVA_NON_PROXY_HOSTS} -Dhttps.nonProxyHosts=${JAVA_NON_PROXY_HOSTS}"
+          fi
+
+          if [ -n "${GRADLE_OPTS:-}" ]; then
+            GRADLE_PROXY_OPTS="${GRADLE_OPTS} ${GRADLE_PROXY_OPTS}"
+          fi
+
+          {
+            echo "GRADLE_OPTS<<EOF"
+            echo "${GRADLE_PROXY_OPTS}"
+            echo "EOF"
+          } >> "${GITHUB_ENV}"
+
+          echo "Configured Gradle proxy from runner environment."
+
       - name: Build Android shell
         shell: bash
         env:
