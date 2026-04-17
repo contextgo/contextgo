@@ -6,6 +6,10 @@
 
 import { channel } from '@/common/adapter/ipcBridge';
 import { BUILTIN_CHANNEL_TYPES, getBuiltinChannel, isBuiltinChannelType } from '@/common/config/builtinChannels';
+import {
+  buildChannelCapabilityRegistry,
+  getChannelNativeAgentSurfaceCapabilities,
+} from '@process/channels/core/channelCapabilityRegistry';
 import { getChannelManager } from '@process/channels/core/ChannelManager';
 import { enrichRemoteIdentitiesForPublishObjectDiscovery } from '@process/channels/core/publishObjectDiscovery';
 import {
@@ -40,6 +44,7 @@ import type {
   IConnectorInstance,
   IExternalSession,
   IRemoteIdentity,
+  PluginType,
 } from '@process/channels/types';
 import {
   findConflictingChannelBinding,
@@ -759,6 +764,7 @@ function attachPublishObjectActiveSessionPointers(params: {
   }));
 }
 
+<<<<<<< HEAD
 function buildPublicationEntries(params: {
   connectors: IConnectorInstance[];
   bindings: IChannelBinding[];
@@ -948,6 +954,17 @@ function buildBindingFromPublicationInput(params: {
   };
 }
 
+function buildCatalogCapabilityRegistry(connectors: readonly IConnectorInstance[]): IChannelBindingCatalog['capabilityRegistry'] {
+  return buildChannelCapabilityRegistry({
+    platforms: connectors.map((connector) => connector.platform),
+    includeBuiltinPlatforms: true,
+  });
+}
+
+function buildPluginStatusNativeCapabilities(platform: PluginType): IChannelPluginStatus['nativeAgentCapabilities'] {
+  return getChannelNativeAgentSurfaceCapabilities(platform);
+}
+
 /**
  * Initialize Channel IPC Bridge
  * Handles communication between renderer (Settings UI) and main process (Channel system)
@@ -1042,6 +1059,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       bindingCatalog: {
         connectors,
         channelAccounts: connectors,
+        capabilityRegistry: buildCatalogCapabilityRegistry(params.allConnectors),
         agentProfiles: params.publicationCatalog.agentProfiles,
         bindings: bindings.map((binding) => withChannelAccountId(binding)),
         audiences,
@@ -1141,6 +1159,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     const catalog: IChannelBindingCatalog = {
       connectors,
       channelAccounts: connectors,
+      capabilityRegistry: buildCatalogCapabilityRegistry(allConnectors),
       agentProfiles: publicationCatalog.agentProfiles,
       bindings: bindings.map((binding) => withChannelAccountId(binding)),
       audiences: catalogAudiences,
@@ -1269,6 +1288,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
           activeUsers: 0,
           hasToken: configured,
           isExtension,
+          nativeAgentCapabilities: buildPluginStatusNativeCapabilities(pluginType),
           extensionMeta: isExtension ? resolveExtensionMeta(pluginType) : undefined,
         });
       }
@@ -1294,6 +1314,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
           activeUsers: 0,
           hasToken: connector.configured ?? hasPluginCredentials(connector.platform, connector.credentials),
           isExtension,
+          nativeAgentCapabilities: buildPluginStatusNativeCapabilities(connector.platform),
           extensionMeta: isExtension ? resolveExtensionMeta(connector.platform) : undefined,
         });
       }
@@ -1314,6 +1335,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
           activeUsers: 0,
           hasToken: false,
           isExtension: true,
+          nativeAgentCapabilities: buildPluginStatusNativeCapabilities(pluginType),
           extensionMeta,
         });
       }
@@ -1333,6 +1355,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
           activeUsers: 0,
           hasToken: false,
           isExtension: false,
+          nativeAgentCapabilities: buildPluginStatusNativeCapabilities(builtinType),
         });
       }
 
