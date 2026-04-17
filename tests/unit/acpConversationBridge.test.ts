@@ -15,6 +15,36 @@ const hoisted = vi.hoisted(() => ({
   codexPing: vi.fn(async () => true),
   codexStop: vi.fn(async () => {}),
   processConfigGetMock: vi.fn(async () => undefined),
+  importCurrentGlobalRuntimeMock: vi.fn(async () => ({
+    policy: {
+      version: 1,
+      mode: 'import_local_runtime',
+      resolvedSource: 'imported_local_runtime',
+      providerProtocol: 'openai',
+      baseUrl: null,
+      apiKeyRef: null,
+      defaultModel: null,
+      importedFrom: { codex: '~/.codex/config.toml' },
+      lastImportedAt: '2026-04-17T12:00:00.000Z',
+    },
+    effectiveSource: 'imported_local_runtime',
+    runtimeRoot: '/tmp/project/.contextgo',
+  })),
+  resetProjectRuntimeOverrideMock: vi.fn(async () => ({
+    policy: {
+      version: 1,
+      mode: 'auto',
+      resolvedSource: 'model_center',
+      providerProtocol: 'openai',
+      baseUrl: null,
+      apiKeyRef: null,
+      defaultModel: null,
+      importedFrom: null,
+      lastImportedAt: null,
+    },
+    effectiveSource: 'model_center',
+    runtimeRoot: '/tmp/project/.contextgo',
+  })),
 }));
 
 function makeChannel(name: string) {
@@ -52,6 +82,8 @@ vi.mock('../../src/common', () => ({
         emit: hoisted.managedRuntimeInstallEventEmit,
         invoke: vi.fn(),
       },
+      importProjectRuntime: makeChannel('importProjectRuntime'),
+      resetProjectRuntime: makeChannel('resetProjectRuntime'),
       getManagedRuntimeConfigLocation: makeChannel('getManagedRuntimeConfigLocation'),
       checkAgentHealth: makeChannel('checkAgentHealth'),
       getMode: makeChannel('getMode'),
@@ -112,6 +144,15 @@ vi.mock('../../src/process/agent/acp/modelInfo', () => ({
   summarizeAcpModelInfo: vi.fn(() => ({})),
 }));
 
+vi.mock('../../src/process/services/runtime/ProjectRuntimeService', () => ({
+  ProjectRuntimeService: vi.fn(function MockProjectRuntimeService() {
+    return {
+      importCurrentGlobalRuntime: hoisted.importCurrentGlobalRuntimeMock,
+      resetProjectRuntimeOverride: hoisted.resetProjectRuntimeOverrideMock,
+    };
+  }),
+}));
+
 vi.mock('../../src/process/agent/codex/connection/CodexConnection', () => ({
   CodexConnection: vi.fn(function MockCodexConnection() {
     return {
@@ -124,7 +165,9 @@ vi.mock('../../src/process/agent/codex/connection/CodexConnection', () => ({
   getCodexConfigPath: vi.fn((runtimeRoot?: string) =>
     runtimeRoot ? `${runtimeRoot}/codex/config.toml` : '/Users/tester/.codex/config.toml'
   ),
-  getCodexAuthPath: vi.fn((runtimeRoot?: string) => (runtimeRoot ? `${runtimeRoot}/codex/auth.json` : '/Users/tester/.codex/auth.json')),
+  getCodexAuthPath: vi.fn((runtimeRoot?: string) =>
+    runtimeRoot ? `${runtimeRoot}/codex/auth.json` : '/Users/tester/.codex/auth.json'
+  ),
 }));
 
 vi.mock('../../src/process/task/AcpAgentManager', () => ({ default: class AcpAgentManager {} }));
@@ -341,6 +384,42 @@ describe('acpConversationBridge', () => {
     });
 
     existsSyncSpy.mockRestore();
+  });
+
+  it('imports current global runtime for a workspace backend', async () => {
+    const result = await handlers['importProjectRuntime']({ backend: 'codex', workspace: '/tmp/project' });
+
+    expect(hoisted.importCurrentGlobalRuntimeMock).toHaveBeenCalledWith('/tmp/project', 'codex');
+    expect(result).toEqual({
+      success: true,
+      data: {
+        backend: 'codex',
+        policy: expect.objectContaining({
+          mode: 'import_local_runtime',
+          importedFrom: { codex: '~/.codex/config.toml' },
+        }),
+        effectiveSource: 'imported_local_runtime',
+        runtimeRoot: '/tmp/project/.contextgo',
+      },
+    });
+  });
+
+  it('resets project runtime override for a workspace backend', async () => {
+    const result = await handlers['resetProjectRuntime']({ backend: 'codex', workspace: '/tmp/project' });
+
+    expect(hoisted.resetProjectRuntimeOverrideMock).toHaveBeenCalledWith('/tmp/project', 'codex');
+    expect(result).toEqual({
+      success: true,
+      data: {
+        backend: 'codex',
+        policy: expect.objectContaining({
+          mode: 'auto',
+          importedFrom: null,
+        }),
+        effectiveSource: 'model_center',
+        runtimeRoot: '/tmp/project/.contextgo',
+      },
+    });
   });
 
   it('returns the OpenCode runtime config entries as a list', async () => {

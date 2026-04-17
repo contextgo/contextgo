@@ -35,6 +35,7 @@ import { safeExec, safeExecFile } from '@process/utils/safeExec';
 import { getEnhancedEnv } from '@process/utils/shellEnv';
 import { contextRuntimeService } from '@process/services/context/contextServiceSingleton';
 import { getProjectRuntimeRoot } from '@process/services/runtime/ProjectRuntimePaths';
+import { ProjectRuntimeService } from '@process/services/runtime/ProjectRuntimeService';
 
 const refreshTrayMenuSafely = async (): Promise<void> => {
   try {
@@ -525,6 +526,60 @@ export function initAcpConversationBridge(
           stdout,
           stderr,
         },
+      };
+    }
+  });
+
+  ipcBridge.acpConversation.importProjectRuntime.provider(async ({ backend, workspace }) => {
+    try {
+      if (backend === 'custom') {
+        return {
+          success: false,
+          msg: 'Project runtime import is not supported for custom backends',
+        };
+      }
+
+      const resolved = await new ProjectRuntimeService().importCurrentGlobalRuntime(workspace, backend);
+      return {
+        success: true,
+        data: {
+          backend,
+          policy: resolved.policy,
+          effectiveSource: resolved.effectiveSource,
+          runtimeRoot: resolved.runtimeRoot,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  ipcBridge.acpConversation.resetProjectRuntime.provider(async ({ backend, workspace }) => {
+    try {
+      if (backend === 'custom') {
+        return {
+          success: false,
+          msg: 'Project runtime reset is not supported for custom backends',
+        };
+      }
+
+      const resolved = await new ProjectRuntimeService().resetProjectRuntimeOverride(workspace, backend);
+      return {
+        success: true,
+        data: {
+          backend,
+          policy: resolved.policy,
+          effectiveSource: resolved.effectiveSource,
+          runtimeRoot: resolved.runtimeRoot,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   });

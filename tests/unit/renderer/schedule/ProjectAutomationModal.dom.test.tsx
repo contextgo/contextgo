@@ -8,6 +8,8 @@ const getProjectCapabilitySnapshotMock = vi.fn();
 const useScheduleJobsMock = vi.fn();
 const {
   managedCommandLibraryEditorState,
+  importProjectRuntimeInvokeMock,
+  resetProjectRuntimeInvokeMock,
   readFileInvokeMock,
   writeFileInvokeMock,
   readSkillContentInvokeMock,
@@ -20,6 +22,8 @@ const {
       saveLibrary: (nextLibrary: unknown[]) => Promise<void>;
     },
   },
+  importProjectRuntimeInvokeMock: vi.fn(),
+  resetProjectRuntimeInvokeMock: vi.fn(),
   readFileInvokeMock: vi.fn(),
   writeFileInvokeMock: vi.fn(),
   readSkillContentInvokeMock: vi.fn(),
@@ -69,6 +73,10 @@ vi.mock('@/common', () => ({
     },
     schedule: {
       createConversationSchedule: { invoke: vi.fn() },
+    },
+    acpConversation: {
+      importProjectRuntime: { invoke: (...args: unknown[]) => importProjectRuntimeInvokeMock(...args) },
+      resetProjectRuntime: { invoke: (...args: unknown[]) => resetProjectRuntimeInvokeMock(...args) },
     },
   },
 }));
@@ -304,6 +312,46 @@ describe('ProjectAutomationModal', () => {
       },
     });
     getSlashCommandsInvokeMock.mockResolvedValue({ success: true, data: { managedLibrary: [], commands: [] } });
+    importProjectRuntimeInvokeMock.mockReset();
+    importProjectRuntimeInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        backend: 'codex',
+        policy: {
+          version: 1,
+          mode: 'import_local_runtime',
+          resolvedSource: 'imported_local_runtime',
+          providerProtocol: 'openai',
+          baseUrl: null,
+          apiKeyRef: null,
+          defaultModel: null,
+          importedFrom: { codex: '~/.codex/config.toml' },
+          lastImportedAt: '2026-04-17T12:00:00.000Z',
+        },
+        effectiveSource: 'imported_local_runtime',
+        runtimeRoot: '/tmp/workspace/.contextgo',
+      },
+    });
+    resetProjectRuntimeInvokeMock.mockReset();
+    resetProjectRuntimeInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        backend: 'codex',
+        policy: {
+          version: 1,
+          mode: 'auto',
+          resolvedSource: 'model_center',
+          providerProtocol: 'openai',
+          baseUrl: null,
+          apiKeyRef: null,
+          defaultModel: null,
+          importedFrom: null,
+          lastImportedAt: null,
+        },
+        effectiveSource: 'model_center',
+        runtimeRoot: '/tmp/workspace/.contextgo',
+      },
+    });
     writeFileInvokeMock.mockReset();
     writeFileInvokeMock.mockResolvedValue(undefined);
     messageApiMock.success.mockReset();
@@ -416,6 +464,34 @@ describe('ProjectAutomationModal', () => {
       expect(writeFileInvokeMock).toHaveBeenCalledWith({
         path: '/tmp/workspace/.contextgo/runtime.json',
         data: expect.stringContaining('"mode": "project_managed"'),
+      });
+    });
+  });
+
+  it('imports the current global runtime config for supported backends', async () => {
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Runtime' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Import current global config' }));
+
+    await waitFor(() => {
+      expect(importProjectRuntimeInvokeMock).toHaveBeenCalledWith({
+        workspace: '/tmp/workspace',
+        backend: 'codex',
+      });
+    });
+  });
+
+  it('resets imported runtime state back to global behavior', async () => {
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Runtime' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset to global' }));
+
+    await waitFor(() => {
+      expect(resetProjectRuntimeInvokeMock).toHaveBeenCalledWith({
+        workspace: '/tmp/workspace',
+        backend: 'codex',
       });
     });
   });

@@ -830,6 +830,24 @@ export const acpConversation = {
     IBridgeResponse<{ backend: AcpBackend; command: string; stdout?: string; stderr?: string }>,
     { backend: AcpBackend }
   >('acp.install-managed-runtime'),
+  importProjectRuntime: bridge.buildProvider<
+    IBridgeResponse<{
+      backend: AcpBackend;
+      policy: import('../types/projectRuntime').ProjectRuntimePolicy;
+      effectiveSource: import('../types/projectRuntime').ProjectRuntimeResolvedSource;
+      runtimeRoot: string;
+    }>,
+    { backend: AcpBackend; workspace: string }
+  >('acp.import-project-runtime'),
+  resetProjectRuntime: bridge.buildProvider<
+    IBridgeResponse<{
+      backend: AcpBackend;
+      policy: import('../types/projectRuntime').ProjectRuntimePolicy;
+      effectiveSource: import('../types/projectRuntime').ProjectRuntimeResolvedSource;
+      runtimeRoot: string;
+    }>,
+    { backend: AcpBackend; workspace: string }
+  >('acp.reset-project-runtime'),
   getManagedRuntimeConfigLocation: bridge.buildProvider<
     IBridgeResponse<{ backend: AcpBackend; entries: import('../types/acpTypes').ManagedRuntimeConfigEntry[] } | null>,
     { backend: AcpBackend; workspace?: string }

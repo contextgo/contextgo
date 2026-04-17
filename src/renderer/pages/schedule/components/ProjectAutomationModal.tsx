@@ -709,6 +709,89 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
     }));
   }, []);
 
+  const supportsRuntimeImport =
+    currentBackend === 'codex' || currentBackend === 'claude' || currentBackend === 'opencode';
+
+  const handleImportRuntime = useCallback(async () => {
+    if (!workspacePath || !supportsRuntimeImport) {
+      return;
+    }
+
+    setRuntimePolicySaving(true);
+    try {
+      const result = await ipcBridge.acpConversation.importProjectRuntime.invoke({
+        workspace: workspacePath,
+        backend: currentBackend,
+      });
+      if (!result.success || !result.data) {
+        throw new Error(
+          result.msg ||
+            t('conversation.workspace.automation.runtime.importFailed', {
+              defaultValue: 'Failed to import the current global runtime config.',
+            })
+        );
+      }
+
+      setRuntimePolicy(result.data.policy);
+      messageApi.success(
+        t('conversation.workspace.automation.runtime.importSuccess', {
+          defaultValue: 'Imported the current global runtime config into this project.',
+        })
+      );
+    } catch (error) {
+      console.error('[ProjectAutomationModal] Failed to import runtime config:', error);
+      messageApi.error(
+        error instanceof Error
+          ? error.message
+          : t('conversation.workspace.automation.runtime.importFailed', {
+              defaultValue: 'Failed to import the current global runtime config.',
+            })
+      );
+    } finally {
+      setRuntimePolicySaving(false);
+    }
+  }, [currentBackend, messageApi, supportsRuntimeImport, t, workspacePath]);
+
+  const handleResetRuntime = useCallback(async () => {
+    if (!workspacePath || !supportsRuntimeImport) {
+      return;
+    }
+
+    setRuntimePolicySaving(true);
+    try {
+      const result = await ipcBridge.acpConversation.resetProjectRuntime.invoke({
+        workspace: workspacePath,
+        backend: currentBackend,
+      });
+      if (!result.success || !result.data) {
+        throw new Error(
+          result.msg ||
+            t('conversation.workspace.automation.runtime.resetFailed', {
+              defaultValue: 'Failed to reset the project runtime override.',
+            })
+        );
+      }
+
+      setRuntimePolicy(result.data.policy);
+      messageApi.success(
+        t('conversation.workspace.automation.runtime.resetSuccess', {
+          defaultValue: 'Project runtime override reset to global behavior.',
+        })
+      );
+    } catch (error) {
+      console.error('[ProjectAutomationModal] Failed to reset runtime config:', error);
+      messageApi.error(
+        error instanceof Error
+          ? error.message
+          : t('conversation.workspace.automation.runtime.resetFailed', {
+              defaultValue: 'Failed to reset the project runtime override.',
+            })
+      );
+    } finally {
+      setRuntimePolicySaving(false);
+    }
+  }, [currentBackend, messageApi, supportsRuntimeImport, t, workspacePath]);
+
   const handleSaveRuntimePolicy = useCallback(async () => {
     if (!runtimePolicyFile) {
       return;
@@ -1165,6 +1248,25 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                           defaultValue: 'Save runtime policy',
                         })}
                       </Button>
+                      {supportsRuntimeImport ? (
+                        <>
+                          <Button onClick={() => void handleImportRuntime()}>
+                            {t('conversation.workspace.automation.runtime.importAction', {
+                              defaultValue: 'Import current global config',
+                            })}
+                          </Button>
+                          <Button onClick={() => void handleImportRuntime()}>
+                            {t('conversation.workspace.automation.runtime.reimportAction', {
+                              defaultValue: 'Re-import global config',
+                            })}
+                          </Button>
+                          <Button onClick={() => void handleResetRuntime()}>
+                            {t('conversation.workspace.automation.runtime.resetAction', {
+                              defaultValue: 'Reset to global',
+                            })}
+                          </Button>
+                        </>
+                      ) : null}
                     </>
                   }
                 >
@@ -1225,6 +1327,13 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                                     }),
                           })}
                         </Tag>
+                        {!supportsRuntimeImport ? (
+                          <Typography.Text type='secondary'>
+                            {t('conversation.workspace.automation.runtime.importUnsupported', {
+                              defaultValue: 'Import actions are not available for this backend yet.',
+                            })}
+                          </Typography.Text>
+                        ) : null}
                       </div>
                     ) : (
                       <Typography.Paragraph className='mb-0 text-t-secondary'>

@@ -117,4 +117,77 @@ describe('ProjectRuntimeService', () => {
     expect(resolved.policy.mode).toBe('auto');
     expect(resolved.effectiveSource).toBe('model_center');
   });
+
+  it('imports current global runtime into project-owned files for a specific backend', async () => {
+    const writePolicy = vi.fn();
+    const importLocalRuntimeForBackend = vi.fn(async () => ({
+      imported: true,
+      importedFrom: { codex: '~/.codex/config.toml' },
+      lastImportedAt: '2026-04-17T12:00:00.000Z',
+    }));
+    const service = new ProjectRuntimeService({
+      readPolicy: async (): Promise<ProjectRuntimePolicy> => ({
+        version: 1,
+        mode: 'auto',
+        resolvedSource: 'model_center',
+        providerProtocol: 'openai',
+        baseUrl: null,
+        apiKeyRef: null,
+        defaultModel: null,
+        importedFrom: null,
+        lastImportedAt: null,
+      }),
+      writePolicy,
+      importLocalRuntime: vi.fn(),
+      importLocalRuntimeForBackend,
+    });
+
+    const result = await service.importCurrentGlobalRuntime('/workspace/app', 'codex');
+
+    expect(importLocalRuntimeForBackend).toHaveBeenCalledWith('/workspace/app', 'codex');
+    expect(result.policy.mode).toBe('import_local_runtime');
+    expect(result.policy.resolvedSource).toBe('imported_local_runtime');
+    expect(writePolicy).toHaveBeenCalledWith(
+      '/workspace/app',
+      expect.objectContaining({
+        mode: 'import_local_runtime',
+        importedFrom: { codex: '~/.codex/config.toml' },
+      })
+    );
+  });
+
+  it('resets project override state back to global behavior', async () => {
+    const writePolicy = vi.fn();
+    const clearBackendOverride = vi.fn(async () => {});
+    const service = new ProjectRuntimeService({
+      readPolicy: async (): Promise<ProjectRuntimePolicy> => ({
+        version: 1,
+        mode: 'import_local_runtime',
+        resolvedSource: 'imported_local_runtime',
+        providerProtocol: 'openai',
+        baseUrl: null,
+        apiKeyRef: null,
+        defaultModel: null,
+        importedFrom: { codex: '~/.codex/config.toml' },
+        lastImportedAt: '2026-04-17T12:00:00.000Z',
+      }),
+      writePolicy,
+      importLocalRuntime: vi.fn(),
+      clearBackendOverride,
+    });
+
+    const result = await service.resetProjectRuntimeOverride('/workspace/app', 'codex');
+
+    expect(clearBackendOverride).toHaveBeenCalledWith('/workspace/app', 'codex');
+    expect(result.policy.mode).toBe('auto');
+    expect(result.policy.importedFrom).toBeNull();
+    expect(writePolicy).toHaveBeenCalledWith(
+      '/workspace/app',
+      expect.objectContaining({
+        mode: 'auto',
+        importedFrom: null,
+        lastImportedAt: null,
+      })
+    );
+  });
 });
