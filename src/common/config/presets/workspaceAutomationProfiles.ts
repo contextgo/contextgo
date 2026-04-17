@@ -808,7 +808,8 @@ const MARKETING_CREATIVE_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] =
     id: 'marketing-build-theme',
     enabled: true,
     name: 'build-theme-pack',
-    description: 'Build a reusable brand theme pack or campaign theme overlay grounded in the normalized brand context.',
+    description:
+      'Build a reusable brand theme pack or campaign theme overlay grounded in the normalized brand context.',
     template:
       'Use the `brand-theme-pack` and `marketing-context-normalizer` skills for this request. Decide whether the pack is a base theme or a campaign overlay, assemble palette, typography, motif, composition, and treatment rules from the brand context, map the theme to prioritized channels, write the pack into `docs/brand/themes/<theme-id>/`, and stamp every file with the brand context version.',
   },

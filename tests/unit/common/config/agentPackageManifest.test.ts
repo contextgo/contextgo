@@ -162,25 +162,22 @@ describe('agent-package manifests', () => {
     ]);
     expect(manifest.payloads.commands?.workspaceAutomationProfile).toBe('marketing-creative-studio');
     expect(manifest.payloads.schedules?.workspaceAutomationProfile).toBe('marketing-creative-studio');
-    expect(manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/brand/README.md'))
-      .toBe(true);
+    expect(
+      manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/brand/README.md')
+    ).toBe(true);
     expect(
       manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/campaigns/README.md')
     ).toBe(true);
-    expect(manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/assets/README.md'))
-      .toBe(true);
+    expect(
+      manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/assets/README.md')
+    ).toBe(true);
   });
 
   it('ships specialized workspace scaffold templates for non-engineering builtin assistants', () => {
     const cases = [
       {
         resourceDir: 'src/process/resources/assistant/creative/marketing-creative-studio',
-        expectedTargets: [
-          'AGENTS.md',
-          'docs/brand/README.md',
-          'docs/campaigns/README.md',
-          'docs/assets/README.md',
-        ],
+        expectedTargets: ['AGENTS.md', 'docs/brand/README.md', 'docs/campaigns/README.md', 'docs/assets/README.md'],
       },
       {
         resourceDir: 'src/process/resources/assistant/startup/startup-strategist',
