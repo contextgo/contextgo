@@ -96,7 +96,7 @@ describe('buildPublicContentCollections', () => {
     expect(built.blog.zh.collection.blog.entries).toHaveLength(blogIndex.order.length);
     expect(built.docs.en.collection.articles['quick-start'].html).toContain('id="before-you-begin"');
     expect(built.blog.en.collection.articles['context-before-agents'].html).toContain(
-      'Why this product does not start'
+      'Why a blank chat box is not enough'
     );
   });
 

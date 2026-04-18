@@ -1,17 +1,59 @@
 ---
 eyebrow: Release Operations
 title: Release operations should flow through contextgo-releases
-summary: The website, download center, and in-app updater all become simpler when one release repository acts as the canonical product-release source of truth.
-readingTime: 5 min
+summary: Website downloads, GitHub releases, and desktop updates should read from one factual source. Otherwise users cannot tell which version is actually real.
+readingTime: 7 min
 publishedAt: 2026-03-30
 ---
 
-## One release repository reduces ambiguity
+<div className='editorial-note'>
+  <p className='editorial-note-label'>Core position</p>
+  <p>Release architecture is not an internal detail from the user's perspective. It is a trust question: which version is real, where to download it, and whether the updater matches the website.</p>
+</div>
 
-If the website, GitHub Release assets, and desktop updater all point at different places, users cannot tell which version is real. The release repository fixes that by becoming the single factual source for installable artifacts.
+## Why version truth needs a single source
 
-This lets contextgo.io render download information from the same place the desktop client checks for updates.
+As soon as the website, GitHub release page, download center, and desktop updater read from different places, the product creates a familiar support problem: every surface looks official, but users cannot tell which version is actually current.
 
-## What belongs in the release repository
+That ambiguity is expensive. A user may see one version on the site, another in the app, and a third asset name on GitHub. Support teams then waste time answering a preliminary question before any real troubleshooting can begin: which version are we even talking about?
 
-Build artifacts, checksums, manifests, and release notes belong there. Long-form docs, blog posts, and marketing pages do not. Those should stay on the website side.
+The value of `contextgo-releases` is that it becomes the single factual source for installable product versions. Anything related to artifacts, checksums, manifests, and updater-readable release data should converge there.
+
+## What the release repository should actually contain
+
+The release repository is the right place for:
+
+1. downloadable binary artifacts
+2. checksums, manifests, and artifact metadata
+3. version-level release notes summaries
+4. a stable public structure that the website and desktop updater can read
+
+It is not the right place for long-form docs, product essays, or website brand pages. Those belong on the site because they are responsible for explanation, education, and public product narrative rather than artifact truth.
+
+Once that boundary is explicit, the website and the release repository stop contaminating each other. The website explains the product and operating model. The release repository explains what was actually shipped in a specific release.
+
+## Why website downloads and desktop updates need to align
+
+Users do not naturally separate “website logic,” “updater logic,” and “GitHub release logic.” They experience one product: the website offers a download and the desktop app offers an update.
+
+Those two surfaces should therefore read the same release truth:
+
+1. the website download center reads artifact and version information from the release repository
+2. the desktop updater reads its manifest from the same source
+3. support starts with the release record first, then verifies site or client behavior
+
+That keeps the product stable even while the site design, download-page copy, and updater interaction continue to evolve. The underlying version fact remains singular.
+
+## How this changes support and troubleshooting
+
+Once release truth is unified, the troubleshooting order becomes much simpler.
+
+Support no longer has to begin by guessing whether the site is stale, the client is reading the wrong manifest, or the Git tag is mismatched. They can start from the release record and then trace synchronization issues outward.
+
+It also makes future download pages, auto-update flows, and release broadcasts easier to standardize. Each surface stops maintaining its own local truth and starts consuming one shared release record.
+
+## The long-term payoff
+
+If a public product wants long-term trust, it needs the external story and the installable truth to stay aligned. A single-source release model may look like an operational decision, but it directly shapes brand credibility, support cost, and update experience.
+
+So this is not just repository hygiene. It is a product-distribution boundary. If ContextGo wants docs, blog, and downloads to each have a clear public role, it also needs release truth to converge just as clearly.

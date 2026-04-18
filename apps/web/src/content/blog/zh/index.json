@@ -1,8 +1,8 @@
 {
   "badge": "博客",
-  "title": "产品说明与运维写作",
-  "description": "博客用于承载产品思路、架构决策，以及对用户和管理员真正有影响的发布运维变化。",
-  "featuredLabel": "编辑方向",
-  "featuredDescription": "ContextGo 的博客内容应该明确回答三个问题：改了什么、为什么重要、它如何影响真实工作流。",
+  "title": "ContextGo 产品刊物与操作说明",
+  "description": "这里公开解释 ContextGo 的产品模型、远程访问边界和发布运维判断，让官网叙事、产品行为与真实交付链路保持一致。",
+  "featuredLabel": "刊物说明",
+  "featuredDescription": "每篇文章都应该回答三个问题：ContextGo 选择了什么边界、它会怎样影响真实使用，以及为什么它对发布或运维同样重要。",
   "order": ["context-before-agents", "release-operations-source-of-truth", "desktop-host-mobile-client"]
 }

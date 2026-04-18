@@ -1,17 +1,52 @@
 ---
 eyebrow: Remote Product
 title: 'Desktop host, mobile client: keep the product model explicit'
-summary: Remote access only feels coherent when users understand that the desktop machine remains the host and the mobile shell stays a remote client.
-readingTime: 5 min
+summary: 'Remote access only stays coherent when the product is explicit: the desktop remains the real execution host, while browser and mobile remain remote clients.'
+readingTime: 7 min
 publishedAt: 2026-03-30
 ---
 
-## Avoid describing mobile as a second execution host
+<div className='editorial-note'>
+  <p className='editorial-note-label'>Core position</p>
+  <p>The value of browser and mobile access is remote use of the desktop host, not the illusion of a second peer execution environment.</p>
+</div>
 
-The mobile shell is valuable because it lets users access their desktop-hosted workspace from elsewhere. That value disappears if the product story implies a full second runtime running locally on the phone.
+## Start by making the host/client model explicit
 
-For uploads, control flows, and WebUI rendering, the right mental model is still remote access to the desktop host.
+As soon as a product includes browser access, a mobile shell, and remote control, it becomes easy to slip into a softer but misleading story: describe mobile as if it were another independent host so the product sounds more “available everywhere.”
 
-## Why this matters for roadmap decisions
+That creates the wrong expectations quickly. Users start assuming the phone can execute the same work locally, that files and runtimes exist there as peers to the desktop, and that connectivity only matters for sync rather than for access to the actual host.
 
-Once the product model is clear, cloud features, tunnel design, and relay architecture become easier to explain. The control plane can evolve without pretending the compute plane has moved into the cloud or onto the handset.
+The clearer ContextGo model is simpler: the desktop remains the real execution host, while browser and mobile surfaces are remote clients. They give the user access to the host workspace from somewhere else; they do not duplicate the host plane.
+
+## Where upload, execution, and local-file handling really happen
+
+Once that model is explicit, capability boundaries become easier to explain.
+
+Files selected from a phone should upload into the desktop host and continue from there. Tasks launched from the WebUI still execute on the host side. Runtime discovery, tool access, and environment dependencies still orbit the desktop machine.
+
+That does not reduce the value of remote clients. It protects the value by aligning the promise with the actual system behavior.
+
+## Why the phone should not be described as a second execution host
+
+If the phone is described as a peer host, many practical details become awkward to explain.
+
+Why do some tools only run on the desktop machine? Why do connector permissions still depend on the host environment? Why does a remote upload ultimately flow back into the host? Why does some work still require the desktop device to stay online?
+
+Those explanations start sounding like patches rather than expressions of a coherent product model. Worse, the team can get pulled into the wrong roadmap questions, such as whether it should simulate a second local execution environment on mobile rather than making remote access itself better.
+
+## How this shapes the future architecture
+
+Once the desktop-host / remote-client relationship is explicit, cloud identity, device registration, tunnel behavior, relay architecture, and WebUI behavior all become easier to explain.
+
+The control plane can keep improving with better device discovery, stronger remote connectivity, and smoother authentication. That does not require pretending the compute plane has moved into the cloud or onto the handset.
+
+This is useful because product, engineering, and support can all use the same language. When the language is stable, users understand the boundary better and the team can prioritize the right work.
+
+## What the public docs and copy need to do
+
+If ContextGo adopts a desktop-host / mobile-client model, the website, docs, download pages, and mobile-access explanations should all reflect it together.
+
+Any page that talks about browser access, mobile uploads, or remote tasks should say where work actually runs. That prevents users from forming the wrong expectation during evaluation and keeps support from having to correct the story later.
+
+Remote-access products are damaged less by constraints than by ambiguity. Making the host/client relationship explicit is itself part of the product quality.
