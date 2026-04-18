@@ -10,7 +10,18 @@ import SlashCommandMenu, { type SlashCommandMenuItem } from '@/renderer/componen
 import { useSlashCommandController } from '@/renderer/hooks/chat/useSlashCommandController';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
+import type { FileOrFolderItem } from '@/renderer/utils/file/fileTypes';
+import { mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
+import { listWorkspaceFileItems } from '@/renderer/utils/file/workspaceFs';
+import {
+  buildWorkspaceMentionInsertion,
+  filterWorkspaceMentionItems,
+  getActiveWorkspaceMentionQuery,
+  getAllWorkspaceMentionQueries,
+  getWorkspaceMentionOwnershipKeys,
+} from '@/renderer/utils/file/workspaceMentions';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import WorkspaceMentionMenu from '@/renderer/pages/conversation/platforms/WorkspaceMentionMenu';
 import { blurActiveElement, shouldBlockMobileInputFocus } from '@/renderer/utils/ui/focus';
 import { getTextLayoutStyle, measureTextLineCount } from '@/renderer/utils/chat/textLayout';
 import { Button, Input, Message, Tag } from '@arco-design/web-react';
@@ -30,6 +41,7 @@ const constVoid = (): void => undefined;
 // 临界值：超过该字符数直接切换至多行模式，避免为超长文本做昂贵的宽度测量
 // Threshold: switch to multi-line mode directly when character count exceeds this value to avoid heavy layout work
 const MAX_SINGLE_LINE_CHARACTERS = 800;
+const EMPTY_SELECTED_WORKSPACE_ITEMS: Array<string | FileOrFolderItem> = [];
 
 const SendBox: React.FC<{
   value?: string;
@@ -54,6 +66,8 @@ const SendBox: React.FC<{
   sendButtonPrefix?: React.ReactNode;
   slashCommands?: SlashCommandItem[];
   onSlashBuiltinCommand?: (name: string) => void;
+  selectedWorkspaceItems?: Array<string | FileOrFolderItem>;
+  onSelectedWorkspaceItemsChange?: (items: Array<string | FileOrFolderItem>) => void;
 }> = ({
   onSend,
   onQueue,
@@ -77,6 +91,8 @@ const SendBox: React.FC<{
   sendButtonPrefix,
   slashCommands = [],
   onSlashBuiltinCommand,
+  selectedWorkspaceItems = EMPTY_SELECTED_WORKSPACE_ITEMS,
+  onSelectedWorkspaceItemsChange,
 }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
@@ -94,10 +110,30 @@ const SendBox: React.FC<{
   const warmupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestInputRef = useLatestRef(input);
   const setInputRef = useLatestRef(setInput);
+  const [caretPosition, setCaretPosition] = useState(input.length);
+  const [workspaceMentionItems, setWorkspaceMentionItems] = useState<FileOrFolderItem[]>([]);
+  const [workspaceMentionLoading, setWorkspaceMentionLoading] = useState(false);
+  const [workspaceMentionActiveIndex, setWorkspaceMentionActiveIndex] = useState(0);
+  const [dismissedWorkspaceMentionToken, setDismissedWorkspaceMentionToken] = useState<string | null>(null);
+  const mentionOwnedPathsRef = useRef<Set<string>>(new Set());
+  const loadedWorkspaceMentionsRef = useRef<string | null>(null);
 
   // 集成预览面板的"添加到聊天"功能 / Integrate preview panel's "Add to chat" functionality
   const { setSendBoxHandler, domSnippets, removeDomSnippet, clearDomSnippets } = usePreviewContext();
   const hasPendingUploads = pendingUploadCount > 0;
+  const activeWorkspaceMentionQuery = useMemo(() => {
+    if (!conversationContext?.workspace) {
+      return null;
+    }
+    return getActiveWorkspaceMentionQuery(input, caretPosition);
+  }, [caretPosition, conversationContext?.workspace, input]);
+  const activeWorkspaceMentionTokenKey = useMemo(() => {
+    if (!activeWorkspaceMentionQuery) {
+      return null;
+    }
+    return `${activeWorkspaceMentionQuery.start}:${activeWorkspaceMentionQuery.rawQuery}`;
+  }, [activeWorkspaceMentionQuery]);
+  const allWorkspaceMentionQueries = useMemo(() => getAllWorkspaceMentionQueries(input), [input]);
 
   // 注册处理器以接收来自预览面板的文本 / Register handler to receive text from preview panel
   useEffect(() => {
@@ -256,6 +292,18 @@ const SendBox: React.FC<{
       })),
     [slashController.filteredCommands]
   );
+  const isWorkspaceMentionMenuOpen =
+    Boolean(conversationContext?.workspace) &&
+    Boolean(activeWorkspaceMentionQuery) &&
+    activeWorkspaceMentionTokenKey !== dismissedWorkspaceMentionToken;
+  const visibleWorkspaceMentionItems = useMemo(
+    () =>
+      activeWorkspaceMentionQuery
+        ? filterWorkspaceMentionItems(workspaceMentionItems, activeWorkspaceMentionQuery.query)
+        : [],
+    [activeWorkspaceMentionQuery, workspaceMentionItems]
+  );
+  const isOverlayOpen = slashController.isOpen || isWorkspaceMentionMenuOpen;
 
   // 使用共享的输入法合成处理
   const { isComposing, compositionHandlers, createKeyDownHandler } = useCompositionInput();
@@ -286,6 +334,94 @@ const SendBox: React.FC<{
       }
     },
   });
+
+  useEffect(() => {
+    if (!conversationContext?.workspace) {
+      loadedWorkspaceMentionsRef.current = null;
+      setWorkspaceMentionItems([]);
+      setWorkspaceMentionLoading(false);
+      return;
+    }
+
+    if (!isWorkspaceMentionMenuOpen) {
+      return;
+    }
+
+    if (loadedWorkspaceMentionsRef.current === conversationContext.workspace) {
+      return;
+    }
+
+    let cancelled = false;
+    setWorkspaceMentionLoading(true);
+
+    void listWorkspaceFileItems(conversationContext.workspace)
+      .then((items) => {
+        if (cancelled) {
+          return;
+        }
+        loadedWorkspaceMentionsRef.current = conversationContext.workspace;
+        setWorkspaceMentionItems(items);
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        loadedWorkspaceMentionsRef.current = null;
+        setWorkspaceMentionItems([]);
+        console.warn('[SendBox] Failed to load workspace mention items:', error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setWorkspaceMentionLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationContext?.workspace, isWorkspaceMentionMenuOpen]);
+
+  useEffect(() => {
+    if (!activeWorkspaceMentionTokenKey) {
+      setWorkspaceMentionActiveIndex(0);
+      return;
+    }
+    setWorkspaceMentionActiveIndex(0);
+    setDismissedWorkspaceMentionToken(null);
+  }, [activeWorkspaceMentionTokenKey]);
+
+  useEffect(() => {
+    if (!visibleWorkspaceMentionItems.length) {
+      setWorkspaceMentionActiveIndex(0);
+      return;
+    }
+    setWorkspaceMentionActiveIndex((previous) => Math.min(previous, visibleWorkspaceMentionItems.length - 1));
+  }, [visibleWorkspaceMentionItems]);
+
+  useEffect(() => {
+    if (!onSelectedWorkspaceItemsChange || !selectedWorkspaceItems.length) {
+      return;
+    }
+
+    const mentionQueries = new Set(allWorkspaceMentionQueries.map((item) => item.query.toLowerCase()));
+    const nextItems = selectedWorkspaceItems.filter((item) => {
+      const itemPath = typeof item === 'string' ? item : item.path;
+      if (!itemPath || !mentionOwnedPathsRef.current.has(itemPath)) {
+        return true;
+      }
+
+      const shouldKeep = getWorkspaceMentionOwnershipKeys(item).some((key) => mentionQueries.has(key));
+      if (!shouldKeep) {
+        mentionOwnedPathsRef.current.delete(itemPath);
+      }
+      return shouldKeep;
+    });
+
+    if (nextItems.length !== selectedWorkspaceItems.length) {
+      onSelectedWorkspaceItemsChange(nextItems);
+    }
+  }, [allWorkspaceMentionQueries, onSelectedWorkspaceItemsChange, selectedWorkspaceItems]);
+
   const markMobileFocusIntent = useCallback(() => {
     if (!isMobile) return;
     mobileUserFocusIntentUntilRef.current = Date.now() + 1500;
@@ -322,6 +458,98 @@ const SendBox: React.FC<{
     }
     setIsInputFocused(false);
   }, []);
+  const syncCaretPosition = useCallback((target: EventTarget & HTMLTextAreaElement) => {
+    setCaretPosition(target.selectionStart ?? target.value.length);
+  }, []);
+
+  const insertSelectedWorkspaceMention = useCallback(
+    (item: FileOrFolderItem) => {
+      if (!activeWorkspaceMentionQuery) {
+        return;
+      }
+
+      const insertion = buildWorkspaceMentionInsertion(item);
+      const suffix = activeWorkspaceMentionQuery.end < input.length ? '' : ' ';
+      const nextValue =
+        input.slice(0, activeWorkspaceMentionQuery.start) +
+        insertion +
+        suffix +
+        input.slice(activeWorkspaceMentionQuery.end);
+      const nextCaretPosition = activeWorkspaceMentionQuery.start + insertion.length + suffix.length;
+
+      setInput(nextValue);
+      setCaretPosition(nextCaretPosition);
+      mentionOwnedPathsRef.current.add(item.path);
+      setDismissedWorkspaceMentionToken(null);
+
+      if (onSelectedWorkspaceItemsChange) {
+        const merged = mergeFileSelectionItems(selectedWorkspaceItems, [item]);
+        if (merged !== selectedWorkspaceItems) {
+          onSelectedWorkspaceItemsChange(merged);
+        }
+      }
+
+      setTimeout(() => {
+        const textarea = containerRef.current?.querySelector('textarea');
+        if (textarea) {
+          textarea.focus();
+          textarea.setSelectionRange(nextCaretPosition, nextCaretPosition);
+        }
+      }, 0);
+    },
+    [activeWorkspaceMentionQuery, input, onSelectedWorkspaceItemsChange, selectedWorkspaceItems, setInput]
+  );
+
+  const handleWorkspaceMentionMenuKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (!isWorkspaceMentionMenuOpen || !activeWorkspaceMentionTokenKey) {
+        return false;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setDismissedWorkspaceMentionToken(activeWorkspaceMentionTokenKey);
+        return true;
+      }
+
+      if (!visibleWorkspaceMentionItems.length) {
+        return false;
+      }
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setWorkspaceMentionActiveIndex((previous) => (previous + 1) % visibleWorkspaceMentionItems.length);
+        return true;
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setWorkspaceMentionActiveIndex((previous) =>
+          previous === 0 ? visibleWorkspaceMentionItems.length - 1 : previous - 1
+        );
+        return true;
+      }
+
+      if (event.key === 'Enter') {
+        const selectedItem = visibleWorkspaceMentionItems[workspaceMentionActiveIndex];
+        if (!selectedItem) {
+          return false;
+        }
+        event.preventDefault();
+        insertSelectedWorkspaceMention(selectedItem);
+        return true;
+      }
+
+      return false;
+    },
+    [
+      activeWorkspaceMentionTokenKey,
+      insertSelectedWorkspaceMention,
+      isWorkspaceMentionMenuOpen,
+      visibleWorkspaceMentionItems,
+      workspaceMentionActiveIndex,
+    ]
+  );
 
   const hasMessageContent = Boolean(input.trim() || domSnippets.length > 0);
 
@@ -443,6 +671,10 @@ const SendBox: React.FC<{
         return;
       }
 
+      if (handleWorkspaceMentionMenuKeyDown(event)) {
+        return;
+      }
+
       if (!slashController.isOpen && !disabled) {
         if (event.key === 'Tab' && !event.shiftKey && onQueue && hasMessageContent) {
           event.preventDefault();
@@ -468,6 +700,7 @@ const SendBox: React.FC<{
     [
       baseKeyDownHandler,
       disabled,
+      handleWorkspaceMentionMenuKeyDown,
       hasMessageContent,
       isComposing,
       onEditLatestPending,
@@ -482,7 +715,7 @@ const SendBox: React.FC<{
     <div className={className}>
       <div
         ref={containerRef}
-        className={`relative border-3 b bg-dialog-fill-0 b-solid flex flex-col ${isMobile ? 'p-12px rd-18px' : 'p-16px rd-20px'} ${slashController.isOpen ? 'overflow-visible' : 'overflow-hidden'} ${isFileDragging ? 'b-dashed' : ''}`}
+        className={`relative border-3 b bg-dialog-fill-0 b-solid flex flex-col ${isMobile ? 'p-12px rd-18px' : 'p-16px rd-20px'} ${isOverlayOpen ? 'overflow-visible' : 'overflow-hidden'} ${isFileDragging ? 'b-dashed' : ''}`}
         style={{
           transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
           ...(isFileDragging
@@ -499,7 +732,20 @@ const SendBox: React.FC<{
         }}
         {...dragHandlers}
       >
-        {slashController.isOpen && (
+        {isWorkspaceMentionMenuOpen ? (
+          <div className='absolute left-12px right-12px bottom-[calc(100%+8px)] z-70'>
+            <WorkspaceMentionMenu
+              label={t('conversation.workspace.addFile')}
+              loading={workspaceMentionLoading}
+              loadingText={t('common.loading')}
+              emptyText={t('conversation.workspace.search.empty')}
+              items={visibleWorkspaceMentionItems}
+              activeIndex={workspaceMentionActiveIndex}
+              onHoverItem={setWorkspaceMentionActiveIndex}
+              onSelectItem={insertSelectedWorkspaceMention}
+            />
+          </div>
+        ) : slashController.isOpen ? (
           <div className='absolute left-12px right-12px bottom-[calc(100%+8px)] z-70'>
             <SlashCommandMenu
               title={t('messages.slash.title', { defaultValue: 'Commands' })}
@@ -517,7 +763,7 @@ const SendBox: React.FC<{
               emptyText={t('messages.slash.empty', { defaultValue: 'No commands found' })}
             />
           </div>
-        )}
+        ) : null}
         <div style={{ width: '100%' }}>
           {prefix}
           {context}
@@ -579,12 +825,21 @@ const SendBox: React.FC<{
               wordBreak: isSingleLine ? 'normal' : 'break-word',
               overflowWrap: 'break-word',
             }}
-            onChange={(v) => {
+            onChange={(v, event) => {
               setInput(v);
+              const target = event?.target as HTMLTextAreaElement | undefined;
+              if (target) {
+                syncCaretPosition(target);
+                return;
+              }
+              setCaretPosition(v.length);
             }}
             onPaste={onPaste}
             onTouchStart={markMobileFocusIntent}
             onMouseDown={markMobileFocusIntent}
+            onClick={(event) => syncCaretPosition(event.currentTarget)}
+            onKeyUp={(event) => syncCaretPosition(event.currentTarget)}
+            onSelect={(event) => syncCaretPosition(event.currentTarget as HTMLTextAreaElement)}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
             {...compositionHandlers}

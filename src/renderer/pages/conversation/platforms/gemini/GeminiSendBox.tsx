@@ -388,6 +388,8 @@ const GeminiSendBox: React.FC<{
         onFilesAdded={handleFilesAdded}
         pendingUploadCount={pendingUploadCount}
         onUploadStateChange={handleUploadStateChange}
+        selectedWorkspaceItems={atPath}
+        onSelectedWorkspaceItemsChange={setAtPath}
         supportedExts={allSupportedExts}
         defaultMultiLine={true}
         lockMultiLine={true}

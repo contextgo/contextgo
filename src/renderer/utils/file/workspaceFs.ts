@@ -5,6 +5,8 @@
  */
 
 import { ipcBridge } from '@/common';
+import type { IDirOrFile } from '@/common/adapter/ipcBridge';
+import type { FileOrFolderItem } from './fileTypes';
 
 interface IBridgeResponse<D = unknown> {
   success: boolean;
@@ -26,4 +28,39 @@ export const removeWorkspaceEntry = (path: string) => {
  */
 export const renameWorkspaceEntry = (path: string, newName: string) => {
   return ipcBridge.fs.renameEntry.invoke({ path, newName }) as Promise<IBridgeResponse<{ newPath: string }>>;
+};
+
+const flattenWorkspaceTree = (entries: IDirOrFile[]): FileOrFolderItem[] => {
+  const files: FileOrFolderItem[] = [];
+
+  const visit = (entry: IDirOrFile) => {
+    if (entry.isFile) {
+      files.push({
+        path: entry.fullPath,
+        name: entry.name,
+        isFile: true,
+        relativePath: entry.relativePath || undefined,
+      });
+      return;
+    }
+
+    entry.children?.forEach(visit);
+  };
+
+  entries.forEach(visit);
+
+  return files.toSorted((left, right) => {
+    const leftPath = left.relativePath || left.name;
+    const rightPath = right.relativePath || right.name;
+    return leftPath.localeCompare(rightPath);
+  });
+};
+
+/**
+ * List all workspace files as flattened mention-ready items.
+ * 拉平工作区树，返回适合 `@workspace` 联想的文件列表。
+ */
+export const listWorkspaceFileItems = async (workspacePath: string): Promise<FileOrFolderItem[]> => {
+  const tree = await ipcBridge.fs.getFilesByDir.invoke({ dir: workspacePath, root: workspacePath });
+  return flattenWorkspaceTree(tree);
 };
