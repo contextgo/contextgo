@@ -9,6 +9,8 @@ export type ProjectRuntimeMode = (typeof PROJECT_RUNTIME_MODES)[number];
 
 export const PROJECT_RUNTIME_BACKENDS = ['gemini', 'claude', 'codex', 'opencode'] as const;
 export type ProjectRuntimeBackend = (typeof PROJECT_RUNTIME_BACKENDS)[number];
+export const isProjectRuntimeBackend = (value: string): value is ProjectRuntimeBackend =>
+  PROJECT_RUNTIME_BACKENDS.includes(value as ProjectRuntimeBackend);
 
 export type ProjectRuntimeResolvedSource = 'model_center' | 'imported_local_runtime';
 export type ProjectRuntimeProviderProtocol = 'openai' | 'anthropic' | 'gemini';

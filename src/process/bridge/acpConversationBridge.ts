@@ -27,6 +27,7 @@ import {
   type ManagedRuntimeConfigEntry,
   type ManagedRuntimeInstallEvent,
 } from '@/common/types/acpTypes';
+import { isProjectRuntimeBackend } from '@/common/types/projectRuntime';
 import { ExternalSessionDiscoveryService } from './services/ExternalSessionDiscoveryService';
 import * as os from 'os';
 import fs from 'node:fs';
@@ -185,6 +186,14 @@ async function resolveRuntimeDisplayPath(cliPath?: string): Promise<string | und
 
 function resolveManagedRuntimeConfigEntries(backend: AcpBackend, runtimeRoot?: string): ManagedRuntimeConfigEntry[] {
   const homeDir = os.homedir();
+  const globalOpencodeConfigPath =
+    process.platform === 'win32'
+      ? path.join(process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming'), 'opencode', 'opencode.json')
+      : path.join(process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config'), 'opencode', 'opencode.json');
+  const globalOpencodeAuthPath =
+    process.platform === 'win32'
+      ? path.join(process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'), 'opencode', 'auth.json')
+      : path.join(process.env.XDG_DATA_HOME || path.join(homeDir, '.local', 'share'), 'opencode', 'auth.json');
 
   switch (backend) {
     case 'gemini':
@@ -211,12 +220,8 @@ function resolveManagedRuntimeConfigEntries(backend: AcpBackend, runtimeRoot?: s
         },
       ];
     case 'opencode': {
-      const configPath = runtimeRoot
-        ? path.join(runtimeRoot, 'opencode', 'opencode.json')
-        : path.join(homeDir, '.config', 'opencode', 'opencode.json');
-      const authPath = runtimeRoot
-        ? path.join(runtimeRoot, 'opencode', 'auth.json')
-        : path.join(homeDir, '.local', 'share', 'opencode', 'auth.json');
+      const configPath = runtimeRoot ? path.join(runtimeRoot, 'opencode', 'opencode.json') : globalOpencodeConfigPath;
+      const authPath = runtimeRoot ? path.join(runtimeRoot, 'opencode', 'auth.json') : globalOpencodeAuthPath;
       return [
         {
           kind: 'config',
@@ -412,6 +417,8 @@ export function initAcpConversationBridge(
       const runtimeRoot = workspace
         ? (
             await new ProjectRuntimeService().resolve(workspace, {
+              backend: isProjectRuntimeBackend(backend) ? backend : undefined,
+              allowMutations: false,
               persistDefaultPolicy: false,
             })
           ).runtimeRoot
@@ -426,6 +433,68 @@ export function initAcpConversationBridge(
         data: {
           backend,
           entries,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  ipcBridge.acpConversation.importProjectRuntime.provider(async ({ workspace, backend }) => {
+    try {
+      const resolvedRuntime = await new ProjectRuntimeService().importCurrentGlobalRuntime(workspace, backend);
+
+      return {
+        success: true,
+        data: {
+          backend,
+          policy: resolvedRuntime.policy,
+          effectiveSource: resolvedRuntime.effectiveSource,
+          runtimeRoot: resolvedRuntime.runtimeRoot,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  ipcBridge.acpConversation.resetProjectRuntime.provider(async ({ workspace, backend }) => {
+    try {
+      const resolvedRuntime = await new ProjectRuntimeService().resetProjectRuntimeOverride(workspace, backend);
+
+      return {
+        success: true,
+        data: {
+          backend,
+          policy: resolvedRuntime.policy,
+          effectiveSource: resolvedRuntime.effectiveSource,
+          runtimeRoot: resolvedRuntime.runtimeRoot,
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  });
+
+  ipcBridge.acpConversation.saveProjectRuntimePolicy.provider(async ({ workspace, policy }) => {
+    try {
+      const resolvedRuntime = await new ProjectRuntimeService().saveProjectRuntimePolicy(workspace, policy);
+
+      return {
+        success: true,
+        data: {
+          policy: resolvedRuntime.policy,
+          effectiveSource: resolvedRuntime.effectiveSource,
+          runtimeRoot: resolvedRuntime.runtimeRoot,
         },
       };
     } catch (error) {

@@ -47,6 +47,9 @@ vi.mock('../../src/common', () => ({
       refreshCustomAgents: makeChannel('refreshCustomAgents'),
       refreshDetectedAgents: makeChannel('refreshDetectedAgents'),
       installManagedRuntime: makeChannel('installManagedRuntime'),
+      importProjectRuntime: makeChannel('importProjectRuntime'),
+      resetProjectRuntime: makeChannel('resetProjectRuntime'),
+      saveProjectRuntimePolicy: makeChannel('saveProjectRuntimePolicy'),
       managedRuntimeInstallEvent: {
         provider: vi.fn(),
         emit: hoisted.managedRuntimeInstallEventEmit,

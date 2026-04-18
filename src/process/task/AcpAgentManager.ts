@@ -32,6 +32,7 @@ import { scheduleConversationGuard } from '@process/services/context/events/sche
 import { executeAssistantSkillMarketCommands } from '@process/services/context/events/AssistantSkillMarketCommandService';
 import { mainLog, mainWarn, mainError } from '@process/utils/mainLogger';
 import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
+import { isProjectRuntimeBackend } from '@/common/types/projectRuntime';
 /** Enable ACP performance diagnostics via ACP_PERF=1 */
 const ACP_PERF_LOG = process.env.ACP_PERF === '1';
 
@@ -260,7 +261,9 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
       let customEnv: Record<string, string> | undefined;
       let yoloMode: boolean | undefined;
       const runtimeWorkspace = data.workspace || process.cwd();
-      const resolvedRuntime = await new ProjectRuntimeService().resolve(runtimeWorkspace);
+      const resolvedRuntime = await new ProjectRuntimeService().resolve(runtimeWorkspace, {
+        backend: isProjectRuntimeBackend(data.backend) ? data.backend : undefined,
+      });
       const runtimeRoot = resolvedRuntime.runtimeRoot;
       const runtimeEnv = resolvedRuntime.runtimeEnv;
 
