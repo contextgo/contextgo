@@ -13,6 +13,10 @@ export const locales = [
   },
 ];
 
+export const DOCS_SITE_NAME = 'ContextGo Docs';
+export const DOCS_SITE_URL = 'https://docs.contextgo.io';
+export const DOCS_OG_IMAGE_URL = `${DOCS_SITE_URL}/demo.png`;
+
 const localizedGroupLabels = {
   zh: {
     'Start Here': '开始',
@@ -113,7 +117,7 @@ const localizedPageTitles = {
 export const staticConfig = {
   $schema: 'https://mintlify.com/docs.json',
   theme: 'mint',
-  name: 'ContextGo Docs',
+  name: DOCS_SITE_NAME,
   description:
     'ContextGo product docs for setup, remote access, context systems, runtimes, connectors, publishing, and release operations.',
   appearance: {
@@ -122,9 +126,14 @@ export const staticConfig = {
   seo: {
     indexing: 'all',
     metatags: {
-      'og:site_name': 'ContextGo Docs',
+      robots: 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1',
+      googlebot: 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1',
+      'og:site_name': DOCS_SITE_NAME,
       'og:type': 'website',
+      'og:image': DOCS_OG_IMAGE_URL,
+      'og:image:alt': `${DOCS_SITE_NAME} preview`,
       'twitter:card': 'summary_large_image',
+      'twitter:image': DOCS_OG_IMAGE_URL,
     },
   },
   colors: {
@@ -486,4 +495,86 @@ export function buildDocsConfig(sidebarItems) {
       },
     },
   };
+}
+
+function pageIdToLocalizedDocsPath(pageId, locale) {
+  if (pageId === 'index') {
+    return locale.urlPrefix ? `${locale.urlPrefix}/` : '/';
+  }
+
+  const normalizedPageId = normalizePageId(pageId).replace(/\/index$/u, '');
+  const localized = `${locale.urlPrefix}/${normalizedPageId}/`.replace(/\/+/gu, '/');
+
+  return localized.startsWith('/') ? localized : `/${localized}`;
+}
+
+function toDocsAbsoluteUrl(pathname) {
+  if (pathname === '/') {
+    return `${DOCS_SITE_URL}/`;
+  }
+
+  return `${DOCS_SITE_URL}${pathname}`;
+}
+
+function escapeXml(value) {
+  return value
+    .replace(/&/gu, '&amp;')
+    .replace(/"/gu, '&quot;')
+    .replace(/</gu, '&lt;')
+    .replace(/>/gu, '&gt;')
+    .replace(/'/gu, '&apos;');
+}
+
+export function buildDocsRobotsTxt() {
+  return `User-agent: *
+Allow: /
+
+Sitemap: ${DOCS_SITE_URL}/sitemap.xml
+Host: ${DOCS_SITE_URL}
+`;
+}
+
+export function buildDocsSitemapXml(pageIds) {
+  const normalizedPageIds = dedupe(pageIds.map((pageId) => normalizePageId(pageId)));
+  const urlEntries = normalizedPageIds.flatMap((pageId) =>
+    locales.map((locale) => {
+      const pathname = pageIdToLocalizedDocsPath(pageId, locale);
+      const alternateLinks = [
+        ...locales.map((alternateLocale) => ({
+          hreflang: alternateLocale.language,
+          href: toDocsAbsoluteUrl(pageIdToLocalizedDocsPath(pageId, alternateLocale)),
+        })),
+        {
+          hreflang: 'x-default',
+          href: toDocsAbsoluteUrl(
+            pageIdToLocalizedDocsPath(pageId, locales.find((item) => item.isDefault) ?? locales[0])
+          ),
+        },
+      ];
+
+      return {
+        loc: toDocsAbsoluteUrl(pathname),
+        alternateLinks,
+      };
+    })
+  );
+
+  const xmlBody = urlEntries
+    .map(
+      (entry) => `  <url>
+    <loc>${escapeXml(entry.loc)}</loc>
+${entry.alternateLinks
+  .map(
+    (link) => `    <xhtml:link rel="alternate" hreflang="${escapeXml(link.hreflang)}" href="${escapeXml(link.href)}" />`
+  )
+  .join('\n')}
+  </url>`
+    )
+    .join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${xmlBody}
+</urlset>
+`;
 }

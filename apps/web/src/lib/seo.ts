@@ -3,6 +3,8 @@ import type { PublicArticle, SiteLocale } from './public-content/types';
 
 const SITE_NAME = 'ContextGo';
 const SITE_URL = 'https://contextgo.io';
+const DOCS_SITE_URL = 'https://docs.contextgo.io';
+const GITHUB_REPOSITORY_URL = 'https://github.com/contextgo/contextgo-releases';
 const DEFAULT_OG_IMAGE_PATH = '/logo.png';
 const DEFAULT_DESCRIPTION =
   'ContextGo connects knowledge, tasks, conversations, and channels so agents can work inside real workflows.';
@@ -175,12 +177,20 @@ type CollectionJsonLdOptions = {
   description: string;
 };
 
+type WebPageJsonLdOptions = {
+  locale: SiteLocale;
+  pathname: string;
+  name: string;
+  description: string;
+};
+
 export const buildOrganizationJsonLd = () => ({
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: SITE_NAME,
   url: SITE_URL,
   logo: getAbsoluteSiteUrl('/logo.png'),
+  sameAs: [DOCS_SITE_URL, GITHUB_REPOSITORY_URL],
 });
 
 export const buildWebsiteJsonLd = () => ({
@@ -199,6 +209,16 @@ export const buildWebsiteJsonLd = () => ({
 export const buildCollectionJsonLd = ({ locale, pathname, name, description }: CollectionJsonLdOptions) => ({
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
+  name,
+  description,
+  url: getAbsoluteSiteUrl(getLocalizedPath(locale, pathname)),
+  inLanguage: locale,
+  isPartOf: getAbsoluteSiteUrl(),
+});
+
+export const buildWebPageJsonLd = ({ locale, pathname, name, description }: WebPageJsonLdOptions) => ({
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
   name,
   description,
   url: getAbsoluteSiteUrl(getLocalizedPath(locale, pathname)),

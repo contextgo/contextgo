@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildDocsConfig, buildNavigation, buildShellHome, transformMarkdown } from '../../../apps/docs/scripts/sync-lib.mjs';
+import {
+  buildDocsConfig,
+  buildDocsRobotsTxt,
+  buildDocsSitemapXml,
+  buildNavigation,
+  buildShellHome,
+  transformMarkdown,
+} from '../../../apps/docs/scripts/sync-lib.mjs';
 
 describe('buildNavigation', () => {
   it('prefixes page ids for localized Mintlify navigation groups', () => {
@@ -199,6 +206,8 @@ describe('docs shell config', () => {
     expect(config.navbar.primary.label).toBe('Open ContextGo');
     expect(config.logo.light).toBe('/logo/light.png');
     expect(config.logo.dark).toBe('/logo/dark.png');
+    expect(config.seo.metatags.robots).toBe('index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1');
+    expect(config.seo.metatags['og:image']).toBe('https://docs.contextgo.io/demo.png');
   });
 
   it('renders a docs-first home shell with the shared product preview image', () => {
@@ -209,5 +218,31 @@ describe('docs shell config', () => {
     expect(home).toContain('产品文档系统');
     expect(home).toContain('docs-home-grid');
     expect(home).toContain('href="/start-here"');
+  });
+});
+
+describe('docs SEO assets', () => {
+  it('builds a crawlable robots.txt for the docs domain', () => {
+    const robots = buildDocsRobotsTxt();
+
+    expect(robots).toContain('User-agent: *');
+    expect(robots).toContain('Allow: /');
+    expect(robots).toContain('Sitemap: https://docs.contextgo.io/sitemap.xml');
+    expect(robots).toContain('Host: https://docs.contextgo.io');
+  });
+
+  it('builds a sitemap with both default and english localized URLs', () => {
+    const sitemap = buildDocsSitemapXml(['index', 'start-here/index', 'start-here/quick-start', 'use-cases/index']);
+
+    expect(sitemap).toContain('<loc>https://docs.contextgo.io/</loc>');
+    expect(sitemap).toContain('<loc>https://docs.contextgo.io/start-here/</loc>');
+    expect(sitemap).toContain('<loc>https://docs.contextgo.io/start-here/quick-start/</loc>');
+    expect(sitemap).toContain('<loc>https://docs.contextgo.io/en/</loc>');
+    expect(sitemap).toContain('<loc>https://docs.contextgo.io/en/start-here/</loc>');
+    expect(sitemap).toContain('<loc>https://docs.contextgo.io/en/start-here/quick-start/</loc>');
+    expect(sitemap).toContain(
+      'rel="alternate" hreflang="en" href="https://docs.contextgo.io/en/start-here/quick-start/"'
+    );
+    expect(sitemap).toContain('rel="alternate" hreflang="zh" href="https://docs.contextgo.io/start-here/quick-start/"');
   });
 });

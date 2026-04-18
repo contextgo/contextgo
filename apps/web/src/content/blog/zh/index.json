@@ -4,5 +4,10 @@
   "description": "这里公开解释 ContextGo 的产品模型、远程访问边界和发布运维判断，让官网叙事、产品行为与真实交付链路保持一致。",
   "featuredLabel": "刊物说明",
   "featuredDescription": "每篇文章都应该回答三个问题：ContextGo 选择了什么边界、它会怎样影响真实使用，以及为什么它对发布或运维同样重要。",
-  "order": ["context-before-agents", "release-operations-source-of-truth", "desktop-host-mobile-client"]
+  "order": [
+    "why-we-built-contextgo",
+    "context-before-agents",
+    "release-operations-source-of-truth",
+    "desktop-host-mobile-client"
+  ]
 }

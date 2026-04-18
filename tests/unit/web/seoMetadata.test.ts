@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { getBlogArticleSupplement, getBlogJournalCopy } from '../../../apps/web/src/lib/site-content/blogEditorial';
 import type { PublicArticle } from '../../../apps/web/src/lib/public-content/types';
 import {
   buildArticleJsonLd,
+  buildBreadcrumbJsonLd,
+  buildOrganizationJsonLd,
   buildPageMetadata,
+  buildWebPageJsonLd,
   getAlternateLocalePath,
   resolveSiteLocale,
 } from '../../../apps/web/src/lib/seo';
@@ -57,5 +61,41 @@ describe('seo helpers', () => {
       '@type': 'Organization',
       name: 'ContextGo',
     });
+  });
+
+  it('builds organization json-ld with public brand entity links', () => {
+    const jsonLd = buildOrganizationJsonLd();
+
+    expect(jsonLd.url).toBe('https://contextgo.io');
+    expect(jsonLd.logo).toBe('https://contextgo.io/logo.png');
+    expect(jsonLd.sameAs).toEqual(['https://docs.contextgo.io', 'https://github.com/contextgo/contextgo-releases']);
+  });
+
+  it('builds webpage json-ld for product landing pages', () => {
+    const pageJsonLd = buildWebPageJsonLd({
+      locale: 'en',
+      pathname: '/connect',
+      name: 'Connect',
+      description: 'Bring connectors, runtimes, and external systems into one workbench.',
+    });
+    const breadcrumbJsonLd = buildBreadcrumbJsonLd('en', [
+      { name: 'ContextGo', pathname: '' },
+      { name: 'Connect', pathname: '/connect' },
+    ]);
+
+    expect(pageJsonLd['@type']).toBe('WebPage');
+    expect(pageJsonLd.url).toBe('https://contextgo.io/en/connect');
+    expect(pageJsonLd.isPartOf).toBe('https://contextgo.io');
+    expect(pageJsonLd.inLanguage).toBe('en');
+    expect(breadcrumbJsonLd.itemListElement).toHaveLength(2);
+  });
+
+  it('keeps the founding manifesto in the public reading path and supplement metadata', () => {
+    const journal = getBlogJournalCopy('en');
+    const supplement = getBlogArticleSupplement('en', 'why-we-built-contextgo');
+
+    expect(journal.pathItems[0]?.slug).toBe('why-we-built-contextgo');
+    expect(supplement.role).toBe('Founding manifesto');
+    expect(supplement.relatedSlugs).toEqual(['context-before-agents', 'desktop-host-mobile-client']);
   });
 });
