@@ -4,7 +4,16 @@ import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildDocsConfig, buildNavigation, buildShellHome, dedupe, locales, transformMarkdown } from './sync-lib.mjs';
+import {
+  buildDocsConfig,
+  buildDocsRobotsTxt,
+  buildDocsSitemapXml,
+  buildNavigation,
+  buildShellHome,
+  dedupe,
+  locales,
+  transformMarkdown,
+} from './sync-lib.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -128,6 +137,8 @@ async function main() {
 
   const docsJson = buildDocsConfig(navigation.docs ?? []);
   await writeFile(path.join(targetRoot, 'docs.json'), `${JSON.stringify(docsJson, null, 2)}\n`, 'utf8');
+  await writeFile(path.join(targetRoot, 'robots.txt'), buildDocsRobotsTxt(), 'utf8');
+  await writeFile(path.join(targetRoot, 'sitemap.xml'), buildDocsSitemapXml(pageIds), 'utf8');
 
   process.stdout.write(
     `Synced ${pageIds.length * localeConfigs.length} pages from ContextGo docs across ${localeConfigs.length} locales.\n`

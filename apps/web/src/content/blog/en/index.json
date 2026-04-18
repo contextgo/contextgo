@@ -4,5 +4,10 @@
   "description": "This journal explains ContextGo's product model, remote-access boundaries, and release-operational decisions so the public story matches the real delivery model.",
   "featuredLabel": "Journal brief",
   "featuredDescription": "Each note should explain the product boundary ContextGo is choosing, how it changes real usage, and why it also matters operationally.",
-  "order": ["context-before-agents", "release-operations-source-of-truth", "desktop-host-mobile-client"]
+  "order": [
+    "why-we-built-contextgo",
+    "context-before-agents",
+    "release-operations-source-of-truth",
+    "desktop-host-mobile-client"
+  ]
 }
