@@ -7,7 +7,6 @@
 import {
   getChannelBindingPublishObject,
   getChannelPublishObjectCatalogEntryIdentity,
-  getChannelAccountId,
   type IChannelActiveSessionEntry,
   type IChannelAccount,
   type IChannelAudienceEntry,
@@ -143,7 +142,7 @@ function resolveBindingCatalogEntry(params: {
   audience?: IChannelAudienceEntry;
   publishObjects?: IChannelPublishObjectCatalogEntry[];
 }): IChannelPublishObjectCatalogEntry | undefined {
-  const channelAccountId = getChannelAccountId(params.binding);
+  const channelAccountId = params.binding.channelAccountId;
   if (!channelAccountId || !params.publishObjects) {
     return undefined;
   }
@@ -227,7 +226,7 @@ function getRelevantSessions(
   );
 
   return sessions.filter((session) => {
-    if (getChannelAccountId(session) !== channelAccountId) {
+    if (session.channelAccountId !== channelAccountId) {
       return false;
     }
 
@@ -349,13 +348,13 @@ export function buildAgentPublicationObjects(
 
   params.channelAccounts.forEach((channelAccount) => {
     const accountBindings = params.bindings.filter(
-      (binding) => getChannelAccountId(binding) === channelAccount.id && binding.scopeType !== 'connector_default'
+      (binding) => binding.channelAccountId === channelAccount.id && binding.scopeType !== 'channel_account_default'
     );
     if (accountBindings.length === 0) {
       return;
     }
 
-    const accountAudiences = params.audiences.filter((audience) => getChannelAccountId(audience) === channelAccount.id);
+    const accountAudiences = params.audiences.filter((audience) => audience.channelAccountId === channelAccount.id);
     const accountSessions = getRelevantSessions(channelAccount.id, accountBindings, params.sessions);
 
     const objects = buildPublicationObjects({

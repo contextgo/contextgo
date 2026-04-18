@@ -14,7 +14,7 @@ import {
 describe('publication binding view model', () => {
   const baseBinding: IChannelBinding = {
     id: 'binding-1',
-    connectorId: 'connector-1',
+    channelAccountId: 'connector-1',
     scopeType: 'remote_chat',
     scopeKey: 'group:alpha',
     agentProfileId: 'agent-profile-1',

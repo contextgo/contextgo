@@ -17,7 +17,7 @@ import {
   channelBindingToRow,
   channelRunToRow,
   channelControlLeaseToRow,
-  connectorInstanceToRow,
+  channelAccountToRow,
   contextChunkToRow,
   contextDocumentToRow,
   contextMemoryCandidateToRow,
@@ -33,7 +33,7 @@ import {
   rowToChannelBinding,
   rowToChannelRun,
   rowToChannelControlLease,
-  rowToConnectorInstance,
+  rowToChannelAccount,
   rowToContextChunk,
   rowToContextDocument,
   rowToContextMemory,
@@ -53,7 +53,7 @@ import type {
   IChannelBindingRow,
   IChannelRunRow,
   IChannelControlLeaseRow,
-  IConnectorInstanceRow,
+  IChannelAccountRow,
   IContextChunkRow,
   IContextDocumentRow,
   IContextMemoryCandidateRow,
@@ -76,6 +76,7 @@ import type { IMessageSearchItem, IMessageSearchResponse } from '@/common/types/
 import type { VoiceInputRecord, VoiceInputStats } from '@/common/types/voiceInput';
 import type {
   IAgentProfile,
+  IChannelAccount,
   IChannelBinding,
   IChannelControlLease,
   IChannelPluginConfig,
@@ -87,7 +88,6 @@ import type {
   IChannelUserRow,
   IChannelSessionRow,
   IChannelPairingCodeRow,
-  IConnectorInstance,
   IExternalSession,
   IRemoteIdentity,
   PluginType,
@@ -106,7 +106,6 @@ import type { ContextOperation } from '../../../../packages/context-engine/src/o
 import type { ContextSchedule } from '@process/services/context/events/schedule/types';
 import {
   findConflictingChannelBinding,
-  getChannelAccountId,
   getChannelBindingPublishObjectLabel,
   getChannelBindingTarget,
   resolveChannelConvType,
@@ -217,11 +216,11 @@ const hasScopeKey = (scopeKey?: string): boolean => typeof scopeKey === 'string'
 const validateChannelBinding = (binding: IChannelBinding): string | null => {
   const target = getChannelBindingTarget(binding);
 
-  if (binding.scopeType === 'connector_default') {
+  if (binding.scopeType === 'channel_account_default') {
     if (target.type === 'external_session') {
       return 'external_session targets require remote_chat scope';
     }
-    return hasScopeKey(binding.scopeKey) ? 'connector_default bindings cannot define scopeKey' : null;
+    return hasScopeKey(binding.scopeKey) ? 'channel_account_default bindings cannot define scopeKey' : null;
   }
 
   if (!hasScopeKey(binding.scopeKey)) {
@@ -2166,7 +2165,7 @@ export class AionUIDatabase {
         now
       );
 
-      this.upsertConnectorInstance({
+      this.upsertChannelAccount({
         id: plugin.id,
         platform: plugin.type,
         name: plugin.name,
@@ -2197,7 +2196,7 @@ export class AionUIDatabase {
         )
         .run(status, lastConnected ?? null, now, pluginId);
       this.db
-        .prepare('UPDATE connector_instances SET status = ?, updated_at = ? WHERE legacy_plugin_id = ?')
+        .prepare('UPDATE channel_accounts SET status = ?, updated_at = ? WHERE legacy_plugin_id = ?')
         .run(status, now, pluginId);
       return { success: true, data: true };
     } catch (error: any) {
@@ -2211,7 +2210,7 @@ export class AionUIDatabase {
   deleteChannelPlugin(pluginId: string): IQueryResult<boolean> {
     try {
       const result = this.db.prepare('DELETE FROM assistant_plugins WHERE id = ?').run(pluginId);
-      this.db.prepare('DELETE FROM connector_instances WHERE legacy_plugin_id = ?').run(pluginId);
+      this.db.prepare('DELETE FROM channel_accounts WHERE legacy_plugin_id = ?').run(pluginId);
       return { success: true, data: result.changes > 0 };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -2220,56 +2219,56 @@ export class AionUIDatabase {
 
   /**
    * ==================
-   * Connector Instance operations
+   * Channel Account operations
    * ==================
    */
 
-  getConnectorInstances(): IQueryResult<IConnectorInstance[]> {
+  getChannelAccounts(): IQueryResult<IChannelAccount[]> {
     try {
       const rows = this.db
-        .prepare('SELECT * FROM connector_instances ORDER BY created_at ASC')
-        .all() as IConnectorInstanceRow[];
-      return { success: true, data: rows.map(rowToConnectorInstance) };
+        .prepare('SELECT * FROM channel_accounts ORDER BY created_at ASC')
+        .all() as IChannelAccountRow[];
+      return { success: true, data: rows.map(rowToChannelAccount) };
     } catch (error: any) {
       return { success: false, error: error.message, data: [] };
     }
   }
 
-  getConnectorInstance(connectorId: string): IQueryResult<IConnectorInstance | null> {
+  getChannelAccount(channelAccountId: string): IQueryResult<IChannelAccount | null> {
     try {
-      const row = this.db.prepare('SELECT * FROM connector_instances WHERE id = ?').get(connectorId) as
-        | IConnectorInstanceRow
+      const row = this.db.prepare('SELECT * FROM channel_accounts WHERE id = ?').get(channelAccountId) as
+        | IChannelAccountRow
         | undefined;
-      return { success: true, data: row ? rowToConnectorInstance(row) : null };
+      return { success: true, data: row ? rowToChannelAccount(row) : null };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   }
 
-  getConnectorInstanceByLegacyPluginId(legacyPluginId: string): IQueryResult<IConnectorInstance | null> {
+  getChannelAccountByLegacyPluginId(legacyPluginId: string): IQueryResult<IChannelAccount | null> {
     try {
-      const row = this.db.prepare('SELECT * FROM connector_instances WHERE legacy_plugin_id = ?').get(legacyPluginId) as
-        | IConnectorInstanceRow
+      const row = this.db.prepare('SELECT * FROM channel_accounts WHERE legacy_plugin_id = ?').get(legacyPluginId) as
+        | IChannelAccountRow
         | undefined;
-      return { success: true, data: row ? rowToConnectorInstance(row) : null };
+      return { success: true, data: row ? rowToChannelAccount(row) : null };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   }
 
-  upsertConnectorInstance(connector: IConnectorInstance): IQueryResult<boolean> {
+  upsertChannelAccount(channelAccount: IChannelAccount): IQueryResult<boolean> {
     try {
       const now = Date.now();
-      const row = connectorInstanceToRow({
-        ...connector,
-        createdAt: connector.createdAt || now,
+      const row = channelAccountToRow({
+        ...channelAccount,
+        createdAt: channelAccount.createdAt || now,
         updatedAt: now,
       });
-      const encryptedCredentials = encryptCredentials(connector.credentials);
+      const encryptedCredentials = encryptCredentials(channelAccount.credentials);
 
       this.db
         .prepare(`
-          INSERT INTO connector_instances (
+          INSERT INTO channel_accounts (
             id, platform, name, enabled, status, credentials, runtime_config,
             capabilities, legacy_plugin_id, created_at, updated_at
           )
@@ -2305,9 +2304,9 @@ export class AionUIDatabase {
     }
   }
 
-  deleteConnectorInstance(connectorId: string): IQueryResult<boolean> {
+  deleteChannelAccount(channelAccountId: string): IQueryResult<boolean> {
     try {
-      const result = this.db.prepare('DELETE FROM connector_instances WHERE id = ?').run(connectorId);
+      const result = this.db.prepare('DELETE FROM channel_accounts WHERE id = ?').run(channelAccountId);
       return { success: true, data: result.changes > 0 };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -2331,32 +2330,35 @@ export class AionUIDatabase {
     }
   }
 
-  getRemoteIdentityByConnectorChat(connectorId: string, remoteChatId: string): IQueryResult<IRemoteIdentity | null> {
+  getRemoteIdentityByChannelAccountChat(
+    channelAccountId: string,
+    remoteChatId: string
+  ): IQueryResult<IRemoteIdentity | null> {
     try {
       const row = this.db
-        .prepare('SELECT * FROM remote_identities WHERE connector_id = ? AND remote_chat_id = ?')
-        .get(connectorId, remoteChatId) as IRemoteIdentityRow | undefined;
+        .prepare('SELECT * FROM remote_identities WHERE channel_account_id = ? AND remote_chat_id = ?')
+        .get(channelAccountId, remoteChatId) as IRemoteIdentityRow | undefined;
       return { success: true, data: row ? rowToRemoteIdentity(row) : null };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
   }
 
-  getRemoteIdentityByConnectorPlatformChat(
-    connectorId: string,
+  getRemoteIdentityByChannelAccountPlatformChat(
+    channelAccountId: string,
     platformChatId: string
   ): IQueryResult<IRemoteIdentity | null> {
     try {
       const row = this.db
         .prepare(
           `SELECT * FROM remote_identities
-           WHERE connector_id = ? AND (
+           WHERE channel_account_id = ? AND (
              platform_chat_id = ? OR (platform_chat_id IS NULL AND remote_chat_id = ?)
            )
            ORDER BY COALESCE(last_active, authorized_at) DESC, authorized_at DESC
            LIMIT 1`
         )
-        .get(connectorId, platformChatId, platformChatId) as IRemoteIdentityRow | undefined;
+        .get(channelAccountId, platformChatId, platformChatId) as IRemoteIdentityRow | undefined;
       return { success: true, data: row ? rowToRemoteIdentity(row) : null };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -2374,14 +2376,14 @@ export class AionUIDatabase {
     }
   }
 
-  getRemoteIdentities(connectorId?: string): IQueryResult<IRemoteIdentity[]> {
+  getRemoteIdentities(channelAccountId?: string): IQueryResult<IRemoteIdentity[]> {
     try {
-      const rows = connectorId
+      const rows = channelAccountId
         ? (this.db
             .prepare(
-              'SELECT * FROM remote_identities WHERE connector_id = ? ORDER BY COALESCE(last_active, authorized_at) DESC, authorized_at DESC'
+              'SELECT * FROM remote_identities WHERE channel_account_id = ? ORDER BY COALESCE(last_active, authorized_at) DESC, authorized_at DESC'
             )
-            .all(connectorId) as IRemoteIdentityRow[])
+            .all(channelAccountId) as IRemoteIdentityRow[])
         : (this.db
             .prepare(
               'SELECT * FROM remote_identities ORDER BY COALESCE(last_active, authorized_at) DESC, authorized_at DESC'
@@ -2399,13 +2401,13 @@ export class AionUIDatabase {
       this.db
         .prepare(`
           INSERT INTO remote_identities (
-            id, connector_id, remote_user_id, remote_chat_id, platform_chat_id,
+            id, channel_account_id, remote_user_id, remote_chat_id, platform_chat_id,
             remote_chat_type, peer_scope, parent_chat_id, thread_id,
             display_name, authorized_at, last_active, metadata, legacy_user_id
           )
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
-            connector_id = excluded.connector_id,
+            channel_account_id = excluded.channel_account_id,
             remote_user_id = excluded.remote_user_id,
             remote_chat_id = excluded.remote_chat_id,
             platform_chat_id = excluded.platform_chat_id,
@@ -2421,7 +2423,7 @@ export class AionUIDatabase {
         `)
         .run(
           row.id,
-          row.connector_id,
+          row.channel_account_id,
           row.remote_user_id,
           row.remote_chat_id,
           row.platform_chat_id,
@@ -2573,14 +2575,16 @@ export class AionUIDatabase {
    * ==================
    */
 
-  getChannelBindings(connectorId?: string): IQueryResult<IChannelBinding[]> {
+  getChannelBindings(channelAccountId?: string): IQueryResult<IChannelBinding[]> {
     try {
-      const rows = connectorId
+      const rows = channelAccountId
         ? (this.db
-            .prepare('SELECT * FROM channel_bindings WHERE connector_id = ? ORDER BY priority DESC, created_at ASC')
-            .all(connectorId) as IChannelBindingRow[])
+            .prepare(
+              'SELECT * FROM channel_bindings WHERE channel_account_id = ? ORDER BY priority DESC, created_at ASC'
+            )
+            .all(channelAccountId) as IChannelBindingRow[])
         : (this.db
-            .prepare('SELECT * FROM channel_bindings ORDER BY connector_id ASC, priority DESC, created_at ASC')
+            .prepare('SELECT * FROM channel_bindings ORDER BY channel_account_id ASC, priority DESC, created_at ASC')
             .all() as IChannelBindingRow[]);
       return { success: true, data: rows.map(rowToChannelBinding) };
     } catch (error: any) {
@@ -2600,7 +2604,7 @@ export class AionUIDatabase {
   }
 
   getChannelBindingsForScope(
-    connectorId: string,
+    channelAccountId: string,
     scopeType: IChannelBinding['scopeType'],
     scopeKey?: string
   ): IQueryResult<IChannelBinding[]> {
@@ -2609,14 +2613,14 @@ export class AionUIDatabase {
         scopeKey === undefined
           ? (this.db
               .prepare(
-                'SELECT * FROM channel_bindings WHERE connector_id = ? AND scope_type = ? AND enabled = 1 AND scope_key IS NULL ORDER BY priority DESC, created_at ASC'
+                'SELECT * FROM channel_bindings WHERE channel_account_id = ? AND scope_type = ? AND enabled = 1 AND scope_key IS NULL ORDER BY priority DESC, created_at ASC'
               )
-              .all(connectorId, scopeType) as IChannelBindingRow[])
+              .all(channelAccountId, scopeType) as IChannelBindingRow[])
           : (this.db
               .prepare(
-                'SELECT * FROM channel_bindings WHERE connector_id = ? AND scope_type = ? AND enabled = 1 AND scope_key = ? ORDER BY priority DESC, created_at ASC'
+                'SELECT * FROM channel_bindings WHERE channel_account_id = ? AND scope_type = ? AND enabled = 1 AND scope_key = ? ORDER BY priority DESC, created_at ASC'
               )
-              .all(connectorId, scopeType, scopeKey) as IChannelBindingRow[]);
+              .all(channelAccountId, scopeType, scopeKey) as IChannelBindingRow[]);
       return { success: true, data: rows.map(rowToChannelBinding) };
     } catch (error: any) {
       return { success: false, error: error.message, data: [] };
@@ -2636,7 +2640,7 @@ export class AionUIDatabase {
         return { success: false, error: validationError };
       }
 
-      const existingBindings = this.getChannelBindings(getChannelAccountId(normalizedBinding));
+      const existingBindings = this.getChannelBindings(normalizedBinding.channelAccountId);
       if (!existingBindings.success || !existingBindings.data) {
         return { success: false, error: existingBindings.error ?? 'Failed to inspect existing channel bindings' };
       }
@@ -2666,12 +2670,12 @@ export class AionUIDatabase {
       this.db
         .prepare(`
           INSERT INTO channel_bindings (
-            id, connector_id, scope_type, scope_key, agent_profile_id, priority,
+            id, channel_account_id, scope_type, scope_key, agent_profile_id, priority,
             enabled, temporary, fallback_agent_profile_id, metadata, created_at, updated_at
           )
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
-            connector_id = excluded.connector_id,
+            channel_account_id = excluded.channel_account_id,
             scope_type = excluded.scope_type,
             scope_key = excluded.scope_key,
             agent_profile_id = excluded.agent_profile_id,
@@ -2684,7 +2688,7 @@ export class AionUIDatabase {
         `)
         .run(
           row.id,
-          row.connector_id,
+          row.channel_account_id,
           row.scope_type,
           row.scope_key,
           row.agent_profile_id,
@@ -2729,14 +2733,14 @@ export class AionUIDatabase {
     }
   }
 
-  getExternalSessionByConnectorRemote(
-    connectorId: string,
+  getExternalSessionByChannelAccountRemote(
+    channelAccountId: string,
     remoteIdentityId: string
   ): IQueryResult<IExternalSession | null> {
     try {
       const row = this.db
-        .prepare('SELECT * FROM external_sessions WHERE connector_id = ? AND remote_identity_id = ?')
-        .get(connectorId, remoteIdentityId) as IExternalSessionRow | undefined;
+        .prepare('SELECT * FROM external_sessions WHERE channel_account_id = ? AND remote_identity_id = ?')
+        .get(channelAccountId, remoteIdentityId) as IExternalSessionRow | undefined;
       return { success: true, data: row ? rowToExternalSession(row) : null };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -2846,12 +2850,12 @@ export class AionUIDatabase {
       this.db
         .prepare(`
           INSERT INTO external_sessions (
-            id, connector_id, remote_identity_id, binding_id, agent_profile_id,
+            id, channel_account_id, remote_identity_id, binding_id, agent_profile_id,
             active_conversation_id, state, created_at, last_activity, metadata
           )
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(id) DO UPDATE SET
-            connector_id = excluded.connector_id,
+            channel_account_id = excluded.channel_account_id,
             remote_identity_id = excluded.remote_identity_id,
             binding_id = excluded.binding_id,
             agent_profile_id = excluded.agent_profile_id,
@@ -2862,7 +2866,7 @@ export class AionUIDatabase {
         `)
         .run(
           row.id,
-          row.connector_id,
+          row.channel_account_id,
           row.remote_identity_id,
           row.binding_id,
           row.agent_profile_id,
@@ -3070,7 +3074,7 @@ export class AionUIDatabase {
           `
             SELECT
               ri.id,
-              ri.connector_id,
+              ri.channel_account_id,
               ri.legacy_user_id,
               COALESCE(ri.remote_user_id, au.platform_user_id, ri.remote_chat_id) AS platform_user_id,
               ci.platform AS platform_type,
@@ -3079,7 +3083,7 @@ export class AionUIDatabase {
               COALESCE(ri.last_active, au.last_active) AS last_active,
               COALESCE(es.id, au.session_id) AS session_id
             FROM remote_identities ri
-            INNER JOIN connector_instances ci ON ci.id = ri.connector_id
+            INNER JOIN channel_accounts ci ON ci.id = ri.channel_account_id
             LEFT JOIN assistant_users au ON au.id = ri.legacy_user_id
             LEFT JOIN external_sessions es ON es.remote_identity_id = ri.id
             ORDER BY COALESCE(ri.last_active, ri.authorized_at) DESC, ri.authorized_at DESC
@@ -3087,7 +3091,7 @@ export class AionUIDatabase {
         )
         .all() as Array<{
         id: string;
-        connector_id: string;
+        channel_account_id: string;
         legacy_user_id: string | null;
         platform_user_id: string;
         platform_type: string;
@@ -3099,7 +3103,7 @@ export class AionUIDatabase {
 
       const projectedUsers: IChannelUser[] = projectedRows.map((row) => ({
         id: row.id,
-        connectorId: row.connector_id,
+        channelAccountId: row.channel_account_id,
         platformUserId: row.platform_user_id,
         platformType: row.platform_type as PluginType,
         displayName: row.display_name ?? undefined,
@@ -3134,7 +3138,7 @@ export class AionUIDatabase {
           `
             SELECT
               ri.id,
-              ri.connector_id,
+              ri.channel_account_id,
               ci.platform AS platform_type,
               ri.remote_chat_id,
               ri.remote_chat_type,
@@ -3147,14 +3151,14 @@ export class AionUIDatabase {
               ri.last_active,
               es.id AS session_id
             FROM remote_identities ri
-            INNER JOIN connector_instances ci ON ci.id = ri.connector_id
+            INNER JOIN channel_accounts ci ON ci.id = ri.channel_account_id
             LEFT JOIN external_sessions es ON es.remote_identity_id = ri.id
             ORDER BY COALESCE(ri.last_active, ri.authorized_at) DESC, ri.authorized_at DESC
           `
         )
         .all() as Array<{
         id: string;
-        connector_id: string;
+        channel_account_id: string;
         platform_type: string;
         remote_chat_id: string;
         remote_chat_type: string | null;
@@ -3178,7 +3182,7 @@ export class AionUIDatabase {
 
         return {
           id: row.id,
-          connectorId: row.connector_id,
+          channelAccountId: row.channel_account_id,
           platformType: row.platform_type as PluginType,
           targetId: row.remote_chat_id,
           displayName: row.display_name ?? undefined,
@@ -3209,7 +3213,7 @@ export class AionUIDatabase {
           `
             SELECT
               ri.id AS remote_identity_id,
-              ri.connector_id,
+              ri.channel_account_id,
               au.id AS assistant_user_id,
               COALESCE(ri.remote_user_id, au.platform_user_id, ri.remote_chat_id) AS platform_user_id,
               ci.platform AS platform_type,
@@ -3218,7 +3222,7 @@ export class AionUIDatabase {
               COALESCE(ri.last_active, au.last_active) AS last_active,
               COALESCE(es.id, au.session_id) AS session_id
             FROM remote_identities ri
-            INNER JOIN connector_instances ci ON ci.id = ri.connector_id
+            INNER JOIN channel_accounts ci ON ci.id = ri.channel_account_id
             LEFT JOIN assistant_users au ON au.id = ri.legacy_user_id
             LEFT JOIN external_sessions es ON es.remote_identity_id = ri.id
             WHERE ci.platform = ? AND ri.remote_user_id = ?
@@ -3229,7 +3233,7 @@ export class AionUIDatabase {
         .get(platformType, platformUserId) as
         | {
             remote_identity_id: string;
-            connector_id: string;
+            channel_account_id: string;
             assistant_user_id: string | null;
             platform_user_id: string;
             platform_type: string;
@@ -3251,7 +3255,7 @@ export class AionUIDatabase {
         success: true,
         data: {
           id: projectedRow.remote_identity_id,
-          connectorId: projectedRow.connector_id,
+          channelAccountId: projectedRow.channel_account_id,
           platformUserId: projectedRow.platform_user_id,
           platformType: projectedRow.platform_type as PluginType,
           displayName: projectedRow.display_name ?? undefined,
@@ -3789,7 +3793,7 @@ export class AionUIDatabase {
           `
             SELECT
               p.code,
-              p.connector_id,
+              p.channel_account_id,
               p.remote_user_id,
               p.remote_chat_id,
               p.display_name,
@@ -3798,15 +3802,15 @@ export class AionUIDatabase {
               p.status,
               p.metadata,
               c.platform
-            FROM pairing_requests_v2 p
-            INNER JOIN connector_instances c ON c.id = p.connector_id
+            FROM channel_pairing_requests p
+            INNER JOIN channel_accounts c ON c.id = p.channel_account_id
             WHERE p.status = 'pending' AND p.expires_at > ?
             ORDER BY p.requested_at DESC
           `
         )
         .all(now) as Array<{
         code: string;
-        connector_id: string;
+        channel_account_id: string;
         remote_user_id: string | null;
         remote_chat_id: string;
         display_name: string | null;
@@ -3820,7 +3824,7 @@ export class AionUIDatabase {
       const legacyRequests = legacyRows.map(rowToPairingRequest);
       const v2Requests: IChannelPairingRequest[] = v2Rows.map((row) => ({
         code: row.code,
-        connectorId: row.connector_id,
+        channelAccountId: row.channel_account_id,
         platformUserId: row.remote_user_id ?? row.remote_chat_id,
         platformType: row.platform as PluginType,
         remoteChatId: row.remote_chat_id,
@@ -3851,7 +3855,7 @@ export class AionUIDatabase {
           `
             SELECT
               p.code,
-              p.connector_id,
+              p.channel_account_id,
               p.remote_user_id,
               p.remote_chat_id,
               p.display_name,
@@ -3860,15 +3864,15 @@ export class AionUIDatabase {
               p.status,
               p.metadata,
               c.platform
-            FROM pairing_requests_v2 p
-            INNER JOIN connector_instances c ON c.id = p.connector_id
+            FROM channel_pairing_requests p
+            INNER JOIN channel_accounts c ON c.id = p.channel_account_id
             WHERE p.code = ?
           `
         )
         .get(code) as
         | {
             code: string;
-            connector_id: string;
+            channel_account_id: string;
             remote_user_id: string | null;
             remote_chat_id: string;
             display_name: string | null;
@@ -3885,7 +3889,7 @@ export class AionUIDatabase {
           success: true,
           data: {
             code: v2Row.code,
-            connectorId: v2Row.connector_id,
+            channelAccountId: v2Row.channel_account_id,
             platformUserId: v2Row.remote_user_id ?? v2Row.remote_chat_id,
             platformType: v2Row.platform as PluginType,
             remoteChatId: v2Row.remote_chat_id,
@@ -3912,16 +3916,16 @@ export class AionUIDatabase {
    */
   createPairingRequest(request: IChannelPairingRequest): IQueryResult<IChannelPairingRequest> {
     try {
-      if (request.connectorId) {
+      if (request.channelAccountId) {
         this.db
           .prepare(`
-            INSERT INTO pairing_requests_v2 (
-              code, connector_id, remote_user_id, remote_chat_id, display_name,
+            INSERT INTO channel_pairing_requests (
+              code, channel_account_id, remote_user_id, remote_chat_id, display_name,
               requested_at, expires_at, status, metadata
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(code) DO UPDATE SET
-              connector_id = excluded.connector_id,
+              channel_account_id = excluded.channel_account_id,
               remote_user_id = excluded.remote_user_id,
               remote_chat_id = excluded.remote_chat_id,
               display_name = excluded.display_name,
@@ -3932,7 +3936,7 @@ export class AionUIDatabase {
           `)
           .run(
             request.code,
-            request.connectorId,
+            request.channelAccountId,
             request.platformUserId,
             request.remoteChatId ?? request.platformUserId,
             request.displayName ?? null,
@@ -3979,7 +3983,9 @@ export class AionUIDatabase {
       const legacyResult = this.db
         .prepare('UPDATE assistant_pairing_codes SET status = ? WHERE code = ?')
         .run(status, code);
-      const v2Result = this.db.prepare('UPDATE pairing_requests_v2 SET status = ? WHERE code = ?').run(status, code);
+      const v2Result = this.db
+        .prepare('UPDATE channel_pairing_requests SET status = ? WHERE code = ?')
+        .run(status, code);
       return { success: true, data: legacyResult.changes > 0 || v2Result.changes > 0 };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -3996,7 +4002,7 @@ export class AionUIDatabase {
         .prepare("DELETE FROM assistant_pairing_codes WHERE expires_at < ? OR status != 'pending'")
         .run(now);
       const v2Result = this.db
-        .prepare("DELETE FROM pairing_requests_v2 WHERE expires_at < ? OR status != 'pending'")
+        .prepare("DELETE FROM channel_pairing_requests WHERE expires_at < ? OR status != 'pending'")
         .run(now);
       return { success: true, data: legacyResult.changes + v2Result.changes };
     } catch (error: any) {

@@ -31,13 +31,13 @@ const migration_v1: IMigration = {
   down: (db) => {
     db.exec('DROP TABLE IF EXISTS channel_control_leases');
     db.exec('DROP TABLE IF EXISTS voice_input_records');
-    db.exec('DROP TABLE IF EXISTS pairing_requests_v2');
+    db.exec('DROP TABLE IF EXISTS channel_pairing_requests');
     db.exec('DROP TABLE IF EXISTS runs');
     db.exec('DROP TABLE IF EXISTS external_sessions');
     db.exec('DROP TABLE IF EXISTS channel_bindings');
     db.exec('DROP TABLE IF EXISTS agent_profiles');
     db.exec('DROP TABLE IF EXISTS remote_identities');
-    db.exec('DROP TABLE IF EXISTS connector_instances');
+    db.exec('DROP TABLE IF EXISTS channel_accounts');
     db.exec('DROP TABLE IF EXISTS cron_jobs');
     db.exec('DROP TABLE IF EXISTS assistant_pairing_codes');
     db.exec('DROP TABLE IF EXISTS assistant_sessions');

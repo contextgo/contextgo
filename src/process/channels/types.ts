@@ -15,6 +15,8 @@ import { isBuiltinChannelType, type BuiltinChannelType } from '@/common/config/b
  * It is intentionally separate from Space connectors:
  * - channels/publication = IM transport, audience routing, agent delivery
  * - connectors = external product access and operation boundaries
+ * - any `connector*` alias in this file is legacy IM channel-account compatibility wording,
+ *   not a Context Connector contract
  */
 
 /**
@@ -254,17 +256,12 @@ export interface IChannelAccount {
   updatedAt: number;
 }
 
-/** @deprecated Use IChannelAccount. */
-export type IConnectorInstance = IChannelAccount;
-
 /**
  * Remote identity authorized through a specific channel account.
  */
 export interface IRemoteIdentity {
   id: string;
-  connectorId: string;
-  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
-  channelAccountId?: string;
+  channelAccountId: string;
   remoteUserId?: string;
   /** Stable peer/audience key used for routing and session isolation. */
   remoteChatId: string;
@@ -329,7 +326,7 @@ export interface IChannelReplyPolicy {
 /**
  * Binding scope kinds for routing ingress traffic to agent profiles.
  */
-export type ChannelBindingScopeType = 'connector_default' | 'remote_user' | 'remote_chat' | 'temporary_override';
+export type ChannelBindingScopeType = 'channel_account_default' | 'remote_user' | 'remote_chat' | 'temporary_override';
 export type ChannelBindingTargetType = 'agent_profile' | 'external_session';
 export type ChannelContinuationMode = 'resume' | 'new_thread';
 export type ChannelContinuationConflictPolicy = 'reject' | 'interrupt';
@@ -355,9 +352,7 @@ export interface IChannelControlLease {
  */
 export interface IChannelBinding {
   id: string;
-  connectorId: string;
-  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
-  channelAccountId?: string;
+  channelAccountId: string;
   scopeType: ChannelBindingScopeType;
   scopeKey?: string;
   agentProfileId: string;
@@ -427,9 +422,7 @@ export type ChannelAudienceScope = 'remote_user' | 'remote_chat';
 
 export interface IChannelAudienceEntry {
   key: string;
-  connectorId: string;
-  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
-  channelAccountId?: string;
+  channelAccountId: string;
   scopeType: ChannelAudienceScope;
   remoteIdentityId?: string;
   remoteUserId?: string;
@@ -536,9 +529,7 @@ export type IChannelBindingTarget = {
 export type IChannelContinuationRequest = {
   sourceConversationId?: string;
   sourceExternalSessionId?: string;
-  targetChannelAccountId?: string;
-  /** @deprecated Use targetChannelAccountId. */
-  targetConnectorId?: string;
+  targetChannelAccountId: string;
   targetChatId: string;
   targetPlatformChatId?: string;
   targetPlatformUserId?: string;
@@ -573,9 +564,7 @@ export type IChannelContinuationReleaseResult = {
  */
 export interface IExternalSession {
   id: string;
-  connectorId: string;
-  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
-  channelAccountId?: string;
+  channelAccountId: string;
   remoteIdentityId: string;
   bindingId?: string;
   agentProfileId: string;
@@ -614,7 +603,7 @@ function normalizeChannelPublishObject(publishObject: IChannelPublishObject): IC
 
   return {
     nativeObjectType: normalizePublishObjectString(publishObject.nativeObjectType) ?? 'chat',
-    nativeObjectId: normalizePublishObjectString(publishObject.nativeObjectId) ?? 'connector-default',
+    nativeObjectId: normalizePublishObjectString(publishObject.nativeObjectId) ?? 'channel-account-default',
     parentNativeObjectId: normalizePublishObjectString(publishObject.parentNativeObjectId),
     displayName: normalizePublishObjectString(publishObject.displayName),
     discoverySource: normalizePublishObjectDiscoverySource(publishObject.discoverySource),
@@ -628,8 +617,8 @@ function inferPublishObjectTypeFromBinding(binding: IChannelBinding, metadata: R
     return objectKind;
   }
 
-  if (binding.scopeType === 'connector_default') {
-    return 'connector_default';
+  if (binding.scopeType === 'channel_account_default') {
+    return 'channel_account_default';
   }
 
   if (binding.scopeType === 'remote_user') {
@@ -658,10 +647,10 @@ function inferLegacyChannelPublishObject(binding: IChannelBinding): IChannelPubl
   const explicitDisplayName = normalizePublishObjectString(metadata?.objectTitle);
   const threadMarker = ':thread:';
 
-  if (binding.scopeType === 'connector_default' || !scopeKey) {
+  if (binding.scopeType === 'channel_account_default' || !scopeKey) {
     return normalizeChannelPublishObject({
       nativeObjectType: inferPublishObjectTypeFromBinding(binding, metadata),
-      nativeObjectId: 'connector-default',
+      nativeObjectId: 'channel-account-default',
       displayName: explicitDisplayName,
       discoverySource: 'manual',
     });
@@ -687,22 +676,6 @@ function inferLegacyChannelPublishObject(binding: IChannelBinding): IChannelPubl
     displayName: explicitDisplayName,
     discoverySource: 'manual',
   });
-}
-
-export function getChannelAccountId(value: { connectorId?: string; channelAccountId?: string }): string | undefined {
-  return value.channelAccountId ?? value.connectorId;
-}
-
-export function withChannelAccountId<T extends { connectorId?: string; channelAccountId?: string }>(value: T): T {
-  const channelAccountId = getChannelAccountId(value);
-  if (!channelAccountId) {
-    return value;
-  }
-  return {
-    ...value,
-    connectorId: channelAccountId,
-    channelAccountId,
-  };
 }
 
 export function getExternalSessionControlState(session: IExternalSession): IExternalSessionControlState {
@@ -798,11 +771,6 @@ export function findConflictingChannelBinding(
     return undefined;
   }
 
-  const channelAccountId = getChannelAccountId(candidate);
-  if (!channelAccountId) {
-    return undefined;
-  }
-
   const publishObjectIdentity = getChannelBindingPublishObjectIdentity(candidate);
 
   return bindings.find((binding) => {
@@ -811,7 +779,7 @@ export function findConflictingChannelBinding(
     }
 
     return (
-      getChannelAccountId(binding) === channelAccountId &&
+      binding.channelAccountId === candidate.channelAccountId &&
       getChannelBindingPublishObjectIdentity(binding) === publishObjectIdentity
     );
   });
@@ -910,8 +878,6 @@ export interface IChannelRun {
  */
 export interface IChannelUser {
   id: string;
-  connectorId?: string;
-  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   platformUserId: string;
   platformType: PluginType;
@@ -923,8 +889,6 @@ export interface IChannelUser {
 
 export interface IChannelAuthorizedTarget {
   id: string;
-  connectorId?: string;
-  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   platformType: PluginType;
   targetId: string;
@@ -977,14 +941,8 @@ export type IChannelActiveSessionEntry = {
   id: string;
   /** Stable external-session identity for this publication relationship. */
   externalSessionId?: string;
-  connectorId?: string;
-  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
-  connectorName?: string;
-  /** Preferred in new IM publication code. `connectorName` is a legacy compatibility alias. */
   channelAccountName?: string;
-  connectorPlatform?: PluginType;
-  /** Preferred in new IM publication code. `connectorPlatform` is a legacy compatibility alias. */
   channelAccountPlatform?: PluginType;
   remoteIdentityId?: string;
   audienceTitle: string;
@@ -1052,8 +1010,6 @@ export interface IChannelPairingRequest {
   code: string;
   platformUserId: string;
   platformType: PluginType;
-  connectorId?: string;
-  /** Preferred in new IM publication code. `connectorId` is a legacy compatibility alias. */
   channelAccountId?: string;
   remoteChatId?: string;
   displayName?: string;

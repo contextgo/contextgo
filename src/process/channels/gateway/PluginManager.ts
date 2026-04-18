@@ -282,8 +282,8 @@ export class PluginManager {
     overrides?: Partial<IChannelPluginStatus>
   ): Promise<IChannelPluginStatus> {
     const db = await getDatabase();
-    const connectorResult = db.getConnectorInstanceByLegacyPluginId(runtimeId);
-    const directConnectorResult = db.getConnectorInstance(runtimeId);
+    const connectorResult = db.getChannelAccountByLegacyPluginId(runtimeId);
+    const directConnectorResult = db.getChannelAccount(runtimeId);
     const connector =
       connectorResult.success && connectorResult.data
         ? connectorResult.data

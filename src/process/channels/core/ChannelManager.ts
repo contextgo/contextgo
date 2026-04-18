@@ -12,7 +12,7 @@ import { getChannelMessageService } from '../agent/ChannelMessageService';
 import { ActionExecutor } from '../gateway/ActionExecutor';
 import { PluginManager, registerPlugin } from '../gateway/PluginManager';
 import { PairingService } from '../pairing/PairingService';
-import type { IChannelPluginConfig, IConnectorInstance, PluginType } from '../types';
+import type { IChannelAccount, IChannelPluginConfig, PluginType } from '../types';
 import { getChannelRouteResolver } from './ChannelRouteResolver';
 import { BUILTIN_CHANNEL_RUNTIME } from './builtinChannelRuntime';
 import { SessionManager } from './SessionManager';
@@ -237,7 +237,7 @@ export class ChannelManager {
     const now = Date.now();
     const accountId = createChannelAccountId();
 
-    const result = db.upsertConnectorInstance({
+    const result = db.upsertChannelAccount({
       id: accountId,
       platform: params.platform,
       name: params.name,
@@ -258,13 +258,13 @@ export class ChannelManager {
   private resolveChannelAccountFromRuntimeId(
     db: Awaited<ReturnType<typeof getDatabase>>,
     pluginId: string
-  ): IConnectorInstance | null {
-    const direct = db.getConnectorInstance(pluginId);
+  ): IChannelAccount | null {
+    const direct = db.getChannelAccount(pluginId);
     if (direct.success && direct.data) {
       return direct.data;
     }
 
-    const legacy = db.getConnectorInstanceByLegacyPluginId(pluginId);
+    const legacy = db.getChannelAccountByLegacyPluginId(pluginId);
     if (legacy.success && legacy.data) {
       return legacy.data;
     }

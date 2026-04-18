@@ -6,7 +6,6 @@
 
 import { channel } from '@/common/adapter/ipcBridge';
 import {
-  getChannelAccountId,
   type IAgentProfile,
   type IChannelAccount,
   type IChannelActiveSessionEntry,
@@ -222,7 +221,7 @@ function getBindingAudience(
   binding: IChannelBinding,
   audienceMap: Map<string, IChannelAudienceEntry>
 ): IChannelAudienceEntry | undefined {
-  if (!binding.scopeKey || binding.scopeType === 'connector_default') {
+  if (!binding.scopeKey || binding.scopeType === 'channel_account_default') {
     return undefined;
   }
 
@@ -237,7 +236,7 @@ function getPublicationAudience(
   const publishObjectCatalogEntryId = entry.object.publishObjectCatalogEntryId;
 
   return audiences.find((audience) => {
-    if (getChannelAccountId(audience) !== entry.channelAccount.id) {
+    if (audience.channelAccountId !== entry.channelAccount.id) {
       return false;
     }
 
@@ -477,7 +476,7 @@ const PublicationBindingPanel: React.FC = () => {
     () =>
       catalog.audiences
         .filter((audience) => {
-          if (getChannelAccountId(audience) !== editor.channelAccountId) {
+          if (audience.channelAccountId !== editor.channelAccountId) {
             return false;
           }
 

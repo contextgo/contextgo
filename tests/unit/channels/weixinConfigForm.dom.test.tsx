@@ -104,7 +104,7 @@ describe('WeixinConfigForm', () => {
       data: [
         {
           id: 'target-1',
-          connectorId: 'weixin_primary',
+          channelAccountId: 'weixin_primary',
           platformType: 'weixin',
           targetId: 'wx-user-1',
           displayName: 'wx user',
@@ -302,7 +302,7 @@ describe('WeixinConfigForm', () => {
       data: [
         {
           id: 'target-1',
-          connectorId: 'weixin_default',
+          channelAccountId: 'weixin_default',
           platformType: 'weixin',
           targetId: 'wx-user-1',
           displayName: 'wx user',

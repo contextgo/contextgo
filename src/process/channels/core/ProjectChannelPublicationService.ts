@@ -9,19 +9,14 @@ import { resolveWorkspacePath, WORKSPACE_AUTOMATION_DIR } from '@process/bridge/
 import type { ChannelPublishObjectDiscoveryProvider } from '@process/channels/plugins/BasePlugin';
 import type {
   IAgentProfile,
+  IChannelAccount,
   IChannelBinding,
   IChannelReplyPolicy,
   IChannelPublishObjectCatalogEntry,
-  IConnectorInstance,
   IRemoteIdentity,
 } from '@process/channels/types';
 import { enrichRemoteIdentitiesForPublishObjectDiscovery } from '@process/channels/core/publishObjectDiscovery';
-import {
-  getChannelAccountId,
-  getChannelBindingPublishObject,
-  getChannelPublishObjectCatalogEntryIdentity,
-  withChannelAccountId,
-} from '@process/channels/types';
+import { getChannelBindingPublishObject, getChannelPublishObjectCatalogEntryIdentity } from '@process/channels/types';
 import {
   describeRemoteIdentityObject,
   inferRemoteIdentityPublishObject,
@@ -110,11 +105,11 @@ const normalizeChannelBindings = (bindings: readonly IChannelBinding[]): IChanne
   return bindings
     .filter((binding) => binding.temporary !== true)
     .map((binding) => {
-      const normalized = withChannelAccountId({
+      const normalized = {
         ...binding,
         temporary: false,
         metadata: binding.metadata ?? {},
-      });
+      };
       normalized.scopeKey = normalized.scopeKey?.trim() || undefined;
       return normalized;
     })
@@ -292,11 +287,6 @@ function mapBindingDiscoverySource(
 }
 
 function toBindingCatalogEntry(binding: IChannelBinding, now: number): IChannelPublishObjectCatalogEntry | null {
-  const channelAccountId = getChannelAccountId(binding);
-  if (!channelAccountId) {
-    return null;
-  }
-
   const publishObject = getChannelBindingPublishObject(binding);
   const metadata =
     binding.metadata && typeof binding.metadata === 'object' && !Array.isArray(binding.metadata)
@@ -305,7 +295,7 @@ function toBindingCatalogEntry(binding: IChannelBinding, now: number): IChannelP
   const title = publishObject.displayName ?? publishObject.nativeObjectId;
   const entry: IChannelPublishObjectCatalogEntry = {
     id: '',
-    channelAccountId,
+    channelAccountId: binding.channelAccountId,
     nativeObjectType: publishObject.nativeObjectType,
     nativeObjectId: publishObject.nativeObjectId,
     parentNativeObjectId: publishObject.parentNativeObjectId,
@@ -334,7 +324,7 @@ function toBindingCatalogEntry(binding: IChannelBinding, now: number): IChannelP
 
 function toRemoteIdentityCatalogEntry(
   identity: IRemoteIdentity,
-  connector: IConnectorInstance,
+  connector: IChannelAccount,
   now: number
 ): IChannelPublishObjectCatalogEntry {
   const publishObject = inferRemoteIdentityPublishObject(identity, connector.platform);
@@ -530,7 +520,7 @@ export class ProjectChannelPublicationService {
   async refreshCatalog(params: {
     publicationCatalog: ProjectChannelPublicationCatalog;
     remoteIdentities: readonly IRemoteIdentity[];
-    channelAccounts: readonly IConnectorInstance[];
+    channelAccounts: readonly IChannelAccount[];
   }): Promise<ProjectChannelPublicationCatalog> {
     if (params.publicationCatalog.workspaces.length === 0) {
       return {
@@ -559,7 +549,7 @@ export class ProjectChannelPublicationService {
     params: {
       bindings: readonly IChannelBinding[];
       remoteIdentities: readonly IRemoteIdentity[];
-      channelAccounts: readonly IConnectorInstance[];
+      channelAccounts: readonly IChannelAccount[];
       resolveDiscoveryProvider?: (runtimeId: string) => ChannelPublishObjectDiscoveryProvider | null | undefined;
     }
   ): Promise<IChannelPublishObjectCatalogEntry[]> {
@@ -581,7 +571,7 @@ export class ProjectChannelPublicationService {
       .filter((entry): entry is IChannelPublishObjectCatalogEntry => Boolean(entry));
     const remoteIdentityEntries = enrichedRemoteIdentities
       .map((identity) => {
-        const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
+        const connector = connectorMap.get(identity.channelAccountId);
         return connector ? toRemoteIdentityCatalogEntry(identity, connector, now) : null;
       })
       .filter((entry): entry is IChannelPublishObjectCatalogEntry => Boolean(entry));
@@ -665,12 +655,12 @@ export class ProjectChannelPublicationService {
     }
 
     const snapshot = await this.readSnapshot(workspacePath);
-    const nextBinding = withChannelAccountId({
+    const nextBinding = {
       ...binding,
       temporary: false,
       metadata: binding.metadata ?? {},
       scopeKey: binding.scopeKey?.trim() || undefined,
-    });
+    };
 
     const bindings = normalizeChannelBindings([
       ...(snapshot?.bindings.filter((item) => item.id !== nextBinding.id) ?? []),

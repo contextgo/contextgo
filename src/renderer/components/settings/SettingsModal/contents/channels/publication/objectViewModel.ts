@@ -316,7 +316,7 @@ function resolveBindingSeed(
   platform: PluginType,
   catalogEntry?: IChannelPublishObjectCatalogEntry
 ): PublicationObjectSeed | null {
-  if (!binding.scopeKey || binding.scopeType === 'connector_default') {
+  if (!binding.scopeKey || binding.scopeType === 'channel_account_default') {
     return null;
   }
 

@@ -19,11 +19,11 @@ import crypto from 'crypto';
 import type {
   ChannelAgentType,
   IAgentProfile,
+  IChannelAccount,
   IChannelBinding,
   IChannelSession,
   IChannelUser,
   IChannelRun,
-  IConnectorInstance,
   IExternalSession,
   IRemoteIdentity,
   PluginType,
@@ -151,7 +151,7 @@ function toProjectedChannelUser(params: {
 }
 
 export type ResolvedChannelRoute = {
-  connector: IConnectorInstance;
+  channelAccount: IChannelAccount;
   remoteIdentity: IRemoteIdentity;
   channelUser: IChannelUser;
   binding: IChannelBinding;
@@ -189,7 +189,7 @@ function buildStableId(prefix: string, ...parts: Array<string | undefined>): str
 }
 
 function buildRuntimeRemoteIdentityId(params: {
-  connectorId: string;
+  channelAccountId: string;
   chatId: string;
   platformChatId: string;
   peerScope: 'chat' | 'thread';
@@ -198,7 +198,7 @@ function buildRuntimeRemoteIdentityId(params: {
 }): string {
   return buildStableId(
     'remote_identity',
-    params.connectorId,
+    params.channelAccountId,
     params.chatId,
     params.platformChatId,
     params.peerScope,
@@ -317,23 +317,23 @@ export class ChannelRouteResolver {
     return projectChannelPublicationService.readCatalogForConversations(conversations);
   }
 
-  async resolveChannelAccount(platform: PluginType, pluginId?: string): Promise<IConnectorInstance> {
+  async resolveChannelAccount(platform: PluginType, pluginId?: string): Promise<IChannelAccount> {
     const db = await getDatabase();
 
     if (pluginId) {
-      const direct = db.getConnectorInstance(pluginId);
+      const direct = db.getChannelAccount(pluginId);
       if (direct.success && direct.data) {
         return direct.data;
       }
 
-      const legacyMapped = db.getConnectorInstanceByLegacyPluginId(pluginId);
+      const legacyMapped = db.getChannelAccountByLegacyPluginId(pluginId);
       if (legacyMapped.success && legacyMapped.data) {
         return legacyMapped.data;
       }
 
       const legacyPlugin = db.getChannelPlugin(pluginId);
       if (legacyPlugin.success && legacyPlugin.data) {
-        db.upsertConnectorInstance({
+        db.upsertChannelAccount({
           id: legacyPlugin.data.id,
           platform: legacyPlugin.data.type,
           name: legacyPlugin.data.name,
@@ -345,14 +345,14 @@ export class ChannelRouteResolver {
           createdAt: legacyPlugin.data.createdAt,
           updatedAt: Date.now(),
         });
-        const connector = db.getConnectorInstance(legacyPlugin.data.id);
+        const connector = db.getChannelAccount(legacyPlugin.data.id);
         if (connector.success && connector.data) {
           return connector.data;
         }
       }
     }
 
-    const connectors = db.getConnectorInstances();
+    const connectors = db.getChannelAccounts();
     if (connectors.success && connectors.data) {
       const preferred =
         connectors.data.find((connector) => connector.platform === platform && connector.enabled) ??
@@ -365,16 +365,12 @@ export class ChannelRouteResolver {
     throw new Error(`No connector configured for platform ${platform}`);
   }
 
-  async resolveConnectorInstance(platform: PluginType, pluginId?: string): Promise<IConnectorInstance> {
-    return this.resolveChannelAccount(platform, pluginId);
-  }
-
   async resolveAuthorizedRoute(params: ResolveRouteParams): Promise<ResolvedChannelRoute> {
     const db = await getDatabase();
     const publicationCatalog = await this.getPublicationCatalog();
-    const connector = await this.resolveChannelAccount(params.platform, params.pluginId);
+    const channelAccount = await this.resolveChannelAccount(params.platform, params.pluginId);
     const channelUser = await this.ensureChannelUserProjection(
-      connector,
+      channelAccount,
       params.platformUserId,
       params.platform,
       params.chatId,
@@ -387,7 +383,7 @@ export class ChannelRouteResolver {
       publicationCatalog
     );
     const remoteIdentity = await this.ensureRemoteIdentity(
-      connector,
+      channelAccount,
       channelUser,
       params.platformUserId,
       params.chatId,
@@ -403,7 +399,7 @@ export class ChannelRouteResolver {
     );
 
     const binding = await this.resolveBinding({
-      connector,
+      connector: channelAccount,
       remoteIdentity,
       platform: params.platform,
       publicationCatalog,
@@ -426,7 +422,7 @@ export class ChannelRouteResolver {
 
     const agentProfile = this.assertExistingAgentProfile(publicationCatalog.agentProfiles, agentProfileId);
 
-    let externalSession = await this.ensureExternalSession(connector, remoteIdentity, binding, agentProfile);
+    let externalSession = await this.ensureExternalSession(channelAccount, remoteIdentity, binding, agentProfile);
     const externalSessionTargetMode =
       bindingTarget.type === 'external_session' ? (bindingTarget.mode ?? 'resume') : bindingContinuationConfig.mode;
     const shouldForceNewConversation = params.forceNewConversation || externalSessionTargetMode === 'new_thread';
@@ -466,7 +462,7 @@ export class ChannelRouteResolver {
     db.upsertChannelSession(session);
 
     return {
-      connector,
+      channelAccount,
       remoteIdentity,
       channelUser,
       binding,
@@ -478,7 +474,7 @@ export class ChannelRouteResolver {
   }
 
   private async ensureChannelUserProjection(
-    connector: IConnectorInstance,
+    connector: IChannelAccount,
     platformUserId: string,
     platform: PluginType,
     chatId: string,
@@ -493,12 +489,12 @@ export class ChannelRouteResolver {
     const db = await getDatabase();
     const catalog = publicationCatalog ?? (await this.getPublicationCatalog());
     const resolvedPlatformChatId = platformChatId ?? chatId;
-    const exactIdentity = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
+    const exactIdentity = db.getRemoteIdentityByChannelAccountChat(connector.id, chatId);
     const existingIdentity =
       exactIdentity.success && exactIdentity.data
         ? exactIdentity
         : resolvedPlatformChatId !== chatId
-          ? db.getRemoteIdentityByConnectorPlatformChat(connector.id, resolvedPlatformChatId)
+          ? db.getRemoteIdentityByChannelAccountPlatformChat(connector.id, resolvedPlatformChatId)
           : exactIdentity;
 
     if (existingIdentity.success && existingIdentity.data) {
@@ -559,7 +555,7 @@ export class ChannelRouteResolver {
     }
 
     const connectorDefaultBinding = catalog.bindings.filter(
-      (binding) => binding.channelAccountId === connector.id && binding.scopeType === 'connector_default'
+      (binding) => binding.channelAccountId === connector.id && binding.scopeType === 'channel_account_default'
     );
     if (connectorDefaultBinding.length > 0) {
       return this.createPublishedAudienceProjection({
@@ -592,7 +588,7 @@ export class ChannelRouteResolver {
   }
 
   private createPublishedAudienceProjection(params: {
-    connector: IConnectorInstance;
+    connector: IChannelAccount;
     platformUserId: string;
     platform: PluginType;
     chatId: string;
@@ -616,7 +612,7 @@ export class ChannelRouteResolver {
   }
 
   private async bootstrapLegacyDirectAuthorization(params: {
-    connector: IConnectorInstance;
+    connector: IChannelAccount;
     platformUserId: string;
     platform: PluginType;
     chatId: string;
@@ -637,7 +633,7 @@ export class ChannelRouteResolver {
       return null;
     }
 
-    const connectors = db.getConnectorInstances();
+    const connectors = db.getChannelAccounts();
     if (!connectors.success || !connectors.data) {
       return null;
     }
@@ -657,7 +653,7 @@ export class ChannelRouteResolver {
     const now = Date.now();
     const remoteIdentity: IRemoteIdentity = {
       id: `remote_identity_${uuid()}`,
-      connectorId: params.connector.id,
+      channelAccountId: params.connector.id,
       remoteUserId: params.platformUserId,
       remoteChatId: params.chatId,
       platformChatId: params.platformChatId ?? params.chatId,
@@ -703,7 +699,7 @@ export class ChannelRouteResolver {
   }
 
   private async ensureRemoteIdentity(
-    connector: IConnectorInstance,
+    connector: IChannelAccount,
     channelUser: IChannelUser,
     platformUserId: string,
     chatId: string,
@@ -728,7 +724,7 @@ export class ChannelRouteResolver {
     });
     const normalizedChatType = remoteChatType ?? fallbackGroupType;
 
-    const byChat = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
+    const byChat = db.getRemoteIdentityByChannelAccountChat(connector.id, chatId);
     if (byChat.success && byChat.data) {
       const resolvedBindingType = inferRemoteChatType({
         chatId: resolvedPlatformChatId,
@@ -759,7 +755,7 @@ export class ChannelRouteResolver {
 
     const byPlatformChat =
       resolvedPlatformChatId !== chatId
-        ? db.getRemoteIdentityByConnectorPlatformChat(connector.id, resolvedPlatformChatId)
+        ? db.getRemoteIdentityByChannelAccountPlatformChat(connector.id, resolvedPlatformChatId)
         : { success: true, data: null };
     if (byPlatformChat.success && byPlatformChat.data) {
       const resolvedBindingType = inferRemoteChatType({
@@ -769,7 +765,7 @@ export class ChannelRouteResolver {
       });
       const remoteIdentity: IRemoteIdentity = {
         id: `remote_identity_${uuid()}`,
-        connectorId: connector.id,
+        channelAccountId: connector.id,
         remoteUserId:
           resolvedBindingType === 'group' ? (byPlatformChat.data.remoteUserId ?? platformUserId) : platformUserId,
         remoteChatId: chatId,
@@ -797,14 +793,14 @@ export class ChannelRouteResolver {
 
     const remoteIdentity: IRemoteIdentity = {
       id: buildRuntimeRemoteIdentityId({
-        connectorId: connector.id,
+        channelAccountId: connector.id,
         chatId,
         platformChatId: resolvedPlatformChatId,
         peerScope: normalizedPeerScope,
         parentChatId,
         threadId,
       }),
-      connectorId: connector.id,
+      channelAccountId: connector.id,
       remoteUserId: platformUserId,
       remoteChatId: chatId,
       platformChatId: resolvedPlatformChatId,
@@ -828,7 +824,7 @@ export class ChannelRouteResolver {
   }
 
   private async resolveBinding(params: {
-    connector: IConnectorInstance;
+    connector: IChannelAccount;
     remoteIdentity: IRemoteIdentity;
     platform: PluginType;
     overrideAgentProfileId?: string;
@@ -848,7 +844,7 @@ export class ChannelRouteResolver {
           params.remoteIdentity.remoteChatId,
           params.overrideAgentProfileId
         ),
-        connectorId: params.connector.id,
+        channelAccountId: params.connector.id,
         scopeType: 'temporary_override',
         scopeKey: params.remoteIdentity.remoteChatId,
         agentProfileId: params.overrideAgentProfileId,
@@ -919,7 +915,7 @@ export class ChannelRouteResolver {
       publicationCatalog.bindings.filter(
         (binding) =>
           binding.channelAccountId === params.connector.id &&
-          binding.scopeType === 'connector_default' &&
+          binding.scopeType === 'channel_account_default' &&
           !isSystemFallbackBinding(binding)
       )
     );
@@ -953,7 +949,7 @@ export class ChannelRouteResolver {
   }
 
   private async ensureExternalSession(
-    connector: IConnectorInstance,
+    connector: IChannelAccount,
     remoteIdentity: IRemoteIdentity,
     binding: IChannelBinding,
     agentProfile: IAgentProfile
@@ -962,7 +958,7 @@ export class ChannelRouteResolver {
     this.assertMutationResult(db.upsertAgentProfile(agentProfile), `Failed to mirror agent profile ${agentProfile.id}`);
     this.assertMutationResult(db.upsertChannelBinding(binding), `Failed to mirror channel binding ${binding.id}`);
 
-    const existing = db.getExternalSessionByConnectorRemote(connector.id, remoteIdentity.id);
+    const existing = db.getExternalSessionByChannelAccountRemote(connector.id, remoteIdentity.id);
     if (existing.success && existing.data) {
       const nextSession: IExternalSession = {
         ...existing.data,
@@ -979,7 +975,7 @@ export class ChannelRouteResolver {
 
     const session: IExternalSession = {
       id: `external_session_${uuid()}`,
-      connectorId: connector.id,
+      channelAccountId: connector.id,
       remoteIdentityId: remoteIdentity.id,
       bindingId: binding.id,
       agentProfileId: agentProfile.id,

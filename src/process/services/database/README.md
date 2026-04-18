@@ -10,6 +10,8 @@ ContextGo currently ships a single SQLite baseline schema.
 
 This project is still pre-release, so historical local-development migrations were intentionally removed. A fresh install should always initialize directly from `schema.ts` and then record `user_version = 1`.
 
+The IM publication baseline now treats persisted channel entries as `channel accounts`, not `connector instances`. Fresh schemas therefore use table/column names such as `channel_accounts`, `channel_account_id`, and `channel_pairing_requests`.
+
 ## Startup Flow
 
 Database initialization happens in `index.ts`:
