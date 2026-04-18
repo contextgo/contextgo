@@ -193,9 +193,7 @@ describe('SpaceVaultContextSyncService', () => {
     expect(projectContent.indexOf('## Related Sessions')).toBeLessThan(
       projectContent.indexOf('## Project Capabilities')
     );
-    expect(projectContent.indexOf('## Project Capabilities')).toBeLessThan(
-      projectContent.indexOf('## Source Docs')
-    );
+    expect(projectContent.indexOf('## Project Capabilities')).toBeLessThan(projectContent.indexOf('## Source Docs'));
     expect(projectContent.indexOf('## Source Docs')).toBeLessThan(projectContent.indexOf('## Source Graph'));
     expect(
       projectContent.indexOf(`- Project graph canvas: [[Projects/${projectDir}/Project Graph|workspace Source Graph]]`)

@@ -28,7 +28,9 @@ export function sortAvailableAgentsForUi(availableAgents: AvailableAgent[]): Ava
       agent,
       index,
       priority:
-        agent.isPreset === true ? Number.POSITIVE_INFINITY : PRODUCT_VISIBLE_RUNTIME_BACKEND_PRIORITY.get(agent.backend),
+        agent.isPreset === true
+          ? Number.POSITIVE_INFINITY
+          : PRODUCT_VISIBLE_RUNTIME_BACKEND_PRIORITY.get(agent.backend),
     }))
     .toSorted((left, right) => {
       const leftPriority = left.priority ?? Number.POSITIVE_INFINITY;

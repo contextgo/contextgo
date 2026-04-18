@@ -270,10 +270,12 @@ describe('useWorkspaceEvents - folder tag sync (#1083)', () => {
       const refreshWorkspace = vi.fn();
       const acpHandlers: Array<(data: { type: string; conversation_id?: string }) => void> = [];
 
-      mockAcpResponseStreamOn.mockImplementation((handler: (data: { type: string; conversation_id?: string }) => void) => {
-        acpHandlers.push(handler);
-        return vi.fn();
-      });
+      mockAcpResponseStreamOn.mockImplementation(
+        (handler: (data: { type: string; conversation_id?: string }) => void) => {
+          acpHandlers.push(handler);
+          return vi.fn();
+        }
+      );
 
       const { unmount } = renderHook(() =>
         useWorkspaceEvents({

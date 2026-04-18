@@ -20,6 +20,7 @@ Each package should converge on this shape:
   agent-package.json
   AGENTS.md
   docs/
+  connectors/
   workspace/
   skills/
   hooks/
@@ -43,13 +44,15 @@ outputs in `entryDocument.runtimeEntryProjections`.
 
 `skills/` carries task-specific executable workflow content.
 
+`connectors/` is optional source material for package-declared connector requirements and project-facing mount guidance.
+
 ## Installation Boundary
 
 Bundled packages install into workspace-owned `.contextgo/` state first.
 
 Runtime-native directories such as `.agents/skills` or `.claude/skills` are projections only.
 
-Do not model `hooks`, `commands`, or `schedules` as runtime-owned package state.
+Do not model `connectors`, `hooks`, `commands`, or `schedules` as runtime-owned package state.
 
 If a package declares `workspaceScaffold`, ContextGo may also seed project-root docs such as `AGENTS.md` and starter files under `docs/` when bootstrapping a new workspace.
 

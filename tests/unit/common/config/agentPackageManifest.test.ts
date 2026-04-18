@@ -17,6 +17,9 @@ import { ASSISTANT_PRESETS } from '@/common/config/presets/assistantPresets';
 import {
   BUNDLED_AGENT_PACKAGE_DESCRIPTORS,
   findBundledAgentPackageDescriptorByPackageId,
+  getBundledAgentPackageConnectorTypes,
+  getBundledAgentPackageInstallSurfaces,
+  hasBundledAgentPackageConnectorsPayload,
 } from '@/common/config/presets/bundledAgentPackageRegistry';
 
 const REPO_ROOT = path.resolve(__dirname, '../../../..');
@@ -105,6 +108,13 @@ describe('agent-package manifests', () => {
         );
       }
 
+      if (manifest.payloads.connectors) {
+        expect(manifest.payloads.connectors.connectorTypes.length).toBeGreaterThan(0);
+        expect(new Set(manifest.payloads.connectors.connectorTypes).size).toBe(
+          manifest.payloads.connectors.connectorTypes.length
+        );
+      }
+
       if (manifest.payloads.workspaceScaffold) {
         expect(manifest.payloads.workspaceScaffold.focusAreas.length).toBeGreaterThan(0);
         expect(manifest.payloads.workspaceScaffold.suggestedArtifacts.length).toBeGreaterThan(0);
@@ -184,9 +194,75 @@ describe('agent-package manifests', () => {
       'figma-implementation-handoff',
       'figma-drift-audit',
     ]);
+    expect(manifest.payloads.connectors?.connectorTypes).toEqual(['figma']);
     expect(manifest.payloads.skills?.hidePackageOwnedSkillsFromLibrary).toBe(true);
     expect(manifest.payloads.commands?.workspaceAutomationProfile).toBe('figma-closed-loop');
     expect(manifest.payloads.schedules?.workspaceAutomationProfile).toBe('figma-closed-loop');
+  });
+
+  it('parses a connectors payload as a first-class package surface', () => {
+    const manifest = parseAgentPackageManifest({
+      protocolVersion: 'agent-package.v1',
+      packageId: 'test-package',
+      assistantPresetId: 'builtin-test-package',
+      displayName: 'Test Package',
+      runtimeNeutral: true,
+      entryDocument: {
+        file: 'AGENTS.md',
+      },
+      payloads: {
+        connectors: {
+          logicalId: 'connectors',
+          sources: [{ kind: 'package-relative', root: 'docs' }],
+          installSurface: '.contextgo/connectors/',
+          runtimeProjection: 'none',
+          connectorTypes: ['figma', 'github'],
+        },
+      },
+    });
+
+    expect(manifest?.payloads.connectors).toEqual({
+      logicalId: 'connectors',
+      sources: [{ kind: 'package-relative', root: 'docs' }],
+      installSurface: '.contextgo/connectors/',
+      runtimeProjection: 'none',
+      connectorTypes: ['figma', 'github'],
+    });
+  });
+
+  it('rejects a connectors payload when connector types are missing', () => {
+    const manifest = parseAgentPackageManifest({
+      protocolVersion: 'agent-package.v1',
+      packageId: 'test-package',
+      assistantPresetId: 'builtin-test-package',
+      displayName: 'Test Package',
+      runtimeNeutral: true,
+      entryDocument: {
+        file: 'AGENTS.md',
+      },
+      payloads: {
+        connectors: {
+          logicalId: 'connectors',
+          sources: [{ kind: 'package-relative', root: 'docs' }],
+          installSurface: '.contextgo/connectors/',
+          runtimeProjection: 'none',
+          connectorTypes: [],
+        },
+      },
+    });
+
+    expect(manifest).toBeNull();
+  });
+
+  it('exposes bundled connector requirements and install surfaces through the registry', () => {
+    expect(hasBundledAgentPackageConnectorsPayload('builtin-figma-closed-loop')).toBe(true);
+    expect(getBundledAgentPackageConnectorTypes('builtin-figma-closed-loop')).toEqual(['figma']);
+    expect(getBundledAgentPackageInstallSurfaces('builtin-figma-closed-loop')).toEqual([
+      '.contextgo/skills',
+      '.contextgo/connectors/',
+      '.contextgo/commands.json',
+      '.contextgo/schedules.json',
+    ]);
   });
 
   it('ships specialized workspace scaffold templates for non-engineering builtin assistants', () => {

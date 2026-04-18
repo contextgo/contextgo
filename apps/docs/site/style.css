@@ -148,13 +148,7 @@ html[data-theme='dark'] #sidebar [data-active='true'] > a {
 
 #content-area code,
 #content-area pre {
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    Monaco,
-    Consolas,
-    monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 #content-area code {
@@ -251,8 +245,11 @@ html[data-theme='dark'] #navigation-items a.nav-anchor[href='https://contextgo.i
 }
 
 .docs-brand-callout {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--docs-surface-strong) 94%, transparent), var(--docs-page-muted));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--docs-surface-strong) 94%, transparent),
+    var(--docs-page-muted)
+  );
   border: 1px solid var(--docs-border);
   border-radius: 22px;
   box-shadow: var(--docs-shadow-soft);
@@ -276,8 +273,11 @@ html[data-theme='dark'] #navigation-items a.nav-anchor[href='https://contextgo.i
 }
 
 .docs-home-card {
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--docs-surface-strong) 92%, transparent), var(--docs-page-muted));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--docs-surface-strong) 92%, transparent),
+    var(--docs-page-muted)
+  );
   border: 1px solid var(--docs-border);
   border-radius: 22px;
   box-shadow: var(--docs-shadow-soft);

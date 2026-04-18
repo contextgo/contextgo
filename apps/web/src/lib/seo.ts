@@ -302,3 +302,21 @@ export const buildBreadcrumbJsonLd = (locale: SiteLocale, items: BreadcrumbItem[
     item: getAbsoluteSiteUrl(getLocalizedPath(locale, item.pathname)),
   })),
 });
+
+type FaqJsonLdItem = {
+  question: string;
+  answer: string;
+};
+
+export const buildFaqJsonLd = (items: FaqJsonLdItem[]) => ({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: items.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.answer,
+    },
+  })),
+});

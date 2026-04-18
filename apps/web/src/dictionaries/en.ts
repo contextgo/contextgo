@@ -167,6 +167,14 @@ export const en = {
     privacy: 'Privacy',
     terms: 'Terms',
   },
+  errors: {
+    notFound: {
+      title: 'Page not found',
+      description:
+        'The page you requested is not available. Go back to the main ContextGo site and continue from there.',
+      action: 'Back to ContextGo',
+    },
+  },
   legal: {
     contactEmail: 'support@contextgo.io',
     privacy: {

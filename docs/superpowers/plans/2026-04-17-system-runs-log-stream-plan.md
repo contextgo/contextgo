@@ -123,10 +123,7 @@ function resolveRunEventQualifier(run: IExtensionSystemRunItem): string | undefi
   return resolveArtifactKindLabel(run) ?? run.source;
 }
 
-function renderDetailGroup(
-  title: string,
-  rows: Array<{ key: string; value: string | undefined }>
-): React.ReactNode {
+function renderDetailGroup(title: string, rows: Array<{ key: string; value: string | undefined }>): React.ReactNode {
   const visibleRows = rows.filter((row) => row.value);
   if (visibleRows.length === 0) {
     return null;

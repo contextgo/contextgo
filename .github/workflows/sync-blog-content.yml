@@ -85,3 +85,7 @@ jobs:
           git add site/blog
           git commit -m "docs(release): sync blog content from ${SOURCE_REF}"
           git push origin HEAD:main
+
+      - name: Submit blog URLs to IndexNow
+        continue-on-error: true
+        run: node scripts/seo/submit-indexnow.mjs --target blog --content-root apps/web/src/content

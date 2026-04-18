@@ -20,7 +20,10 @@ import type {
 } from '@/common/config/presets/agentPackageManifest';
 import type { PresetAgentType } from '@/common/types/acpTypes';
 import { isProjectRuntimeBackend } from '@/common/types/projectRuntime';
-import { findBundledAgentPackageDescriptorByAssistantId } from '@/common/config/presets/bundledAgentPackageRegistry';
+import {
+  findBundledAgentPackageDescriptorByAssistantId,
+  getBundledAgentPackageInstallSurfaces,
+} from '@/common/config/presets/bundledAgentPackageRegistry';
 import { resolveBuiltinAssistantWorkspaceSkillNames } from '@/common/config/presets/builtinAssistantDefaults';
 import { resolveBundledAgentPackageSourceRelativeRoots } from '@/common/config/presets/bundledAgentPackageRegistry';
 import { getPlatformServices } from '@/common/platform';
@@ -373,20 +376,7 @@ async function scaffoldBuiltinAssistantWorkspaceDocs(workspace: string, presetAs
     return;
   }
 
-  const installSurfaces = new Set<string>();
-  if (descriptor.manifest.payloads.skills) {
-    installSurfaces.add(descriptor.manifest.payloads.skills.installSurface);
-  }
-  if (descriptor.manifest.payloads.commands) {
-    installSurfaces.add(descriptor.manifest.payloads.commands.installSurface);
-  }
-  if (descriptor.manifest.payloads.hooks) {
-    installSurfaces.add(descriptor.manifest.payloads.hooks.installSurface);
-    installSurfaces.add(descriptor.manifest.payloads.hooks.selectionSurface);
-  }
-  if (descriptor.manifest.payloads.schedules) {
-    installSurfaces.add(descriptor.manifest.payloads.schedules.installSurface);
-  }
+  const installSurfaces = getBundledAgentPackageInstallSurfaces(presetAssistantId);
 
   const displayName = descriptor.manifest.displayName;
   const templateTargets = resolveWorkspaceScaffoldTemplateTargetMap(scaffold);
@@ -401,7 +391,7 @@ async function scaffoldBuiltinAssistantWorkspaceDocs(workspace: string, presetAs
         displayName,
         focusAreas: scaffold.focusAreas,
         suggestedArtifacts: scaffold.suggestedArtifacts,
-        installSurfaces: [...installSurfaces],
+        installSurfaces,
       });
   const docsReadmeContent = templateTargets.has(docsReadmeTarget)
     ? await readWorkspaceScaffoldTemplate(descriptor.resourceDir, templateTargets.get(docsReadmeTarget)!)

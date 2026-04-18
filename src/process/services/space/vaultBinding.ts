@@ -14,12 +14,13 @@ import { ensureObsidianVaultBootstrap } from './obsidianVaultBootstrap';
 const SPACE_VAULTS_DIR_NAME = 'vaults';
 const DEFAULT_LANDING_NOTE_PATH = 'Home.md';
 const DEFAULT_LAUNCH_STRATEGY = process.platform === 'darwin' ? 'obsidian-app' : 'obsidian-uri';
+const INVALID_VAULT_DIRECTORY_CHARS_REGEX = /[\p{Cc}<>:"/\\|?*]/gu;
 
 const sanitizeVaultDirectorySegment = (value: string): string => {
   const sanitized = value
     .normalize('NFKC')
     .trim()
-    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ')
+    .replace(INVALID_VAULT_DIRECTORY_CHARS_REGEX, ' ')
     .replace(/\s+/g, '-')
     .replace(/^-+|-+$/g, '')
     .replace(/\.+$/g, '');

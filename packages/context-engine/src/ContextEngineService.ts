@@ -685,12 +685,20 @@ export class ContextEngineService implements IContextService {
     }
     for (const profile of overlays.mountedProfiles ?? []) {
       pushCandidate(
-        buildSection('compaction', profile.summary, 88 + Math.round(profile.confidence * 4), `compaction-${profile.id}`),
+        buildSection(
+          'compaction',
+          profile.summary,
+          88 + Math.round(profile.confidence * 4),
+          `compaction-${profile.id}`
+        ),
         'mounted_profile'
       );
     }
     for (const [index, instruction] of (overlays.pinnedInstructions ?? []).entries()) {
-      pushCandidate(buildSection('instruction', instruction, 110 - index, `instruction-${index}`), 'pinned_instruction');
+      pushCandidate(
+        buildSection('instruction', instruction, 110 - index, `instruction-${index}`),
+        'pinned_instruction'
+      );
     }
 
     for (const profile of input.retrieval.profiles) {

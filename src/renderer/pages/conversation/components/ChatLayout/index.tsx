@@ -101,14 +101,7 @@ const ChatLayout: React.FC<{
       headerTargetPresent: Boolean(desktopHeaderTarget),
       toolbarTargetPresent: Boolean(desktopToolbarTarget),
     });
-  }, [
-    conversationId,
-    desktopHeaderTarget,
-    desktopToolbarTarget,
-    isMobile,
-    titlebarPrimarySlotId,
-    toolbarSlotId,
-  ]);
+  }, [conversationId, desktopHeaderTarget, desktopToolbarTarget, isMobile, titlebarPrimarySlotId, toolbarSlotId]);
 
   // --- Hook A: workspace collapse ---
   const { rightSiderCollapsed, setRightSiderCollapsed } = useWorkspaceCollapse({

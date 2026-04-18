@@ -21,6 +21,7 @@ export type AgentPackageSourceKind = 'package-relative' | 'repo-relative' | 'wor
 
 export type AgentPackageInstallSurface =
   | 'workspace-root-docs'
+  | '.contextgo/connectors/'
   | '.contextgo/skills'
   | '.contextgo/commands.json'
   | '.contextgo/hooks/'
@@ -29,7 +30,7 @@ export type AgentPackageInstallSurface =
 
 export type AgentPackageRuntimeProjection = 'none' | 'native-skills-only';
 
-export type AgentPackagePayloadId = 'workspaceScaffold' | 'skills' | 'commands' | 'hooks' | 'schedules';
+export type AgentPackagePayloadId = 'workspaceScaffold' | 'skills' | 'connectors' | 'commands' | 'hooks' | 'schedules';
 
 export type AgentPackageSourceDescriptor = {
   kind: AgentPackageSourceKind;
@@ -78,6 +79,12 @@ export type AgentPackageSkillsPayload = AgentPackagePayloadBase & {
   hidePackageOwnedSkillsFromLibrary?: boolean;
 };
 
+export type AgentPackageConnectorsPayload = AgentPackagePayloadBase & {
+  logicalId: 'connectors';
+  installSurface: '.contextgo/connectors/';
+  connectorTypes: string[];
+};
+
 export type AgentPackageCommandsPayload = AgentPackagePayloadBase & {
   logicalId: 'commands';
   installSurface: '.contextgo/commands.json';
@@ -108,6 +115,7 @@ export type AgentPackageManifest = {
   payloads: {
     workspaceScaffold?: AgentPackageWorkspaceScaffoldPayload;
     skills?: AgentPackageSkillsPayload;
+    connectors?: AgentPackageConnectorsPayload;
     commands?: AgentPackageCommandsPayload;
     hooks?: AgentPackageHooksPayload;
     schedules?: AgentPackageSchedulesPayload;
@@ -122,6 +130,7 @@ const AGENT_PACKAGE_SOURCE_KINDS = new Set<AgentPackageSourceKind>([
 
 const AGENT_PACKAGE_INSTALL_SURFACES = new Set<AgentPackageInstallSurface>([
   'workspace-root-docs',
+  '.contextgo/connectors/',
   '.contextgo/skills',
   '.contextgo/commands.json',
   '.contextgo/hooks/',
@@ -401,6 +410,31 @@ function parseSkillsPayload(value: unknown): AgentPackageSkillsPayload | null {
   };
 }
 
+function parseConnectorsPayload(value: unknown): AgentPackageConnectorsPayload | null {
+  const base = parsePayloadBase(value, 'connectors');
+  if (
+    !base ||
+    base.installSurface !== '.contextgo/connectors/' ||
+    base.runtimeProjection !== 'none' ||
+    !isRecord(value)
+  ) {
+    return null;
+  }
+
+  const connectorTypes = parseStringArray(value.connectorTypes);
+  if (!connectorTypes || connectorTypes.length === 0) {
+    return null;
+  }
+
+  return {
+    logicalId: 'connectors',
+    sources: base.sources,
+    runtimeProjection: 'none',
+    installSurface: '.contextgo/connectors/',
+    connectorTypes,
+  };
+}
+
 function parseCommandsPayload(value: unknown): AgentPackageCommandsPayload | null {
   const base = parsePayloadBase(value, 'commands');
   if (!base || base.installSurface !== '.contextgo/commands.json' || !isRecord(value)) {
@@ -503,6 +537,7 @@ export function parseAgentPackageManifest(value: unknown): AgentPackageManifest 
   const workspaceScaffold =
     payloads.workspaceScaffold === undefined ? undefined : parseWorkspaceScaffoldPayload(payloads.workspaceScaffold);
   const skills = payloads.skills === undefined ? undefined : parseSkillsPayload(payloads.skills);
+  const connectors = payloads.connectors === undefined ? undefined : parseConnectorsPayload(payloads.connectors);
   const commands = payloads.commands === undefined ? undefined : parseCommandsPayload(payloads.commands);
   const hooks = payloads.hooks === undefined ? undefined : parseHooksPayload(payloads.hooks);
   const schedules = payloads.schedules === undefined ? undefined : parseSchedulesPayload(payloads.schedules);
@@ -512,6 +547,10 @@ export function parseAgentPackageManifest(value: unknown): AgentPackageManifest 
   }
 
   if (payloads.workspaceScaffold !== undefined && !workspaceScaffold) {
+    return null;
+  }
+
+  if (payloads.connectors !== undefined && !connectors) {
     return null;
   }
 
@@ -538,6 +577,7 @@ export function parseAgentPackageManifest(value: unknown): AgentPackageManifest 
     payloads: {
       workspaceScaffold,
       skills,
+      connectors,
       commands,
       hooks,
       schedules,

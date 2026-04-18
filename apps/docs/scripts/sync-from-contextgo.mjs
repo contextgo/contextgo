@@ -26,6 +26,7 @@ const sourceEnglishDocsRoot = path.join(docsRoot, 'i18n/en/docs');
 const navigationConfigPath = path.join(docsRoot, 'navigation.js');
 
 const preservedRootEntries = new Set([
+  '9d9d846db93d42368a98f5ab7f327c01.txt',
   'BingSiteAuth.xml',
   'brand',
   'contextgo-favicon.ico',

@@ -98,6 +98,18 @@
       ],
       "hidePackageOwnedSkillsFromLibrary": true
     },
+    "connectors": {
+      "logicalId": "connectors",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "docs"
+        }
+      ],
+      "installSurface": ".contextgo/connectors/",
+      "runtimeProjection": "none",
+      "connectorTypes": ["figma"]
+    },
     "commands": {
       "logicalId": "commands",
       "sources": [

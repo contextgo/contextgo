@@ -149,12 +149,12 @@ It is designed both for developers and for users who do not care about the inter
 
 ## ContextGo Product Matrix
 
-| Repository | Role |
-| --- | --- |
-| [`contextgo`](https://github.com/contextgo/contextgo) | Main product and brand repository covering desktop, WebUI, mobile shell, Agent Packages, Context Engine, and the core workbench |
-| [`connector`](https://github.com/contextgo/connector) | The connector and controlled-execution boundary for external products, browsers, local resources, and tool operations |
-| [`skillmarket`](https://github.com/contextgo/skillmarket) | Skill discovery, mirroring, curation, bundling, and distribution infrastructure |
-| [`contextgo-releases`](https://github.com/contextgo/contextgo-releases) | Public release and distribution endpoint for installers, manifests, updater metadata, and exported public content |
+| Repository                                                              | Role                                                                                                                            |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| [`contextgo`](https://github.com/contextgo/contextgo)                   | Main product and brand repository covering desktop, WebUI, mobile shell, Agent Packages, Context Engine, and the core workbench |
+| [`connector`](https://github.com/contextgo/connector)                   | The connector and controlled-execution boundary for external products, browsers, local resources, and tool operations           |
+| [`skillmarket`](https://github.com/contextgo/skillmarket)               | Skill discovery, mirroring, curation, bundling, and distribution infrastructure                                                 |
+| [`contextgo-releases`](https://github.com/contextgo/contextgo-releases) | Public release and distribution endpoint for installers, manifests, updater metadata, and exported public content               |
 
 ---
 

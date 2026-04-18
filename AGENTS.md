@@ -143,9 +143,11 @@ When changing built-in assistants, assistant resource bundles, workspace bootstr
 - Agent Packages are runtime-neutral capability bundles
 - every bundled package root should carry an `agent-package.json` manifest with stable payload mappings
 - `AGENTS.md` and package `docs/` define the human-facing package contract using progressive disclosure
-- `skills`, `hooks`, `commands`, and `schedules` are package capabilities, but only skills are projected into runtime-native directories
+- `skills`, `connectors`, `hooks`, `commands`, and `schedules` are package capabilities, but only skills are projected into runtime-native directories
 - workspace installation must materialize package state under `.contextgo/`
 - runtime-native directories such as `.codex/skills` or `.claude/skills` are projections only, not the source of truth
+- connector declarations identify connector **types** and package-facing usage intent; authenticated connector instances remain Space-scoped
+- project-facing connector visibility and mount metadata may live under `.contextgo/`, but secrets and authenticated link state do not
 - `hooks`, `commands`, and `schedules` are ContextGo-native automation and must not be modeled as Claude-only or runtime-only workspace structures
 - when absorbing external assistant packs, translate them into this runtime-neutral package model instead of preserving third-party workspace semantics as the product boundary
 
