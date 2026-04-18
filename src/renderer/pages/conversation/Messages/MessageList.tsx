@@ -25,6 +25,7 @@ import type { FileChangeInfo } from './codex/MessageFileChanges';
 import MessageFileChanges, { parseDiff } from './codex/MessageFileChanges';
 import { useMessageList } from './hooks';
 import MessageAgentStatus from './components/MessageAgentStatus';
+import MessageCommandEvent from './components/MessageCommandEvent';
 import MessagePlan from './components/MessagePlan';
 import MessageScheduleEvent from './schedule/MessageScheduleEvent';
 import MessageTips from './components/MessageTips';
@@ -128,6 +129,8 @@ const MessageItem: React.FC<{ message: TMessage; highlighted?: boolean }> = Reac
         return <MessagePlan message={message}></MessagePlan>;
       case 'schedule_event':
         return <MessageScheduleEvent message={message}></MessageScheduleEvent>;
+      case 'command_event':
+        return <MessageCommandEvent message={message}></MessageCommandEvent>;
       case 'available_commands':
         return null;
       default:

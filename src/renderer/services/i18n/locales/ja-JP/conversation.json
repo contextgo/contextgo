@@ -368,6 +368,26 @@
       "projectCommandsDescription": "これらのコマンドは現在のワークスペースの `.contextgo/commands.json` に保存され、同じ名前の Space Commands を上書きします。",
       "projectCommandsUsageHint": "ワークスペース固有の上書きやプライベートなスラッシュテンプレートには project-local commands を使います。",
       "projectCommandsPathHint": "保存先: {{path}}",
+      "commandEvent": {
+        "createTitle": "Command Created",
+        "createDescription": "A command template was added through the assistant workflow.",
+        "updateTitle": "Command Updated",
+        "updateDescription": "An existing command template was updated through the assistant workflow.",
+        "deleteTitle": "Command Deleted",
+        "deleteDescription": "A command template was removed through the assistant workflow.",
+        "listTitle": "Commands Listed",
+        "listDescription": "count:{{count}};scope:{{scope}}",
+        "errorTitle": "Command Action Failed",
+        "errorDescription": "The assistant command action could not be applied.",
+        "scope": {
+          "project": "Project",
+          "space": "Space"
+        },
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "templateLabel": "Template",
+        "empty": "No commands are available for this scope."
+      },
       "commandsTitle": "Project Commands",
       "commandsDescription": "ここで編集した project commands はこのプロジェクトの `.contextgo/commands.json` に保存され、このワークスペースの command menu の唯一の基準になります。",
       "commandsUsageHint": "commands.json がまだ存在しない場合、この会話で現在有効な project commands を初期内容として読み込みます。",

@@ -14,6 +14,8 @@ import {
   executeAssistantScheduleCommands,
   stripAssistantControlCommands,
 } from '@process/services/context/events/schedule/AssistantScheduleCommandService';
+import { executeAssistantCommandCommands } from '@process/services/context/events/AssistantCommandCommandService';
+import { emitCommandEventMessage } from '@process/services/context/events/command/CommandEventMessageEmitter';
 import { emitScheduleEventMessage } from '@process/services/context/events/schedule/ScheduleEventMessageEmitter';
 import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
 import { executeAssistantSkillMarketCommands } from '@process/services/context/events/AssistantSkillMarketCommandService';
@@ -129,6 +131,22 @@ export class CodexMessageProcessor {
       agentType: 'codex',
     });
 
+    const commandCommandResult = await executeAssistantCommandCommands({
+      content: msg.message,
+      conversationId: this.conversation_id,
+    });
+
+    commandCommandResult.events.forEach((event) => {
+      emitCommandEventMessage({
+        conversationId: this.conversation_id,
+        msgId: uuid(),
+        event,
+        emit: (message) => {
+          this.messageEmitter.emitAndPersistMessage(message, false);
+        },
+      });
+    });
+
     scheduleCommandResult.events.forEach((event) => {
       emitScheduleEventMessage({
         conversationId: this.conversation_id,
@@ -166,7 +184,11 @@ export class CodexMessageProcessor {
       content: msg.message,
     });
 
-    const systemResponses = [...scheduleCommandResult.systemResponses, ...skillMarketCommandResult.systemResponses];
+    const systemResponses = [
+      ...commandCommandResult.systemResponses,
+      ...scheduleCommandResult.systemResponses,
+      ...skillMarketCommandResult.systemResponses,
+    ];
 
     if (systemResponses.length > 0) {
       await this.messageEmitter.sendMessageToAgent?.(`[System Response]\n${systemResponses.join('\n')}`);

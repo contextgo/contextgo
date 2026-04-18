@@ -25,6 +25,8 @@ import {
   executeAssistantScheduleCommands,
   stripAssistantControlCommands,
 } from '@process/services/context/events/schedule/AssistantScheduleCommandService';
+import { executeAssistantCommandCommands } from '@process/services/context/events/AssistantCommandCommandService';
+import { emitCommandEventMessage } from '@process/services/context/events/command/CommandEventMessageEmitter';
 import { emitScheduleEventMessage } from '@process/services/context/events/schedule/ScheduleEventMessageEmitter';
 import { scheduleConversationGuard } from '@process/services/context/events/schedule/ScheduleConversationGuard';
 import { executeAssistantSkillMarketCommands } from '@process/services/context/events/AssistantSkillMarketCommandService';
@@ -684,6 +686,28 @@ export class GeminiAgentManager extends BaseAgentManager<
           conversationId: this.conversation_id,
           agentType: 'gemini',
         });
+
+        const commandCommandResult = await executeAssistantCommandCommands({
+          content: textContent,
+          conversationId: this.conversation_id,
+          workspacePath: this.workspace,
+        });
+
+        commandCommandResult.events.forEach((event) => {
+          emitCommandEventMessage({
+            conversationId: this.conversation_id,
+            msgId: uuid(),
+            event,
+            emit: (message) => {
+              ipcBridge.geminiConversation.responseStream.emit(message);
+              channelEventBus.emitAgentMessage(this.conversation_id, message);
+            },
+          });
+        });
+
+        if (commandCommandResult.hasCommands) {
+          collectedResponses.push(...commandCommandResult.systemResponses);
+        }
 
         scheduleCommandResult.events.forEach((event) => {
           emitScheduleEventMessage({
