@@ -993,6 +993,108 @@ const buildHomeFrontmatter = (space: TSpace, updatedAt: string): string => {
   );
 };
 
+const buildSessionCheckpointFrontmatter = (
+  conversation: TChatConversation,
+  project: ProjectContext | undefined,
+  updatedAt: string,
+  title: string,
+  kind: string
+): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'session-checkpoint',
+        title,
+        conversationId: conversation.id,
+        spaceId: conversation.extra?.spaceId,
+        projectSlug: project?.slug,
+        workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
+        checkpointKind: kind,
+        updatedAt,
+      },
+      { namespace: 'session', projection: 'semantic-context' }
+    )
+  );
+};
+
+const buildContextRunFrontmatter = (input: ContextRunWriteInput): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'context-run',
+        title: input.title,
+        spaceId: input.spaceId,
+        runId: input.runId,
+        type: 'context-run',
+        updatedAt: input.timestamp,
+      },
+      { namespace: 'space', projection: 'semantic-context' }
+    )
+  );
+};
+
+const buildSpaceMemoryDistillationFrontmatter = (spaceId: string, updatedAt: string): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'space-memory-distillation',
+        title: 'Space Memory Distillation',
+        spaceId,
+        updatedAt,
+      },
+      { namespace: 'space', projection: 'semantic-context' }
+    )
+  );
+};
+
+const buildProfileMemoryFrontmatter = (spaceId: string, updatedAt: string): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'profile-memory',
+        title: 'Profile Memory',
+        spaceId,
+        updatedAt,
+      },
+      { namespace: 'space', projection: 'semantic-context' }
+    )
+  );
+};
+
+const buildConnectorDigestFrontmatter = (spaceId: string, updatedAt: string): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'connector-digest',
+        title: 'Connector Digest',
+        spaceId,
+        updatedAt,
+      },
+      { namespace: 'space', projection: 'semantic-context' }
+    )
+  );
+};
+
+const buildProjectCuratorProposalFrontmatter = (
+  project: ProjectBinding,
+  input: ProjectCuratorProposalWriteInput
+): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'project-curator-proposal',
+        title: input.title,
+        projectSlug: project.slug,
+        workspace: project.workspacePath,
+        proposalKind: input.proposalKind,
+        targetPath: input.targetPath,
+        updatedAt: input.timestamp,
+      },
+      { namespace: 'project', projection: 'semantic-context' }
+    )
+  );
+};
+
 const buildSourceDocument = async (
   spaceName: string,
   project: ProjectContext,
@@ -2530,9 +2632,16 @@ export class SpaceVaultContextSyncService {
       checkpointTitle: input.checkpointTitle,
     };
     const shouldRenderProvenance = input.kind === 'session-compaction' || hasCompactionProvenance(provenance);
+    const frontmatterBlock = buildSessionCheckpointFrontmatter(
+      input.conversation,
+      target.project,
+      input.timestamp,
+      input.title,
+      input.kind
+    );
     const contentLines = [
+      frontmatterBlock,
       GENERATED_MARKER,
-      '',
       `# ${input.title}`,
       '',
       `- Kind: \`${input.kind}\``,
@@ -2597,14 +2706,8 @@ export class SpaceVaultContextSyncService {
     const relativePath = getContextRunRelativePath(input.runId);
     const absolutePath = path.join(providerRef.vaultPath, relativePath);
     const content = [
+      buildContextRunFrontmatter(input),
       GENERATED_MARKER,
-      '',
-      frontmatter({
-        title: input.title,
-        updatedAt: input.timestamp,
-        type: 'context-run',
-        runId: input.runId,
-      }),
       `# ${input.title}`,
       '',
       `- Updated at: ${input.timestamp}`,
@@ -2653,7 +2756,10 @@ export class SpaceVaultContextSyncService {
       body: input.detail,
     });
     const next = `${existing.trimEnd()}\n\n${entry.trim()}\n`;
-    await ensureFile(absolutePath, next);
+    await ensureFile(
+      absolutePath,
+      replaceFrontmatter(next, buildSpaceMemoryDistillationFrontmatter(input.spaceId, input.timestamp))
+    );
 
     return {
       title,
@@ -2688,7 +2794,10 @@ export class SpaceVaultContextSyncService {
       bullets: input.bullets,
       detail: input.detail,
     });
-    await ensureFile(absolutePath, body);
+    await ensureFile(
+      absolutePath,
+      replaceFrontmatter(body, buildProfileMemoryFrontmatter(input.spaceId, input.timestamp))
+    );
 
     return {
       title,
@@ -2725,7 +2834,10 @@ export class SpaceVaultContextSyncService {
       detail: input.detail,
     });
     const next = `${existing.trimEnd()}\n\n${entry.trim()}\n`;
-    await ensureFile(absolutePath, next);
+    await ensureFile(
+      absolutePath,
+      replaceFrontmatter(next, buildConnectorDigestFrontmatter(input.spaceId, input.timestamp))
+    );
 
     return {
       title,
@@ -2805,7 +2917,7 @@ export class SpaceVaultContextSyncService {
       evidence: input.evidence,
       additions: input.additions,
     });
-    await ensureFile(absolutePath, body);
+    await ensureFile(absolutePath, replaceFrontmatter(body, buildProjectCuratorProposalFrontmatter(project, input)));
 
     return {
       title: input.title,
