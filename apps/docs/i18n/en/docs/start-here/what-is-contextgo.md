@@ -8,28 +8,21 @@ description: ContextGo is a desktop-first, local-first AI Native Workbench rathe
 
 ContextGo is not just another AI chat client, and it is not only a phone remote for one coding runtime.
 
-A better definition is:
+The most stable public definition today is:
 
-> A desktop-first, local-first, multi-runtime, multi-agent, multi-surface AI Native Workbench.
+> A desktop-first, local-first, multi-runtime Agent Workbench.
 
-## What makes it different
+More broadly, it is a work system that is expanding around durable context, remote access, and publication.
 
-Most AI tools emphasize:
+## What it is not
 
-- one chat surface
-- one model or one agent
-- one-shot answers or one-shot execution
+To avoid confusion, start with three "not this" boundaries:
 
-ContextGo emphasizes:
+- it is **not** only one chat surface
+- it is **not** only a wrapper around one runtime
+- it is **not** a mobile-first product where the phone replaces the host
 
-- the workbench
-- long-running context
-- multiple runtimes
-- automation
-- publication into channels
-- remote access across devices
-
-## What problem it really solves
+## What problem it actually solves
 
 Real work does not live in one text box. It is spread across:
 
@@ -41,4 +34,56 @@ Real work does not live in one text box. It is spread across:
 - external systems
 - different devices
 
-ContextGo is built to turn all of that into one working system.
+When those pieces stay disconnected, even a strong agent feels temporary.
+
+ContextGo is built to turn them into one working system.
+
+## How it differs from a generic AI tool
+
+Most AI tools emphasize:
+
+- one chat surface
+- one model or one agent
+- one-shot answers
+- one-shot execution
+
+ContextGo emphasizes:
+
+- the workbench
+- long-running context
+- multiple runtimes
+- automation
+- remote use across devices
+- publication into real channels
+
+## Stable product model today
+
+The most reliable current interpretation is:
+
+1. the desktop host is the execution authority
+2. web and mobile are remote interaction surfaces
+3. runtimes are execution backends, not the product itself
+4. publication comes after a local workflow is already working
+
+## Who it fits best
+
+ContextGo fits best when you:
+
+- want to organize local work, docs, pages, runtimes, and outputs into one long-running system
+- already use coding or general-purpose agents but want them inside a real workflow, not as isolated conversations
+
+## What should not be over-promised yet
+
+Public docs should mention, but not overstate:
+
+- a fully mature space-first information architecture
+- full multi-user collaboration semantics
+- identical capability parity across all platforms
+- complete capability parity across all runtimes
+
+## Next
+
+- For the safest first setup path: [Quick Start](/start-here/quick-start)
+- For choosing a starting model: [Choose Your Setup](/start-here/choose-your-setup)
+- For workflow entry points: [Use Cases](/use-cases)
+- For the overall product surface map: [Product Map](/start-here/product-map)
