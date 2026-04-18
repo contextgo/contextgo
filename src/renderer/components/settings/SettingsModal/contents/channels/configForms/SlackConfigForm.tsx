@@ -54,7 +54,9 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
       if (result.success && result.data) {
         setPendingPairings(
           result.data.filter(
-            (item) => item.platformType === 'slack' && (!item.connectorId || item.connectorId === channelAccountId)
+            (item) =>
+              item.platformType === 'slack' &&
+              (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -72,7 +74,9 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
       if (result.success && result.data) {
         setAuthorizedTargets(
           result.data.filter(
-            (item) => item.platformType === 'slack' && (!item.connectorId || item.connectorId === channelAccountId)
+            (item) =>
+              item.platformType === 'slack' &&
+              (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -97,7 +101,11 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
 
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
-      if (request.platformType !== 'slack' || (request.connectorId && request.connectorId !== channelAccountId)) return;
+      if (
+        request.platformType !== 'slack' ||
+        (request.channelAccountId && request.channelAccountId !== channelAccountId)
+      )
+        return;
       setPendingPairings((prev) => {
         const exists = prev.some((item) => item.code === request.code);
         if (exists) return prev;
@@ -109,7 +117,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
 
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'slack' || (user.connectorId && user.connectorId !== channelAccountId)) {
+      if (user.platformType !== 'slack' || (user.channelAccountId && user.channelAccountId !== channelAccountId)) {
         return;
       }
       void loadAuthorizedTargets();

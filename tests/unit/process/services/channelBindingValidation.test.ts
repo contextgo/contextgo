@@ -12,7 +12,7 @@ import { withChannelBindingTarget } from '../../../../src/process/channels/types
 
 type StoredBindingRow = {
   id: string;
-  connector_id: string;
+  channel_account_id: string;
   scope_type: string;
   scope_key: string | null;
   agent_profile_id: string;
@@ -59,7 +59,7 @@ function createDatabaseForBindingTests(): ContextGoUIDatabase {
             ] = args;
             bindingRows.set(String(id), {
               id: String(id),
-              connector_id: String(connectorId),
+              channel_account_id: String(connectorId),
               scope_type: String(scopeType),
               scope_key: scopeKey === null ? null : String(scopeKey),
               agent_profile_id: String(agentProfileId),
@@ -85,13 +85,15 @@ function createDatabaseForBindingTests(): ContextGoUIDatabase {
       }
 
       if (
-        sql.includes('SELECT * FROM channel_bindings WHERE connector_id = ? ORDER BY priority DESC, created_at ASC')
+        sql.includes(
+          'SELECT * FROM channel_bindings WHERE channel_account_id = ? ORDER BY priority DESC, created_at ASC'
+        )
       ) {
         return {
           get: () => undefined,
           all: (connectorId?: unknown) =>
             Array.from(bindingRows.values())
-              .filter((row) => row.connector_id === String(connectorId))
+              .filter((row) => row.channel_account_id === String(connectorId))
               .sort((left, right) => right.priority - left.priority || left.created_at - right.created_at),
           run: () => ({ changes: 0, lastInsertRowid: 0 }),
         };
@@ -117,11 +119,11 @@ describe('ContextGoUIDatabase channel binding validation', () => {
     database = createDatabaseForBindingTests();
   });
 
-  it('rejects connector_default bindings with a scope key', () => {
+  it('rejects channel_account_default bindings with a scope key', () => {
     const result = database.upsertChannelBinding({
       id: 'binding-invalid-default',
-      connectorId: 'connector-test',
-      scopeType: 'connector_default',
+      channelAccountId: 'channel-account-test',
+      scopeType: 'channel_account_default',
       scopeKey: 'user-1',
       agentProfileId: 'agent-profile-test',
       priority: 0,
@@ -132,13 +134,13 @@ describe('ContextGoUIDatabase channel binding validation', () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('connector_default bindings cannot define scopeKey');
+    expect(result.error).toContain('channel_account_default bindings cannot define scopeKey');
   });
 
   it('rejects remote_user bindings for group-scoped keys', () => {
     const result = database.upsertChannelBinding({
       id: 'binding-invalid-group-user',
-      connectorId: 'connector-test',
+      channelAccountId: 'channel-account-test',
       scopeType: 'remote_user',
       scopeKey: 'group:team-alpha',
       agentProfileId: 'agent-profile-test',
@@ -157,8 +159,8 @@ describe('ContextGoUIDatabase channel binding validation', () => {
     const invalidBinding = withChannelBindingTarget(
       {
         id: 'binding-invalid-target-scope',
-        connectorId: 'connector-test',
-        scopeType: 'connector_default',
+        channelAccountId: 'channel-account-test',
+        scopeType: 'channel_account_default',
         agentProfileId: 'agent-profile-test',
         priority: 10,
         enabled: true,
@@ -182,7 +184,7 @@ describe('ContextGoUIDatabase channel binding validation', () => {
   it('accepts direct-user bindings and chat bindings with valid scope keys', () => {
     const directUserBinding: IChannelBinding = {
       id: 'binding-remote-user',
-      connectorId: 'connector-test',
+      channelAccountId: 'channel-account-test',
       scopeType: 'remote_user',
       scopeKey: 'user-42',
       agentProfileId: 'agent-profile-test',
@@ -195,7 +197,7 @@ describe('ContextGoUIDatabase channel binding validation', () => {
 
     const remoteChatBinding: IChannelBinding = {
       id: 'binding-remote-chat',
-      connectorId: 'connector-test',
+      channelAccountId: 'channel-account-test',
       scopeType: 'remote_chat',
       scopeKey: 'group:team-alpha',
       agentProfileId: 'agent-profile-test',
@@ -228,7 +230,7 @@ describe('ContextGoUIDatabase channel binding validation', () => {
   it('requires temporary_override bindings to stay marked as temporary', () => {
     const result = database.upsertChannelBinding({
       id: 'binding-invalid-temporary-override',
-      connectorId: 'connector-test',
+      channelAccountId: 'channel-account-test',
       scopeType: 'temporary_override',
       scopeKey: 'group:team-alpha',
       agentProfileId: 'agent-profile-test',
@@ -246,7 +248,7 @@ describe('ContextGoUIDatabase channel binding validation', () => {
   it('accepts temporary_override bindings with a valid scope key', () => {
     const temporaryOverrideBinding: IChannelBinding = {
       id: 'binding-temporary-override',
-      connectorId: 'connector-test',
+      channelAccountId: 'channel-account-test',
       scopeType: 'temporary_override',
       scopeKey: 'group:team-alpha',
       agentProfileId: 'agent-profile-test',
@@ -271,7 +273,7 @@ describe('ContextGoUIDatabase channel binding validation', () => {
   it('normalizes durable bindings to persist first-class publish object metadata', () => {
     const result = database.upsertChannelBinding({
       id: 'binding-publish-object',
-      connectorId: 'connector-test',
+      channelAccountId: 'channel-account-test',
       scopeType: 'remote_chat',
       scopeKey: 'oc_group_1:thread:om_topic_root_1',
       agentProfileId: 'agent-profile-test',
@@ -306,7 +308,7 @@ describe('ContextGoUIDatabase channel binding validation', () => {
   it('reuses the existing durable binding when the same agent republishes the same publish object', () => {
     const firstResult = database.upsertChannelBinding({
       id: 'binding-1',
-      connectorId: 'connector-test',
+      channelAccountId: 'channel-account-test',
       scopeType: 'remote_chat',
       scopeKey: 'oc_group_1:thread:om_topic_root_1',
       agentProfileId: 'agent-profile-test',
@@ -328,7 +330,7 @@ describe('ContextGoUIDatabase channel binding validation', () => {
 
     const secondResult = database.upsertChannelBinding({
       id: 'binding-2',
-      connectorId: 'connector-test',
+      channelAccountId: 'channel-account-test',
       scopeType: 'remote_chat',
       scopeKey: 'legacy-scope',
       agentProfileId: 'agent-profile-test',
@@ -367,7 +369,7 @@ describe('ContextGoUIDatabase channel binding validation', () => {
   it('rejects another agent claiming the same publish object on the same channel account', () => {
     database.upsertChannelBinding({
       id: 'binding-1',
-      connectorId: 'connector-test',
+      channelAccountId: 'channel-account-test',
       scopeType: 'remote_chat',
       scopeKey: 'oc_group_1:thread:om_topic_root_1',
       agentProfileId: 'agent-profile-1',
@@ -389,7 +391,7 @@ describe('ContextGoUIDatabase channel binding validation', () => {
 
     const result = database.upsertChannelBinding({
       id: 'binding-2',
-      connectorId: 'connector-test',
+      channelAccountId: 'channel-account-test',
       scopeType: 'remote_chat',
       scopeKey: 'other-scope',
       agentProfileId: 'agent-profile-2',

@@ -250,7 +250,7 @@ export const handleAgentSelect: ActionHandler = async (context, params) => {
 
   await sessionManager.storeSession(route.session);
   context.channelUser = route.channelUser;
-  context.connector = route.connector;
+  context.channelAccount = route.channelAccount;
   context.remoteIdentity = route.remoteIdentity;
   context.channelBinding = route.binding;
   context.agentProfile = route.agentProfile;
@@ -340,7 +340,7 @@ export const handleSessionNew: ActionHandler = async (context) => {
     await sessionManager.storeSession(route.session);
     conversationId = route.conversation.id;
     context.channelUser = route.channelUser;
-    context.connector = route.connector;
+    context.channelAccount = route.channelAccount;
     context.remoteIdentity = route.remoteIdentity;
     context.channelBinding = route.binding;
     context.agentProfile = route.agentProfile;

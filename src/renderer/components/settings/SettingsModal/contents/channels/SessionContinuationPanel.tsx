@@ -136,7 +136,7 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
   }, [loadData]);
 
   const targetAudiences = useMemo(
-    () => catalog.audiences.filter((audience) => audience.connectorId === selectedConnectorId),
+    () => catalog.audiences.filter((audience) => audience.channelAccountId === selectedConnectorId),
     [catalog.audiences, selectedConnectorId]
   );
 
@@ -166,8 +166,8 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
     options.push(
       ...sessions.map((session) => ({
         value: `session:${session.id}`,
-        label: session.connectorName
-          ? `${session.connectorName} · ${session.audienceTitle}`
+        label: session.channelAccountName
+          ? `${session.channelAccountName} · ${session.audienceTitle}`
           : `${session.audienceTitle} · ${session.conversationId || session.id}`,
       }))
     );
@@ -229,7 +229,7 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
     setSubmitting(true);
     try {
       const params = {
-        targetConnectorId: selectedConnectorId,
+        targetChannelAccountId: selectedConnectorId,
         targetChatId: selectedAudience.remoteChatId || selectedAudience.key,
         targetPlatformChatId: selectedAudience.platformChatId,
         targetPlatformUserId: selectedAudience.remoteUserId,
@@ -372,7 +372,9 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
                     {t('settings.activeSessions.currentHandoffDescription', {
                       audience: matchedContinuationSession.audienceTitle,
                       connector:
-                        matchedContinuationSession.connectorName || matchedContinuationSession.connectorPlatform || '-',
+                        matchedContinuationSession.channelAccountName ||
+                        matchedContinuationSession.channelAccountPlatform ||
+                        '-',
                     })}
                   </div>
                   {matchedContinuationSession.ownerKey ? (
@@ -463,14 +465,14 @@ const SessionContinuationPanel: React.FC<{ embedded?: boolean }> = ({ embedded =
                               : t('settings.activeSessions.activeTag')}
                           </Tag>
                           <Tag>{session.agentType}</Tag>
-                          {session.connectorPlatform ? <Tag>{session.connectorPlatform}</Tag> : null}
+                          {session.channelAccountPlatform ? <Tag>{session.channelAccountPlatform}</Tag> : null}
                           {session.bindingTemporary ? (
                             <Tag color='orangered'>{t('settings.activeSessions.handoffTag')}</Tag>
                           ) : null}
                         </div>
                         <div className='text-13px text-t-primary break-all'>
-                          {session.connectorName
-                            ? `${session.connectorName} · ${session.audienceTitle}`
+                          {session.channelAccountName
+                            ? `${session.channelAccountName} · ${session.audienceTitle}`
                             : session.audienceTitle}
                         </div>
                         <div className='text-12px text-t-secondary break-all'>

@@ -22,13 +22,13 @@ const {
   mockListAllConversations: vi.fn(),
   mockReadCatalogForConversations: vi.fn(),
   mockDb: {
-    getConnectorInstances: vi.fn(),
+    getChannelAccounts: vi.fn(),
     getPendingPairingRequests: vi.fn(),
     createPairingRequest: vi.fn(),
     getPairingRequestByCode: vi.fn(),
     updatePairingRequestStatus: vi.fn(),
-    getRemoteIdentityByConnectorChat: vi.fn(),
-    getRemoteIdentityByConnectorPlatformChat: vi.fn(),
+    getRemoteIdentityByChannelAccountChat: vi.fn(),
+    getRemoteIdentityByChannelAccountPlatformChat: vi.fn(),
     getLegacyChannelUserByPlatform: vi.fn(),
     getChannelUsers: vi.fn(),
     upsertRemoteIdentity: vi.fn(),
@@ -88,7 +88,7 @@ describe('PairingService', () => {
             : undefined
     );
 
-    mockDb.getConnectorInstances.mockReturnValue({
+    mockDb.getChannelAccounts.mockReturnValue({
       success: true,
       data: [{ id: 'connector-b', platform: 'telegram' }],
     });
@@ -96,8 +96,8 @@ describe('PairingService', () => {
     mockDb.createPairingRequest.mockReturnValue({ success: true });
     mockDb.getPairingRequestByCode.mockReturnValue({ success: true, data: null });
     mockDb.updatePairingRequestStatus.mockReturnValue({ success: true, data: true });
-    mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: null });
-    mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({ success: true, data: null });
+    mockDb.getRemoteIdentityByChannelAccountChat.mockReturnValue({ success: true, data: null });
+    mockDb.getRemoteIdentityByChannelAccountPlatformChat.mockReturnValue({ success: true, data: null });
     mockDb.getLegacyChannelUserByPlatform.mockReturnValue({ success: true, data: null });
     mockDb.getChannelUsers.mockReturnValue({ success: true, data: [] });
     mockListAllConversations.mockResolvedValue([]);
@@ -140,7 +140,7 @@ describe('PairingService', () => {
       data: [
         {
           code: '111111',
-          connectorId: 'connector-a',
+          channelAccountId: 'connector-a',
           platformUserId: 'user-1',
           platformType: 'telegram',
           remoteChatId: 'chat-1',
@@ -150,7 +150,7 @@ describe('PairingService', () => {
         },
         {
           code: '222222',
-          connectorId: 'connector-b',
+          channelAccountId: 'connector-b',
           platformUserId: 'user-1',
           platformType: 'telegram',
           remoteChatId: 'chat-1',
@@ -174,7 +174,7 @@ describe('PairingService', () => {
       data: [
         {
           code: '111111',
-          connectorId: 'connector-a',
+          channelAccountId: 'connector-a',
           platformUserId: 'user-1',
           platformType: 'telegram',
           remoteChatId: 'chat-1',
@@ -184,7 +184,7 @@ describe('PairingService', () => {
         },
         {
           code: '222222',
-          connectorId: 'connector-b',
+          channelAccountId: 'connector-b',
           platformUserId: 'user-1',
           platformType: 'telegram',
           remoteChatId: 'chat-1',
@@ -202,7 +202,7 @@ describe('PairingService', () => {
 
   it('requires an approved remote identity for direct chats', async () => {
     const service = createService();
-    mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: null });
+    mockDb.getRemoteIdentityByChannelAccountChat.mockReturnValue({ success: true, data: null });
     mockDb.getChannelUsers.mockReturnValue({
       success: true,
       data: [
@@ -239,7 +239,7 @@ describe('PairingService', () => {
 
   it('does not accept legacy direct-chat authorization when multiple connectors share the platform', async () => {
     const service = createService();
-    mockDb.getConnectorInstances.mockReturnValue({
+    mockDb.getChannelAccounts.mockReturnValue({
       success: true,
       data: [
         { id: 'connector-a', platform: 'telegram' },
@@ -263,11 +263,11 @@ describe('PairingService', () => {
 
   it('accepts authorization through parent platform chat for thread peers', async () => {
     const service = createService();
-    mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({
+    mockDb.getRemoteIdentityByChannelAccountPlatformChat.mockReturnValue({
       success: true,
       data: {
         id: 'remote-parent-1',
-        connectorId: 'connector-b',
+        channelAccountId: 'connector-b',
         remoteUserId: 'user-1',
         remoteChatId: 'discord://guild/guild-1/channel/channel-parent-1',
         platformChatId: 'channel-parent-1',
@@ -285,7 +285,7 @@ describe('PairingService', () => {
     );
 
     expect(authorized).toBe(true);
-    expect(mockDb.getRemoteIdentityByConnectorPlatformChat).toHaveBeenCalledWith('connector-b', 'channel-parent-1');
+    expect(mockDb.getRemoteIdentityByChannelAccountPlatformChat).toHaveBeenCalledWith('connector-b', 'channel-parent-1');
   });
 
   it('treats a published topic audience as authorized even before pairing identity exists', async () => {
@@ -297,7 +297,6 @@ describe('PairingService', () => {
       bindings: [
         {
           id: 'binding-topic',
-          connectorId: 'connector-b',
           channelAccountId: 'connector-b',
           scopeType: 'remote_chat',
           scopeKey: 'oc_topic_1:thread:om_topic_root_1',
@@ -334,7 +333,6 @@ describe('PairingService', () => {
       bindings: [
         {
           id: 'binding-group',
-          connectorId: 'connector-b',
           channelAccountId: 'connector-b',
           scopeType: 'remote_chat',
           scopeKey: 'oc_group_1',
@@ -379,7 +377,7 @@ describe('PairingService', () => {
     expect(result.success).toBe(true);
     expect(mockDb.upsertRemoteIdentity).toHaveBeenCalledWith(
       expect.objectContaining({
-        connectorId: 'connector-b',
+        channelAccountId: 'connector-b',
         remoteChatId: 'wx-user-1',
         remoteUserId: 'wx-user-1',
         metadata: expect.objectContaining({ source: 'weixin-qr-login' }),
@@ -395,7 +393,7 @@ describe('PairingService', () => {
       success: true,
       data: {
         code: '654321',
-        connectorId: 'connector-b',
+        channelAccountId: 'connector-b',
         platformUserId: 'user-1',
         platformType: 'telegram',
         remoteChatId: 'chat-1',

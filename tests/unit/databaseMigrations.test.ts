@@ -105,9 +105,10 @@ describe('database migrations', () => {
       'assistant_plugins',
       'assistant_sessions',
       'assistant_users',
+      'channel_accounts',
       'channel_bindings',
       'channel_control_leases',
-      'connector_instances',
+      'channel_pairing_requests',
       'context_chunks',
       'context_documents',
       'context_memories',
@@ -120,7 +121,6 @@ describe('database migrations', () => {
       'cron_jobs',
       'external_sessions',
       'messages',
-      'pairing_requests_v2',
       'remote_identities',
       'runs',
       'spaces',
@@ -131,6 +131,22 @@ describe('database migrations', () => {
     const controlLeaseColumns = driver.pragma('table_info(channel_control_leases)') as Array<{ name: string }>;
     expect(controlLeaseColumns.map(({ name }) => name)).toContain('continuation_mode');
     expect(controlLeaseColumns.map(({ name }) => name)).not.toContain('handoff_mode');
+
+    const remoteIdentityColumns = driver.pragma('table_info(remote_identities)') as Array<{ name: string }>;
+    expect(remoteIdentityColumns.map(({ name }) => name)).toContain('channel_account_id');
+    expect(remoteIdentityColumns.map(({ name }) => name)).not.toContain('connector_id');
+
+    const bindingColumns = driver.pragma('table_info(channel_bindings)') as Array<{ name: string }>;
+    expect(bindingColumns.map(({ name }) => name)).toContain('channel_account_id');
+    expect(bindingColumns.map(({ name }) => name)).not.toContain('connector_id');
+
+    const externalSessionColumns = driver.pragma('table_info(external_sessions)') as Array<{ name: string }>;
+    expect(externalSessionColumns.map(({ name }) => name)).toContain('channel_account_id');
+    expect(externalSessionColumns.map(({ name }) => name)).not.toContain('connector_id');
+
+    const pairingRequestColumns = driver.pragma('table_info(channel_pairing_requests)') as Array<{ name: string }>;
+    expect(pairingRequestColumns.map(({ name }) => name)).toContain('channel_account_id');
+    expect(pairingRequestColumns.map(({ name }) => name)).not.toContain('connector_id');
   });
 
   it('tracks the public baseline version via user_version', () => {

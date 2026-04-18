@@ -6,13 +6,13 @@
 
 import type {
   IAgentProfile,
+  IChannelAccount,
   IChannelBinding,
   IChannelPluginConfig,
   IChannelPairingRequest,
   IChannelAuthorizedTarget,
   IChannelUser,
   IChannelSession,
-  IConnectorInstance,
   IRemoteIdentity,
 } from '@process/channels/types';
 import { getDatabase } from '@process/services/database';
@@ -73,28 +73,28 @@ export class SqliteChannelRepository implements IChannelRepository {
     return result.data;
   }
 
-  async getConnectorInstances(): Promise<IConnectorInstance[]> {
+  async getChannelAccounts(): Promise<IChannelAccount[]> {
     const db = await getDatabase();
-    const result = db.getConnectorInstances();
+    const result = db.getChannelAccounts();
     if (!result.success || !result.data) {
-      throw new Error(result.error ?? 'Failed to get connector instances');
+      throw new Error(result.error ?? 'Failed to get channel accounts');
     }
     return result.data;
   }
 
-  async upsertConnectorInstance(connector: IConnectorInstance): Promise<void> {
+  async upsertChannelAccount(channelAccount: IChannelAccount): Promise<void> {
     const db = await getDatabase();
-    const result = db.upsertConnectorInstance(connector);
+    const result = db.upsertChannelAccount(channelAccount);
     if (!result.success) {
-      throw new Error(result.error ?? `Failed to upsert connector instance ${connector.id}`);
+      throw new Error(result.error ?? `Failed to upsert channel account ${channelAccount.id}`);
     }
   }
 
-  async deleteConnectorInstance(connectorId: string): Promise<void> {
+  async deleteChannelAccount(channelAccountId: string): Promise<void> {
     const db = await getDatabase();
-    const result = db.deleteConnectorInstance(connectorId);
+    const result = db.deleteChannelAccount(channelAccountId);
     if (!result.success) {
-      throw new Error(result.error ?? `Failed to delete connector instance ${connectorId}`);
+      throw new Error(result.error ?? `Failed to delete channel account ${channelAccountId}`);
     }
   }
 
@@ -107,18 +107,18 @@ export class SqliteChannelRepository implements IChannelRepository {
     return result.data;
   }
 
-  async getRemoteIdentities(connectorId?: string): Promise<IRemoteIdentity[]> {
+  async getRemoteIdentities(channelAccountId?: string): Promise<IRemoteIdentity[]> {
     const db = await getDatabase();
-    const result = db.getRemoteIdentities(connectorId);
+    const result = db.getRemoteIdentities(channelAccountId);
     if (!result.success || !result.data) {
       throw new Error(result.error ?? 'Failed to get remote identities');
     }
     return result.data;
   }
 
-  async getChannelBindings(connectorId?: string): Promise<IChannelBinding[]> {
+  async getChannelBindings(channelAccountId?: string): Promise<IChannelBinding[]> {
     const db = await getDatabase();
-    const result = db.getChannelBindings(connectorId);
+    const result = db.getChannelBindings(channelAccountId);
     if (!result.success || !result.data) {
       throw new Error(result.error ?? 'Failed to get channel bindings');
     }

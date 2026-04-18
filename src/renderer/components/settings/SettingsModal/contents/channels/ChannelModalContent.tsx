@@ -14,7 +14,6 @@ import { channel, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import {
-  getChannelAccountId,
   type IChannelAccount,
   type IChannelAuthorizedTarget,
   type IChannelPluginStatus,
@@ -311,7 +310,7 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
 
     for (const target of authorizedTargets) {
       const resolvedChannelAccountId =
-        getChannelAccountId(target) ||
+        target.channelAccountId ||
         (() => {
           const candidates = channelAccountIdsByPlatform.get(target.platformType) ?? [];
           return candidates.length === 1 ? candidates[0] : undefined;

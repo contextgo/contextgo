@@ -1715,7 +1715,6 @@ import type {
   IChannelAuthorizedTarget,
   IChannelUser,
   IChannelAccount,
-  IConnectorInstance,
 } from '@process/channels/types';
 
 export const channel = {
@@ -1777,33 +1776,23 @@ export const channel = {
   deleteChannelAccount: bridge.buildProvider<IBridgeResponse, { channelAccountId: string }>(
     'channel.delete-channel-account'
   ),
-  // Deprecated compatibility aliases
-  getConnectorInstances: bridge.buildProvider<IBridgeResponse<IConnectorInstance[]>, void>(
-    'channel.get-connector-instances'
-  ),
-  upsertConnectorInstance: bridge.buildProvider<IBridgeResponse, { connector: IConnectorInstance }>(
-    'channel.upsert-connector-instance'
-  ),
-  deleteConnectorInstance: bridge.buildProvider<IBridgeResponse, { connectorId: string }>(
-    'channel.delete-connector-instance'
-  ),
 
   // Binding Management
   refreshPublicationSnapshot: bridge.buildProvider<
     IBridgeResponse<IChannelPublicationSnapshot>,
-    { channelAccountId?: string; connectorId?: string } | void
+    { channelAccountId?: string } | void
   >('channel.refresh-publication-snapshot'),
   getBindingCatalog: bridge.buildProvider<
     IBridgeResponse<IChannelBindingCatalog>,
-    { channelAccountId?: string; connectorId?: string }
+    { channelAccountId?: string }
   >('channel.get-binding-catalog'),
   refreshPublicationCatalog: bridge.buildProvider<
     IBridgeResponse<IChannelPublicationCatalogRefreshResult>,
-    { channelAccountId?: string; connectorId?: string } | void
+    { channelAccountId?: string } | void
   >('channel.refresh-publication-catalog'),
   getBindings: bridge.buildProvider<
     IBridgeResponse<IChannelBinding[]>,
-    { channelAccountId?: string; connectorId?: string } | void
+    { channelAccountId?: string } | void
   >('channel.get-bindings'),
   upsertPublication: bridge.buildProvider<IBridgeResponse, { publication: IChannelPublicationUpsertInput }>(
     'channel.upsert-publication'
@@ -1812,7 +1801,7 @@ export const channel = {
   prepareConversationPublication: bridge.buildProvider<IBridgeResponse<IAgentProfile>, { conversationId: string }>(
     'channel.prepare-conversation-publication'
   ),
-  // Deprecated compatibility alias
+  // Deprecated IM channel-account compatibility alias
   prepareConversationAgentProfile: bridge.buildProvider<IBridgeResponse<IAgentProfile>, { conversationId: string }>(
     'channel.prepare-conversation-agent-profile'
   ),

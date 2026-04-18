@@ -105,7 +105,7 @@ export class PairingService {
     if (existingResult.success && existingResult.data) {
       const existing = existingResult.data.find(
         (r) =>
-          r.connectorId === connector.id &&
+          r.channelAccountId === connector.id &&
           r.platformUserId === platformUserId &&
           r.platformType === platformType &&
           r.status === 'pending' &&
@@ -131,7 +131,7 @@ export class PairingService {
       code,
       platformUserId,
       platformType,
-      connectorId: connector.id,
+      channelAccountId: connector.id,
       remoteChatId: chatId ?? platformUserId,
       displayName,
       requestedAt: now,
@@ -175,7 +175,7 @@ export class PairingService {
       const connector = await getChannelRouteResolver().resolveChannelAccount(platformType, pluginId);
       for (const request of existingResult.data) {
         if (
-          request.connectorId === connector.id &&
+          request.channelAccountId === connector.id &&
           request.platformUserId === platformUserId &&
           request.platformType === platformType &&
           request.remoteChatId === (chatId ?? platformUserId) &&
@@ -206,13 +206,13 @@ export class PairingService {
     if (chatId) {
       try {
         const connector = await getChannelRouteResolver().resolveChannelAccount(platformType, pluginId);
-        const identityResult = db.getRemoteIdentityByConnectorChat(connector.id, chatId);
+        const identityResult = db.getRemoteIdentityByChannelAccountChat(connector.id, chatId);
         if (identityResult.success && identityResult.data) {
           return true;
         }
 
         if (platformChatId && platformChatId !== chatId) {
-          const parentIdentityResult = db.getRemoteIdentityByConnectorPlatformChat(connector.id, platformChatId);
+          const parentIdentityResult = db.getRemoteIdentityByChannelAccountPlatformChat(connector.id, platformChatId);
           if (parentIdentityResult.success && parentIdentityResult.data) {
             return true;
           }
@@ -251,7 +251,7 @@ export class PairingService {
 
         const hasConnectorDefaultBinding = publicationCatalog.bindings.some(
           (binding) =>
-            binding.channelAccountId === connector.id && binding.scopeType === 'connector_default' && binding.enabled
+            binding.channelAccountId === connector.id && binding.scopeType === 'channel_account_default' && binding.enabled
         );
         if (hasConnectorDefaultBinding) {
           return true;
@@ -261,7 +261,7 @@ export class PairingService {
           return false;
         }
 
-        const connectorsResult = db.getConnectorInstances();
+        const connectorsResult = db.getChannelAccounts();
         if (!connectorsResult.success || !connectorsResult.data) {
           return false;
         }
@@ -276,7 +276,7 @@ export class PairingService {
         const legacyUserResult = db.getLegacyChannelUserByPlatform(platformUserId, platformType);
         return Boolean(legacyUserResult.success && legacyUserResult.data);
       } catch (error) {
-        console.warn('[PairingService] Failed to resolve connector for authorization check:', error);
+        console.warn('[PairingService] Failed to resolve channel account for authorization check:', error);
         return false;
       }
     }
@@ -316,13 +316,13 @@ export class PairingService {
       return null;
     }
 
-    let connectorId: string | undefined;
+    let channelAccountId: string | undefined;
     if (pluginId) {
       try {
         const connector = await getChannelRouteResolver().resolveChannelAccount(platformType, pluginId);
-        connectorId = connector.id;
+        channelAccountId = connector.id;
       } catch (error) {
-        console.warn('[PairingService] Failed to resolve connector for pending pairing lookup:', error);
+        console.warn('[PairingService] Failed to resolve channel account for pending pairing lookup:', error);
         return null;
       }
     }
@@ -330,7 +330,7 @@ export class PairingService {
     return (
       result.data.find(
         (r) =>
-          (!connectorId || r.connectorId === connectorId) &&
+          (!channelAccountId || r.channelAccountId === channelAccountId) &&
           r.platformUserId === platformUserId &&
           r.platformType === platformType &&
           (chatId ? r.remoteChatId === chatId : true) &&
@@ -363,12 +363,12 @@ export class PairingService {
         platformUserId: params.platformUserId,
         remoteChatType: peerMetadata.remoteChatType,
       });
-      const existingIdentity = db.getRemoteIdentityByConnectorChat(connector.id, remoteChatId);
+      const existingIdentity = db.getRemoteIdentityByChannelAccountChat(connector.id, remoteChatId);
       const inheritedIdentity =
         existingIdentity.success && existingIdentity.data
           ? existingIdentity.data
           : platformChatId !== remoteChatId
-            ? (db.getRemoteIdentityByConnectorPlatformChat(connector.id, platformChatId).data ?? null)
+            ? (db.getRemoteIdentityByChannelAccountPlatformChat(connector.id, platformChatId).data ?? null)
             : null;
       const remoteIdentity: IRemoteIdentity =
         existingIdentity.success && existingIdentity.data
@@ -392,7 +392,7 @@ export class PairingService {
             }
           : {
               id: `remote_identity_${Date.now()}_${crypto.randomBytes(4).toString('hex').slice(0, 6)}`,
-              connectorId: connector.id,
+              channelAccountId: connector.id,
               remoteUserId:
                 remoteChatType === 'group'
                   ? (inheritedIdentity?.remoteUserId ?? params.platformUserId)
@@ -429,7 +429,7 @@ export class PairingService {
 
       channelUser = {
         id: remoteIdentity.id,
-        connectorId: connector.id,
+        channelAccountId: connector.id,
         platformUserId: remoteIdentity.remoteUserId ?? params.platformUserId,
         platformType: params.platformType,
         displayName: params.displayName ?? remoteIdentity.displayName,
@@ -440,7 +440,7 @@ export class PairingService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to resolve connector for pairing',
+        error: error instanceof Error ? error.message : 'Failed to resolve channel account for pairing',
       };
     }
 
@@ -484,7 +484,7 @@ export class PairingService {
       platformType: request.platformType,
       displayName: request.displayName,
       chatId: request.remoteChatId,
-      pluginId: request.connectorId,
+      pluginId: request.channelAccountId,
       metadata: request.metadata,
     });
     if (!authorizationResult.success) {

@@ -1882,7 +1882,7 @@ export type I18nKey =
   | 'settings.channels.publication.saveDurable'
   | 'settings.channels.publication.saveFailed'
   | 'settings.channels.publication.scope.connectorDefault'
-  | 'settings.channels.publication.scope.connector_default'
+  | 'settings.channels.publication.scope.channel_account_default'
   | 'settings.channels.publication.scope.remoteChat'
   | 'settings.channels.publication.scope.remoteUser'
   | 'settings.channels.publication.scope.remote_chat'

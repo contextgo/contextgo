@@ -161,7 +161,7 @@ const refreshSnapshotResponse = {
       bindings: [],
       audiences: [
         {
-          connectorId: 'connector-1',
+          channelAccountId: 'connector-1',
           scopeType: 'remote_chat',
           key: 'chat:ops-room',
           title: 'Ops room',
@@ -183,7 +183,7 @@ const refreshSnapshotResponse = {
       {
         id: 'session-1',
         externalSessionId: 'session-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         connectorName: 'Feishu Ops',
         connectorPlatform: 'lark',
         audienceKey: 'chat:ops-room',

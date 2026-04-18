@@ -21,6 +21,12 @@ It does not mean:
 Those belong to the `src/process/channels/` subsystem and should be modeled as
 `channel / publication`, not as connector.
 
+Feishu / Lark example:
+
+- `Settings > IM Channels > Lark` configures the IM bot channel account used to publish Agents into Feishu/Lark conversations
+- `Context Connector > Feishu` configures the external connector runtime built on `cgo feishu` / `lark-cli`
+- they may point at the same upstream product family, but they serve different product goals and must not share terminology casually
+
 Current first-wave coverage:
 
 - `ContextGo Browser`

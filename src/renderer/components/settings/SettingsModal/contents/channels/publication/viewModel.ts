@@ -5,7 +5,6 @@
  */
 
 import {
-  getChannelAccountId,
   isSystemFallbackBinding,
   type ChannelBindingScopeType,
   type IChannelBinding,
@@ -32,7 +31,7 @@ function buildManualBindingId(channelAccountId: string, scopeType: ChannelBindin
 }
 
 export function normalizeScopeKey(scopeType: ChannelBindingScopeType, scopeKey: string): string {
-  if (scopeType === 'connector_default') {
+  if (scopeType === 'channel_account_default') {
     return '';
   }
 
@@ -55,7 +54,7 @@ export function findMatchingBinding(bindings: IChannelBinding[], draft: Publicat
   const normalizedScopeKey = normalizeScopeKey(draft.scopeType, draft.scopeKey);
   return bindings.find(
     (binding) =>
-      getChannelAccountId(binding) === draft.channelAccountId &&
+      binding.channelAccountId === draft.channelAccountId &&
       binding.scopeType === draft.scopeType &&
       binding.temporary === false &&
       (binding.scopeKey ?? '') === normalizedScopeKey

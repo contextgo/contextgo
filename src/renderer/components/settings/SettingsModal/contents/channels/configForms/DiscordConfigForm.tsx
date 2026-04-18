@@ -51,7 +51,9 @@ const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
       if (result.success && result.data) {
         setPendingPairings(
           result.data.filter(
-            (item) => item.platformType === 'discord' && (!item.connectorId || item.connectorId === channelAccountId)
+            (item) =>
+              item.platformType === 'discord' &&
+              (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -69,7 +71,9 @@ const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
       if (result.success && result.data) {
         setAuthorizedTargets(
           result.data.filter(
-            (item) => item.platformType === 'discord' && (!item.connectorId || item.connectorId === channelAccountId)
+            (item) =>
+              item.platformType === 'discord' &&
+              (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -94,7 +98,10 @@ const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
 
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
-      if (request.platformType !== 'discord' || (request.connectorId && request.connectorId !== channelAccountId))
+      if (
+        request.platformType !== 'discord' ||
+        (request.channelAccountId && request.channelAccountId !== channelAccountId)
+      )
         return;
       setPendingPairings((prev) => {
         const exists = prev.some((item) => item.code === request.code);
@@ -107,7 +114,7 @@ const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
 
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'discord' || (user.connectorId && user.connectorId !== channelAccountId)) {
+      if (user.platformType !== 'discord' || (user.channelAccountId && user.channelAccountId !== channelAccountId)) {
         return;
       }
       void loadAuthorizedTargets();
