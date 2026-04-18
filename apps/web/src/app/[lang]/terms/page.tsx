@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getDictionary } from '@/app/dictionaries';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const runtime = 'edge';
 
@@ -8,10 +9,12 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const validLang = (lang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
   const dict = await getDictionary(validLang);
 
-  return {
-    title: `${dict.legal.terms.title} | ContextGo`,
-    description: dict.legal.terms.title,
-  };
+  return buildPageMetadata({
+    locale: validLang,
+    pathname: '/terms',
+    title: dict.legal.terms.title,
+    description: dict.legal.terms.sections[0]?.content[0] || dict.legal.terms.title,
+  });
 }
 
 export default async function TermsPage({ params }: { params: Promise<{ lang: string }> }) {
