@@ -14,7 +14,6 @@ import { channel, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import {
-  getChannelAccountId,
   type IChannelAccount,
   type IChannelAuthorizedTarget,
   type IChannelPluginStatus,
@@ -311,7 +310,7 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
 
     for (const target of authorizedTargets) {
       const resolvedChannelAccountId =
-        getChannelAccountId(target) ||
+        target.channelAccountId ||
         (() => {
           const candidates = channelAccountIdsByPlatform.get(target.platformType) ?? [];
           return candidates.length === 1 ? candidates[0] : undefined;
@@ -1359,7 +1358,9 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
                     </div>
                     <div className={styles.instanceMetaRow}>
                       <Tag className={styles.metricTag}>{getChannelPrimaryStatusLabel(primaryState, t)}</Tag>
-                      {entry.pairedCount ? <Tag className={styles.pillTag}>{getPairingLabel(entry.pairedCount, t)}</Tag> : null}
+                      {entry.pairedCount ? (
+                        <Tag className={styles.pillTag}>{getPairingLabel(entry.pairedCount, t)}</Tag>
+                      ) : null}
                       {status?.botUsername ? (
                         <Tag className={styles.usernameTag} title={`@${status.botUsername}`}>
                           @{status.botUsername}
@@ -1517,7 +1518,8 @@ const ChannelModalContent: React.FC<{ mode?: 'channels' | 'sessions' }> = ({ mod
                                   {selectedFamily.channels.length}
                                 </Tag>
                                 <Tag className={styles.metricTag}>
-                                  {t('settings.channels.readyCount', { defaultValue: 'Ready' })}: {selectedFamily.readyCount}
+                                  {t('settings.channels.readyCount', { defaultValue: 'Ready' })}:{' '}
+                                  {selectedFamily.readyCount}
                                 </Tag>
                               </div>
                             </div>

@@ -43,7 +43,8 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginId, plugi
       if (result.success && result.data) {
         setPendingPairings(
           result.data.filter(
-            (item) => item.platformType === 'dingtalk' && (!item.connectorId || item.connectorId === channelAccountId)
+            (item) =>
+              item.platformType === 'dingtalk' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -61,7 +62,8 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginId, plugi
       if (result.success && result.data) {
         setAuthorizedTargets(
           result.data.filter(
-            (item) => item.platformType === 'dingtalk' && (!item.connectorId || item.connectorId === channelAccountId)
+            (item) =>
+              item.platformType === 'dingtalk' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -79,7 +81,10 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginId, plugi
 
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
-      if (request.platformType !== 'dingtalk' || (request.connectorId && request.connectorId !== channelAccountId))
+      if (
+        request.platformType !== 'dingtalk' ||
+        (request.channelAccountId && request.channelAccountId !== channelAccountId)
+      )
         return;
       setPendingPairings((prev) => {
         const exists = prev.some((item) => item.code === request.code);
@@ -92,7 +97,7 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginId, plugi
 
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'dingtalk' || (user.connectorId && user.connectorId !== channelAccountId)) {
+      if (user.platformType !== 'dingtalk' || (user.channelAccountId && user.channelAccountId !== channelAccountId)) {
         return;
       }
       void loadAuthorizedTargets();

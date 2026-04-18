@@ -53,12 +53,12 @@ function usesActionButtons(platform: PluginType): boolean {
 }
 
 function buildCurrentImOwnerKey(context: IActionContext): string | null {
-  const connectorId = context.connector?.id;
+  const channelAccountId = context.channelAccount?.id;
   const chatId = context.remoteIdentity?.remoteChatId || context.chatId;
-  if (!connectorId || !chatId) {
+  if (!channelAccountId || !chatId) {
     return null;
   }
-  return `im:${connectorId}:${chatId}`;
+  return `im:${channelAccountId}:${chatId}`;
 }
 
 // ==================== Platform-specific Helpers ====================
@@ -673,7 +673,7 @@ export class ActionExecutor {
       await this.sessionManager.storeSession(route.session);
 
       context.channelUser = route.channelUser;
-      context.connector = route.connector;
+      context.channelAccount = route.channelAccount;
       context.remoteIdentity = route.remoteIdentity;
       context.channelBinding = route.binding;
       context.agentProfile = route.agentProfile;

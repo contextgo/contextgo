@@ -26,7 +26,7 @@ const {
     },
     remoteIdentity: {
       id: 'remote_identity_target',
-      connectorId: 'connector-wechat',
+      channelAccountId: 'connector-wechat',
       remoteUserId: 'wx_user_1',
       remoteChatId: 'group:wechat-team',
       remoteChatType: 'group',
@@ -36,7 +36,7 @@ const {
     },
     sourceExternalSession: {
       id: 'external_session_source',
-      connectorId: 'connector-src',
+      channelAccountId: 'connector-src',
       remoteIdentityId: 'remote_identity_source',
       bindingId: 'binding-source',
       agentProfileId: 'agent_profile_source',
@@ -105,8 +105,8 @@ const {
   };
 
   const db = {
-    getConnectorInstance: vi.fn((_connectorId: string) => ({ success: true, data: state.connector })),
-    getRemoteIdentityByConnectorChat: vi.fn((_connectorId: string, _chatId: string) => ({
+    getChannelAccount: vi.fn((_channelAccountId: string) => ({ success: true, data: state.connector })),
+    getRemoteIdentityByChannelAccountChat: vi.fn((_channelAccountId: string, _chatId: string) => ({
       success: true,
       data: state.remoteIdentity,
     })),
@@ -137,7 +137,7 @@ const {
       state.bindings.push(binding);
       return { success: true, data: true };
     }),
-    getExternalSessionByConnectorRemote: vi.fn((_connectorId: string, remoteIdentityId: string) => {
+    getExternalSessionByChannelAccountRemote: vi.fn((_channelAccountId: string, remoteIdentityId: string) => {
       const found =
         Array.from(state.externalSessions.values()).find((session) => session.remoteIdentityId === remoteIdentityId) ??
         null;
@@ -233,7 +233,7 @@ describe('ChannelContinuationService', () => {
 
     const result = await service.continueSession({
       sourceExternalSessionId: 'external_session_source',
-      targetConnectorId: 'connector-wechat',
+      targetChannelAccountId: 'connector-wechat',
       targetChatId: 'group:wechat-team',
       mode: 'resume',
     });
@@ -260,7 +260,7 @@ describe('ChannelContinuationService', () => {
     const targetSession = dbState.externalSessions.get(result.targetExternalSessionId);
     expect(targetSession).toEqual(
       expect.objectContaining({
-        connectorId: 'connector-wechat',
+        channelAccountId: 'connector-wechat',
         remoteIdentityId: 'remote_identity_target',
         activeConversationId: 'conversation_source',
         bindingId: result.bindingId,
@@ -290,7 +290,7 @@ describe('ChannelContinuationService', () => {
     await expect(
       service.continueSession({
         sourceExternalSessionId: 'external_session_source',
-        targetConnectorId: 'connector-wechat',
+        targetChannelAccountId: 'connector-wechat',
         targetChatId: 'group:wechat-team',
         conflictPolicy: 'reject',
       })
@@ -306,7 +306,7 @@ describe('ChannelContinuationService', () => {
     await expect(
       service.continueSession({
         sourceExternalSessionId: 'external_session_source',
-        targetConnectorId: 'connector-wechat',
+        targetChannelAccountId: 'connector-wechat',
         targetChatId: 'group:wechat-team',
       })
     ).rejects.toThrow('external session write failed');
@@ -326,7 +326,7 @@ describe('ChannelContinuationService', () => {
 
     const result = await service.continueSession({
       sourceConversationId: 'conversation_source',
-      targetConnectorId: 'connector-wechat',
+      targetChannelAccountId: 'connector-wechat',
       targetChatId: 'group:wechat-team',
       mode: 'resume',
     });

@@ -8,7 +8,7 @@ import type {
   IAgentProfile,
   IRemoteIdentity,
   IChannelBinding,
-  IConnectorInstance,
+  IChannelAccount,
   IChannelPluginConfig,
   IChannelPairingRequest,
   IChannelAuthorizedTarget,
@@ -23,12 +23,12 @@ export interface IChannelRepository {
   getChannelAuthorizedTargets(): Promise<IChannelAuthorizedTarget[]>;
   deleteChannelUser(userId: string): Promise<void>;
   getChannelSessions(): Promise<IChannelSession[]>;
-  getConnectorInstances(): Promise<IConnectorInstance[]>;
-  upsertConnectorInstance(connector: IConnectorInstance): Promise<void>;
-  deleteConnectorInstance(connectorId: string): Promise<void>;
+  getChannelAccounts(): Promise<IChannelAccount[]>;
+  upsertChannelAccount(channelAccount: IChannelAccount): Promise<void>;
+  deleteChannelAccount(channelAccountId: string): Promise<void>;
   getAgentProfiles(): Promise<IAgentProfile[]>;
-  getRemoteIdentities(connectorId?: string): Promise<IRemoteIdentity[]>;
-  getChannelBindings(connectorId?: string): Promise<IChannelBinding[]>;
+  getRemoteIdentities(channelAccountId?: string): Promise<IRemoteIdentity[]>;
+  getChannelBindings(channelAccountId?: string): Promise<IChannelBinding[]>;
   upsertChannelBinding(binding: IChannelBinding): Promise<void>;
   deleteChannelBinding(bindingId: string): Promise<void>;
 }

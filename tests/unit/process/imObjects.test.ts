@@ -12,7 +12,7 @@ describe('imObjects platform recognition', () => {
   it('uses Slack workspace container identity as the parent of a channel publish object', () => {
     const identity: IRemoteIdentity = {
       id: 'remote-slack-channel-1',
-      connectorId: 'connector-slack',
+      channelAccountId: 'connector-slack',
       remoteUserId: 'U123',
       remoteChatId: 'C123',
       platformChatId: 'C123',
@@ -51,7 +51,7 @@ describe('imObjects platform recognition', () => {
   it('classifies Slack mpim chats as groups instead of direct chats', () => {
     const identity: IRemoteIdentity = {
       id: 'remote-slack-mpim-1',
-      connectorId: 'connector-slack',
+      channelAccountId: 'connector-slack',
       remoteUserId: 'U234',
       remoteChatId: 'G234',
       platformChatId: 'G234',
@@ -86,7 +86,7 @@ describe('imObjects platform recognition', () => {
   it('uses Telegram container metadata to describe forum topic parents as channels', () => {
     const identity: IRemoteIdentity = {
       id: 'remote-telegram-thread-1',
-      connectorId: 'connector-telegram',
+      channelAccountId: 'connector-telegram',
       remoteUserId: 'telegram-user-1',
       remoteChatId: '-100123:thread:42',
       platformChatId: '-100123',
@@ -120,7 +120,7 @@ describe('imObjects platform recognition', () => {
   it('uses Lark container metadata to describe topic parents as groups when no readable parent title exists', () => {
     const identity: IRemoteIdentity = {
       id: 'remote-lark-topic-1',
-      connectorId: 'connector-lark',
+      channelAccountId: 'connector-lark',
       remoteUserId: 'ou_user_1',
       remoteChatId: 'oc_group_1:thread:om_topic_root_1',
       platformChatId: 'oc_group_1',
@@ -154,7 +154,7 @@ describe('imObjects platform recognition', () => {
   it('uses Discord guild container identity as the parent of a channel publish object', () => {
     const identity: IRemoteIdentity = {
       id: 'remote-discord-channel-1',
-      connectorId: 'connector-discord',
+      channelAccountId: 'connector-discord',
       remoteUserId: 'discord-user-1',
       remoteChatId: '1234567890',
       platformChatId: '1234567890',
@@ -193,7 +193,7 @@ describe('imObjects platform recognition', () => {
   it('uses DingTalk staff identity for private chats instead of encoded chat ids', () => {
     const identity: IRemoteIdentity = {
       id: 'remote-dingtalk-private-1',
-      connectorId: 'connector-dingtalk',
+      channelAccountId: 'connector-dingtalk',
       remoteUserId: 'staff-1',
       remoteChatId: 'user:staff-1',
       platformChatId: 'user:staff-1',

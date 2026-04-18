@@ -300,8 +300,8 @@ const catalogResponse = {
     bindings: [
       {
         id: 'binding-system-fallback',
-        connectorId: 'connector-1',
-        scopeType: 'connector_default',
+        channelAccountId: 'connector-1',
+        scopeType: 'channel_account_default',
         agentProfileId: 'agent-profile-1',
         priority: 0,
         enabled: true,
@@ -312,7 +312,7 @@ const catalogResponse = {
       },
       {
         id: 'binding-topic-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         scopeType: 'remote_chat',
         scopeKey: 'feishu://topic/chat-topic/root-1',
         agentProfileId: 'agent-profile-1',
@@ -327,7 +327,7 @@ const catalogResponse = {
     audiences: [
       {
         key: 'feishu://topic/chat-topic/root-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         scopeType: 'remote_chat',
         remoteChatId: 'feishu://topic/chat-topic/root-1',
         platformChatId: 'chat-topic',
@@ -348,7 +348,7 @@ const catalogResponse = {
       },
       {
         key: 'feishu://topic/chat-topic/root-2',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         scopeType: 'remote_chat',
         remoteChatId: 'feishu://topic/chat-topic/root-2',
         platformChatId: 'chat-topic',
@@ -370,7 +370,7 @@ const catalogResponse = {
       },
       {
         key: 'slack://ws/team/channel/support',
-        connectorId: 'connector-2',
+        channelAccountId: 'connector-2',
         scopeType: 'remote_chat',
         remoteChatId: 'slack://ws/team/channel/support',
         platformChatId: 'C123',
@@ -429,9 +429,9 @@ const sessionCatalogResponse = {
   data: [
     {
       id: 'session-1',
-      connectorId: 'connector-1',
-      connectorName: 'Feishu Ops',
-      connectorPlatform: 'lark',
+      channelAccountId: 'connector-1',
+      channelAccountName: 'Feishu Ops',
+      channelAccountPlatform: 'lark',
       audienceTitle: 'Ops topic',
       audienceKey: 'feishu://topic/chat-topic/root-1',
       objectKey: 'feishu://topic/chat-topic/root-1',

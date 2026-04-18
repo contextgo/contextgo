@@ -19,10 +19,10 @@ import type {
   ChannelControlMode,
   ChannelRunStatus,
   IAgentProfile,
+  IChannelAccount,
   IChannelBinding,
   IChannelControlLease,
   IChannelRun,
-  IConnectorInstance,
   IExternalSession,
   IRemoteIdentity,
   PluginStatus,
@@ -115,9 +115,9 @@ export interface IConversationRow {
 }
 
 /**
- * Connector instance stored in database.
+ * Channel account stored in database.
  */
-export interface IConnectorInstanceRow {
+export interface IChannelAccountRow {
   id: string;
   platform: string;
   name: string;
@@ -136,7 +136,7 @@ export interface IConnectorInstanceRow {
  */
 export interface IRemoteIdentityRow {
   id: string;
-  connector_id: string;
+  channel_account_id: string;
   remote_user_id: string | null;
   remote_chat_id: string;
   platform_chat_id: string | null;
@@ -177,7 +177,7 @@ export interface IAgentProfileRow {
  */
 export interface IChannelBindingRow {
   id: string;
-  connector_id: string;
+  channel_account_id: string;
   scope_type: string;
   scope_key: string | null;
   agent_profile_id: string;
@@ -195,7 +195,7 @@ export interface IChannelBindingRow {
  */
 export interface IExternalSessionRow {
   id: string;
-  connector_id: string;
+  channel_account_id: string;
   remote_identity_id: string;
   binding_id: string | null;
   agent_profile_id: string;
@@ -843,7 +843,7 @@ const parseJson = <T>(value: string | null | undefined, fallback: T): T => {
   }
 };
 
-export function rowToConnectorInstance(row: IConnectorInstanceRow): IConnectorInstance {
+export function rowToChannelAccount(row: IChannelAccountRow): IChannelAccount {
   const credentials = decryptCredentials(parseJson(row.credentials, {}));
 
   return {
@@ -862,26 +862,26 @@ export function rowToConnectorInstance(row: IConnectorInstanceRow): IConnectorIn
   };
 }
 
-export function connectorInstanceToRow(connector: IConnectorInstance): IConnectorInstanceRow {
+export function channelAccountToRow(channelAccount: IChannelAccount): IChannelAccountRow {
   return {
-    id: connector.id,
-    platform: connector.platform,
-    name: connector.name,
-    enabled: connector.enabled ? 1 : 0,
-    status: connector.status,
-    credentials: JSON.stringify(connector.credentials ?? {}),
-    runtime_config: JSON.stringify(connector.runtimeConfig ?? {}),
-    capabilities: JSON.stringify(connector.capabilities ?? {}),
-    legacy_plugin_id: connector.legacyPluginId ?? null,
-    created_at: connector.createdAt,
-    updated_at: connector.updatedAt,
+    id: channelAccount.id,
+    platform: channelAccount.platform,
+    name: channelAccount.name,
+    enabled: channelAccount.enabled ? 1 : 0,
+    status: channelAccount.status,
+    credentials: JSON.stringify(channelAccount.credentials ?? {}),
+    runtime_config: JSON.stringify(channelAccount.runtimeConfig ?? {}),
+    capabilities: JSON.stringify(channelAccount.capabilities ?? {}),
+    legacy_plugin_id: channelAccount.legacyPluginId ?? null,
+    created_at: channelAccount.createdAt,
+    updated_at: channelAccount.updatedAt,
   };
 }
 
 export function rowToRemoteIdentity(row: IRemoteIdentityRow): IRemoteIdentity {
   return {
     id: row.id,
-    connectorId: row.connector_id,
+    channelAccountId: row.channel_account_id,
     remoteUserId: row.remote_user_id ?? undefined,
     remoteChatId: row.remote_chat_id,
     platformChatId: row.platform_chat_id ?? undefined,
@@ -900,7 +900,7 @@ export function rowToRemoteIdentity(row: IRemoteIdentityRow): IRemoteIdentity {
 export function remoteIdentityToRow(identity: IRemoteIdentity): IRemoteIdentityRow {
   return {
     id: identity.id,
-    connector_id: identity.connectorId,
+    channel_account_id: identity.channelAccountId,
     remote_user_id: identity.remoteUserId ?? null,
     remote_chat_id: identity.remoteChatId,
     platform_chat_id: identity.platformChatId ?? null,
@@ -959,7 +959,7 @@ export function agentProfileToRow(profile: IAgentProfile): IAgentProfileRow {
 export function rowToChannelBinding(row: IChannelBindingRow): IChannelBinding {
   return {
     id: row.id,
-    connectorId: row.connector_id,
+    channelAccountId: row.channel_account_id,
     scopeType: row.scope_type as ChannelBindingScopeType,
     scopeKey: row.scope_key ?? undefined,
     agentProfileId: row.agent_profile_id,
@@ -976,7 +976,7 @@ export function rowToChannelBinding(row: IChannelBindingRow): IChannelBinding {
 export function channelBindingToRow(binding: IChannelBinding): IChannelBindingRow {
   return {
     id: binding.id,
-    connector_id: binding.connectorId,
+    channel_account_id: binding.channelAccountId,
     scope_type: binding.scopeType,
     scope_key: binding.scopeKey ?? null,
     agent_profile_id: binding.agentProfileId,
@@ -993,7 +993,7 @@ export function channelBindingToRow(binding: IChannelBinding): IChannelBindingRo
 export function rowToExternalSession(row: IExternalSessionRow): IExternalSession {
   return {
     id: row.id,
-    connectorId: row.connector_id,
+    channelAccountId: row.channel_account_id,
     remoteIdentityId: row.remote_identity_id,
     bindingId: row.binding_id ?? undefined,
     agentProfileId: row.agent_profile_id,
@@ -1008,7 +1008,7 @@ export function rowToExternalSession(row: IExternalSessionRow): IExternalSession
 export function externalSessionToRow(session: IExternalSession): IExternalSessionRow {
   return {
     id: session.id,
-    connector_id: session.connectorId,
+    channel_account_id: session.channelAccountId,
     remote_identity_id: session.remoteIdentityId,
     binding_id: session.bindingId ?? null,
     agent_profile_id: session.agentProfileId,

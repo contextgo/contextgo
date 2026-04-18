@@ -12,10 +12,8 @@ import {
   isChannelObjectFallbackTitle,
 } from '../../src/process/channels/utils';
 import {
-  getChannelAccountId,
   getChannelBindingPublishObject,
   getChannelPublishObjectCatalogEntryIdentity,
-  withChannelAccountId,
 } from '../../src/process/channels/types';
 
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: vi.fn(() => '/tmp') } }));
@@ -33,6 +31,25 @@ const publicationServiceMocks = vi.hoisted(() => ({
 let currentRepo: IChannelRepository | null = null;
 let resolvedPublishObjects: Array<Record<string, unknown>> = [];
 
+function getFixtureChannelAccountId(value: { connectorId?: string; channelAccountId?: string }): string | undefined {
+  return value.channelAccountId ?? value.connectorId;
+}
+
+function normalizeChannelAccountFixture<T extends { connectorId?: string; channelAccountId?: string }>(
+  value: T
+): Omit<T, 'connectorId'> & { channelAccountId: string } {
+  const channelAccountId = getFixtureChannelAccountId(value);
+  if (!channelAccountId) {
+    throw new Error('Expected IM fixture to carry a channel account id');
+  }
+
+  const { channelAccountId: _connectorId, ...rest } = value;
+  return {
+    ...rest,
+    channelAccountId,
+  };
+}
+
 function buildMockPublicationCatalog() {
   const agentProfiles = (currentRepo?.getAgentProfiles() ?? []).map((profile) =>
     Object.assign(
@@ -44,7 +61,7 @@ function buildMockPublicationCatalog() {
   const agentProfileWorkspaceById = Object.fromEntries(
     agentProfiles.map((profile) => [profile.id, profile.workspaceRef ?? `/tmp/workspaces/${profile.id}`] as const)
   );
-  const bindings = (currentRepo?.getChannelBindings() ?? []).map((binding) => withChannelAccountId(binding));
+  const bindings = (currentRepo?.getChannelBindings() ?? []).map((binding) => normalizeChannelAccountFixture(binding));
   const bindingWorkspaceById = Object.fromEntries(
     bindings.map(
       (binding) => [binding.id, agentProfileWorkspaceById[binding.agentProfileId] ?? '/tmp/workspaces/default'] as const
@@ -65,13 +82,13 @@ function buildMockPublicationCatalog() {
 function buildMockPublishObjects(params: {
   bindings: readonly IChannelBinding[];
   remoteIdentities: readonly IRemoteIdentity[];
-  channelAccounts: readonly IConnectorInstance[];
+  channelAccounts: readonly IChannelAccount[];
 }) {
   const connectorMap = new Map(params.channelAccounts.map((connector) => [connector.id, connector] as const));
   const nextEntries = new Map<string, Record<string, unknown>>();
 
   for (const binding of params.bindings) {
-    const channelAccountId = getChannelAccountId(binding);
+    const channelAccountId = getFixtureChannelAccountId(binding);
     if (!channelAccountId) {
       continue;
     }
@@ -112,8 +129,8 @@ function buildMockPublishObjects(params: {
   }
 
   for (const identity of params.remoteIdentities) {
-    const connectorId = getChannelAccountId(identity) ?? identity.connectorId;
-    const connector = connectorMap.get(connectorId);
+    const channelAccountId = getFixtureChannelAccountId(identity);
+    const connector = channelAccountId ? connectorMap.get(channelAccountId) : undefined;
     if (!connector) {
       continue;
     }
@@ -193,11 +210,8 @@ vi.mock('../../src/common/adapter/ipcBridge', () => ({
     refreshPublicationSnapshot: makeChannel('refreshPublicationSnapshot'),
     getChannelAccounts: makeChannel('getChannelAccounts'),
     createChannelAccount: makeChannel('createChannelAccount'),
-    getConnectorInstances: makeChannel('getConnectorInstances'),
     upsertChannelAccount: makeChannel('upsertChannelAccount'),
-    upsertConnectorInstance: makeChannel('upsertConnectorInstance'),
     deleteChannelAccount: makeChannel('deleteChannelAccount'),
-    deleteConnectorInstance: makeChannel('deleteConnectorInstance'),
     getBindingCatalog: makeChannel('getBindingCatalog'),
     refreshPublicationCatalog: makeChannel('refreshPublicationCatalog'),
     getBindings: makeChannel('getBindings'),
@@ -286,7 +300,7 @@ vi.mock('@/extensions/assetProtocol', () => ({ toAssetUrl: vi.fn((p: string) => 
 const mockDeleteChannelPlugin = vi.fn(() => ({ success: true }));
 const mockGetRemoteIdentities = vi.fn(() => ({ success: true, data: [] }));
 const mockDeleteChannelUser = vi.fn(() => ({ success: true, data: true }));
-const mockDbDeleteConnectorInstance = vi.fn(() => ({ success: true, data: true }));
+const mockDbDeleteChannelAccount = vi.fn(() => ({ success: true, data: true }));
 const mockRunInTransaction = vi.fn((fn: () => unknown) => ({ success: true, data: fn() }));
 const mockGetAllExternalSessions = vi.fn(() => ({ success: true, data: [] }));
 const mockGetAllChannelControlLeases = vi.fn(() => ({ success: true, data: [] }));
@@ -295,7 +309,7 @@ vi.mock('@process/services/database', () => ({
     getRemoteIdentities: mockGetRemoteIdentities,
     deleteChannelUser: mockDeleteChannelUser,
     deleteChannelPlugin: mockDeleteChannelPlugin,
-    deleteConnectorInstance: mockDbDeleteConnectorInstance,
+    deleteChannelAccount: mockDbDeleteChannelAccount,
     runInTransaction: mockRunInTransaction,
     getAllExternalSessions: mockGetAllExternalSessions,
     getAllChannelControlLeases: mockGetAllChannelControlLeases,
@@ -332,7 +346,7 @@ import type {
   IChannelUser,
   IChannelPairingRequest,
   IChannelSession,
-  IConnectorInstance,
+  IChannelAccount,
 } from '../../src/process/channels/types';
 
 function makeRepo(overrides?: Partial<IChannelRepository>): IChannelRepository {
@@ -343,9 +357,9 @@ function makeRepo(overrides?: Partial<IChannelRepository>): IChannelRepository {
     getChannelAuthorizedTargets: vi.fn(() => []),
     deleteChannelUser: vi.fn(),
     getChannelSessions: vi.fn(() => []),
-    getConnectorInstances: vi.fn(() => []),
-    upsertConnectorInstance: vi.fn(),
-    deleteConnectorInstance: vi.fn(),
+    getChannelAccounts: vi.fn(() => []),
+    upsertChannelAccount: vi.fn(),
+    deleteChannelAccount: vi.fn(),
     getAgentProfiles: vi.fn(() => []),
     getRemoteIdentities: vi.fn(() => []),
     getChannelBindings: vi.fn(() => []),
@@ -380,7 +394,7 @@ describe('channelBridge', () => {
     mockGetPlugin.mockReturnValue(undefined);
     mockGetRemoteIdentities.mockReturnValue({ success: true, data: [] });
     mockDeleteChannelUser.mockReturnValue({ success: true, data: true });
-    mockDbDeleteConnectorInstance.mockReturnValue({ success: true, data: true });
+    mockDbDeleteChannelAccount.mockReturnValue({ success: true, data: true });
     mockRunInTransaction.mockImplementation((fn: () => unknown) => ({ success: true, data: fn() }));
     mockGetAllExternalSessions.mockReturnValue({ success: true, data: [] });
     mockGetAllChannelControlLeases.mockReturnValue({ success: true, data: [] });
@@ -409,8 +423,9 @@ describe('channelBridge', () => {
     );
     publicationServiceMocks.upsertChannelBinding.mockImplementation(
       async (_workspace: string, binding: IChannelBinding) => {
-        currentRepo?.upsertChannelBinding(withChannelAccountId(binding));
-        return withChannelAccountId(binding);
+        const normalizedBinding = normalizeChannelAccountFixture(binding);
+        currentRepo?.upsertChannelBinding(normalizedBinding);
+        return normalizedBinding;
       }
     );
     publicationServiceMocks.deleteChannelBinding.mockImplementation(async (_workspace: string, bindingId: string) => {
@@ -475,7 +490,7 @@ describe('channelBridge', () => {
           },
         },
       ]);
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([]);
 
       const result = await handlers['getPluginStatus']();
 
@@ -496,7 +511,7 @@ describe('channelBridge', () => {
 
     it('projects typed native capability mapping for builtin platforms', async () => {
       vi.mocked(repo.getChannelPlugins).mockReturnValue([]);
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([]);
 
       const result = await handlers['getPluginStatus']();
 
@@ -542,7 +557,7 @@ describe('channelBridge', () => {
     it('returns users from repo', async () => {
       const user: IChannelUser = {
         id: 'u1',
-        connectorId: 'telegram_default',
+        channelAccountId: 'telegram_default',
         platformUserId: 'tg-123',
         platformType: 'telegram',
         authorizedAt: 1000,
@@ -573,7 +588,7 @@ describe('channelBridge', () => {
     it('returns targets from repo', async () => {
       const target: IChannelAuthorizedTarget = {
         id: 't1',
-        connectorId: 'telegram_default',
+        channelAccountId: 'telegram_default',
         platformType: 'telegram',
         targetId: 'user:tg-123',
         targetType: 'direct',
@@ -704,7 +719,7 @@ describe('channelBridge', () => {
 
   describe('getActiveSessionCatalog', () => {
     it('returns explicit publication and active-session pointer fields for active sessions', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-discord',
         platform: 'discord',
         name: 'Discord Ops',
@@ -725,7 +740,7 @@ describe('channelBridge', () => {
       };
       const binding: IChannelBinding = {
         id: 'binding-discord-thread-1',
-        connectorId: 'connector-discord',
+        channelAccountId: 'connector-discord',
         scopeType: 'remote_chat',
         scopeKey: 'discord://guild-1/channel-22/thread-77',
         agentProfileId: 'agent-profile-1',
@@ -737,7 +752,7 @@ describe('channelBridge', () => {
       };
       const identity: IRemoteIdentity = {
         id: 'remote-discord-thread-1',
-        connectorId: 'connector-discord',
+        channelAccountId: 'connector-discord',
         remoteUserId: 'discord-user-1',
         remoteChatId: 'discord://guild-1/channel-22/thread-77',
         platformChatId: 'channel-22',
@@ -756,7 +771,7 @@ describe('channelBridge', () => {
       };
 
       vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([identity]);
       vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
       mockGetAllExternalSessions.mockReturnValue({
@@ -764,7 +779,7 @@ describe('channelBridge', () => {
         data: [
           {
             id: 'external-session-1',
-            connectorId: 'connector-discord',
+            channelAccountId: 'connector-discord',
             remoteIdentityId: 'remote-discord-thread-1',
             bindingId: 'binding-discord-thread-1',
             agentProfileId: 'agent-profile-1',
@@ -783,7 +798,7 @@ describe('channelBridge', () => {
         expect.objectContaining({
           id: 'external-session-1',
           externalSessionId: 'external-session-1',
-          connectorId: 'connector-discord',
+          channelAccountId: 'connector-discord',
           publicationBindingId: 'binding-discord-thread-1',
           bindingId: 'binding-discord-thread-1',
           activeConversationId: 'conversation-current-1',
@@ -802,7 +817,7 @@ describe('channelBridge', () => {
     });
 
     it('uses Feishu parent chat names for topic objects in active session details', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-lark-topic',
         platform: 'lark',
         name: 'Feishu Ops',
@@ -824,7 +839,7 @@ describe('channelBridge', () => {
       };
       const identity: IRemoteIdentity = {
         id: 'remote-lark-topic-1',
-        connectorId: 'connector-lark-topic',
+        channelAccountId: 'connector-lark-topic',
         remoteUserId: 'ou_topic_user_1',
         remoteChatId: 'oc_group_1:thread:om_topic_root_1',
         platformChatId: 'oc_group_1',
@@ -851,7 +866,7 @@ describe('channelBridge', () => {
       });
 
       vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([identity]);
       vi.mocked(repo.getChannelBindings).mockReturnValue([]);
 
@@ -861,7 +876,7 @@ describe('channelBridge', () => {
       expect(result.data).toEqual([
         expect.objectContaining({
           id: 'external-session-topic-1',
-          connectorId: 'connector-lark-topic',
+          channelAccountId: 'connector-lark-topic',
           audienceTitle: 'Topic om_topic_root_1',
           objectKey: 'oc_group_1:thread:om_topic_root_1',
           objectKind: 'topic',
@@ -876,7 +891,7 @@ describe('channelBridge', () => {
     });
 
     it('reads persisted publish objects without triggering refresh work', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-lark-read-session',
         platform: 'lark',
         name: 'Feishu Persisted',
@@ -897,7 +912,7 @@ describe('channelBridge', () => {
       };
       const identity: IRemoteIdentity = {
         id: 'remote-lark-read-1',
-        connectorId: 'connector-lark-read-session',
+        channelAccountId: 'connector-lark-read-session',
         remoteUserId: 'ou_read_1',
         remoteChatId: 'oc_read_group_1',
         platformChatId: 'oc_read_group_1',
@@ -944,7 +959,7 @@ describe('channelBridge', () => {
       ];
 
       vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([identity]);
 
       const result = await handlers['getActiveSessionCatalog']();
@@ -953,7 +968,7 @@ describe('channelBridge', () => {
       expect(result.data).toEqual([
         expect.objectContaining({
           id: 'external-session-read-1',
-          connectorId: 'connector-lark-read-session',
+          channelAccountId: 'connector-lark-read-session',
           objectTitle: 'Persisted Session Group',
           objectSubtitle: 'Persisted from prior refresh',
           objectSource: 'official-pull',
@@ -963,9 +978,9 @@ describe('channelBridge', () => {
     });
   });
 
-  describe('getConnectorInstances', () => {
+  describe('getChannelAccounts', () => {
     it('returns connector instances from repo', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-1',
         platform: 'telegram',
         name: 'Telegram Ops',
@@ -974,18 +989,18 @@ describe('channelBridge', () => {
         createdAt: 1000,
         updatedAt: 1000,
       };
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
 
-      const result = await handlers['getConnectorInstances']();
+      const result = await handlers['getChannelAccounts']();
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual([connector]);
     });
   });
 
-  describe('upsertConnectorInstance', () => {
+  describe('upsertChannelAccount', () => {
     it('upserts connector instance through repo', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-2',
         platform: 'slack',
         name: 'Slack Alerts',
@@ -995,9 +1010,9 @@ describe('channelBridge', () => {
         updatedAt: 1000,
       };
 
-      const result = await handlers['upsertConnectorInstance']({ connector });
+      const result = await handlers['upsertChannelAccount']({ channelAccount: connector });
 
-      expect(repo.upsertConnectorInstance).toHaveBeenCalledWith({
+      expect(repo.upsertChannelAccount).toHaveBeenCalledWith({
         ...connector,
         legacyPluginId: 'connector-2',
       });
@@ -1005,9 +1020,9 @@ describe('channelBridge', () => {
     });
   });
 
-  describe('deleteConnectorInstance', () => {
+  describe('deleteChannelAccount', () => {
     it('disables plugin, removes legacy plugin row, and deletes connector instance', async () => {
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([
         {
           id: 'connector-3',
           platform: 'weixin',
@@ -1020,11 +1035,11 @@ describe('channelBridge', () => {
         },
       ]);
 
-      const result = await handlers['deleteConnectorInstance']({ connectorId: 'connector-3' });
+      const result = await handlers['deleteChannelAccount']({ channelAccountId: 'connector-3' });
 
       expect(mockDisablePlugin).toHaveBeenCalledWith('connector-3');
       expect(mockDeleteChannelPlugin).toHaveBeenCalledWith('connector-3');
-      expect(mockDbDeleteConnectorInstance).toHaveBeenCalledWith('connector-3');
+      expect(mockDbDeleteChannelAccount).toHaveBeenCalledWith('connector-3');
       expect(result.success).toBe(true);
     });
   });
@@ -1033,7 +1048,7 @@ describe('channelBridge', () => {
 
   describe('getBindingCatalog', () => {
     it('reads the persisted publication catalog without triggering an implicit refresh', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-1',
         platform: 'telegram',
         name: 'Telegram',
@@ -1054,7 +1069,7 @@ describe('channelBridge', () => {
       };
       const binding: IChannelBinding = {
         id: 'binding-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         scopeType: 'remote_chat',
         scopeKey: 'group:alpha',
         agentProfileId: 'agent-profile-1',
@@ -1072,7 +1087,7 @@ describe('channelBridge', () => {
         updatedAt: 1000,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
       vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([]);
@@ -1116,7 +1131,7 @@ describe('channelBridge', () => {
     });
 
     it('returns connectors, profiles, and bindings in one response', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-1',
         platform: 'telegram',
         name: 'Telegram',
@@ -1137,7 +1152,7 @@ describe('channelBridge', () => {
       };
       const binding: IChannelBinding = {
         id: 'binding-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         scopeType: 'remote_chat',
         scopeKey: 'group:alpha',
         agentProfileId: 'agent-profile-1',
@@ -1149,7 +1164,7 @@ describe('channelBridge', () => {
       };
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         remoteUserId: 'user-1',
         remoteChatId: 'group:alpha:thread:9',
         remoteChatType: 'thread',
@@ -1158,7 +1173,7 @@ describe('channelBridge', () => {
         lastActive: 2000,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
       vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
@@ -1195,7 +1210,7 @@ describe('channelBridge', () => {
               backend: 'openclaw-gateway',
             }),
           ],
-          bindings: [{ ...binding, channelAccountId: binding.connectorId }],
+          bindings: [normalizeChannelAccountFixture(binding)],
           audiences: expect.arrayContaining([
             expect.objectContaining({
               key: 'group:alpha:thread:9',
@@ -1217,7 +1232,7 @@ describe('channelBridge', () => {
     });
 
     it('returns object-level active session pointers in publish object catalog entries', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-1',
         platform: 'telegram',
         name: 'Telegram',
@@ -1238,7 +1253,7 @@ describe('channelBridge', () => {
       };
       const binding: IChannelBinding = {
         id: 'binding-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         scopeType: 'remote_chat',
         scopeKey: 'group:alpha',
         agentProfileId: 'agent-profile-1',
@@ -1257,7 +1272,7 @@ describe('channelBridge', () => {
       };
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         remoteUserId: 'user-1',
         remoteChatId: 'group:alpha',
         remoteChatType: 'group',
@@ -1275,7 +1290,7 @@ describe('channelBridge', () => {
         lastActivity: 2600,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
       vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
@@ -1306,7 +1321,7 @@ describe('channelBridge', () => {
         data: [
           {
             id: 'external-session-1',
-            connectorId: 'connector-1',
+            channelAccountId: 'connector-1',
             remoteIdentityId: 'remote-1',
             bindingId: 'binding-1',
             agentProfileId: 'agent-profile-1',
@@ -1339,7 +1354,7 @@ describe('channelBridge', () => {
     });
 
     it('returns explicit publication entries in the publication snapshot', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-1',
         platform: 'telegram',
         name: 'Telegram',
@@ -1360,7 +1375,7 @@ describe('channelBridge', () => {
       };
       const binding: IChannelBinding = {
         id: 'binding-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         scopeType: 'remote_chat',
         scopeKey: 'group:alpha',
         agentProfileId: 'agent-profile-1',
@@ -1380,7 +1395,7 @@ describe('channelBridge', () => {
       };
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         remoteUserId: 'user-1',
         remoteChatId: 'group:alpha',
         remoteChatType: 'group',
@@ -1398,7 +1413,7 @@ describe('channelBridge', () => {
         lastActivity: 2600,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
       vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
@@ -1429,7 +1444,7 @@ describe('channelBridge', () => {
         data: [
           {
             id: 'external-session-1',
-            connectorId: 'connector-1',
+            channelAccountId: 'connector-1',
             remoteIdentityId: 'remote-1',
             bindingId: 'binding-1',
             agentProfileId: 'agent-profile-1',
@@ -1469,7 +1484,7 @@ describe('channelBridge', () => {
     });
 
     it('classifies Feishu topic audiences as topics with readable subtitles', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-lark',
         platform: 'lark',
         name: 'Feishu',
@@ -1481,7 +1496,7 @@ describe('channelBridge', () => {
       };
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-topic-1',
-        connectorId: 'connector-lark',
+        channelAccountId: 'connector-lark',
         remoteUserId: 'ou_user_1',
         remoteChatId: 'oc_group_1:thread:om_topic_root_1',
         platformChatId: 'oc_group_1',
@@ -1494,7 +1509,7 @@ describe('channelBridge', () => {
         lastActive: 2000,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
 
       const result = await handlers['getBindingCatalog']();
@@ -1516,7 +1531,7 @@ describe('channelBridge', () => {
     });
 
     it('dedupes direct-chat audiences for Feishu so one DM only shows once', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-lark-dm',
         platform: 'lark',
         name: 'Feishu',
@@ -1529,7 +1544,7 @@ describe('channelBridge', () => {
 
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-lark-dm-1',
-        connectorId: 'connector-lark-dm',
+        channelAccountId: 'connector-lark-dm',
         remoteUserId: 'ou_user_dm_1',
         remoteChatId: 'oc_dm_1',
         platformChatId: 'oc_dm_1',
@@ -1540,7 +1555,7 @@ describe('channelBridge', () => {
         lastActive: 2000,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
 
       const result = await handlers['getBindingCatalog']();
@@ -1548,7 +1563,7 @@ describe('channelBridge', () => {
       expect(result.success).toBe(true);
       expect(result.data?.audiences).toEqual([
         expect.objectContaining({
-          connectorId: 'connector-lark-dm',
+          channelAccountId: 'connector-lark-dm',
           scopeType: 'remote_user',
           key: 'ou_user_dm_1',
           title: 'Feishu DM',
@@ -1558,7 +1573,7 @@ describe('channelBridge', () => {
     });
 
     it('prefers real Feishu names for direct chats and group chats when the plugin can resolve them', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-lark-rich',
         platform: 'lark',
         name: 'Feishu',
@@ -1573,7 +1588,7 @@ describe('channelBridge', () => {
       const remoteIdentities: IRemoteIdentity[] = [
         {
           id: 'remote-lark-group-1',
-          connectorId: 'connector-lark-rich',
+          channelAccountId: 'connector-lark-rich',
           remoteUserId: 'ou_user_group_1',
           remoteChatId: 'oc_group_1',
           platformChatId: 'oc_group_1',
@@ -1585,7 +1600,7 @@ describe('channelBridge', () => {
         },
         {
           id: 'remote-lark-dm-rich-1',
-          connectorId: 'connector-lark-rich',
+          channelAccountId: 'connector-lark-rich',
           remoteUserId: 'ou_user_dm_rich_1',
           remoteChatId: 'oc_dm_rich_1',
           platformChatId: 'oc_dm_rich_1',
@@ -1614,7 +1629,7 @@ describe('channelBridge', () => {
         })),
       });
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue(remoteIdentities);
 
       const result = await handlers['getBindingCatalog']();
@@ -1623,7 +1638,7 @@ describe('channelBridge', () => {
       expect(result.data?.audiences).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            connectorId: 'connector-lark-rich',
+            channelAccountId: 'connector-lark-rich',
             key: 'oc_group_1',
             scopeType: 'remote_chat',
             title: 'Core Ops Group',
@@ -1632,7 +1647,7 @@ describe('channelBridge', () => {
             objectSubtitle: 'Incident command room',
           }),
           expect.objectContaining({
-            connectorId: 'connector-lark-rich',
+            channelAccountId: 'connector-lark-rich',
             key: 'ou_user_dm_rich_1',
             scopeType: 'remote_user',
             title: 'Alice Chen',
@@ -1645,7 +1660,7 @@ describe('channelBridge', () => {
     });
 
     it('marks Discord thread objects as official-pull when the plugin resolves thread and parent metadata', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-discord-rich',
         platform: 'discord',
         name: 'Discord',
@@ -1659,7 +1674,7 @@ describe('channelBridge', () => {
 
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-discord-thread-1',
-        connectorId: 'connector-discord-rich',
+        channelAccountId: 'connector-discord-rich',
         remoteUserId: 'discord-user-1',
         remoteChatId: 'parent-channel:thread:thread-1',
         platformChatId: 'parent-channel',
@@ -1702,7 +1717,7 @@ describe('channelBridge', () => {
         })),
       });
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
 
       const result = await handlers['getBindingCatalog']();
@@ -1711,7 +1726,7 @@ describe('channelBridge', () => {
       expect(result.data?.audiences).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            connectorId: 'connector-discord-rich',
+            channelAccountId: 'connector-discord-rich',
             key: 'parent-channel:thread:thread-1',
             scopeType: 'remote_chat',
             title: 'Incident follow-up',
@@ -1729,7 +1744,7 @@ describe('channelBridge', () => {
     });
 
     it('uses DingTalk cached runtime display names for private chats without claiming official-pull', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-dingtalk-rich',
         platform: 'dingtalk',
         name: 'DingTalk',
@@ -1743,7 +1758,7 @@ describe('channelBridge', () => {
 
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-dingtalk-private-1',
-        connectorId: 'connector-dingtalk-rich',
+        channelAccountId: 'connector-dingtalk-rich',
         remoteUserId: 'staff-1',
         remoteChatId: 'user:staff-1',
         platformChatId: 'user:staff-1',
@@ -1768,7 +1783,7 @@ describe('channelBridge', () => {
         })),
       });
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
 
       const result = await handlers['getBindingCatalog']();
@@ -1776,7 +1791,7 @@ describe('channelBridge', () => {
       expect(result.success).toBe(true);
       expect(result.data?.audiences).toEqual([
         expect.objectContaining({
-          connectorId: 'connector-dingtalk-rich',
+          channelAccountId: 'connector-dingtalk-rich',
           scopeType: 'remote_user',
           key: 'staff-1',
           title: 'Alice Wang',
@@ -1787,7 +1802,7 @@ describe('channelBridge', () => {
     });
 
     it('marks DingTalk group objects as official-pull when the plugin resolves the group title through the official API', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-dingtalk-group-rich',
         platform: 'dingtalk',
         name: 'DingTalk',
@@ -1801,7 +1816,7 @@ describe('channelBridge', () => {
 
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-dingtalk-group-1',
-        connectorId: 'connector-dingtalk-group-rich',
+        channelAccountId: 'connector-dingtalk-group-rich',
         remoteUserId: 'staff-ops-1',
         remoteChatId: 'group:cid-open-ops-1',
         platformChatId: 'group:cid-open-ops-1',
@@ -1828,7 +1843,7 @@ describe('channelBridge', () => {
         })),
       });
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
 
       const result = await handlers['getBindingCatalog']();
@@ -1837,7 +1852,7 @@ describe('channelBridge', () => {
       expect(result.data?.audiences).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            connectorId: 'connector-dingtalk-group-rich',
+            channelAccountId: 'connector-dingtalk-group-rich',
             key: 'group:cid-open-ops-1',
             scopeType: 'remote_chat',
             title: 'Ops Review',
@@ -1850,7 +1865,7 @@ describe('channelBridge', () => {
     });
 
     it('keeps unresolved Feishu topic objects user-facing instead of exposing raw peer identifiers', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-lark-unresolved-topic',
         platform: 'lark',
         name: 'Feishu',
@@ -1863,7 +1878,7 @@ describe('channelBridge', () => {
 
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-lark-unresolved-topic-1',
-        connectorId: 'connector-lark-unresolved-topic',
+        channelAccountId: 'connector-lark-unresolved-topic',
         remoteUserId: 'ou_user_1',
         remoteChatId: 'oc_group_1:thread:om_topic_root_1',
         platformChatId: 'oc_group_1',
@@ -1876,7 +1891,7 @@ describe('channelBridge', () => {
         lastActive: 2000,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
 
       const result = await handlers['getBindingCatalog']();
@@ -1885,7 +1900,7 @@ describe('channelBridge', () => {
       expect(result.data?.audiences).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            connectorId: 'connector-lark-unresolved-topic',
+            channelAccountId: 'connector-lark-unresolved-topic',
             key: 'oc_group_1:thread:om_topic_root_1',
             title: 'Topic',
             subtitle: undefined,
@@ -1897,7 +1912,7 @@ describe('channelBridge', () => {
     });
 
     it('dedupes Discord direct-message audiences so one DM only shows once', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-discord-dm',
         platform: 'discord',
         name: 'Discord',
@@ -1910,7 +1925,7 @@ describe('channelBridge', () => {
 
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-discord-dm-1',
-        connectorId: 'connector-discord-dm',
+        channelAccountId: 'connector-discord-dm',
         remoteUserId: 'discord-user-1',
         remoteChatId: '1357924680',
         platformChatId: '1357924680',
@@ -1921,7 +1936,7 @@ describe('channelBridge', () => {
         lastActive: 2000,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
 
       const result = await handlers['getBindingCatalog']();
@@ -1929,7 +1944,7 @@ describe('channelBridge', () => {
       expect(result.success).toBe(true);
       expect(result.data?.audiences).toEqual([
         expect.objectContaining({
-          connectorId: 'connector-discord-dm',
+          channelAccountId: 'connector-discord-dm',
           scopeType: 'remote_user',
           key: 'discord-user-1',
           title: 'Discord DM',
@@ -1939,7 +1954,7 @@ describe('channelBridge', () => {
     });
 
     it('dedupes WeChat personal audiences so one paired account shows one discovered target', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-weixin',
         platform: 'weixin',
         name: 'WeChat Personal',
@@ -1952,7 +1967,7 @@ describe('channelBridge', () => {
 
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-weixin-1',
-        connectorId: 'connector-weixin',
+        channelAccountId: 'connector-weixin',
         remoteUserId: 'wx-user-1',
         remoteChatId: 'wx-user-1',
         platformChatId: 'wx-user-1',
@@ -1962,7 +1977,7 @@ describe('channelBridge', () => {
         lastActive: 2000,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
 
       const result = await handlers['getBindingCatalog']();
@@ -1970,7 +1985,7 @@ describe('channelBridge', () => {
       expect(result.success).toBe(true);
       expect(result.data?.audiences).toEqual([
         expect.objectContaining({
-          connectorId: 'connector-weixin',
+          channelAccountId: 'connector-weixin',
           scopeType: 'remote_user',
           key: 'wx-user-1',
           title: 'Alice',
@@ -1979,7 +1994,7 @@ describe('channelBridge', () => {
     });
 
     it('returns configured and enabled connectors even before any audience is discovered', async () => {
-      const readyConnector: IConnectorInstance = {
+      const readyConnector: IChannelAccount = {
         id: 'connector-ready',
         platform: 'telegram',
         name: 'Telegram Ready',
@@ -1989,7 +2004,7 @@ describe('channelBridge', () => {
         createdAt: 1000,
         updatedAt: 1000,
       };
-      const draftConnector: IConnectorInstance = {
+      const draftConnector: IChannelAccount = {
         id: 'connector-draft',
         platform: 'telegram',
         name: 'Telegram Draft',
@@ -1999,7 +2014,7 @@ describe('channelBridge', () => {
         createdAt: 1000,
         updatedAt: 1000,
       };
-      const disabledConnector: IConnectorInstance = {
+      const disabledConnector: IChannelAccount = {
         id: 'connector-disabled',
         platform: 'slack',
         name: 'Slack Disabled',
@@ -2010,7 +2025,7 @@ describe('channelBridge', () => {
         updatedAt: 1000,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([readyConnector, draftConnector, disabledConnector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([readyConnector, draftConnector, disabledConnector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([]);
 
       const result = await handlers['getBindingCatalog']();
@@ -2025,7 +2040,7 @@ describe('channelBridge', () => {
     });
 
     it('reads persisted publish objects without triggering refresh work', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-lark-read-catalog',
         platform: 'lark',
         name: 'Feishu Persisted Catalog',
@@ -2054,7 +2069,7 @@ describe('channelBridge', () => {
         },
       ];
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([]);
 
       const result = await handlers['getBindingCatalog']();
@@ -2082,7 +2097,7 @@ describe('channelBridge', () => {
 
   describe('refreshPublicationSnapshot', () => {
     it('returns one explicit snapshot payload for publication refresh', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-lark-refresh',
         platform: 'lark',
         name: 'Feishu',
@@ -2095,7 +2110,6 @@ describe('channelBridge', () => {
       };
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-lark-refresh-1',
-        connectorId: 'connector-lark-refresh',
         channelAccountId: 'connector-lark-refresh',
         remoteUserId: 'ou_refresh_1',
         remoteChatId: 'oc_refresh_group_1',
@@ -2132,7 +2146,7 @@ describe('channelBridge', () => {
         })),
       });
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
       vi.mocked(repo.getChannelSessions).mockReturnValue([session]);
 
@@ -2149,7 +2163,7 @@ describe('channelBridge', () => {
       expect(result.data?.catalog.audiences).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            connectorId: 'connector-lark-refresh',
+            channelAccountId: 'connector-lark-refresh',
             key: 'oc_refresh_group_1',
             title: 'Refresh Group',
             objectSource: 'official-pull',
@@ -2160,7 +2174,7 @@ describe('channelBridge', () => {
         expect.arrayContaining([
           expect.objectContaining({
             id: 'external-session-refresh-1',
-            connectorId: 'connector-lark-refresh',
+            channelAccountId: 'connector-lark-refresh',
             objectTitle: 'Refresh Group',
           }),
         ])
@@ -2191,7 +2205,7 @@ describe('channelBridge', () => {
 
   describe('refreshPublicationCatalog', () => {
     it('returns an explicitly refreshed publication snapshot with binding catalog and active sessions', async () => {
-      const connector: IConnectorInstance = {
+      const connector: IChannelAccount = {
         id: 'connector-1',
         platform: 'telegram',
         name: 'Telegram',
@@ -2212,7 +2226,7 @@ describe('channelBridge', () => {
       };
       const binding: IChannelBinding = {
         id: 'binding-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         scopeType: 'remote_chat',
         scopeKey: 'group:alpha',
         agentProfileId: 'agent-profile-1',
@@ -2231,7 +2245,7 @@ describe('channelBridge', () => {
       };
       const remoteIdentity: IRemoteIdentity = {
         id: 'remote-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         remoteUserId: 'user-1',
         remoteChatId: 'group:alpha',
         remoteChatType: 'group',
@@ -2249,7 +2263,7 @@ describe('channelBridge', () => {
         lastActivity: 2600,
       };
 
-      vi.mocked(repo.getConnectorInstances).mockReturnValue([connector]);
+      vi.mocked(repo.getChannelAccounts).mockReturnValue([connector]);
       vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
       vi.mocked(repo.getRemoteIdentities).mockReturnValue([remoteIdentity]);
       vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
@@ -2259,7 +2273,7 @@ describe('channelBridge', () => {
         data: [
           {
             id: 'external-session-1',
-            connectorId: 'connector-1',
+            channelAccountId: 'connector-1',
             remoteIdentityId: 'remote-1',
             bindingId: 'binding-1',
             agentProfileId: 'agent-profile-1',
@@ -2280,7 +2294,7 @@ describe('channelBridge', () => {
         expect.objectContaining({
           bindingCatalog: expect.objectContaining({
             connectors: [connector],
-            bindings: [{ ...binding, channelAccountId: binding.connectorId }],
+            bindings: [normalizeChannelAccountFixture(binding)],
             publishObjects: expect.arrayContaining([
               expect.objectContaining({
                 channelAccountId: 'connector-1',
@@ -2318,7 +2332,7 @@ describe('channelBridge', () => {
       };
       const binding: IChannelBinding = {
         id: 'binding-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         scopeType: 'remote_chat',
         scopeKey: 'group:alpha',
         agentProfileId: 'agent-1',
@@ -2331,10 +2345,11 @@ describe('channelBridge', () => {
       vi.mocked(repo.getAgentProfiles).mockReturnValue([profile]);
       vi.mocked(repo.getChannelBindings).mockReturnValue([binding]);
 
-      const result = await handlers['getBindings']({ connectorId: 'connector-1' });
+      const result = await handlers['getBindings']({ channelAccountId: 'connector-1' });
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual([{ ...binding, channelAccountId: binding.connectorId }]);
+      expect(result.data).toEqual([normalizeChannelAccountFixture(binding)]);
+      expect(result.data?.[0]).not.toHaveProperty('connectorId');
     });
 
     it('returns error when repo throws', async () => {
@@ -2342,7 +2357,7 @@ describe('channelBridge', () => {
         throw new Error('bindings unavailable');
       });
 
-      const result = await handlers['getBindings']({ connectorId: 'connector-1' });
+      const result = await handlers['getBindings']({ channelAccountId: 'connector-1' });
 
       expect(result.success).toBe(false);
       expect(result.msg).toBe('bindings unavailable');
@@ -2380,7 +2395,7 @@ describe('channelBridge', () => {
       ]);
       const binding: IChannelBinding = {
         id: 'binding-1',
-        connectorId: 'connector-1',
+        channelAccountId: 'connector-1',
         scopeType: 'remote_user',
         scopeKey: 'user-1',
         agentProfileId: 'agent-1',
@@ -2405,8 +2420,7 @@ describe('channelBridge', () => {
       expect(repo.upsertChannelBinding).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 'binding-1',
-          connectorId: binding.connectorId,
-          channelAccountId: binding.connectorId,
+          channelAccountId: binding.channelAccountId,
           scopeType: 'remote_user',
           scopeKey: 'user-1',
           agentProfileId: 'agent-1',
@@ -2433,7 +2447,6 @@ describe('channelBridge', () => {
         '/tmp/workspaces/agent-1',
         expect.objectContaining({
           id: 'binding-1',
-          connectorId: 'connector-1',
           channelAccountId: 'connector-1',
         })
       );
@@ -2444,7 +2457,6 @@ describe('channelBridge', () => {
       vi.mocked(repo.getChannelBindings).mockReturnValue([
         {
           id: 'binding-existing',
-          connectorId: 'connector-1',
           channelAccountId: 'connector-1',
           scopeType: 'remote_chat',
           scopeKey: 'legacy-scope',
@@ -2557,7 +2569,7 @@ describe('channelBridge', () => {
         publication: {
           publicationId: 'binding-invalid',
           channelAccountId: 'connector-1',
-          scopeType: 'connector_default',
+          scopeType: 'channel_account_default',
           scopeKey: '',
           agentProfileId: 'agent-1',
           priority: 0,
@@ -2586,7 +2598,6 @@ describe('channelBridge', () => {
       vi.mocked(repo.getChannelBindings).mockReturnValue([
         {
           id: 'binding-1',
-          connectorId: 'connector-1',
           channelAccountId: 'connector-1',
           scopeType: 'remote_chat',
           scopeKey: 'group:alpha',
@@ -2621,7 +2632,6 @@ describe('channelBridge', () => {
       vi.mocked(repo.getChannelBindings).mockReturnValue([
         {
           id: 'binding-1',
-          connectorId: 'connector-1',
           channelAccountId: 'connector-1',
           scopeType: 'remote_chat',
           scopeKey: 'group:alpha',

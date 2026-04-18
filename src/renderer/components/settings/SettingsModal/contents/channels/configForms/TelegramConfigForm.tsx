@@ -47,7 +47,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
       if (result.success && result.data) {
         setPendingPairings(
           result.data.filter(
-            (p) => p.platformType === 'telegram' && (!p.connectorId || p.connectorId === channelAccountId)
+            (p) => p.platformType === 'telegram' && (!p.channelAccountId || p.channelAccountId === channelAccountId)
           )
         );
       }
@@ -66,7 +66,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
       if (result.success && result.data) {
         setAuthorizedTargets(
           result.data.filter(
-            (u) => u.platformType === 'telegram' && (!u.connectorId || u.connectorId === channelAccountId)
+            (u) => u.platformType === 'telegram' && (!u.channelAccountId || u.channelAccountId === channelAccountId)
           )
         );
       }
@@ -86,7 +86,10 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
   // Listen for pairing requests
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
-      if (request.platformType !== 'telegram' || (request.connectorId && request.connectorId !== channelAccountId))
+      if (
+        request.platformType !== 'telegram' ||
+        (request.channelAccountId && request.channelAccountId !== channelAccountId)
+      )
         return;
       setPendingPairings((prev) => {
         const exists = prev.some((p) => p.code === request.code);
@@ -100,7 +103,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
   // Listen for user authorization
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'telegram' || (user.connectorId && user.connectorId !== channelAccountId)) {
+      if (user.platformType !== 'telegram' || (user.channelAccountId && user.channelAccountId !== channelAccountId)) {
         return;
       }
       void loadAuthorizedTargets();

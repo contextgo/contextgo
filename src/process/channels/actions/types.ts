@@ -7,9 +7,9 @@
 import type {
   ActionCategory,
   IAgentProfile,
+  IChannelAccount,
   IChannelBinding,
   IChannelUser,
-  IConnectorInstance,
   IExternalSession,
   IRemoteIdentity,
   IUnifiedIncomingMessage,
@@ -32,7 +32,8 @@ export interface IActionContext {
 
   // Authorized assistant user (set if user is authorized)
   channelUser?: IChannelUser;
-  connector?: IConnectorInstance;
+  /** Current IM channel account for this route. */
+  channelAccount?: IChannelAccount;
   remoteIdentity?: IRemoteIdentity;
   channelBinding?: IChannelBinding;
   agentProfile?: IAgentProfile;

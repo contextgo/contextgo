@@ -66,8 +66,12 @@ function assertQuerySuccess<T>(result: QueryResult<T>, fallback: string): T {
   return result.data as T;
 }
 
-function buildStableBindingId(connectorId: string, chatId: string): string {
-  const hash = crypto.createHash('sha256').update(`${connectorId}|${chatId}|continuation`).digest('hex').slice(0, 16);
+function buildStableBindingId(channelAccountId: string, chatId: string): string {
+  const hash = crypto
+    .createHash('sha256')
+    .update(`${channelAccountId}|${chatId}|continuation`)
+    .digest('hex')
+    .slice(0, 16);
   return `binding_continuation_${hash}`;
 }
 
@@ -75,8 +79,8 @@ function buildDesktopOwnerKey(conversationId: string): string {
   return `desktop:${conversationId}`;
 }
 
-function buildImOwnerKey(connectorId: string, chatId: string): string {
-  return `im:${connectorId}:${chatId}`;
+function buildImOwnerKey(channelAccountId: string, chatId: string): string {
+  return `im:${channelAccountId}:${chatId}`;
 }
 
 function toChannelAgentType(backend: string): IChannelSession['agentType'] {
@@ -94,22 +98,25 @@ export class ChannelContinuationService {
     const db = await this.deps.getDatabase();
 
     const connector = assertQuerySuccess(
-      db.getConnectorInstance(params.targetConnectorId),
-      `Failed to load connector ${params.targetConnectorId}`
+      db.getChannelAccount(params.targetChannelAccountId),
+      `Failed to load channel account ${params.targetChannelAccountId}`
     );
     if (!connector) {
-      throw new Error(`Connector ${params.targetConnectorId} not found`);
+      throw new Error(`Channel account ${params.targetChannelAccountId} not found`);
     }
 
     const exactTargetIdentity = assertQuerySuccess(
-      db.getRemoteIdentityByConnectorChat(params.targetConnectorId, params.targetChatId),
+      db.getRemoteIdentityByChannelAccountChat(params.targetChannelAccountId, params.targetChatId),
       'Failed to load target remote identity'
     );
     const targetIdentity =
       exactTargetIdentity ??
       (params.targetPlatformChatId
         ? assertQuerySuccess(
-            db.getRemoteIdentityByConnectorPlatformChat(params.targetConnectorId, params.targetPlatformChatId),
+            db.getRemoteIdentityByChannelAccountPlatformChat(
+              params.targetChannelAccountId,
+              params.targetPlatformChatId
+            ),
             'Failed to load target remote identity'
           )
         : null);
@@ -146,8 +153,8 @@ export class ChannelContinuationService {
       assertQuerySuccess(db.upsertRemoteIdentity(updatedIdentity), 'Failed to update target identity');
 
       const continuationBindingBase: IChannelBinding = {
-        id: buildStableBindingId(params.targetConnectorId, targetAudienceKey),
-        connectorId: params.targetConnectorId,
+        id: buildStableBindingId(params.targetChannelAccountId, targetAudienceKey),
+        channelAccountId: params.targetChannelAccountId,
         scopeType: 'remote_chat',
         scopeKey: targetAudienceKey,
         agentProfileId: sourceAgentProfile.id,
@@ -184,7 +191,7 @@ export class ChannelContinuationService {
       assertQuerySuccess(db.upsertChannelBinding(continuationBinding), 'Failed to upsert continuation binding');
 
       const existingTargetSession = assertQuerySuccess(
-        db.getExternalSessionByConnectorRemote(params.targetConnectorId, updatedIdentity.id),
+        db.getExternalSessionByChannelAccountRemote(params.targetChannelAccountId, updatedIdentity.id),
         'Failed to load target external session'
       );
 
@@ -205,7 +212,7 @@ export class ChannelContinuationService {
               control: {
                 ownerKey:
                   controlMode === 'im_owner'
-                    ? buildImOwnerKey(params.targetConnectorId, targetAudienceKey)
+                    ? buildImOwnerKey(params.targetChannelAccountId, targetAudienceKey)
                     : buildDesktopOwnerKey(
                         source.sourceConversationId || existingTargetSession.activeConversationId || 'unknown'
                       ),
@@ -219,7 +226,7 @@ export class ChannelContinuationService {
           }
         : {
             id: `external_session_${uuid()}`,
-            connectorId: params.targetConnectorId,
+            channelAccountId: params.targetChannelAccountId,
             remoteIdentityId: updatedIdentity.id,
             bindingId: continuationBinding.id,
             agentProfileId: sourceAgentProfile.id,
@@ -232,7 +239,7 @@ export class ChannelContinuationService {
               control: {
                 ownerKey:
                   controlMode === 'im_owner'
-                    ? buildImOwnerKey(params.targetConnectorId, targetAudienceKey)
+                    ? buildImOwnerKey(params.targetChannelAccountId, targetAudienceKey)
                     : buildDesktopOwnerKey(source.sourceConversationId || 'unknown'),
                 controlMode,
                 sourceExternalSessionId: source.sourceExternalSession?.id,
@@ -248,7 +255,7 @@ export class ChannelContinuationService {
           externalSessionId: nextTargetSession.id,
           ownerKey:
             controlMode === 'im_owner'
-              ? buildImOwnerKey(params.targetConnectorId, targetAudienceKey)
+              ? buildImOwnerKey(params.targetChannelAccountId, targetAudienceKey)
               : buildDesktopOwnerKey(source.sourceConversationId || 'unknown'),
           controlMode,
           sourceExternalSessionId: source.sourceExternalSession?.id,
@@ -520,7 +527,7 @@ export class ChannelContinuationService {
           ...controlMetadata,
           ownerKey:
             controlMode === 'im_owner'
-              ? buildImOwnerKey(targetExternalSession.connectorId, targetRemoteIdentity?.remoteChatId || 'unknown')
+              ? buildImOwnerKey(targetExternalSession.channelAccountId, targetRemoteIdentity?.remoteChatId || 'unknown')
               : buildDesktopOwnerKey(sourceConversationId || 'unknown'),
           controlMode,
           updatedAt: Date.now(),
@@ -533,7 +540,7 @@ export class ChannelContinuationService {
         externalSessionId: updated.id,
         ownerKey:
           controlMode === 'im_owner'
-            ? buildImOwnerKey(targetExternalSession.connectorId, targetRemoteIdentity?.remoteChatId || 'unknown')
+            ? buildImOwnerKey(targetExternalSession.channelAccountId, targetRemoteIdentity?.remoteChatId || 'unknown')
             : buildDesktopOwnerKey(sourceConversationId || 'unknown'),
         controlMode,
         sourceExternalSessionId:
