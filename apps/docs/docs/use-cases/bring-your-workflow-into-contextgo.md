@@ -10,7 +10,7 @@ description: Start by bringing your existing files, pages, notes, and work patte
 
 更好的方式，是先把你原来已经在用的资料、网页、文件、笔记和任务流接进来，让 ContextGo 从你现有的工作现实开始工作。
 
-## This Mode Is For You If...
+## 这页适合谁
 
 这一页适合：
 
@@ -18,7 +18,7 @@ description: Start by bringing your existing files, pages, notes, and work patte
 - 不想先学一套新的复杂系统
 - 想先把“今天正在做的事”带进来
 
-## Why ContextGo Fits This Scenario
+## 为什么这是更稳的起步方式
 
 很多工具的问题不是能力不够，而是和你现有工作现实脱节。
 
@@ -31,6 +31,17 @@ description: Start by bringing your existing files, pages, notes, and work patte
 - 历史产物
 
 ContextGo 的价值，在于先把这些东西接进上下文系统，再让 Agent 在真实工作环境里继续工作。
+
+## 第一阶段建议带进来的东西
+
+最值得先带进来的，不是“所有资料”，而是和当前任务最直接相关的几类材料：
+
+- 一组正在处理的文件
+- 当前要参考的网页或资料页
+- 和任务直接相关的项目文档
+- 已有的结论、笔记或约束
+
+先让一条真实任务吃到真实材料，比先搭一个巨大体系更重要。
 
 ## Starter Kit
 
@@ -50,13 +61,16 @@ ContextGo 的价值，在于先把这些东西接进上下文系统，再让 Age
 4. 让 Agent 先做一件明确的小事，例如整理资料或总结现状。
 5. 检查结果是否真正引用了你的真实材料。
 
-## When To Level Up
+## 第一阶段不要急着做什么
 
 先不要一开始就：
 
-- 同时接很多外部系统
-- 一上来做复杂自动化
-- 先做发布到渠道
+- 重构你全部工作方式
+- 一次接太多外部系统
+- 先做复杂自动化
+- 先把能力发布到渠道
+
+## When To Level Up
 
 用顺之后再加：
 
@@ -64,7 +78,15 @@ ContextGo 的价值，在于先把这些东西接进上下文系统，再让 Age
 - hooks / schedules
 - remote access
 
-## Related Docs
+## 成功标准应该很朴素
+
+这条起步路径是否成功，不看你接了多少能力，而看三件事：
+
+- 你是否从真实材料开始
+- Agent 是否真的引用了这些材料
+- 结果是否帮你推进了当天的工作
+
+## 下一步
 
 - [Context Connector](../context/context-connector)
 - [Context System Overview](../context/context-system-overview)
