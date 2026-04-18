@@ -1,0 +1,87 @@
+name: Sync Blog Content
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/src/content/blog/**'
+      - 'apps/web/src/content-tools/build.mjs'
+      - 'apps/web/package.json'
+      - 'apps/web/package-lock.json'
+      - 'scripts/release/export-release-blog-content.mjs'
+      - '.github/workflows/sync-blog-content.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-blog-content-main
+  cancel-in-progress: true
+
+env:
+  PUBLIC_RELEASE_REPOSITORY: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
+
+jobs:
+  sync-blog-content:
+    name: Sync blog payloads to release repository
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+            '["self-hosted","Linux"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ github.workspace }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install website dependencies for blog export
+        run: npm ci
+        working-directory: ${{ github.workspace }}/apps/web
+
+      - name: Sync release blog content
+        env:
+          PUBLISH_TOKEN: ${{ secrets.GH_TOKEN != '' && secrets.GH_TOKEN || github.token }}
+          SOURCE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          TARGET_DIR="${RUNNER_TEMP}/contextgo-release-repo"
+          AUTH_REMOTE="https://x-access-token:${PUBLISH_TOKEN}@github.com/${PUBLIC_RELEASE_REPOSITORY}.git"
+
+          rm -rf "${TARGET_DIR}"
+          git clone "${AUTH_REMOTE}" "${TARGET_DIR}"
+
+          node scripts/release/export-release-blog-content.mjs \
+            --target "${TARGET_DIR}" \
+            --source-ref "${SOURCE_REF}"
+
+          cd "${TARGET_DIR}"
+
+          if [ -z "$(git status --porcelain -- site/blog)" ]; then
+            echo "No blog content changes to publish."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/blog
+          git commit -m "docs(release): sync blog content from ${SOURCE_REF}"
+          git push origin HEAD:main
