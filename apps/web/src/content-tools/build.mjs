@@ -182,17 +182,22 @@ const buildBlogLocaleCollection = async (options, locale) => {
   };
 };
 
-export const buildPublicContentCollections = async (options) => {
-  const docsEntries = await Promise.all(
-    publicContentLocales.map(async (locale) => [locale, await buildDocsLocaleCollection(options, locale)])
-  );
+export const buildBlogContentCollections = async (options) => {
   const blogEntries = await Promise.all(
     publicContentLocales.map(async (locale) => [locale, await buildBlogLocaleCollection(options, locale)])
   );
 
+  return Object.fromEntries(blogEntries);
+};
+
+export const buildPublicContentCollections = async (options) => {
+  const docsEntries = await Promise.all(
+    publicContentLocales.map(async (locale) => [locale, await buildDocsLocaleCollection(options, locale)])
+  );
+
   return {
     docs: Object.fromEntries(docsEntries),
-    blog: Object.fromEntries(blogEntries),
+    blog: await buildBlogContentCollections(options),
   };
 };
 
