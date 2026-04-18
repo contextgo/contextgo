@@ -252,7 +252,7 @@ export function mergeManagedSlashCommandLibraries(
     });
   }
 
-  return mergedReversed.reverse();
+  return mergedReversed.toReversed();
 }
 
 export function resolveManagedSlashCommands(
