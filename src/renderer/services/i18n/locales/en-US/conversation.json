@@ -6,12 +6,24 @@
       "workbench": "Bring the task here and let's get to work.",
       "momentum": "This is your AI-native workbench."
     },
+    "sloganRotating": {
+      "outOfBox": "An AI-native workbench that works out of the box",
+      "workflow": "Bring digital workers into your real workflow",
+      "connectors": "Use Connectors to plug into the tools you already use",
+      "memory": "Use self-evolving memory so agents learn your work over time"
+    },
     "placeholder": "Tell me what you want to get done and we can start now...",
     "placeholderVariants": {
       "start": "Say what you want to do and we can jump right in...",
       "goal": "Tell me the outcome you want and I'll help drive it forward...",
       "anything": "Work, writing, research, planning, cleanup. Bring it here...",
       "brief": "Drop in the task, idea, or problem and we'll get moving..."
+    },
+    "placeholderRotating": {
+      "startNow": "Send over what you want to move forward and we can start now...",
+      "goal": "Give me the goal and I'll break it down, execute, and keep it moving...",
+      "context": "Drop in the task, materials, and context, and I'll wire them together first...",
+      "orchestrate": "Tell me the outcome you're aiming for and I'll organize the agents and workflow..."
     },
     "uploadFile": "Add Files",
     "linkFolder": "Open Folder",

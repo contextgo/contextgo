@@ -6,12 +6,24 @@
       "workbench": "把任务交给我，我们直接开工。",
       "momentum": "这里是你的 AI 原生工作台。"
     },
+    "sloganRotating": {
+      "outOfBox": "开箱即用的 AI 原生工作台",
+      "workflow": "让数字员工真正进入你的工作流",
+      "connectors": "用 Connector 接入原来的工作台",
+      "memory": "用自进化记忆，让 Agent 越干越懂你"
+    },
     "placeholder": "把想做的事告诉我，我们直接开始...",
     "placeholderVariants": {
       "start": "想做什么，直接说一句就行...",
       "goal": "告诉我你的目标，我来陪你推进...",
       "anything": "工作、创作、研究、整理，都可以交给我...",
       "brief": "把需求、想法或问题发过来，我们马上开始..."
+    },
+    "placeholderRotating": {
+      "startNow": "把你想推进的事发给我，我们直接开始...",
+      "goal": "说一句目标，我来帮你拆解、执行和推进...",
+      "context": "把任务、资料和上下文交给我，我先帮你接起来...",
+      "orchestrate": "先告诉我结果目标，我来组织 Agent 和工作流..."
     },
     "uploadFile": "添加资料",
     "linkFolder": "打开文件夹",
