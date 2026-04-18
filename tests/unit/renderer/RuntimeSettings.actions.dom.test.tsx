@@ -23,9 +23,10 @@ describe('Runtime Settings actions', () => {
   it('reveals the runtime config path in the system file manager', async () => {
     renderRuntimeSettings();
 
-    await screen.findByText('Runtime Management');
+    await screen.findByText('/opt/codex/bin/codex');
+    const codexCard = screen.getByTestId('runtime-card-codex');
     await act(async () => {
-      fireEvent.click(within(screen.getByTestId('runtime-card-codex')).getByRole('button', { name: 'Reveal' }));
+      fireEvent.click(within(codexCard).getByRole('button', { name: 'Reveal' }));
       await flushPromises();
     });
     expect(revealPathInvokeMock).toHaveBeenCalledWith('/Users/tester/.codex');
@@ -34,9 +35,10 @@ describe('Runtime Settings actions', () => {
   it('runs a health check for the selected runtime card', async () => {
     renderRuntimeSettings();
 
-    await screen.findByText('Runtime Management');
+    await screen.findByRole('button', { name: 'Check availability' });
+    const codexCard = screen.getByTestId('runtime-card-codex');
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'Check availability' })[0]);
+      fireEvent.click(within(codexCard).getByRole('button', { name: 'Check availability' }));
       await flushPromises();
     });
     expect(checkAgentHealthInvokeMock).toHaveBeenCalledWith({ backend: 'codex' });
@@ -45,9 +47,9 @@ describe('Runtime Settings actions', () => {
   it('runs managed install for a missing runtime', async () => {
     renderRuntimeSettings();
 
-    await screen.findByText('Runtime Management');
+    const opencodeCard = await screen.findByTestId('runtime-card-opencode');
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: 'Install locally' })[0]);
+      fireEvent.click(within(opencodeCard).getByRole('button', { name: 'Install locally' }));
       await flushPromises();
     });
     expect(installManagedRuntimeInvokeMock).toHaveBeenCalled();
@@ -56,8 +58,8 @@ describe('Runtime Settings actions', () => {
   it('renders install progress logs from managed runtime events', async () => {
     renderRuntimeSettings();
 
-    await screen.findByText('Runtime Management');
-    fireEvent.click(screen.getAllByRole('button', { name: 'Install locally' })[0]);
+    const opencodeCard = await screen.findByTestId('runtime-card-opencode');
+    fireEvent.click(within(opencodeCard).getByRole('button', { name: 'Install locally' }));
 
     emitManagedRuntimeInstallEvent({
       backend: 'opencode',
@@ -81,9 +83,7 @@ describe('Runtime Settings actions', () => {
   it('does not show install action for unmanaged runtimes', async () => {
     renderRuntimeSettings();
 
-    await screen.findByText('Runtime Management');
-
-    const geminiCard = screen.getByTestId('runtime-card-gemini');
+    const geminiCard = await screen.findByTestId('runtime-card-gemini');
     expect(within(geminiCard).queryByRole('button', { name: 'Install locally' })).not.toBeInTheDocument();
     expect(within(geminiCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
   });
