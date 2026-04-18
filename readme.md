@@ -149,12 +149,12 @@ ContextGo 在产品层不是一堆抽象概念，而是一套可直接使用的�
 
 ## ContextGo 项目矩阵
 
-| 仓库 | 角色 |
-| --- | --- |
-| [`contextgo`](https://github.com/contextgo/contextgo) | 主产品与主品牌仓库，承载桌面端、WebUI、mobile shell、Agent Package、Context Engine 等核心产品能力 |
-| [`connector`](https://github.com/contextgo/connector) | ContextGo 的连接与执行边界层，负责外部产品、本地资源、浏览器和受控操作的接入 |
-| [`skillmarket`](https://github.com/contextgo/skillmarket) | ContextGo 的技能发现、镜像、精选、组合与分发基础设施 |
-| [`contextgo-releases`](https://github.com/contextgo/contextgo-releases) | 公共发行与分发出口，承载安装包、版本清单、更新元数据和公开内容导出 |
+| 仓库                                                                    | 角色                                                                                              |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| [`contextgo`](https://github.com/contextgo/contextgo)                   | 主产品与主品牌仓库，承载桌面端、WebUI、mobile shell、Agent Package、Context Engine 等核心产品能力 |
+| [`connector`](https://github.com/contextgo/connector)                   | ContextGo 的连接与执行边界层，负责外部产品、本地资源、浏览器和受控操作的接入                      |
+| [`skillmarket`](https://github.com/contextgo/skillmarket)               | ContextGo 的技能发现、镜像、精选、组合与分发基础设施                                              |
+| [`contextgo-releases`](https://github.com/contextgo/contextgo-releases) | 公共发行与分发出口，承载安装包、版本清单、更新元数据和公开内容导出                                |
 
 ---
 

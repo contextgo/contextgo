@@ -39,11 +39,21 @@ const connectorRows: ConnectorBrand[][] = [
     { name: 'Google Docs', logo: '/connectors/google-workspace/google-docs.svg' },
     { name: 'Google Sheets', logo: '/connectors/google-workspace/google-sheets.svg' },
   ],
+  [
+    { name: 'GitLab', logo: '/connectors/development/gitlab.svg' },
+    { name: 'Netlify', logo: '/connectors/development/netlify.svg' },
+    { name: 'Sentry', logo: '/connectors/development/sentry.svg' },
+    { name: 'Vercel', logo: '/connectors/development/vercel.svg' },
+    { name: 'Google Calendar', logo: '/connectors/google-workspace/google-calendar.svg' },
+    { name: 'Google Chat', logo: '/connectors/google-workspace/google-chat.svg' },
+    { name: 'Google Meet', logo: '/connectors/google-workspace/google-meet.svg' },
+    { name: 'Box', logo: '/connectors/storage/box.svg' },
+  ],
 ];
 
 const featureIcons = [Database, Network, Sparkles] as const;
 
-const marqueeDirections = ['left', 'right', 'left'] as const;
+const marqueeDirections = ['left', 'right', 'left', 'right'] as const;
 
 export default function ConnectClient({ dict }: { dict: Dictionary }) {
   return (

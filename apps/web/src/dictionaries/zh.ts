@@ -155,6 +155,13 @@ export const zh = {
     privacy: '隐私政策',
     terms: '使用条款',
   },
+  errors: {
+    notFound: {
+      title: '页面不存在',
+      description: '你访问的页面暂时不可用。先回到 ContextGo 首页，再继续进入对应内容。',
+      action: '返回 ContextGo',
+    },
+  },
   legal: {
     contactEmail: 'support@contextgo.io',
     privacy: {

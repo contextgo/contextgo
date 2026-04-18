@@ -117,6 +117,7 @@ out/
 # AI CLI tool configurations (may contain sensitive information)
 **/.claude/settings.local.json
 **/.claude/settings.json
+.ops/
 .ops/*.env
 .qwen/
 .qwen/*/

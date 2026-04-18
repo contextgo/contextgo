@@ -40,11 +40,13 @@ export type ConversationDocumentPaths = {
   workingSetRelativePath: string;
 };
 
+const INVALID_VAULT_PATH_CHARS_REGEX = /[\p{Cc}<>:"/\\|?*]/gu;
+
 export const sanitizeVaultPathSegment = (value: string): string => {
   const normalized = value
     .normalize('NFKC')
     .trim()
-    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ')
+    .replace(INVALID_VAULT_PATH_CHARS_REGEX, ' ')
     .replace(/\s+/g, '-')
     .replace(/^-+|-+$/g, '')
     .replace(/\.+$/g, '');

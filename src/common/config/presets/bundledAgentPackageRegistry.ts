@@ -1,5 +1,6 @@
 import path from 'path';
 import type {
+  AgentPackageConnectorsPayload,
   AgentPackageHooksPayload,
   AgentPackageManifest,
   AgentPackagePayloadId,
@@ -184,6 +185,15 @@ export function hasBundledAgentPackageSkillsPayload(assistantId: string): boolea
   return !!getBundledAgentPackagePayload(assistantId, 'skills');
 }
 
+export function getBundledAgentPackageConnectorTypes(assistantId: string): string[] | undefined {
+  const payload = getBundledAgentPackagePayload(assistantId, 'connectors') as AgentPackageConnectorsPayload | undefined;
+  return payload?.connectorTypes ? [...payload.connectorTypes] : undefined;
+}
+
+export function hasBundledAgentPackageConnectorsPayload(assistantId: string): boolean {
+  return !!getBundledAgentPackagePayload(assistantId, 'connectors');
+}
+
 export function getBundledAgentPackageDefaultEnabledHookNames(assistantId: string): string[] | undefined {
   const payload = getBundledAgentPackagePayload(assistantId, 'hooks') as AgentPackageHooksPayload | undefined;
   return payload?.defaultEnabledHookNames ? [...payload.defaultEnabledHookNames] : undefined;
@@ -213,6 +223,30 @@ export function getBundledAgentPackageWorkspaceAutomationProfile(assistantId: st
 export function getBundledAgentPackageSkillSourceDescriptors(assistantId: string): AgentPackageSourceDescriptor[] {
   const payload = getBundledAgentPackagePayload(assistantId, 'skills') as AgentPackageSkillsPayload | undefined;
   return payload?.sources ? [...payload.sources] : [];
+}
+
+export function getBundledAgentPackageInstallSurfaces(assistantId: string): string[] {
+  const descriptor = findBundledAgentPackageDescriptorByAssistantId(assistantId);
+  if (!descriptor) {
+    return [];
+  }
+
+  const installSurfaces: string[] = [];
+
+  const maybePush = (value: string | undefined): void => {
+    if (value && !installSurfaces.includes(value)) {
+      installSurfaces.push(value);
+    }
+  };
+
+  maybePush(descriptor.manifest.payloads.skills?.installSurface);
+  maybePush(descriptor.manifest.payloads.connectors?.installSurface);
+  maybePush(descriptor.manifest.payloads.commands?.installSurface);
+  maybePush(descriptor.manifest.payloads.hooks?.installSurface);
+  maybePush(descriptor.manifest.payloads.hooks?.selectionSurface);
+  maybePush(descriptor.manifest.payloads.schedules?.installSurface);
+
+  return installSurfaces;
 }
 
 export function resolveBundledAgentPackageEntryDocumentRelativePath(assistantId: string): string | undefined {

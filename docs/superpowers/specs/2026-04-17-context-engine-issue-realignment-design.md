@@ -212,7 +212,7 @@ The problem statement is still aligned with the product, but it needs stronger a
   - used context
   - used skills
   - used hooks/commands/schedules
-  are evidence classes feeding existing governance, not a new independent telemetry subsystem
+    are evidence classes feeding existing governance, not a new independent telemetry subsystem
 
 ### `#135` Session Recall vs Durable Memory/Profile
 

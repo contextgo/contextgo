@@ -121,9 +121,7 @@ export default function ContentIndexPage({
 
               <div className='theme-border border-t pt-5'>
                 <div className='editorial-kicker'>{copy.pathLabel}</div>
-                <h3 className='theme-text-primary mt-4 text-lg font-semibold tracking-[-0.03em]'>
-                  {copy.pathTitle}
-                </h3>
+                <h3 className='theme-text-primary mt-4 text-lg font-semibold tracking-[-0.03em]'>{copy.pathTitle}</h3>
                 <p className='theme-text-secondary mt-3 text-sm leading-7'>{copy.pathBody}</p>
 
                 <div className='mt-6 space-y-5'>
@@ -142,9 +140,7 @@ export default function ContentIndexPage({
                         <div className='theme-text-tertiary text-[10px] font-semibold uppercase tracking-[0.24em]'>
                           {item.step}
                         </div>
-                        <div className='theme-text-primary mt-2 text-base font-semibold leading-6'>
-                          {entry.title}
-                        </div>
+                        <div className='theme-text-primary mt-2 text-base font-semibold leading-6'>{entry.title}</div>
                         <p className='theme-text-secondary mt-2 text-sm leading-7'>{item.body}</p>
                       </Link>
                     );
@@ -177,10 +173,7 @@ function FeatureArticleCard({
   audience: string;
 }) {
   return (
-    <Link
-      href={href}
-      className='theme-border block border-y py-7 transition-opacity duration-200 hover:opacity-85'
-    >
+    <Link href={href} className='theme-border block border-y py-7 transition-opacity duration-200 hover:opacity-85'>
       <div className='theme-text-tertiary flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-semibold uppercase tracking-[0.24em]'>
         <span>{cardLabel}</span>
         <span>{entry.eyebrow}</span>
@@ -228,10 +221,7 @@ function CompactArticleCard({
   audience: string;
 }) {
   return (
-    <Link
-      href={href}
-      className='theme-border block border-t pt-7 transition-opacity duration-200 hover:opacity-85'
-    >
+    <Link href={href} className='theme-border block border-t pt-7 transition-opacity duration-200 hover:opacity-85'>
       <div className='theme-text-tertiary flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-semibold uppercase tracking-[0.24em]'>
         <span>{entry.eyebrow}</span>
         {entry.publishedAt ? <span>{entry.publishedAt}</span> : null}

@@ -340,8 +340,7 @@ Expected: FAIL because `setupAssistantWorkspace()` still uses global skill roots
 const WORKSPACE_RUNTIME_ROOT = '.contextgo';
 const WORKSPACE_RUNTIME_SKILLS_DIR = path.join(WORKSPACE_RUNTIME_ROOT, 'skills');
 
-const getWorkspaceRuntimeSkillsDir = (workspace: string): string =>
-  path.join(workspace, WORKSPACE_RUNTIME_SKILLS_DIR);
+const getWorkspaceRuntimeSkillsDir = (workspace: string): string => path.join(workspace, WORKSPACE_RUNTIME_SKILLS_DIR);
 
 async function materializeWorkspaceSkill(sourceSkillDir: string, targetSkillDir: string): Promise<void> {
   await fs.rm(targetSkillDir, { recursive: true, force: true });
@@ -409,12 +408,8 @@ it('does not pass shell-global runtime auth variables through getEnhancedEnv whe
 });
 
 it('resolves codex config and auth paths from the project runtime root', () => {
-  expect(getCodexConfigPath('/workspace/app/.contextgo')).toBe(
-    '/workspace/app/.contextgo/codex/config.toml'
-  );
-  expect(getCodexAuthPath('/workspace/app/.contextgo')).toBe(
-    '/workspace/app/.contextgo/codex/auth.json'
-  );
+  expect(getCodexConfigPath('/workspace/app/.contextgo')).toBe('/workspace/app/.contextgo/codex/config.toml');
+  expect(getCodexAuthPath('/workspace/app/.contextgo')).toBe('/workspace/app/.contextgo/codex/auth.json');
 });
 ```
 
@@ -457,7 +452,9 @@ export function getProjectRuntimeEnv(input: {
 ```ts
 // src/process/agent/acp/utils.ts
 export function getClaudeSettingsPath(runtimeRoot?: string): string {
-  return runtimeRoot ? path.join(runtimeRoot, 'claude', 'settings.json') : path.join(os.homedir(), '.claude', 'settings.json');
+  return runtimeRoot
+    ? path.join(runtimeRoot, 'claude', 'settings.json')
+    : path.join(os.homedir(), '.claude', 'settings.json');
 }
 ```
 

@@ -119,6 +119,7 @@ const labelsContent: Record<SiteLocale, SiteLabels> = {
     openDownloadCenter: 'Open download center',
     openReleasePage: 'Open release page',
     articleSidebarTitle: 'ContextGo',
+    articleSidebarHeadline: 'Open ContextGo',
     articleSidebarBody:
       'Keep customer-facing guidance on the website, and keep installable artifacts in the release repository.',
     docsSource: 'Docs source',
@@ -143,6 +144,7 @@ const labelsContent: Record<SiteLocale, SiteLabels> = {
     openDownloadCenter: '打开下载中心',
     openReleasePage: '打开版本页',
     articleSidebarTitle: 'ContextGo',
+    articleSidebarHeadline: '打开 ContextGo',
     articleSidebarBody: '把对客文档留在官网，把可安装产物留在 release 仓库里。',
     docsSource: '文档来源',
     docsSourceRelease: 'Release 文档 v{{version}}',

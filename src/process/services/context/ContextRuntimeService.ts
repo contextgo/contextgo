@@ -226,9 +226,9 @@ function buildContextTraceCheckpointBody(input: {
     `- Omitted sections: ${omittedSections}`,
   ].join('\n');
 
-  return [packBody, traceBody].filter((section): section is string => typeof section === 'string' && section.length > 0).join(
-    '\n\n'
-  );
+  return [packBody, traceBody]
+    .filter((section): section is string => typeof section === 'string' && section.length > 0)
+    .join('\n\n');
 }
 
 function buildCompactTurnTraceSummary(

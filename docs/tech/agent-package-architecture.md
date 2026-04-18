@@ -11,7 +11,7 @@ It is an **Agent Package**: a runtime-neutral capability bundle that ContextGo c
 This distinction matters because:
 
 - runtime choice can change without changing the assistant package
-- `skills`, `hooks`, `commands`, and `schedules` are product capabilities, not Claude-specific filesystem conventions
+- `skills`, `connectors`, `hooks`, `commands`, and `schedules` are product capabilities, not Claude-specific filesystem conventions
 - built-in packages and future imported packages should share one installation model
 - ContextGo must own the workspace automation boundary instead of inheriting third-party CLI layout as the product model
 
@@ -25,11 +25,17 @@ That means:
 - package payload availability comes from the manifest
 - install surfaces come from the manifest
 - runtime projection behavior comes from the manifest
+- connector requirements and project-facing connector mount metadata come from the manifest
 - product UI surfaces must be derived from the manifest-backed package model, not from ad-hoc directory scanning
 
 The renderer may render package surfaces such as `Rules`, `AGENTS.md`, `Docs`, `Skills`, `Hooks`, `Commands`, and `Schedules`, but it must not invent those surfaces by guessing from runtime-native directories or workspace file layout.
 
 This rule exists to keep built-in assistants, imported assistants, and future cloud packages on one protocol.
+
+Current implementation note:
+
+- some current built-in manifests may not yet expose a first-class `connectors` payload
+- this document defines the required product architecture and migration direction for upcoming manifest and bootstrap work
 
 ## Core Terms
 
@@ -54,10 +60,46 @@ An Agent Package may contribute:
 - `docs/`
 - workspace scaffold templates
 - `skills/`
+- connector requirements and connector-usage declarations
 - `hooks/`
 - command seeds
 - schedule seeds
 - optional default workspace bootstrap strategy
+
+### Context Connector Type
+
+A product-level connector capability identity such as `lark-cli`, `gh`, `figma`, or a ContextGo-owned connector type.
+
+The connector type describes the kind of external context or action surface an assistant can use. It does **not** represent a specific authenticated instance.
+
+Connector types may map to:
+
+- official vendor CLI entrypoints that already know how to talk to a platform
+- official APIs or SDK-backed integrations
+- ContextGo-owned connector implementations
+
+### Space connector binding
+
+A Space-scoped authenticated connector instance.
+
+This is where actual link information, account selection, tokens, CLI auth state, or platform-specific connection configuration belongs.
+
+Multiple bindings may exist for the same connector type inside one Space.
+
+### Project connector metadata
+
+Project-scoped metadata that records which connector types are available to the project and which Space-scoped bindings are selected for a given Agent Package.
+
+This metadata belongs under `.contextgo/` and is intentionally separate from Space-owned credentials.
+
+Project connector metadata may include:
+
+- which connector types are visible to the project
+- which Space connector bindings are mounted for a given Agent Package
+- package- or skill-facing connector usage hints
+- re-creatable local connector indexes or caches
+
+Project connector metadata must not become a second credential store.
 
 ### Runtime
 
@@ -117,6 +159,7 @@ After workspace bootstrap, the product-owned state must live under:
 
 ```text
 .contextgo/
+  connectors/
   skills/
   hooks/
   hooks.json
@@ -133,6 +176,12 @@ Runtime-native directories remain derived views:
 ```
 
 ContextGo must not treat runtime-native directories as the source of truth for package installation.
+
+Connector-specific rule:
+
+- `.contextgo/connectors/` stores project-facing connector metadata and mount state
+- Space-owned credentials, tokens, and authenticated connector link information do **not** live in `.contextgo/connectors/`
+- runtime-native directories must not become the source of truth for connector state
 
 ### Current project Skill Market install behavior
 
@@ -177,12 +226,13 @@ Every package should have:
 It should declare stable fields for:
 
 - package identity
-- logical payloads such as `rules`, `docs`, `workspaceScaffold`, `skills`, `hooks`, `commands`, and `schedules`
+- logical payloads such as `rules`, `docs`, `workspaceScaffold`, `skills`, `connectors`, `hooks`, `commands`, and `schedules`
 - the physical source roots for those payloads
 - the installed workspace surfaces those payloads map to
 - whether a payload is projected into runtime-native directories
 - package-owned capability metadata when needed
   - for `skills`, this includes stable `packagedSkillNames`
+  - for `connectors`, this includes stable connector type declarations, package-facing usage intent, and project-facing mount metadata expectations
   - for Context Engine External Memory Strategy Adapter compatibility, this includes runtime-neutral capability metadata such as adapter capability keys, governance scopes, dual-loop participation, and abstract config schema / secret-key declarations
   - `defaultEnabledSkillNames` remains the assistant default, not the package ownership boundary
   - `hidePackageOwnedSkillsFromLibrary` controls whether package-owned skills stay out of the generic skills picker
@@ -222,6 +272,7 @@ This is the default progressive disclosure boundary:
 - `docs/`: deeper package documentation
 - `workspaceScaffold`: project-level starter docs written into the linked workspace when bootstrap is allowed
 - `skills/*/SKILL.md`: task-specific executable instructions
+- `connectors`: package-level connector requirements and project-facing mount guidance
 
 When a package needs runtime-facing workspace instruction files, it should declare that routing in
 `entryDocument.runtimeEntryProjections` rather than relying on bootstrap-time hardcoded filename maps.
@@ -239,6 +290,7 @@ Packages may also include:
 
 - workspace scaffold templates
 - `skills/`
+- `connectors/` source material or manifest-declared connector requirement metadata
 - `hooks/`
 - command-source material
 - schedule seed material
@@ -246,6 +298,7 @@ Packages may also include:
 The exact source representation may vary while the product is still absorbing legacy bundles, but the installed workspace representation is canonical:
 
 - workspace scaffold templates install into the workspace root, typically as runtime entry docs plus starter files under `docs/`
+- connector metadata installs into `.contextgo/connectors/`
 - commands install into `.contextgo/commands.json`
 - hooks install into `.contextgo/hooks/` and `.contextgo/hooks.json`
 - schedules install into `.contextgo/schedules.json`
@@ -255,17 +308,25 @@ The exact source representation may vary while the product is still absorbing le
 
 The ownership model should stay explicit:
 
-| Payload / surface       | Package source of truth                                                         | Workspace install surface                                | Runtime projection                                             | Product owner                               |
-| ----------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------- |
-| Rules entry document    | package-root `AGENTS.md` with `entryDocument.runtimeEntryProjections[*].target` | workspace root when scaffolded                           | yes, into runtime entry docs such as `CLAUDE.md` / `GEMINI.md` | Agent Package + runtime compatibility layer |
-| Package deep docs       | package `docs/`                                                                 | not installed as `.contextgo` state                      | none                                                           | Agent Package                               |
-| Workspace scaffold docs | `workspaceScaffold` templates                                                   | workspace root such as `AGENTS.md`, `CLAUDE.md`, `docs/` | runtime may read directly from workspace root                  | Agent Package + workspace bootstrap         |
-| Skills                  | package `skills/` sources                                                       | `.contextgo/skills/`                                     | yes, skill-only projection into runtime-native skill dirs      | Agent Package + runtime compatibility layer |
-| Hooks                   | package `hooks/` sources                                                        | `.contextgo/hooks/` + `.contextgo/hooks.json`            | no product-level runtime ownership change                      | ContextGo automation                        |
-| Commands                | package command seeds / profiles                                                | `.contextgo/commands.json`                               | no                                                             | ContextGo automation                        |
-| Schedules               | package schedule seeds / profiles                                               | `.contextgo/schedules.json`                              | no                                                             | ContextGo automation                        |
+| Payload / surface       | Package source of truth                                                         | Workspace install surface                                | Runtime projection                                             | Product owner                                   |
+| ----------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------- |
+| Rules entry document    | package-root `AGENTS.md` with `entryDocument.runtimeEntryProjections[*].target` | workspace root when scaffolded                           | yes, into runtime entry docs such as `CLAUDE.md` / `GEMINI.md` | Agent Package + runtime compatibility layer     |
+| Package deep docs       | package `docs/`                                                                 | not installed as `.contextgo` state                      | none                                                           | Agent Package                                   |
+| Workspace scaffold docs | `workspaceScaffold` templates                                                   | workspace root such as `AGENTS.md`, `CLAUDE.md`, `docs/` | runtime may read directly from workspace root                  | Agent Package + workspace bootstrap             |
+| Skills                  | package `skills/` sources                                                       | `.contextgo/skills/`                                     | yes, skill-only projection into runtime-native skill dirs      | Agent Package + runtime compatibility layer     |
+| Connectors              | package connector requirement metadata and optional connector docs              | `.contextgo/connectors/`                                 | no                                                             | Agent Package + Space / Project connector model |
+| Hooks                   | package `hooks/` sources                                                        | `.contextgo/hooks/` + `.contextgo/hooks.json`            | no product-level runtime ownership change                      | ContextGo automation                            |
+| Commands                | package command seeds / profiles                                                | `.contextgo/commands.json`                               | no                                                             | ContextGo automation                            |
+| Schedules               | package schedule seeds / profiles                                               | `.contextgo/schedules.json`                              | no                                                             | ContextGo automation                            |
 
 The important constraint is that `hooks`, `commands`, and `schedules` remain product automation features even if a specific runtime has partial compatibility features.
+
+Connector constraint:
+
+- `connectors` is a package capability surface, not a runtime-native projection surface
+- connector declarations identify connector **types**, not authenticated instances
+- authenticated instances stay Space-scoped
+- project-visible connector selection and mount metadata live under `.contextgo/connectors/`
 
 ### External Memory Strategy Adapter boundary
 
@@ -283,6 +344,10 @@ The Context Engine External Memory Strategy Adapter SPI is a runtime-neutral cap
 Workspace bootstrap must first materialize package-owned state into `.contextgo/`.
 
 Project-level scaffold files such as runtime entry docs and starter `docs/` files may also be written into the workspace root when the package declares `workspaceScaffold` and the target workspace does not already expose its own root guidance.
+
+If the package declares connector requirements, project-facing connector metadata should be materialized under `.contextgo/connectors/`.
+
+That metadata is limited to project visibility, package mount selection, and re-creatable local indexes or hints. It must not contain the Space's actual connector credentials.
 
 ### 2. Runtime only projects skills
 
@@ -316,7 +381,23 @@ Current runtime support nuance:
 - `skills` are broadly recognized across supported coding runtimes
 - `hooks` may have runtime-specific compatibility in some runtimes, but the product contract still treats them as ContextGo automation, not as runtime-owned workspace semantics
 
-### 4. Do not preserve third-party workspace semantics as the product boundary
+### 4. Do not project connectors into runtime-native roots
+
+`connectors` are product-level assistant capabilities.
+
+They may rely on:
+
+- official CLIs that a runtime can invoke
+- official APIs or SDKs
+- ContextGo-owned connector implementations
+
+But the connector declaration itself remains product-owned metadata.
+
+- `.codex/`, `.claude/`, `.gemini/`, and `.opencode/` must not become the source of truth for connector requirements
+- package connector declarations must continue to identify connector types, not runtime-private connection state
+- runtime-specific invocation details are implementation strategy, not the package contract
+
+### 5. Do not preserve third-party workspace semantics as the product boundary
 
 When absorbing an external pack, do not keep its original runtime-specific workspace structure as the default product model.
 

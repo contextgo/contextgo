@@ -41,6 +41,7 @@ The supported runtimes above share the same product-level assistant package mode
 - `.contextgo/` is the canonical workspace installation root for assistant package state
 - runtime-native directories such as `.codex/skills` or `.claude/skills` are projections only
 - only skills should be projected into runtime-native directories
+- connector declarations remain package- and project-level metadata, not runtime-native state
 - `hooks`, `commands`, and `schedules` remain ContextGo-native automation owned by `.contextgo/`
 - Context Engine External Memory Strategy Adapter metadata stays runtime-neutral and belongs to package or policy declarations, not runtime-native directory state
 
@@ -55,6 +56,7 @@ This distinction matters:
 - package-root `AGENTS.md` is the packaged rules-entry document used for projection-aware product UI
 - workspace-root `AGENTS.md` / `CLAUDE.md` describe repository instructions for runtime consumption
 - these two surfaces may share content lineage, but they are not the same architectural object
+- package-declared connectors describe required connector **types** and project-facing mount metadata, not authenticated runtime-local connections
 
 ## External Memory Strategy Adapter Boundary
 
@@ -145,6 +147,7 @@ When ContextGo projects package state into runtime-native directories:
 - do not infer a runtime's supported project surfaces from another runtime's conventions
 - only project a surface when the target runtime actually documents and supports that surface
 - do not invent runtime-native adapter-state conventions for Context Engine strategy adapters
+- do not invent runtime-native connector-state conventions for Agent Package connector declarations
 
 Examples:
 

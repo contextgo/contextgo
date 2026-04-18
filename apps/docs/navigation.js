@@ -82,7 +82,11 @@ const navigation = {
         {
           type: 'category',
           label: 'Runtime And Tooling',
-          items: ['agents/runtime-center', 'agents/installed-signed-in-ready', 'agents/browser-tools-and-runtime-actions'],
+          items: [
+            'agents/runtime-center',
+            'agents/installed-signed-in-ready',
+            'agents/browser-tools-and-runtime-actions',
+          ],
         },
         {
           type: 'category',

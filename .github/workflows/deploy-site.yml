@@ -274,6 +274,10 @@ jobs:
         run: npx wrangler pages deploy .vercel/output/static --project-name "$SITE_CLOUDFLARE_PROJECT_NAME" --branch main
         working-directory: ${{ github.workspace }}/apps/web
 
+      - name: Submit site URLs to IndexNow
+        continue-on-error: true
+        run: node scripts/seo/submit-indexnow.mjs --target site --content-root apps/web/src/content
+
   deploy-cloud:
     name: Deploy apps/cloud backend to VM
     needs: detect-targets

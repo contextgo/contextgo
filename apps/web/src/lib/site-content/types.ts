@@ -41,6 +41,7 @@ export type SiteLabels = {
   openDownloadCenter: string;
   openReleasePage: string;
   articleSidebarTitle: string;
+  articleSidebarHeadline: string;
   articleSidebarBody: string;
   docsSource: string;
   docsSourceRelease: string;

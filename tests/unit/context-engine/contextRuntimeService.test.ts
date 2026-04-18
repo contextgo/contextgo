@@ -600,9 +600,7 @@ describe('ContextRuntimeService', () => {
       })
     );
     expect(mockContextService.assemble.mock.calls[0]?.[0]?.overlays).not.toHaveProperty('preparedAt');
-    expect(mockContextService.assemble.mock.calls[0]?.[0]?.overlays?.threadSummary).not.toContain(
-      currentUserInput
-    );
+    expect(mockContextService.assemble.mock.calls[0]?.[0]?.overlays?.threadSummary).not.toContain(currentUserInput);
     expect(mockContextService.assemble.mock.invocationCallOrder[0]).toBeLessThan(
       mockContextService.ingestSource.mock.invocationCallOrder[0]
     );
