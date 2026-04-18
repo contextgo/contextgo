@@ -91,6 +91,27 @@ function parseOptionalBoolean(value: string): boolean | undefined {
   return undefined;
 }
 
+function parseCommandUpsertBlock(block: string): {
+  scope: CommandEventScope | null;
+  name: string | null;
+  enabled?: boolean;
+  description: string;
+  template: string;
+} {
+  const normalizedBlock = block.replace(/\r\n/g, '\n').trim();
+  const templateMatch = normalizedBlock.match(/(?:^|\n)template:\s*([\s\S]*)$/i);
+  const template = templateMatch?.[1]?.trim() ?? '';
+  const metadataBlock = templateMatch ? normalizedBlock.slice(0, templateMatch.index).trimEnd() : normalizedBlock;
+
+  return {
+    scope: parseScope(readBlockField(metadataBlock, 'scope')),
+    name: normalizeSlashCommandName(readBlockField(metadataBlock, 'name')),
+    enabled: parseOptionalBoolean(readBlockField(metadataBlock, 'enabled')),
+    description: readBlockField(metadataBlock, 'description'),
+    template,
+  };
+}
+
 function collectCommandCommands(content: string): AssistantCommand[] {
   const commands: AssistantCommand[] = [];
 
@@ -113,14 +134,15 @@ function collectCommandCommands(content: string): AssistantCommand[] {
 
   for (const match of content.matchAll(COMMAND_UPSERT_BLOCK_PATTERN)) {
     const block = match[1] ?? '';
+    const parsedBlock = parseCommandUpsertBlock(block);
     commands.push({
       index: match.index ?? 0,
       type: 'upsert',
-      scope: parseScope(readBlockField(block, 'scope')),
-      name: normalizeSlashCommandName(readBlockField(block, 'name')),
-      enabled: parseOptionalBoolean(readBlockField(block, 'enabled')),
-      description: readBlockField(block, 'description'),
-      template: readBlockField(block, 'template'),
+      scope: parsedBlock.scope,
+      name: parsedBlock.name,
+      enabled: parsedBlock.enabled,
+      description: parsedBlock.description,
+      template: parsedBlock.template,
     });
   }
 
@@ -131,7 +153,7 @@ async function resolveConversationContext(params: CommandExecutionContext): Prom
   workspacePath?: string;
   spaceId?: string;
 }> {
-  if (params.workspacePath || params.spaceId) {
+  if (params.workspacePath && params.spaceId) {
     return {
       workspacePath: params.workspacePath,
       spaceId: params.spaceId,
@@ -143,12 +165,13 @@ async function resolveConversationContext(params: CommandExecutionContext): Prom
 
   return {
     workspacePath:
-      typeof extra.workingDirectory === 'string'
+      params.workspacePath ??
+      (typeof extra.workingDirectory === 'string'
         ? extra.workingDirectory
         : typeof extra.workspace === 'string'
           ? extra.workspace
-          : undefined,
-    spaceId: typeof extra.spaceId === 'string' ? extra.spaceId : undefined,
+          : undefined),
+    spaceId: params.spaceId ?? (typeof extra.spaceId === 'string' ? extra.spaceId : undefined),
   };
 }
 

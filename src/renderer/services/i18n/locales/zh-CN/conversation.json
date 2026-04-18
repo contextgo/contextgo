@@ -382,6 +382,26 @@
       "projectCommandsDescription": "这些命令会保存到当前工作空间的 `.contextgo/commands.json` 中，并覆盖同名的 Space Commands。",
       "projectCommandsUsageHint": "使用项目本地命令来处理工作空间专属覆盖和私有斜杠模板。",
       "projectCommandsPathHint": "保存路径：{{path}}",
+      "commandEvent": {
+        "createTitle": "已创建命令",
+        "createDescription": "助手工作流已新增一个命令模板。",
+        "updateTitle": "已更新命令",
+        "updateDescription": "助手工作流已更新一个现有命令模板。",
+        "deleteTitle": "已删除命令",
+        "deleteDescription": "助手工作流已移除一个命令模板。",
+        "listTitle": "已列出命令",
+        "listDescription": "count:{{count}};scope:{{scope}}",
+        "errorTitle": "命令操作失败",
+        "errorDescription": "助手发起的命令操作未能应用。",
+        "scope": {
+          "project": "项目",
+          "space": "Space"
+        },
+        "enabled": "已启用",
+        "disabled": "已停用",
+        "templateLabel": "模板",
+        "empty": "当前范围内还没有可用命令。"
+      },
       "commandsTitle": "项目命令",
       "commandsDescription": "这里维护的是项目命令，会保存到该项目的 `.contextgo/commands.json`，并作为当前工作空间命令菜单的唯一真源。",
       "commandsUsageHint": "如果 commands.json 还不存在，编辑器会先以当前会话实际生效的项目命令作为初始内容。",

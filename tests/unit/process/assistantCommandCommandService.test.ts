@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getSpaceCommandLibraryMock = vi.fn();
 const saveSpaceCommandLibraryMock = vi.fn();
+const getConversationMock = vi.fn();
 
 vi.mock('@/common/utils', () => ({
   uuid: vi.fn(() => 'generated-command-id'),
@@ -22,6 +23,14 @@ vi.mock('@process/services/space/SpaceServiceImpl', () => ({
   },
 }));
 
+vi.mock('@process/services/database/SqliteConversationRepository', () => ({
+  SqliteConversationRepository: class {
+    getConversation(...args: unknown[]) {
+      return getConversationMock(...args);
+    }
+  },
+}));
+
 import { executeAssistantCommandCommands } from '@/process/services/context/events/AssistantCommandCommandService';
 
 describe('AssistantCommandCommandService', () => {
@@ -29,6 +38,7 @@ describe('AssistantCommandCommandService', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    getConversationMock.mockResolvedValue(undefined);
     workspacePath = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-command-skill-'));
   });
 
@@ -133,6 +143,36 @@ describe('AssistantCommandCommandService', () => {
     ]);
   });
 
+  it('preserves multiline templates inside COMMAND_UPSERT blocks', async () => {
+    const result = await executeAssistantCommandCommands({
+      content: [
+        '[COMMAND_UPSERT]',
+        'scope: project',
+        'name: verify',
+        'description: Verify the current implementation.',
+        'template: Goal: validate the current patch.',
+        'Output: list risks first.',
+        'Constraints: keep the diff minimal.',
+        '[/COMMAND_UPSERT]',
+      ].join('\n'),
+      conversationId: 'conv-1',
+      workspacePath,
+    });
+
+    const commandsFile = path.join(workspacePath, '.contextgo', 'commands.json');
+    const savedLibrary = JSON.parse(await fs.readFile(commandsFile, 'utf-8'));
+
+    expect(savedLibrary[0].template).toBe(
+      'Goal: validate the current patch.\nOutput: list risks first.\nConstraints: keep the diff minimal.'
+    );
+    expect(result.events[0]).toEqual(
+      expect.objectContaining({
+        action: 'create',
+        scope: 'project',
+      })
+    );
+  });
+
   it('lists project-local commands for the selected scope', async () => {
     const commandsFile = path.join(workspacePath, '.contextgo', 'commands.json');
     await fs.mkdir(path.dirname(commandsFile), { recursive: true });
@@ -225,6 +265,52 @@ describe('AssistantCommandCommandService', () => {
         action: 'delete',
         scope: 'space',
         commandName: 'review',
+      },
+    ]);
+  });
+
+  it('fills missing spaceId from conversation context when only workspacePath is provided', async () => {
+    getConversationMock.mockResolvedValue({
+      extra: {
+        workingDirectory: workspacePath,
+        spaceId: 'space-from-conversation',
+      },
+    });
+    getSpaceCommandLibraryMock.mockResolvedValue([
+      {
+        id: 'space-review',
+        enabled: true,
+        name: 'review',
+        description: 'Shared review command',
+        template: 'Shared review template',
+      },
+    ]);
+
+    const result = await executeAssistantCommandCommands({
+      content: '[COMMAND_LIST: scope=space]',
+      conversationId: 'conv-1',
+      workspacePath,
+    });
+
+    expect(getConversationMock).toHaveBeenCalledWith('conv-1');
+    expect(getSpaceCommandLibraryMock).toHaveBeenCalledWith('space-from-conversation');
+    expect(result.systemResponses).toEqual([
+      '[Command Result]\nFound 1 space command(s):\n1. name=/review\n   enabled=true\n   description=Shared review command',
+    ]);
+    expect(result.events).toEqual([
+      {
+        source: 'assistant-skill',
+        action: 'list',
+        scope: 'space',
+        commands: [
+          {
+            id: 'space-review',
+            enabled: true,
+            name: 'review',
+            description: 'Shared review command',
+            template: 'Shared review template',
+          },
+        ],
       },
     ]);
   });
