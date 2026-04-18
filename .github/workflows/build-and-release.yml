@@ -29,7 +29,7 @@ on:
       - 'v*'
 
 concurrency:
-  group: build-and-release-${{ github.ref_name || github.run_id }}
+  group: ${{ github.event_name == 'workflow_dispatch' && format('build-and-release-dispatch-{0}', github.run_id) || format('build-and-release-{0}', github.ref_name || github.run_id) }}
   cancel-in-progress: false
 
 env:
