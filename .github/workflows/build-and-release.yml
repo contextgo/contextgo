@@ -83,6 +83,7 @@ jobs:
         }}
       WINDOWS_RUNNER: >-
         ${{
+          github.event_name != 'workflow_dispatch' &&
           vars.BUILD_RUNNER_MODE == 'self-hosted' &&
           (
             vars.SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON != '' &&
