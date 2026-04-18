@@ -75,6 +75,7 @@ type UseGuidAgentSelectionOptions = {
 };
 
 const PROBE_MODEL_INFO_BACKENDS = new Set<AcpBackend>(['claude', 'codex', 'opencode']);
+const DEFAULT_GUID_RUNTIME_KEY = 'codex';
 
 /**
  * Guid page selection state keeps runtime and preset assistant independent.
@@ -85,10 +86,12 @@ export const useGuidAgentSelection = ({
   localeKey,
   locationState = null,
 }: UseGuidAgentSelectionOptions): GuidAgentSelectionResult => {
-  const [selectedAgentKey, _setSelectedAgentKey] = useState<string>('gemini');
+  const [selectedAgentKey, _setSelectedAgentKey] = useState<string>(DEFAULT_GUID_RUNTIME_KEY);
   const [selectedAssistantKeyState, _setSelectedAssistantKeyState] = useState<string | null>(null);
   const [availableAgents, setAvailableAgents] = useState<AvailableAgent[]>();
   const [selectedMode, _setSelectedMode] = useState<string>('default');
+  const [hasResolvedInitialSelection, setHasResolvedInitialSelection] = useState(false);
+  const [hasLoadedCachedModels, setHasLoadedCachedModels] = useState(false);
   const selectedAgentRef = useRef<string | null>(null);
   const probedModelBackendsRef = useRef(new Set<string>());
   const [acpCachedModels, setAcpCachedModels] = useState<Record<string, AcpModelInfo>>({});
@@ -221,6 +224,18 @@ export const useGuidAgentSelection = ({
     | AcpBackend
     | 'custom';
   const isPresetAgent = Boolean(selectedAssistantInfo?.isPreset);
+  const getDefaultRuntimeKey = useCallback((): string => {
+    if (availableAgents?.some((agent) => getAgentKey(agent) === DEFAULT_GUID_RUNTIME_KEY)) {
+      return DEFAULT_GUID_RUNTIME_KEY;
+    }
+
+    const firstRuntimeAgent = availableAgents?.find((agent) => agent.backend !== 'custom');
+    if (firstRuntimeAgent) {
+      return getAgentKey(firstRuntimeAgent);
+    }
+
+    return getAvailableFallbackAgent() || DEFAULT_GUID_RUNTIME_KEY;
+  }, [availableAgents, getAvailableFallbackAgent, getAgentKey]);
 
   const { data: availableAgentsData } = useSWR('acp.agents.available', async () => {
     const result = await ipcBridge.acpConversation.getAvailableAgents.invoke();
@@ -283,9 +298,13 @@ export const useGuidAgentSelection = ({
               const preferredRuntime = resolvePresetAgentType(assistantInfo);
               nextRuntimeKey = availableAgents.some((agent) => getAgentKey(agent) === preferredRuntime)
                 ? preferredRuntime
-                : getAvailableFallbackAgent() || 'gemini';
+                : getDefaultRuntimeKey();
             }
           }
+        }
+
+        if (!nextRuntimeKey) {
+          nextRuntimeKey = getDefaultRuntimeKey();
         }
 
         if (nextRuntimeKey) {
@@ -294,6 +313,10 @@ export const useGuidAgentSelection = ({
         _setSelectedAssistantKeyState(nextAssistantKey);
       } catch (error) {
         console.error('Failed to load Guid selection:', error);
+      } finally {
+        if (!cancelled) {
+          setHasResolvedInitialSelection(true);
+        }
       }
     };
 
@@ -305,7 +328,7 @@ export const useGuidAgentSelection = ({
   }, [
     availableAgents,
     findAgentByKey,
-    getAvailableFallbackAgent,
+    getDefaultRuntimeKey,
     normalizedLocationSelection.preferredAgentKey,
     normalizedLocationSelection.preferredAssistantKey,
     resolvePresetAgentType,
@@ -317,9 +340,12 @@ export const useGuidAgentSelection = ({
       .then((cached) => {
         if (!isActive) return;
         setAcpCachedModels(cached || {});
+        setHasLoadedCachedModels(true);
       })
       .catch(() => {
         // cached model list is optional
+        if (!isActive) return;
+        setHasLoadedCachedModels(true);
       });
 
     return () => {
@@ -328,6 +354,8 @@ export const useGuidAgentSelection = ({
   }, []);
 
   useEffect(() => {
+    if (!hasResolvedInitialSelection || !hasLoadedCachedModels) return;
+
     const backend = selectedAgentInfo?.backend ?? getBackendFromAgentKey(selectedAgentKey);
     if (backend === 'custom' || backend === 'gemini') return;
     if (!PROBE_MODEL_INFO_BACKENDS.has(backend)) return;
@@ -372,7 +400,7 @@ export const useGuidAgentSelection = ({
     return () => {
       cancelled = true;
     };
-  }, [acpCachedModels, selectedAgentInfo, selectedAgentKey]);
+  }, [acpCachedModels, hasLoadedCachedModels, hasResolvedInitialSelection, selectedAgentInfo, selectedAgentKey]);
 
   const currentEffectiveAgentInfo = useMemo(() => {
     const runtimeBackend = selectedAgentInfo?.backend ?? getBackendFromAgentKey(selectedAgentKey);
@@ -388,6 +416,8 @@ export const useGuidAgentSelection = ({
   }, [isMainAgentAvailable, selectedAgentInfo, selectedAgentKey]);
 
   useEffect(() => {
+    if (!hasResolvedInitialSelection) return;
+
     const backend = selectedAgentInfo?.backend ?? getBackendFromAgentKey(selectedAgentKey);
     if (backend === 'custom') {
       _setSelectedAcpModel(null);
@@ -428,9 +458,17 @@ export const useGuidAgentSelection = ({
     return () => {
       cancelled = true;
     };
-  }, [acpCachedModels, normalizedLocationSelection.preferredAgentKey, selectedAgentInfo, selectedAgentKey]);
+  }, [
+    acpCachedModels,
+    hasResolvedInitialSelection,
+    normalizedLocationSelection.preferredAgentKey,
+    selectedAgentInfo,
+    selectedAgentKey,
+  ]);
 
   useEffect(() => {
+    if (!hasResolvedInitialSelection) return;
+
     _setSelectedMode('default');
 
     const configKey = selectedAgentInfo?.backend ?? getBackendFromAgentKey(selectedAgentKey);
@@ -493,7 +531,7 @@ export const useGuidAgentSelection = ({
     return () => {
       cancelled = true;
     };
-  }, [normalizedLocationSelection.preferredAgentKey, selectedAgentInfo, selectedAgentKey]);
+  }, [hasResolvedInitialSelection, normalizedLocationSelection.preferredAgentKey, selectedAgentInfo, selectedAgentKey]);
 
   const currentAcpCachedModelInfo = useMemo(() => {
     const backend = selectedAgentInfo?.backend ?? getBackendFromAgentKey(selectedAgentKey);

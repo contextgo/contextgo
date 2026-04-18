@@ -243,6 +243,35 @@ describe('useGuidAgentSelection', () => {
     expect(result.current.currentAcpCachedModelInfo?.currentModelId).toBe('claude-sonnet-4-5-20250514');
   });
 
+  it('defaults to codex on Guid home when there is no persisted runtime selection', async () => {
+    const { result } = renderHook(() => useGuidAgentSelection(hookOptions));
+
+    await waitFor(() => {
+      expect(result.current.selectedAgentKey).toBe('codex');
+    });
+
+    expect(result.current.selectedAgent).toBe('codex');
+    expect(result.current.selectedAssistantKey).toBeNull();
+  });
+
+  it('falls back to the first available runtime when codex is unavailable', async () => {
+    setupMocks({
+      availableAgents: [
+        { backend: 'claude', name: 'Claude' },
+        { backend: 'gemini', name: 'Gemini' },
+      ],
+      cachedModels: { claude: CLAUDE_CACHED_MODEL },
+    });
+
+    const { result } = renderHook(() => useGuidAgentSelection(hookOptions));
+
+    await waitFor(() => {
+      expect(result.current.selectedAgentKey).toBe('claude');
+    });
+
+    expect(result.current.selectedAgent).toBe('claude');
+  });
+
   it('keeps the selected assistant when switching runtime', async () => {
     const { result } = renderHook(() => useGuidAgentSelection(hookOptions));
 
@@ -294,10 +323,10 @@ describe('useGuidAgentSelection', () => {
     const { result } = renderHook(() => useGuidAgentSelection(hookOptions));
 
     await waitFor(() => {
-      expect(result.current.selectedAgentKey).toBe('codex');
+      expect(result.current.selectedAssistantKey).toBe(`custom:${PRESET_AGENT_ID}`);
     });
 
-    expect(result.current.selectedAssistantKey).toBe(`custom:${PRESET_AGENT_ID}`);
+    expect(result.current.selectedAgentKey).toBe('codex');
     expect(result.current.selectedAgentInfo).toMatchObject({
       backend: 'codex',
       name: 'Codex',
@@ -322,10 +351,10 @@ describe('useGuidAgentSelection', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.selectedAgentKey).toBe('codex');
+      expect(result.current.selectedAssistantKey).toBe(`custom:${PRESET_AGENT_ID}`);
     });
 
-    expect(result.current.selectedAssistantKey).toBe(`custom:${PRESET_AGENT_ID}`);
+    expect(result.current.selectedAgentKey).toBe('codex');
     expect(result.current.selectedAgent).toBe('codex');
   });
 

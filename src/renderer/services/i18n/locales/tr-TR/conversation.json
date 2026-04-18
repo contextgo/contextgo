@@ -6,12 +6,24 @@
       "workbench": "İşi buraya getir, birlikte hemen başlayalım.",
       "momentum": "Burası senin AI-native çalışma tezgahın."
     },
+    "sloganRotating": {
+      "outOfBox": "Kutudan çıktığı gibi çalışan AI-native workbench",
+      "workflow": "Dijital çalışanları gerçek iş akışına sok",
+      "connectors": "Connector ile kullandığın mevcut workbench ve araçlara bağlan",
+      "memory": "Kendini geliştiren hafıza ile Agent zamanla seni daha iyi anlasın"
+    },
     "placeholder": "Ne yapmak istediğini yaz, hemen başlayalım...",
     "placeholderVariants": {
       "start": "Ne yapmak istediğini kısa bir cümleyle söyle, hemen girelim...",
       "goal": "Hedeflediğin sonucu söyle, birlikte ileri taşıyalım...",
       "anything": "İş, yazı, araştırma, düzenleme. Hepsini burada ilerletebiliriz...",
       "brief": "Görevi, fikri ya da sorunu buraya bırak, hemen harekete geçelim..."
+    },
+    "placeholderRotating": {
+      "startNow": "İlerletmek istediğin işi gönder, hemen başlayalım...",
+      "goal": "Hedefi tek cümleyle söyle, parçalayıp yürütüp ileri taşıyayım...",
+      "context": "Görevi, materyalleri ve bağlamı bırak; önce ben birbirine bağlayayım...",
+      "orchestrate": "İstediğin sonucu söyle, Agent'ları ve iş akışını organize edeyim..."
     },
     "uploadFile": "Materyal Ekle",
     "linkFolder": "Klasör Aç",

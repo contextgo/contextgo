@@ -7,40 +7,63 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Typewriter animation hook for placeholder text.
- * @param text - The full text to type out
- * @returns The animated placeholder string
+ * Typewriter animation hook for rotating text phrases.
  */
-export const useTypewriterPlaceholder = (text: string): string => {
+export const useTypewriterPlaceholder = (texts: string | string[]): string => {
   const [placeholder, setPlaceholder] = useState('');
+  const sourceTexts = Array.isArray(texts) ? texts : [texts];
+  const textKey = sourceTexts.join('\u0000');
+  const normalizedTexts = sourceTexts.map((text) => text.trim()).filter((text) => text.length > 0);
 
   useEffect(() => {
+    if (normalizedTexts.length === 0) {
+      setPlaceholder('');
+      return;
+    }
+
+    const initialDelayMs = 300;
+    const typingSpeedMs = 80;
+    const holdDelayMs = 1800;
+    const rotateDelayMs = 260;
+    const phraseCount = normalizedTexts.length;
+    let currentPhraseIndex = Math.min(Math.floor(Math.random() * phraseCount), Math.max(phraseCount - 1, 0));
     let currentIndex = 0;
-    const typingSpeed = 80;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const typeNextChar = () => {
-      if (currentIndex <= text.length) {
-        setPlaceholder(text.slice(0, currentIndex) + (currentIndex < text.length ? '|' : ''));
-        currentIndex++;
+      const currentText = normalizedTexts[currentPhraseIndex] ?? '';
+      if (currentIndex < currentText.length) {
+        currentIndex += 1;
+        const isComplete = currentIndex >= currentText.length;
+        setPlaceholder(currentText.slice(0, currentIndex) + (isComplete ? '' : '|'));
+        if (isComplete) {
+          if (phraseCount <= 1) {
+            return;
+          }
+
+          timeoutId = setTimeout(() => {
+            currentPhraseIndex = (currentPhraseIndex + 1) % phraseCount;
+            currentIndex = 0;
+            setPlaceholder('');
+            timeoutId = setTimeout(typeNextChar, rotateDelayMs);
+          }, holdDelayMs);
+          return;
+        }
+
+        timeoutId = setTimeout(typeNextChar, typingSpeedMs);
+        return;
       }
     };
 
-    const initialDelay = setTimeout(() => {
-      intervalId = setInterval(() => {
-        typeNextChar();
-        if (currentIndex > text.length) {
-          if (intervalId) clearInterval(intervalId);
-          setPlaceholder(text);
-        }
-      }, typingSpeed);
-    }, 300);
+    setPlaceholder('');
+    timeoutId = setTimeout(typeNextChar, initialDelayMs);
 
     return () => {
-      clearTimeout(initialDelay);
-      if (intervalId) clearInterval(intervalId);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
-  }, [text]);
+  }, [textKey]);
 
   return placeholder;
 };

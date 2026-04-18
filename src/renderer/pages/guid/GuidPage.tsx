@@ -17,7 +17,6 @@ import GuidModelSelector from './components/GuidModelSelector';
 import MentionDropdown, { MentionSelectorBadge } from './components/MentionDropdown';
 import QuickActionButtons from './components/QuickActionButtons';
 import { resolveDisplayedAgentPillKey } from './utils/resolveDisplayedAgentPillKey';
-import { selectGuidCopyVariant } from './utils/welcomeCopy';
 import { useGuidAgentSelection } from './hooks/useGuidAgentSelection';
 import { useGuidInput } from './hooks/useGuidInput';
 import { useGuidMention } from './hooks/useGuidMention';
@@ -44,6 +43,24 @@ const GuidPage: React.FC = () => {
   const { activeBorderColor, inactiveBorderColor, activeShadow } = useInputFocusRing();
   const localeKey = resolveLocaleKey(i18n.language);
   const locationState = location.state as GuidLocationState | null;
+
+  const rotatingSlogans = useMemo(() => {
+    return [
+      t('conversation.welcome.sloganRotating.outOfBox'),
+      t('conversation.welcome.sloganRotating.workflow'),
+      t('conversation.welcome.sloganRotating.connectors'),
+      t('conversation.welcome.sloganRotating.memory'),
+    ].filter((item) => item.trim().length > 0);
+  }, [i18n.language, t]);
+
+  const rotatingPrompts = useMemo(() => {
+    return [
+      t('conversation.welcome.placeholderRotating.startNow'),
+      t('conversation.welcome.placeholderRotating.goal'),
+      t('conversation.welcome.placeholderRotating.context'),
+      t('conversation.welcome.placeholderRotating.orchestrate'),
+    ].filter((item) => item.trim().length > 0);
+  }, [i18n.language, t]);
 
   // --- Hooks ---
   const modelSelection = useGuidModelSelection();
@@ -252,27 +269,8 @@ const GuidPage: React.FC = () => {
     ]
   );
 
-  const welcomeCopySeed = useMemo(() => Math.random(), []);
-  const welcomeTitle = selectGuidCopyVariant(
-    [
-      t('conversation.welcome.titleVariants.focus'),
-      t('conversation.welcome.titleVariants.workbench'),
-      t('conversation.welcome.titleVariants.momentum'),
-    ],
-    welcomeCopySeed
-  );
-  const welcomePlaceholder = selectGuidCopyVariant(
-    [
-      t('conversation.welcome.placeholderVariants.start'),
-      t('conversation.welcome.placeholderVariants.goal'),
-      t('conversation.welcome.placeholderVariants.anything'),
-      t('conversation.welcome.placeholderVariants.brief'),
-    ],
-    (welcomeCopySeed + 0.37) % 1
-  );
-
-  // Typewriter placeholder
-  const typewriterPlaceholder = useTypewriterPlaceholder(welcomePlaceholder || t('conversation.welcome.placeholder'));
+  const typewriterSlogan = useTypewriterPlaceholder(rotatingSlogans);
+  const typewriterPlaceholder = useTypewriterPlaceholder(rotatingPrompts);
 
   // Determine if model selector should be in Gemini mode
   const isGeminiMode = agentSelection.selectedAgent === 'gemini';
@@ -339,7 +337,7 @@ const GuidPage: React.FC = () => {
         />
         <div className={styles.guidLayout}>
           <p className='text-2xl font-semibold mb-6 text-0 text-center'>
-            {welcomeTitle || t('conversation.welcome.title')}
+            {typewriterSlogan || rotatingSlogans[0] || t('conversation.welcome.title')}
           </p>
 
           {agentSelection.availableAgents === undefined ? (
@@ -360,7 +358,9 @@ const GuidPage: React.FC = () => {
             onPaste={guidInput.onPaste}
             onFocus={guidInput.handleTextareaFocus}
             onBlur={guidInput.handleTextareaBlur}
-            placeholder={`${mention.selectedAgentLabel}, ${typewriterPlaceholder || welcomePlaceholder || t('conversation.welcome.placeholder')}`}
+            placeholder={`${mention.selectedAgentLabel}, ${
+              typewriterPlaceholder || rotatingPrompts[0] || t('conversation.welcome.placeholder')
+            }`}
             isInputActive={guidInput.isInputFocused}
             isFileDragging={guidInput.isFileDragging}
             activeBorderColor={activeBorderColor}
