@@ -503,6 +503,10 @@ describe('SpaceVaultContextSyncService', () => {
 
     const checkpointPath = path.join(vaultPath, checkpoint!.relativePath);
     const checkpointContent = await fs.readFile(checkpointPath, 'utf8');
+    expect(checkpointContent.startsWith('---\n')).toBe(true);
+    expect(checkpointContent).toContain('contextgoType: session-checkpoint');
+    expect(checkpointContent).toContain('contextgoNamespace: session');
+    expect(checkpointContent).toContain('contextgoProjection: semantic-context');
     expect(checkpointContent).toContain('## Compaction Provenance');
     expect(checkpointContent).toContain('- Operation: `session_compaction`');
     expect(checkpointContent).toContain('- Source profile: `session.compaction.conv-1`');
@@ -792,6 +796,10 @@ describe('SpaceVaultContextSyncService', () => {
 
     const proposalPath = path.join(vaultPath, artifact!.relativePath);
     const proposalContent = await fs.readFile(proposalPath, 'utf8');
+    expect(proposalContent.startsWith('---\n')).toBe(true);
+    expect(proposalContent).toContain('contextgoType: project-curator-proposal');
+    expect(proposalContent).toContain('contextgoNamespace: project');
+    expect(proposalContent).toContain('contextgoProjection: semantic-context');
     expect(proposalContent).toContain('# AGENTS append proposal');
     expect(proposalContent).toContain('- Target: `AGENTS.md`');
     expect(proposalContent).toContain('Observed in 3 session checkpoints.');
@@ -843,9 +851,195 @@ describe('SpaceVaultContextSyncService', () => {
 
     const profilePath = path.join(vaultPath, artifact!.relativePath);
     const profileContent = await fs.readFile(profilePath, 'utf8');
+    expect(profileContent.startsWith('---\n')).toBe(true);
+    expect(profileContent).toContain('contextgoType: profile-memory');
+    expect(profileContent).toContain('contextgoNamespace: space');
+    expect(profileContent).toContain('contextgoProjection: semantic-context');
     expect(profileContent).toContain('# Profile Memory');
     expect(profileContent).toContain('Observed across 3 project summaries.');
     expect(profileContent).toContain('Carry this preference into future project contexts.');
+  });
+
+  it('writes context run artifacts with contextgo metadata in frontmatter', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    await fs.mkdir(vaultPath, { recursive: true });
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({
+      getSpace: vi.fn(async () => space),
+    } as any);
+
+    const artifact = await service.writeContextRunArtifact({
+      spaceId: 'space-1',
+      runId: 'context-run-1',
+      title: 'Context Run 1',
+      summary: 'Trace retrieval and assembly decisions for this run.',
+      detail: 'Included retrieval scoring and final token-budget trimming.',
+      timestamp: '2026-04-16T10:00:00.000Z',
+    });
+
+    expect(artifact).toEqual(
+      expect.objectContaining({
+        relativePath: 'System/Context Engine/Runs/context-run-1.md',
+        summary: 'Trace retrieval and assembly decisions for this run.',
+        title: 'Context Run 1',
+      })
+    );
+
+    const runPath = path.join(vaultPath, artifact!.relativePath);
+    const runContent = await fs.readFile(runPath, 'utf8');
+    expect(runContent.startsWith('---\n')).toBe(true);
+    expect(runContent).toContain('contextgoType: context-run');
+    expect(runContent).toContain('contextgoNamespace: space');
+    expect(runContent).toContain('contextgoProjection: semantic-context');
+    expect(runContent).toContain('runId: context-run-1');
+    expect(runContent).toContain('<!-- contextgo-generated -->');
+    expect(runContent).toContain('# Context Run 1');
+    expect(runContent).toContain('Trace retrieval and assembly decisions for this run.');
+  });
+
+  it('stamps metadata on space memory distillation docs and upgrades legacy files', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const legacyPath = path.join(vaultPath, 'System', 'Context Engine', 'Space Memory.md');
+    await fs.mkdir(path.dirname(legacyPath), { recursive: true });
+    await fs.writeFile(
+      legacyPath,
+      [
+        '<!-- contextgo-generated -->',
+        '',
+        '# Space Memory Distillation',
+        '',
+        '### Earlier Distillation',
+        '',
+        '- Prior summary',
+      ].join('\n'),
+      'utf8'
+    );
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({
+      getSpace: vi.fn(async () => space),
+    } as any);
+
+    const artifact = await service.writeSpaceMemoryDistillation({
+      spaceId: 'space-1',
+      summary: 'Cross-session summaries converged on the same release discipline.',
+      detail: 'Preserve narrow diffs and explicit validation when promoting context.',
+      timestamp: '2026-04-16T11:00:00.000Z',
+    });
+
+    expect(artifact).toEqual(
+      expect.objectContaining({
+        relativePath: 'System/Context Engine/Space Memory.md',
+        summary: 'Cross-session summaries converged on the same release discipline.',
+        spaceId: 'space-1',
+        title: 'Space Memory Distillation',
+      })
+    );
+
+    const spaceMemoryContent = await fs.readFile(legacyPath, 'utf8');
+    expect(spaceMemoryContent.startsWith('---\n')).toBe(true);
+    expect(spaceMemoryContent).toContain('contextgoType: space-memory-distillation');
+    expect(spaceMemoryContent).toContain('contextgoNamespace: space');
+    expect(spaceMemoryContent).toContain('contextgoProjection: semantic-context');
+    expect(spaceMemoryContent).toContain('### Earlier Distillation');
+    expect(spaceMemoryContent).toContain('Cross-session summaries converged on the same release discipline.');
+  });
+
+  it('stamps metadata on connector digest docs and upgrades legacy files', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const legacyPath = path.join(vaultPath, 'System', 'Context Engine', 'Connector Digest.md');
+    await fs.mkdir(path.dirname(legacyPath), { recursive: true });
+    await fs.writeFile(
+      legacyPath,
+      [
+        '<!-- contextgo-generated -->',
+        '',
+        '# Connector Digest',
+        '',
+        '### Earlier Digest',
+        '',
+        '- Prior connector signal',
+      ].join('\n'),
+      'utf8'
+    );
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({
+      getSpace: vi.fn(async () => space),
+    } as any);
+
+    const artifact = await service.writeConnectorDigest({
+      spaceId: 'space-1',
+      summary: 'Recent connector syncs surfaced repeated release-checklist references.',
+      detail: 'Promote the repeated checklist into shared context once corroborated.',
+      timestamp: '2026-04-16T12:00:00.000Z',
+    });
+
+    expect(artifact).toEqual(
+      expect.objectContaining({
+        relativePath: 'System/Context Engine/Connector Digest.md',
+        summary: 'Recent connector syncs surfaced repeated release-checklist references.',
+        spaceId: 'space-1',
+        title: 'Connector Digest',
+      })
+    );
+
+    const digestContent = await fs.readFile(legacyPath, 'utf8');
+    expect(digestContent.startsWith('---\n')).toBe(true);
+    expect(digestContent).toContain('contextgoType: connector-digest');
+    expect(digestContent).toContain('contextgoNamespace: space');
+    expect(digestContent).toContain('contextgoProjection: semantic-context');
+    expect(digestContent).toContain('### Earlier Digest');
+    expect(digestContent).toContain('Recent connector syncs surfaced repeated release-checklist references.');
   });
 
   it('sanitizes imported session titles so graph nodes stay readable', async () => {
