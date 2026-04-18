@@ -172,13 +172,31 @@ describe('SpaceVaultContextSyncService', () => {
     expect(projectContent).toContain('contextgoProjection: semantic-context');
     expect(projectContent).toContain('[[Projects/' + projectDir + '/Sources/AGENTS|Project Router]]');
     expect(projectContent).toContain('Projects/workspace/Sessions/conv-1');
+    expect(projectContent).toContain('## Entry Points');
+    expect(projectContent).toContain('## Promoted Context');
+    expect(projectContent).toContain('## Related Sessions');
+    expect(projectContent).toContain('## Project Capabilities');
+    expect(projectContent).toContain('## Source Docs');
     expect(projectContent).toContain('## Source Graph');
     expect(projectContent).toContain('workspace Source Graph');
     expect(projectContent).toContain('workspace Baseline');
+    expect(projectContent).toContain('workspace Insights');
+    expect(projectContent).toContain('workspace Capabilities');
     expect(projectContent).toContain('### Graph Backbone');
     expect(projectContent).toContain('### Orphan Docs');
     expect(projectContent).toContain('[[Projects/' + projectDir + '/Sources/docs/guide|Guide]]');
     expect(projectContent).toContain('[[Projects/' + projectDir + '/Sources/docs/deep-dive|Deep Dive]]');
+    expect(projectContent).not.toContain('## Semantic Context');
+    expect(projectContent).not.toContain('## Source Mirrors');
+    expect(projectContent.indexOf('## Entry Points')).toBeLessThan(projectContent.indexOf('## Promoted Context'));
+    expect(projectContent.indexOf('## Promoted Context')).toBeLessThan(projectContent.indexOf('## Related Sessions'));
+    expect(projectContent.indexOf('## Related Sessions')).toBeLessThan(
+      projectContent.indexOf('## Project Capabilities')
+    );
+    expect(projectContent.indexOf('## Project Capabilities')).toBeLessThan(
+      projectContent.indexOf('## Source Docs')
+    );
+    expect(projectContent.indexOf('## Source Docs')).toBeLessThan(projectContent.indexOf('## Source Graph'));
     expect(projectContent).not.toContain('Source (');
 
     const baselineContent = await fs.readFile(
