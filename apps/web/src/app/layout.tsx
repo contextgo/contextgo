@@ -1,16 +1,13 @@
-import { headers } from 'next/headers';
 import ThemeScript from '@/components/ThemeScript';
-import { buildRootMetadata, resolveSiteLocale } from '@/lib/seo';
+import { buildRootMetadata } from '@/lib/seo';
 import './globals.css';
 
+export const runtime = 'edge';
 export const metadata = buildRootMetadata();
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const requestHeaders = await headers();
-  const locale = resolveSiteLocale(requestHeaders.get('x-contextgo-locale') || 'en');
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang='en' suppressHydrationWarning>
       <head>
         <ThemeScript />
       </head>
