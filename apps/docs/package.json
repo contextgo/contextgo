@@ -3,18 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "docusaurus start --host 0.0.0.0 --port 3002",
-    "build": "docusaurus build",
-    "serve": "docusaurus serve",
-    "clear": "docusaurus clear"
-  },
-  "dependencies": {
-    "@docusaurus/core": "3.10.0",
-    "@docusaurus/faster": "3.10.0",
-    "@docusaurus/preset-classic": "3.10.0",
-    "prism-react-renderer": "2.4.1",
-    "react": "19.2.5",
-    "react-dom": "19.2.5",
-    "webpackbar": "7.0.0"
+    "sync": "node scripts/sync-from-contextgo.mjs",
+    "dev": "npm run sync && cd site && node ../scripts/run-mint.mjs dev",
+    "validate": "npm run sync && cd site && node ../scripts/run-mint.mjs validate",
+    "broken-links": "npm run sync && cd site && node ../scripts/run-mint.mjs broken-links",
+    "build": "npm run sync && node scripts/prepare-export.mjs && cd site && node ../scripts/run-mint.mjs export --output ../dist/site-export.zip",
+    "serve": "npm run dev"
   }
 }
