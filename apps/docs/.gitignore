@@ -1,3 +1,10 @@
 node_modules/
 build/
-.docusaurus/
+.wrangler/
+dist/
+site/*
+!site/favicon.svg
+!site/logo/
+!site/logo/dark.svg
+!site/logo/light.svg
+!site/style.css

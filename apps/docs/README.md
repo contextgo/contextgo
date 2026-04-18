@@ -1,20 +1,26 @@
-# ContextGo Docs App
+# ContextGo Docs
 
-This directory contains the standalone documentation site for `docs.contextgo.io`.
+This directory contains the standalone Mintlify documentation site for `docs.contextgo.io`.
 
 ## Local Commands
 
 - `npm install`
+- `npm run sync`
 - `npm run dev`
+- `npm run validate`
+- `npm run broken-links`
 - `npm run build`
-- `npm run serve`
 
 Or from the repository root:
 
 - `npm run docs:install`
+- `npm run docs:sync`
 - `npm run docs:dev`
+- `npm run docs:validate`
+- `npm run docs:broken-links`
 - `npm run docs:build`
-- `npm run docs:serve`
+
+The Mintlify wrapper prefers a globally installed `mint` CLI and falls back to a transient `npx` install when the global binary is unavailable.
 
 ## Deployment Model
 
@@ -52,6 +58,8 @@ Related main-site variable:
 
 ## Content Structure
 
-- `docs/` contains the documentation pages
-- `sidebars.js` defines the primary navigation
-- `docusaurus.config.js` defines site routing and theme behavior
+- `docs/` contains the Chinese source docs
+- `i18n/en/docs/` contains the English source docs
+- `navigation.js` remains the source of truth for the primary navigation
+- `scripts/sync-from-contextgo.mjs` maps the source docs into the Mintlify `site/` shell
+- `site/` contains the Mintlify app shell and generated pages used for build/export

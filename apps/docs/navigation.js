@@ -1,6 +1,5 @@
-/** @type {import('@docusaurus/plugin-content-docs').SidebarsConfig} */
-const sidebars = {
-  docsSidebar: [
+const navigation = {
+  docs: [
     'index',
     {
       type: 'category',
@@ -118,4 +117,4 @@ const sidebars = {
   ],
 };
 
-module.exports = sidebars;
+module.exports = navigation;
