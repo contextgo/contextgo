@@ -24,6 +24,9 @@ on:
         required: false
         default: false
         type: boolean
+  push:
+    tags:
+      - 'v*'
 
 concurrency:
   group: build-and-release-${{ github.ref_name || github.run_id }}
@@ -177,9 +180,9 @@ jobs:
 
   build-pipeline:
     name: Build Pipeline
-    needs: prepare-matrix
+    needs: [prepare-matrix, validate-release-context]
     uses: ./.github/workflows/_build-reusable.yml
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     with:
       matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       control_runner: ${{ needs.prepare-matrix.outputs.control_runner }}
@@ -188,7 +191,7 @@ jobs:
 
   build-android-shell:
     name: Build Android Shell
-    needs: prepare-matrix
+    needs: [prepare-matrix, validate-release-context]
     if: >-
       github.event_name == 'workflow_dispatch' &&
       inputs.build_android_shell
@@ -306,7 +309,7 @@ jobs:
 
   build-ios-shell:
     name: Build iOS Shell
-    needs: prepare-matrix
+    needs: [prepare-matrix, validate-release-context]
     if: >-
       github.event_name == 'workflow_dispatch' &&
       inputs.build_ios_shell
@@ -408,7 +411,7 @@ jobs:
 
   build-harmony-shell:
     name: Build HarmonyOS Shell
-    needs: prepare-matrix
+    needs: [prepare-matrix, validate-release-context]
     if: >-
       github.event_name == 'workflow_dispatch' &&
       inputs.build_harmony_shell
@@ -510,15 +513,125 @@ jobs:
             exit 1
           fi
 
+  validate-release-context:
+    name: Validate Release Context
+    runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
+    needs: [prepare-matrix]
+    outputs:
+      tag_name: ${{ steps.resolve.outputs.tag_name }}
+      version: ${{ steps.resolve.outputs.version }}
+      prerelease: ${{ steps.resolve.outputs.prerelease }}
+      release_kind: ${{ steps.resolve.outputs.release_kind }}
+      source_mode: ${{ steps.resolve.outputs.source_mode }}
+
+    steps:
+      - name: Download source archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+
+          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          rm -rf "${EXTRACT_DIR}"
+
+          curl --fail --show-error --silent --location --http1.1 \
+            --retry 8 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 900 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            -o "${ARCHIVE}"
+
+          mkdir -p "${EXTRACT_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
+
+          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -z "${SOURCE_DIR}" ]; then
+            echo "::error::Failed to unpack source archive"
+            exit 1
+          fi
+
+          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Resolve release tag and version policy
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          STABLE_REGEX='^[0-9]+\.[0-9]+\.[0-9]+$'
+          PRERELEASE_REGEX='^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$'
+          PUBLIC_TAG_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$'
+
+          if [[ "${VERSION}" =~ ${STABLE_REGEX} ]]; then
+            RELEASE_KIND='stable'
+            PRERELEASE='false'
+          elif [[ "${VERSION}" =~ ${PRERELEASE_REGEX} ]]; then
+            RELEASE_KIND="${BASH_REMATCH[1]}"
+            PRERELEASE='true'
+          else
+            echo "::error::package.json version '${VERSION}' must use SemVer public release forms: X.Y.Z or X.Y.Z-(alpha|beta|rc).N"
+            exit 1
+          fi
+
+          TAG_NAME="v${VERSION}"
+          SOURCE_MODE='manual'
+
+          if [ "${GITHUB_EVENT_NAME}" = 'push' ]; then
+            ACTUAL_TAG="${GITHUB_REF_NAME}"
+            SOURCE_MODE='tag'
+
+            if [[ ! "${ACTUAL_TAG}" =~ ${PUBLIC_TAG_REGEX} ]]; then
+              echo "::error::Unsupported public release tag '${ACTUAL_TAG}'. Allowed forms: vX.Y.Z, vX.Y.Z-alpha.N, vX.Y.Z-beta.N, vX.Y.Z-rc.N"
+              exit 1
+            fi
+
+            if [ "${ACTUAL_TAG}" != "${TAG_NAME}" ]; then
+              echo "::error::Tag '${ACTUAL_TAG}' does not match package.json version '${VERSION}' (expected '${TAG_NAME}')."
+              exit 1
+            fi
+
+            git fetch --force --depth=1 origin main
+            if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"; then
+              echo "::error::Release tag '${ACTUAL_TAG}' must point to a commit reachable from origin/main."
+              exit 1
+            fi
+          elif [ "${GITHUB_REF}" != 'refs/heads/main' ]; then
+            echo "::error::Manual public release is only supported from refs/heads/main."
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "release_kind=${RELEASE_KIND}" >> "$GITHUB_OUTPUT"
+          echo "source_mode=${SOURCE_MODE}" >> "$GITHUB_OUTPUT"
+
   # 在 main 分支的手动发布流程中创建稳定版本 tag
   create-tag:
     name: Create Tag from Branch
     runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
-    needs: [prepare-matrix, build-pipeline]
-    if: success() && github.ref == 'refs/heads/main'
+    needs: [prepare-matrix, validate-release-context, build-pipeline]
+    if: success() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     outputs:
       tag_name: ${{ steps.create_tag.outputs.tag_name }}
-      is_dev: ${{ steps.create_tag.outputs.is_dev }}
+      release_kind: ${{ steps.create_tag.outputs.release_kind }}
+      prerelease: ${{ steps.create_tag.outputs.prerelease }}
 
     steps:
       - name: Download source archive
@@ -567,14 +680,14 @@ jobs:
         id: create_tag
         shell: bash
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-
-          TAG_NAME="v$VERSION"
-          IS_DEV="false"
-          echo "🚀 Production release from main: $TAG_NAME"
+          TAG_NAME="${{ needs.validate-release-context.outputs.tag_name }}"
+          RELEASE_KIND="${{ needs.validate-release-context.outputs.release_kind }}"
+          PRERELEASE="${{ needs.validate-release-context.outputs.prerelease }}"
+          echo "🚀 Creating release tag from main: $TAG_NAME (${RELEASE_KIND})"
 
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "is_dev=$IS_DEV" >> $GITHUB_OUTPUT
+          echo "release_kind=$RELEASE_KIND" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
 
           EXISTING_TAG_STATUS=$(curl --silent --output /tmp/contextgo-tag-check.json --write-out "%{http_code}" \
             -H "Authorization: Bearer ${GH_TOKEN}" \
@@ -617,6 +730,7 @@ jobs:
     needs:
       [
         prepare-matrix,
+        validate-release-context,
         build-pipeline,
         build-android-shell,
         build-ios-shell,
@@ -625,8 +739,9 @@ jobs:
       ]
     if: >-
       always() &&
+      needs.validate-release-context.result == 'success' &&
       needs.build-pipeline.result == 'success' &&
-      needs.create-tag.result == 'success' &&
+      (needs.create-tag.result == 'success' || needs.create-tag.result == 'skipped') &&
       (needs.build-android-shell.result == 'success' || needs.build-android-shell.result == 'skipped') &&
       (needs.build-ios-shell.result == 'success' || needs.build-ios-shell.result == 'skipped') &&
       (needs.build-harmony-shell.result == 'success' || needs.build-harmony-shell.result == 'skipped')
@@ -673,12 +788,16 @@ jobs:
         id: version
         shell: bash
         run: |
-          TAG_NAME="${{ needs.create-tag.outputs.tag_name }}"
-          IS_DEV="${{ needs.create-tag.outputs.is_dev }}"
-          echo "🚀 Creating stable release from main: $TAG_NAME"
+          TAG_NAME="${{ needs.validate-release-context.outputs.tag_name }}"
+          RELEASE_KIND="${{ needs.validate-release-context.outputs.release_kind }}"
+          PRERELEASE="${{ needs.validate-release-context.outputs.prerelease }}"
+          SOURCE_MODE="${{ needs.validate-release-context.outputs.source_mode }}"
+          echo "🚀 Creating ${RELEASE_KIND} release from ${SOURCE_MODE}: $TAG_NAME"
 
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-          echo "is_dev=$IS_DEV" >> $GITHUB_OUTPUT
+          echo "release_kind=$RELEASE_KIND" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+          echo "source_mode=$SOURCE_MODE" >> $GITHUB_OUTPUT
 
       - name: Validate release publishing token
         shell: bash
@@ -719,11 +838,13 @@ jobs:
         shell: bash
         env:
           RELEASE_TAG: ${{ steps.version.outputs.tag_name }}
+          RELEASE_KIND: ${{ steps.version.outputs.release_kind }}
+          RELEASE_SOURCE_MODE: ${{ steps.version.outputs.source_mode }}
         run: |
           cat > release-assets/release-notes.md <<EOF
-          Public distribution release for ContextGo ${RELEASE_TAG}.
+          Public ${RELEASE_KIND} release for ContextGo ${RELEASE_TAG}.
 
-          This release is published automatically from the private source repository build pipeline.
+          This release is published automatically from the private source repository build pipeline (${RELEASE_SOURCE_MODE} mode).
           The attached installers and manifests are the canonical public distribution artifacts for this version.
           EOF
 
@@ -749,8 +870,8 @@ jobs:
             release-assets/**/*.yml
             release-assets/**/*.md
           draft: false
-          make_latest: true
-          prerelease: ${{ contains(steps.version.outputs.tag_name, 'beta') || contains(steps.version.outputs.tag_name, 'alpha') || contains(steps.version.outputs.tag_name, 'rc') }}
+          make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
+          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
 
       - name: Sync public site content to public release repository
         shell: bash

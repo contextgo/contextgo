@@ -122,6 +122,16 @@ Stable rules:
 
 Use these formats for future work unless there is an explicit replacement plan.
 
+Stable rules:
+
+- public product releases must only use stable or prerelease tags
+- public release tags must match the product version in `package.json`
+- do not publish `dev` tags to the public distribution repository
+- prerelease ordering should follow normal industry semantics:
+  - `alpha` for earliest preview validation
+  - `beta` for broader external testing
+  - `rc` for release candidates intended to converge to a stable release
+
 ### Stable releases
 
 ```text
@@ -149,14 +159,32 @@ Examples:
 ### Internal or dev builds
 
 ```text
-vX.Y.Z-dev-<shortsha>
+vX.Y.Z-dev.<shortsha>
 ```
 
-This matches the existing development-tag direction already used in repository history and in `build-and-release.yml`.
+This is only for internal or temporary builds and should not be published as a public release identity.
 
 Stable rule:
 
-- do not use `-dev-` tags as the public stable release identity
+- do not use `dev` tags as the public release identity
+
+## Release Validation Policy
+
+Public release automation should reject any tag that does not satisfy all of the following:
+
+- it matches one of the supported public formats:
+  - `vX.Y.Z`
+  - `vX.Y.Z-alpha.N`
+  - `vX.Y.Z-beta.N`
+  - `vX.Y.Z-rc.N`
+- the tag version equals the `package.json` version after stripping the leading `v`
+- the tagged commit is reachable from the canonical release branch
+
+Recommended public-tag regex:
+
+```text
+^v\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+)?$
+```
 
 ## GitHub Actions Release Strategy
 
@@ -170,6 +198,9 @@ Future release automation should extend or compose this path instead of creating
 Stable rules:
 
 - desktop release builds should stay in the shared GitHub Actions release workflow, but actual execution should require an explicit maintainer release action rather than automatic branch-push triggers
+- the shared release workflow may support both:
+  - manual release from `main`, where the workflow creates the release tag after a successful build
+  - tag-driven release from an existing compliant public tag
 - future mobile-shell release jobs should be added as additional jobs or reusable workflows in the same release system
 - release workflows should upload distributable artifacts with stable, human-readable names
 - direct-download artifacts should be publishable without requiring store submission
@@ -177,6 +208,12 @@ Stable rules:
 - runner selection should be driven by GitHub Actions variables or manual workflow inputs, not by ad hoc YAML edits on every release
 - control-plane jobs such as matrix generation, tagging, release creation, and build summaries should run on a POSIX-capable runner with `bash`, `git`, and network access
 - if the self-hosted runner fleet only covers part of the target matrix, constrain the release matrix through configuration before editing workflow source
+
+Recommended operational policy:
+
+- stable public releases should normally be initiated from `main`
+- prerelease tags may also be used to publish controlled `alpha`, `beta`, or `rc` builds
+- GitHub prerelease state should be derived from the tag suffix instead of being toggled manually
 
 Recommended release artifact targets:
 
