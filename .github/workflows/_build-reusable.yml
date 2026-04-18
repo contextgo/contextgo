@@ -214,7 +214,25 @@ jobs:
           echo "CONTEXTGO_RELEASE_OWNER=${OWNER}" >> "${GITHUB_ENV}"
           echo "CONTEXTGO_RELEASE_NAME=${REPO}" >> "${GITHUB_ENV}"
 
+      - name: Detect preinstalled bun
+        id: preinstalled_bun
+        if: runner.environment == 'self-hosted'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if command -v bun >/dev/null 2>&1; then
+            echo "available=true" >> "${GITHUB_OUTPUT}"
+            echo "path=$(command -v bun)" >> "${GITHUB_OUTPUT}"
+            echo "Using preinstalled bun: $(command -v bun)"
+            bun --revision || bun --version
+          else
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+            echo "No preinstalled bun found on self-hosted runner."
+          fi
+
       - name: Setup bun
+        if: runner.environment != 'self-hosted' || steps.preinstalled_bun.outputs.available != 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
