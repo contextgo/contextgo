@@ -280,9 +280,50 @@ jobs:
           echo "Configured Gradle proxy from runner environment."
 
       - name: Setup Android SDK
+        continue-on-error: true
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Verify Android SDK environment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-${HOME}/.android/sdk}}"
+          PLATFORM_TOOLS_BIN="${SDK_ROOT}/platform-tools/adb"
+          CMDLINE_TOOLS_ROOT=""
+
+          for candidate in \
+            "${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
+            "${SDK_ROOT}/cmdline-tools/20.0/bin/sdkmanager"; do
+            if [ -x "${candidate}" ]; then
+              CMDLINE_TOOLS_ROOT="$(dirname "$(dirname "${candidate}")")"
+              break
+            fi
+          done
+
+          if [ ! -x "${PLATFORM_TOOLS_BIN}" ]; then
+            echo "::error::Android SDK platform-tools were not installed under ${SDK_ROOT}"
+            exit 1
+          fi
+
+          if [ -z "${CMDLINE_TOOLS_ROOT}" ]; then
+            echo "::error::Android SDK command-line tools were not installed under ${SDK_ROOT}"
+            exit 1
+          fi
+
+          {
+            echo "ANDROID_HOME=${SDK_ROOT}"
+            echo "ANDROID_SDK_ROOT=${SDK_ROOT}"
+          } >> "${GITHUB_ENV}"
+
+          {
+            echo "${SDK_ROOT}/platform-tools"
+            echo "${CMDLINE_TOOLS_ROOT}/bin"
+          } >> "${GITHUB_PATH}"
+
+          echo "Verified Android SDK at ${SDK_ROOT}"
 
       - name: Build Android shell
         shell: bash
