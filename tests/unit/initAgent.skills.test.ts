@@ -650,13 +650,16 @@ describe('initAgent — skill support', () => {
       });
     });
 
-    it('should project builtin auto skills like schedule into native workspaces', async () => {
+    it('should project builtin auto skills like schedule and command-management into native workspaces', async () => {
       existsSyncResults['/mock/builtin-skills/_builtin'] = true;
       statResults['/mock/builtin-skills/_builtin/schedule'] = true;
+      statResults['/mock/builtin-skills/_builtin/command-management'] = true;
       statResults['/mock/builtin-skills/_builtin/contextgo-skills'] = true;
       statResults['/mock/user/skills/pptx'] = true;
       fileContents['/mock/builtin-skills/_builtin/schedule/SKILL.md'] =
         '---\nname: schedule\ndescription: mock skill\n---\n';
+      fileContents['/mock/builtin-skills/_builtin/command-management/SKILL.md'] =
+        '---\nname: command-management\ndescription: mock skill\n---\n';
       fileContents['/mock/builtin-skills/_builtin/contextgo-skills/SKILL.md'] =
         '---\nname: contextgo-skills\ndescription: mock skill\n---\n';
       fileContents['/mock/user/skills/pptx/SKILL.md'] = '---\nname: pptx\ndescription: mock skill\n---\n';
@@ -669,6 +672,10 @@ describe('initAgent — skill support', () => {
       expect(copyFileCalls).toContainEqual({
         source: '/mock/builtin-skills/_builtin/schedule/SKILL.md',
         target: '/tmp/workspace/.contextgo/skills/schedule/SKILL.md',
+      });
+      expect(copyFileCalls).toContainEqual({
+        source: '/mock/builtin-skills/_builtin/command-management/SKILL.md',
+        target: '/tmp/workspace/.contextgo/skills/command-management/SKILL.md',
       });
       expect(copyFileCalls).toContainEqual({
         source: '/mock/builtin-skills/_builtin/contextgo-skills/SKILL.md',

@@ -41,6 +41,16 @@ describe('AssistantScheduleCommandService', () => {
     ).toBe('先搜索\n\n再回复');
   });
 
+  it('also strips command management control blocks from assistant-visible content', () => {
+    expect(
+      stripAssistantControlCommands(
+        '先维护 command\n[COMMAND_UPSERT]\nscope: project\nname: review\ndescription: desc\ntemplate: body\n[/COMMAND_UPSERT]\n再回复'
+      )
+    ).toBe('先维护 command\n\n再回复');
+    expect(stripAssistantControlCommands('[COMMAND_LIST: scope=project]')).toBe('');
+    expect(stripAssistantControlCommands('[COMMAND_DELETE: scope=space; name=review]')).toBe('');
+  });
+
   it('filters streamed schedule create blocks before they reach the UI', () => {
     const filter = new AssistantControlCommandStreamFilter();
 
@@ -65,6 +75,16 @@ describe('AssistantScheduleCommandService', () => {
     expect(filter.push('KET_SEARCH]\nquery: browser skill\n')).toBe('');
     expect(filter.push('view: curated\n[/SKILLMARKET_SEARCH]\n给你结果')).toBe('\n给你结果');
     expect(filter.push('[SKILLMARKET_INSTALL]\nskill_id: browser-skill\n[/SKILLMARKET_INSTALL]')).toBe('');
+  });
+
+  it('filters streamed command blocks before they reach the UI', () => {
+    const filter = new AssistantControlCommandStreamFilter();
+
+    expect(filter.push('先更新 command\n[COMMAND_')).toBe('先更新 command\n');
+    expect(filter.push('UPSERT]\nscope: project\nname: review\n')).toBe('');
+    expect(filter.push('description: desc\ntemplate: body\n[/COMMAND_UPSERT]\n完成')).toBe('\n完成');
+    expect(filter.push('[COMMAND_LIST: scope=project]')).toBe('');
+    expect(filter.push('[COMMAND_DELETE: scope=project; name=review]')).toBe('');
   });
 
   it('lists existing conversation schedules and emits a list event', async () => {
