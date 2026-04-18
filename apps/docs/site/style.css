@@ -1,0 +1,88 @@
+#navbar-transition {
+  backdrop-filter: blur(10px);
+}
+
+#navigation-items,
+#sidebar,
+#table-of-contents-content {
+  font-size: 14px;
+}
+
+#sidebar a,
+#table-of-contents-content a {
+  border-radius: 10px;
+}
+
+#sidebar [data-active='true'] > a {
+  background: color-mix(in oklab, rgb(var(--primary-light)) 10%, transparent);
+  color: rgb(var(--primary-light));
+  text-shadow: none;
+}
+
+#sidebar [data-active='true'] > a span {
+  font-weight: 600;
+}
+
+#sidebar .sidebar-group-header h5 {
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.78;
+}
+
+#content-area {
+  max-width: 760px;
+}
+
+#content-area h1 {
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+}
+
+#content-area h2 {
+  margin-top: 2.5rem;
+  letter-spacing: -0.025em;
+}
+
+#content-area p,
+#content-area li {
+  font-size: 15.5px;
+  line-height: 1.85;
+}
+
+#content-area code,
+#content-area pre,
+#table-of-contents-content,
+#sidebar {
+  font-family:
+    'Fragment Mono',
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+}
+
+#content-area code {
+  font-size: 0.9em;
+}
+
+#search-bar-entry,
+#search-bar-entry-mobile {
+  border-radius: 12px;
+}
+
+#table-of-contents-content {
+  opacity: 0.92;
+}
+
+@media (min-width: 1024px) {
+  #content-area {
+    padding-right: 0.5rem;
+  }
+
+  #sidebar {
+    padding-right: 0.5rem;
+  }
+}

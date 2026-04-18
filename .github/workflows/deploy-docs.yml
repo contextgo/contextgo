@@ -104,17 +104,32 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install Mintlify CLI
+        run: npm install -g mint@4.2.521
+
       - name: Install docs dependencies
         run: npm ci
         working-directory: ${{ github.workspace }}/apps/docs
 
-      - name: Build docs website
+      - name: Validate docs website
+        run: npm run validate
+        working-directory: ${{ github.workspace }}/apps/docs
+
+      - name: Check docs broken links
+        run: npm run broken-links
+        working-directory: ${{ github.workspace }}/apps/docs
+
+      - name: Export docs website
         run: npm run build
+        working-directory: ${{ github.workspace }}/apps/docs
+
+      - name: Unpack exported docs site
+        run: unzip -q dist/site-export.zip -d dist/static
         working-directory: ${{ github.workspace }}/apps/docs
 
       - name: Deploy docs to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx wrangler pages deploy build --project-name "$DOCS_CLOUDFLARE_PROJECT_NAME" --branch "$DOCS_CLOUDFLARE_DEPLOY_BRANCH"
+        run: npx wrangler pages deploy dist/static --project-name "$DOCS_CLOUDFLARE_PROJECT_NAME" --branch "$DOCS_CLOUDFLARE_DEPLOY_BRANCH"
         working-directory: ${{ github.workspace }}/apps/docs
