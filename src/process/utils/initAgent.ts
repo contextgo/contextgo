@@ -19,6 +19,7 @@ import type {
   AgentPackageWorkspaceScaffoldTemplate,
 } from '@/common/config/presets/agentPackageManifest';
 import type { PresetAgentType } from '@/common/types/acpTypes';
+import { isProjectRuntimeBackend } from '@/common/types/projectRuntime';
 import { findBundledAgentPackageDescriptorByAssistantId } from '@/common/config/presets/bundledAgentPackageRegistry';
 import { resolveBuiltinAssistantWorkspaceSkillNames } from '@/common/config/presets/builtinAssistantDefaults';
 import { resolveBundledAgentPackageSourceRelativeRoots } from '@/common/config/presets/bundledAgentPackageRegistry';
@@ -449,7 +450,10 @@ export async function setupAssistantWorkspace(
     presetAssistantId?: string;
   }
 ): Promise<void> {
-  await new ProjectRuntimeService().resolve(workspace);
+  const runtimeBackendKey = options.backend || options.agentType;
+  await new ProjectRuntimeService().resolve(workspace, {
+    backend: runtimeBackendKey && isProjectRuntimeBackend(runtimeBackendKey) ? runtimeBackendKey : undefined,
+  });
 
   // Determine skills directories based on agent type or backend
   const key = options.backend || options.agentType || '';

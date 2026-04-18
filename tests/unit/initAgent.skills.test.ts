@@ -13,6 +13,7 @@ const {
   statResults,
   lstatResults,
   existsSyncResults,
+  projectRuntimeResolveMock,
   resetAll,
 } = vi.hoisted(() => {
   const mkdirCalls: string[] = [];
@@ -23,6 +24,49 @@ const {
   const statResults: Record<string, boolean> = {};
   const lstatResults: Record<string, boolean> = {};
   const existsSyncResults: Record<string, boolean> = {};
+  const projectRuntimeResolveMock = vi.fn(async (workspace: string, _options?: unknown) => {
+    const runtimePolicyPath = `${norm(workspace)}/.contextgo/runtime.json`;
+    if (!fileContents[runtimePolicyPath]) {
+      const defaultPolicy = JSON.stringify(
+        {
+          version: 1,
+          mode: 'auto',
+          resolvedSource: 'model_center',
+          providerProtocol: 'openai',
+          baseUrl: null,
+          apiKeyRef: null,
+          defaultModel: null,
+          importedFrom: null,
+          lastImportedAt: null,
+        },
+        null,
+        2
+      );
+      fileContents[runtimePolicyPath] = `${defaultPolicy}\n`;
+      writeFileCalls.push({
+        path: runtimePolicyPath,
+        content: `${defaultPolicy}\n`,
+      });
+      existsSyncResults[runtimePolicyPath] = true;
+    }
+
+    return {
+      policy: {
+        version: 1,
+        mode: 'auto',
+        resolvedSource: 'model_center',
+        providerProtocol: 'openai',
+        baseUrl: null,
+        apiKeyRef: null,
+        defaultModel: null,
+        importedFrom: null,
+        lastImportedAt: null,
+      },
+      effectiveSource: 'model_center',
+      runtimeRoot: `${norm(workspace)}/.contextgo`,
+      runtimeEnv: {},
+    };
+  });
 
   const resetAll = () => {
     mkdirCalls.length = 0;
@@ -33,6 +77,7 @@ const {
     for (const key of Object.keys(statResults)) delete statResults[key];
     for (const key of Object.keys(lstatResults)) delete lstatResults[key];
     for (const key of Object.keys(existsSyncResults)) delete existsSyncResults[key];
+    projectRuntimeResolveMock.mockClear();
   };
 
   return {
@@ -44,9 +89,18 @@ const {
     statResults,
     lstatResults,
     existsSyncResults,
+    projectRuntimeResolveMock,
     resetAll,
   };
 });
+
+vi.mock('@process/services/runtime/ProjectRuntimeService', () => ({
+  ProjectRuntimeService: class MockProjectRuntimeService {
+    resolve(...args: unknown[]) {
+      return projectRuntimeResolveMock(...args);
+    }
+  },
+}));
 
 vi.mock('fs/promises', () => ({
   default: {
@@ -454,6 +508,17 @@ describe('initAgent — skill support', () => {
       expect(copyFileCalls).toContainEqual({
         source: '/mock/builtin-skills/_builtin/schedule/SKILL.md',
         target: '/tmp/workspace/.contextgo/skills/schedule/SKILL.md',
+      });
+    });
+
+    it('resolves the project runtime with the current backend before projecting workspace state', async () => {
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'claude',
+        enabledSkills: [],
+      });
+
+      expect(projectRuntimeResolveMock).toHaveBeenCalledWith('/tmp/workspace', {
+        backend: 'claude',
       });
     });
 

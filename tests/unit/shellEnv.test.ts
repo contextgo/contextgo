@@ -228,7 +228,7 @@ describe('getEnhancedEnv', () => {
     const result = getEnhancedEnv();
     expect(typeof result.PATH).toBe('string');
     // Spot-check: no undefined string values were injected
-    for (const [k, v] of Object.entries(result)) {
+    for (const [, v] of Object.entries(result)) {
       expect(typeof v).toBe('string');
     }
   });
@@ -239,7 +239,7 @@ describe('getProjectRuntimeEnv', () => {
     vi.resetModules();
   });
 
-  it('overrides HOME and filters shell-global runtime auth vars', async () => {
+  it('overrides HOME and filters shell-global runtime auth vars for project-owned runtime roots', async () => {
     vi.doMock('child_process', () => ({
       execFileSync: vi.fn().mockImplementation(() => {
         throw new Error('skip shell');

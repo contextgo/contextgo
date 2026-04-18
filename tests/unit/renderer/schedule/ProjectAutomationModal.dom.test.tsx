@@ -14,6 +14,9 @@ const {
   saveSpaceCommandLibraryInvokeMock,
   writeFileInvokeMock,
   readSkillContentInvokeMock,
+  importProjectRuntimeInvokeMock,
+  resetProjectRuntimeInvokeMock,
+  saveProjectRuntimePolicyInvokeMock,
   translationMockState,
 } = vi.hoisted(() => ({
   managedCommandLibraryEditorState: {
@@ -35,6 +38,9 @@ const {
   saveSpaceCommandLibraryInvokeMock: vi.fn(async () => []),
   writeFileInvokeMock: vi.fn(),
   readSkillContentInvokeMock: vi.fn(),
+  importProjectRuntimeInvokeMock: vi.fn(),
+  resetProjectRuntimeInvokeMock: vi.fn(),
+  saveProjectRuntimePolicyInvokeMock: vi.fn(),
   translationMockState: {
     unstableIdentity: false,
   },
@@ -49,6 +55,7 @@ const tMock = (key: string, options?: Record<string, unknown> & { defaultValue?:
     return result.replace(new RegExp(`{{${optionKey}}}`, 'g'), String(optionValue));
   }, template);
 };
+const normalizeTabKey = (value: React.Key | null): string => String(value ?? '').replace(/^[.$]+/, '');
 const messageApiMock = {
   success: vi.fn(),
   error: vi.fn(),
@@ -85,6 +92,17 @@ vi.mock('@/common', () => ({
     },
     schedule: {
       createConversationSchedule: { invoke: vi.fn() },
+    },
+    acpConversation: {
+      importProjectRuntime: {
+        invoke: (...args: unknown[]) => importProjectRuntimeInvokeMock(...args),
+      },
+      resetProjectRuntime: {
+        invoke: (...args: unknown[]) => resetProjectRuntimeInvokeMock(...args),
+      },
+      saveProjectRuntimePolicy: {
+        invoke: (...args: unknown[]) => saveProjectRuntimePolicyInvokeMock(...args),
+      },
     },
   },
 }));
@@ -263,14 +281,13 @@ vi.mock('@arco-design/web-react', () => ({
       onChange?: (key: string) => void;
     }) => {
       const panes = React.Children.toArray(children) as Array<React.ReactElement<{ title?: React.ReactNode }>>;
-      const normalizeKey = (value: React.Key | null): string => String(value ?? '').replace(/^[.$]+/, '');
-      const activePane = panes.find((pane) => normalizeKey(pane.key) === activeTab) ?? panes[0] ?? null;
+      const activePane = panes.find((pane) => normalizeTabKey(pane.key) === activeTab) ?? panes[0] ?? null;
 
       return (
         <div>
           <div>
             {panes.map((pane) => {
-              const paneKey = normalizeKey(pane.key);
+              const paneKey = normalizeTabKey(pane.key);
               return (
                 <button key={paneKey} type='button' onClick={() => onChange?.(paneKey)}>
                   {pane.props.title}
@@ -365,6 +382,65 @@ describe('ProjectAutomationModal', () => {
     });
     writeFileInvokeMock.mockReset();
     writeFileInvokeMock.mockResolvedValue(undefined);
+    importProjectRuntimeInvokeMock.mockReset();
+    importProjectRuntimeInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        backend: 'codex',
+        policy: {
+          version: 1,
+          mode: 'import_local_runtime',
+          resolvedSource: 'imported_local_runtime',
+          providerProtocol: 'openai',
+          baseUrl: null,
+          apiKeyRef: null,
+          defaultModel: null,
+          importedFrom: { codex: '~/.codex/config.toml' },
+          lastImportedAt: '2026-04-18T10:00:00.000Z',
+        },
+        effectiveSource: 'imported_local_runtime',
+        runtimeRoot: '/tmp/workspace/.contextgo',
+      },
+    });
+    resetProjectRuntimeInvokeMock.mockReset();
+    resetProjectRuntimeInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        backend: 'codex',
+        policy: {
+          version: 1,
+          mode: 'project_managed',
+          resolvedSource: 'model_center',
+          providerProtocol: 'openai',
+          baseUrl: null,
+          apiKeyRef: null,
+          defaultModel: null,
+          importedFrom: null,
+          lastImportedAt: null,
+        },
+        effectiveSource: 'model_center',
+        runtimeRoot: '/tmp/workspace/.contextgo',
+      },
+    });
+    saveProjectRuntimePolicyInvokeMock.mockReset();
+    saveProjectRuntimePolicyInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        policy: {
+          version: 1,
+          mode: 'project_managed',
+          resolvedSource: 'model_center',
+          providerProtocol: 'openai',
+          baseUrl: null,
+          apiKeyRef: null,
+          defaultModel: null,
+          importedFrom: null,
+          lastImportedAt: null,
+        },
+        effectiveSource: 'model_center',
+        runtimeRoot: '/tmp/workspace/.contextgo',
+      },
+    });
     messageApiMock.success.mockReset();
     messageApiMock.error.mockReset();
     useScheduleJobsMock.mockReturnValue({
@@ -465,7 +541,7 @@ describe('ProjectAutomationModal', () => {
     expect(screen.getAllByText(/\.contextgo\/runtime\.json/).length).toBeGreaterThan(0);
   });
 
-  it('writes the selected runtime mode back to .contextgo/runtime.json', async () => {
+  it('saves the selected runtime mode through the runtime policy bridge', async () => {
     render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Runtime' }));
@@ -473,11 +549,168 @@ describe('ProjectAutomationModal', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Save runtime policy' }));
 
     await waitFor(() => {
-      expect(writeFileInvokeMock).toHaveBeenCalledWith({
-        path: '/tmp/workspace/.contextgo/runtime.json',
-        data: expect.stringContaining('"mode": "project_managed"'),
+      expect(saveProjectRuntimePolicyInvokeMock).toHaveBeenCalledWith({
+        workspace: '/tmp/workspace',
+        policy: expect.objectContaining({
+          mode: 'project_managed',
+        }),
       });
     });
+  });
+
+  it('imports the current global runtime through the runtime action bridge', async () => {
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Runtime' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Import current global config' }));
+
+    await waitFor(() => {
+      expect(importProjectRuntimeInvokeMock).toHaveBeenCalledWith({
+        workspace: '/tmp/workspace',
+        backend: 'codex',
+      });
+    });
+
+    expect(await screen.findByText(/Current effective source: Imported local runtime/)).toBeInTheDocument();
+    expect(screen.getByText(/Current mode: Import local runtime config/)).toBeInTheDocument();
+  });
+
+  it('shows a re-import action when the runtime is already imported and uses the bridge result to refresh state', async () => {
+    readFileInvokeMock.mockImplementation(async ({ path }: { path: string }) => {
+      if (path === '/tmp/workspace/.contextgo/runtime.json') {
+        return JSON.stringify(
+          {
+            version: 1,
+            mode: 'import_local_runtime',
+            resolvedSource: 'imported_local_runtime',
+            providerProtocol: 'openai',
+            baseUrl: null,
+            apiKeyRef: null,
+            defaultModel: null,
+            importedFrom: { codex: '~/.codex/config.toml' },
+            lastImportedAt: '2026-04-17T10:00:00.000Z',
+          },
+          null,
+          2
+        );
+      }
+
+      return '[]';
+    });
+
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Runtime' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Re-import global config' }));
+
+    await waitFor(() => {
+      expect(importProjectRuntimeInvokeMock).toHaveBeenCalledWith({
+        workspace: '/tmp/workspace',
+        backend: 'codex',
+      });
+    });
+  });
+
+  it('resets the current backend runtime override through the runtime action bridge', async () => {
+    readFileInvokeMock.mockImplementation(async ({ path }: { path: string }) => {
+      if (path === '/tmp/workspace/.contextgo/runtime.json') {
+        return JSON.stringify(
+          {
+            version: 1,
+            mode: 'import_local_runtime',
+            resolvedSource: 'imported_local_runtime',
+            providerProtocol: 'openai',
+            baseUrl: null,
+            apiKeyRef: null,
+            defaultModel: null,
+            importedFrom: { codex: '~/.codex/config.toml' },
+            lastImportedAt: '2026-04-17T10:00:00.000Z',
+          },
+          null,
+          2
+        );
+      }
+
+      return '[]';
+    });
+
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Runtime' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Reset current backend override' }));
+
+    await waitFor(() => {
+      expect(resetProjectRuntimeInvokeMock).toHaveBeenCalledWith({
+        workspace: '/tmp/workspace',
+        backend: 'codex',
+      });
+    });
+
+    expect(await screen.findByText(/Current effective source: ContextGo model center/)).toBeInTheDocument();
+    expect(screen.getByText(/Current mode: Use ContextGo model center/)).toBeInTheDocument();
+  });
+
+  it('saves runtime policy changes through the authoritative runtime bridge', async () => {
+    readFileInvokeMock.mockImplementation(async ({ path }: { path: string }) => {
+      if (path === '/tmp/workspace/.contextgo/runtime.json') {
+        return JSON.stringify(
+          {
+            version: 1,
+            mode: 'import_local_runtime',
+            resolvedSource: 'imported_local_runtime',
+            providerProtocol: 'openai',
+            baseUrl: null,
+            apiKeyRef: null,
+            defaultModel: null,
+            importedFrom: { codex: '~/.codex/config.toml' },
+            lastImportedAt: '2026-04-17T10:00:00.000Z',
+          },
+          null,
+          2
+        );
+      }
+
+      return '[]';
+    });
+
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Runtime' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Use ContextGo model center' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save runtime policy' }));
+
+    await waitFor(() => {
+      expect(saveProjectRuntimePolicyInvokeMock).toHaveBeenCalledWith({
+        workspace: '/tmp/workspace',
+        policy: expect.objectContaining({
+          mode: 'project_managed',
+        }),
+      });
+    });
+
+    expect(writeFileInvokeMock).not.toHaveBeenCalledWith({
+      path: '/tmp/workspace/.contextgo/runtime.json',
+      data: expect.any(String),
+    });
+  });
+
+  it('keeps the previous runtime state visible when an import action fails', async () => {
+    importProjectRuntimeInvokeMock.mockResolvedValue({
+      success: false,
+      msg: 'import failed',
+    });
+
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Runtime' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Import current global config' }));
+
+    await waitFor(() => {
+      expect(messageApiMock.error).toHaveBeenCalledWith('import failed');
+    });
+
+    expect(screen.queryByText('Imported local runtime')).not.toBeInTheDocument();
+    expect(screen.getByText(/Current mode: Automatic/)).toBeInTheDocument();
   });
 
   it('treats workspace project skills as enabled even when the conversation has no explicit enabledSkills', async () => {
