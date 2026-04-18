@@ -113,7 +113,10 @@ export class ChannelContinuationService {
       exactTargetIdentity ??
       (params.targetPlatformChatId
         ? assertQuerySuccess(
-            db.getRemoteIdentityByChannelAccountPlatformChat(params.targetChannelAccountId, params.targetPlatformChatId),
+            db.getRemoteIdentityByChannelAccountPlatformChat(
+              params.targetChannelAccountId,
+              params.targetPlatformChatId
+            ),
             'Failed to load target remote identity'
           )
         : null);

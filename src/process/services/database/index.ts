@@ -2330,7 +2330,10 @@ export class AionUIDatabase {
     }
   }
 
-  getRemoteIdentityByChannelAccountChat(channelAccountId: string, remoteChatId: string): IQueryResult<IRemoteIdentity | null> {
+  getRemoteIdentityByChannelAccountChat(
+    channelAccountId: string,
+    remoteChatId: string
+  ): IQueryResult<IRemoteIdentity | null> {
     try {
       const row = this.db
         .prepare('SELECT * FROM remote_identities WHERE channel_account_id = ? AND remote_chat_id = ?')
@@ -2576,7 +2579,9 @@ export class AionUIDatabase {
     try {
       const rows = channelAccountId
         ? (this.db
-            .prepare('SELECT * FROM channel_bindings WHERE channel_account_id = ? ORDER BY priority DESC, created_at ASC')
+            .prepare(
+              'SELECT * FROM channel_bindings WHERE channel_account_id = ? ORDER BY priority DESC, created_at ASC'
+            )
             .all(channelAccountId) as IChannelBindingRow[])
         : (this.db
             .prepare('SELECT * FROM channel_bindings ORDER BY channel_account_id ASC, priority DESC, created_at ASC')
@@ -3978,7 +3983,9 @@ export class AionUIDatabase {
       const legacyResult = this.db
         .prepare('UPDATE assistant_pairing_codes SET status = ? WHERE code = ?')
         .run(status, code);
-      const v2Result = this.db.prepare('UPDATE channel_pairing_requests SET status = ? WHERE code = ?').run(status, code);
+      const v2Result = this.db
+        .prepare('UPDATE channel_pairing_requests SET status = ? WHERE code = ?')
+        .run(status, code);
       return { success: true, data: legacyResult.changes > 0 || v2Result.changes > 0 };
     } catch (error: any) {
       return { success: false, error: error.message };

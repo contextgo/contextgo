@@ -55,8 +55,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
         setPendingPairings(
           result.data.filter(
             (item) =>
-              item.platformType === 'slack' &&
-              (!item.channelAccountId || item.channelAccountId === channelAccountId)
+              item.platformType === 'slack' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -75,8 +74,7 @@ const SlackConfigForm: React.FC<SlackConfigFormProps> = ({
         setAuthorizedTargets(
           result.data.filter(
             (item) =>
-              item.platformType === 'slack' &&
-              (!item.channelAccountId || item.channelAccountId === channelAccountId)
+              item.platformType === 'slack' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }

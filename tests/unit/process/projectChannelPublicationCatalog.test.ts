@@ -8,12 +8,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type {
-  IChannelAccount,
-  IChannelAudienceEntry,
-  IChannelBinding,
-  IRemoteIdentity,
-} from '@process/channels/types';
+import type { IChannelAccount, IChannelAudienceEntry, IChannelBinding, IRemoteIdentity } from '@process/channels/types';
 import { ProjectChannelPublicationService } from '@process/channels/core/ProjectChannelPublicationService';
 import { resolvePublishObjectCatalogEntry } from '@process/channels/utils';
 

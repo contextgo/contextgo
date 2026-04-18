@@ -75,8 +75,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
         setPendingPairings(
           result.data.filter(
             (item) =>
-              item.platformType === 'weixin' &&
-              (!item.channelAccountId || item.channelAccountId === channelAccountId)
+              item.platformType === 'weixin' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -95,8 +94,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
         setAuthorizedTargets(
           result.data.filter(
             (item) =>
-              item.platformType === 'weixin' &&
-              (!item.channelAccountId || item.channelAccountId === channelAccountId)
+              item.platformType === 'weixin' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }

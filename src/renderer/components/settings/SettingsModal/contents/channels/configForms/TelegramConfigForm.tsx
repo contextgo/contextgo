@@ -47,9 +47,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
       if (result.success && result.data) {
         setPendingPairings(
           result.data.filter(
-            (p) =>
-              p.platformType === 'telegram' &&
-              (!p.channelAccountId || p.channelAccountId === channelAccountId)
+            (p) => p.platformType === 'telegram' && (!p.channelAccountId || p.channelAccountId === channelAccountId)
           )
         );
       }
@@ -68,9 +66,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
       if (result.success && result.data) {
         setAuthorizedTargets(
           result.data.filter(
-            (u) =>
-              u.platformType === 'telegram' &&
-              (!u.channelAccountId || u.channelAccountId === channelAccountId)
+            (u) => u.platformType === 'telegram' && (!u.channelAccountId || u.channelAccountId === channelAccountId)
           )
         );
       }

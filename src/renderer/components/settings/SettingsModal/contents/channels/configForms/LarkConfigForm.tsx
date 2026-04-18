@@ -47,8 +47,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
         setPendingPairings(
           result.data.filter(
             (item) =>
-              item.platformType === 'lark' &&
-              (!item.channelAccountId || item.channelAccountId === channelAccountId)
+              item.platformType === 'lark' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -67,8 +66,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginId, pluginStatus,
         setAuthorizedTargets(
           result.data.filter(
             (item) =>
-              item.platformType === 'lark' &&
-              (!item.channelAccountId || item.channelAccountId === channelAccountId)
+              item.platformType === 'lark' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }

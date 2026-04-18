@@ -44,8 +44,7 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginId, plugi
         setPendingPairings(
           result.data.filter(
             (item) =>
-              item.platformType === 'dingtalk' &&
-              (!item.channelAccountId || item.channelAccountId === channelAccountId)
+              item.platformType === 'dingtalk' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -64,8 +63,7 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginId, plugi
         setAuthorizedTargets(
           result.data.filter(
             (item) =>
-              item.platformType === 'dingtalk' &&
-              (!item.channelAccountId || item.channelAccountId === channelAccountId)
+              item.platformType === 'dingtalk' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }

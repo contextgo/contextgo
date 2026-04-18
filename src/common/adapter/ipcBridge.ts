@@ -1782,18 +1782,16 @@ export const channel = {
     IBridgeResponse<IChannelPublicationSnapshot>,
     { channelAccountId?: string } | void
   >('channel.refresh-publication-snapshot'),
-  getBindingCatalog: bridge.buildProvider<
-    IBridgeResponse<IChannelBindingCatalog>,
-    { channelAccountId?: string }
-  >('channel.get-binding-catalog'),
+  getBindingCatalog: bridge.buildProvider<IBridgeResponse<IChannelBindingCatalog>, { channelAccountId?: string }>(
+    'channel.get-binding-catalog'
+  ),
   refreshPublicationCatalog: bridge.buildProvider<
     IBridgeResponse<IChannelPublicationCatalogRefreshResult>,
     { channelAccountId?: string } | void
   >('channel.refresh-publication-catalog'),
-  getBindings: bridge.buildProvider<
-    IBridgeResponse<IChannelBinding[]>,
-    { channelAccountId?: string } | void
-  >('channel.get-bindings'),
+  getBindings: bridge.buildProvider<IBridgeResponse<IChannelBinding[]>, { channelAccountId?: string } | void>(
+    'channel.get-bindings'
+  ),
   upsertPublication: bridge.buildProvider<IBridgeResponse, { publication: IChannelPublicationUpsertInput }>(
     'channel.upsert-publication'
   ),

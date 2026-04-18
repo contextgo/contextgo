@@ -16,10 +16,7 @@ import type {
   IRemoteIdentity,
 } from '@process/channels/types';
 import { enrichRemoteIdentitiesForPublishObjectDiscovery } from '@process/channels/core/publishObjectDiscovery';
-import {
-  getChannelBindingPublishObject,
-  getChannelPublishObjectCatalogEntryIdentity,
-} from '@process/channels/types';
+import { getChannelBindingPublishObject, getChannelPublishObjectCatalogEntryIdentity } from '@process/channels/types';
 import {
   describeRemoteIdentityObject,
   inferRemoteIdentityPublishObject,

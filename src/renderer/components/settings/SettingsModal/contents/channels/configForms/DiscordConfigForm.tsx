@@ -52,8 +52,7 @@ const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
         setPendingPairings(
           result.data.filter(
             (item) =>
-              item.platformType === 'discord' &&
-              (!item.channelAccountId || item.channelAccountId === channelAccountId)
+              item.platformType === 'discord' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -72,8 +71,7 @@ const DiscordConfigForm: React.FC<DiscordConfigFormProps> = ({
         setAuthorizedTargets(
           result.data.filter(
             (item) =>
-              item.platformType === 'discord' &&
-              (!item.channelAccountId || item.channelAccountId === channelAccountId)
+              item.platformType === 'discord' && (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }

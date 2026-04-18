@@ -285,7 +285,10 @@ describe('PairingService', () => {
     );
 
     expect(authorized).toBe(true);
-    expect(mockDb.getRemoteIdentityByChannelAccountPlatformChat).toHaveBeenCalledWith('connector-b', 'channel-parent-1');
+    expect(mockDb.getRemoteIdentityByChannelAccountPlatformChat).toHaveBeenCalledWith(
+      'connector-b',
+      'channel-parent-1'
+    );
   });
 
   it('treats a published topic audience as authorized even before pairing identity exists', async () => {

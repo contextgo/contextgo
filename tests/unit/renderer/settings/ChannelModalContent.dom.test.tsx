@@ -246,7 +246,9 @@ function renderSessionsPage(state?: Record<string, unknown>) {
 }
 
 function renderChannelsPage() {
-  const initialEntries: React.ComponentProps<typeof MemoryRouter>['initialEntries'] = [{ pathname: '/settings/channels' }];
+  const initialEntries: React.ComponentProps<typeof MemoryRouter>['initialEntries'] = [
+    { pathname: '/settings/channels' },
+  ];
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <ChannelModalContent mode='channels' />
