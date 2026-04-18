@@ -382,6 +382,26 @@
       "projectCommandsDescription": "These commands are saved into `.contextgo/commands.json` for the current workspace and override Space Commands with the same slash name.",
       "projectCommandsUsageHint": "Use project-local commands for workspace-specific overrides and private slash templates.",
       "projectCommandsPathHint": "Saved to: {{path}}",
+      "commandEvent": {
+        "createTitle": "Command Created",
+        "createDescription": "A command template was added through the assistant workflow.",
+        "updateTitle": "Command Updated",
+        "updateDescription": "An existing command template was updated through the assistant workflow.",
+        "deleteTitle": "Command Deleted",
+        "deleteDescription": "A command template was removed through the assistant workflow.",
+        "listTitle": "Commands Listed",
+        "listDescription": "count:{{count}};scope:{{scope}}",
+        "errorTitle": "Command Action Failed",
+        "errorDescription": "The assistant command action could not be applied.",
+        "scope": {
+          "project": "Project",
+          "space": "Space"
+        },
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "templateLabel": "Template",
+        "empty": "No commands are available for this scope."
+      },
       "schedulesTitle": "Session Schedule",
       "schedulesDescription": "Create or edit the scheduled prompt that sends a message into this conversation. When a workspace is attached, the definition is also written into `.contextgo/schedules.json`.",
       "schedulesPathHint": "Saved to: {{path}}",

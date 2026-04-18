@@ -14,6 +14,9 @@ const SCHEDULE_DELETE_PATTERN = /\[SCHEDULE_DELETE:\s*([^\]]+?)\s*\]/gi;
 const SCHEDULE_CREATE_BLOCK_PATTERN = /\[SCHEDULE_CREATE\]([\s\S]*?)\[\/SCHEDULE_CREATE\]/gi;
 const SKILLMARKET_SEARCH_BLOCK_PATTERN = /\[SKILLMARKET_SEARCH\]([\s\S]*?)\[\/SKILLMARKET_SEARCH\]/gi;
 const SKILLMARKET_INSTALL_BLOCK_PATTERN = /\[SKILLMARKET_INSTALL\]([\s\S]*?)\[\/SKILLMARKET_INSTALL\]/gi;
+const COMMAND_UPSERT_BLOCK_PATTERN = /\[COMMAND_UPSERT\]([\s\S]*?)\[\/COMMAND_UPSERT\]/gi;
+const COMMAND_LIST_PATTERN = /\[COMMAND_LIST:\s*scope=(project|space)\s*\]/gi;
+const COMMAND_DELETE_PATTERN = /\[COMMAND_DELETE:\s*scope=(project|space)\s*;\s*name=([^\]]+?)\s*\]/gi;
 const LOAD_SKILL_PATTERN = /\[LOAD_SKILL:\s*[^\]]+\]/gi;
 const SCHEDULE_CREATE_OPEN_TAG = '[SCHEDULE_CREATE]';
 const SCHEDULE_CREATE_CLOSE_TAG = '[/SCHEDULE_CREATE]';
@@ -21,11 +24,19 @@ const SKILLMARKET_SEARCH_OPEN_TAG = '[SKILLMARKET_SEARCH]';
 const SKILLMARKET_SEARCH_CLOSE_TAG = '[/SKILLMARKET_SEARCH]';
 const SKILLMARKET_INSTALL_OPEN_TAG = '[SKILLMARKET_INSTALL]';
 const SKILLMARKET_INSTALL_CLOSE_TAG = '[/SKILLMARKET_INSTALL]';
+const COMMAND_UPSERT_OPEN_TAG = '[COMMAND_UPSERT]';
+const COMMAND_UPSERT_CLOSE_TAG = '[/COMMAND_UPSERT]';
 const SCHEDULE_LIST_TAG = '[SCHEDULE_LIST]';
 const SCHEDULE_DELETE_PREFIX = '[SCHEDULE_DELETE:';
+const COMMAND_LIST_PREFIX = '[COMMAND_LIST:';
+const COMMAND_DELETE_PREFIX = '[COMMAND_DELETE:';
 const LOAD_SKILL_PREFIX = '[LOAD_SKILL:';
 
 const isCompleteScheduleDeleteTag = (value: string): boolean => /^\[SCHEDULE_DELETE:\s*[^\]]+?\s*\]$/i.test(value);
+const isCompleteCommandDeleteTag = (value: string): boolean =>
+  /^\[COMMAND_DELETE:\s*scope=(project|space)\s*;\s*name=[^\]]+?\s*\]$/i.test(value);
+const isCompleteCommandListTag = (value: string): boolean =>
+  /^\[COMMAND_LIST:\s*scope=(project|space)\s*\]$/i.test(value);
 
 const isCompleteLoadSkillTag = (value: string): boolean => /^\[LOAD_SKILL:\s*[^\]]+\]$/i.test(value);
 
@@ -60,6 +71,7 @@ export class AssistantControlCommandStreamFilter {
   private insideScheduleCreateBlock = false;
   private insideSkillMarketSearchBlock = false;
   private insideSkillMarketInstallBlock = false;
+  private insideCommandUpsertBlock = false;
 
   push(chunk: string): string {
     if (!chunk) {
@@ -91,6 +103,18 @@ export class AssistantControlCommandStreamFilter {
 
         this.pending = this.pending.slice(closeIndex + SKILLMARKET_INSTALL_CLOSE_TAG.length);
         this.insideSkillMarketInstallBlock = false;
+        continue;
+      }
+
+      if (this.insideCommandUpsertBlock) {
+        const closeIndex = this.pending.indexOf(COMMAND_UPSERT_CLOSE_TAG);
+        if (closeIndex === -1) {
+          this.pending = '';
+          break;
+        }
+
+        this.pending = this.pending.slice(closeIndex + COMMAND_UPSERT_CLOSE_TAG.length);
+        this.insideCommandUpsertBlock = false;
         continue;
       }
 
@@ -132,6 +156,16 @@ export class AssistantControlCommandStreamFilter {
         break;
       }
 
+      if (this.pending.startsWith(COMMAND_UPSERT_OPEN_TAG)) {
+        this.pending = this.pending.slice(COMMAND_UPSERT_OPEN_TAG.length);
+        this.insideCommandUpsertBlock = true;
+        continue;
+      }
+
+      if (COMMAND_UPSERT_OPEN_TAG.startsWith(this.pending)) {
+        break;
+      }
+
       if (this.pending.startsWith(SKILLMARKET_SEARCH_OPEN_TAG)) {
         this.pending = this.pending.slice(SKILLMARKET_SEARCH_OPEN_TAG.length);
         this.insideSkillMarketSearchBlock = true;
@@ -161,6 +195,23 @@ export class AssistantControlCommandStreamFilter {
         break;
       }
 
+      if (this.pending.startsWith(COMMAND_LIST_PREFIX)) {
+        const endIndex = this.pending.indexOf(']');
+        if (endIndex === -1) {
+          break;
+        }
+
+        const candidate = this.pending.slice(0, endIndex + 1);
+        if (isCompleteCommandListTag(candidate)) {
+          this.pending = this.pending.slice(endIndex + 1);
+          continue;
+        }
+      }
+
+      if (COMMAND_LIST_PREFIX.startsWith(this.pending)) {
+        break;
+      }
+
       if (this.pending.startsWith(SCHEDULE_DELETE_PREFIX)) {
         const endIndex = this.pending.indexOf(']');
         if (endIndex === -1) {
@@ -175,6 +226,23 @@ export class AssistantControlCommandStreamFilter {
       }
 
       if (SCHEDULE_DELETE_PREFIX.startsWith(this.pending)) {
+        break;
+      }
+
+      if (this.pending.startsWith(COMMAND_DELETE_PREFIX)) {
+        const endIndex = this.pending.indexOf(']');
+        if (endIndex === -1) {
+          break;
+        }
+
+        const candidate = this.pending.slice(0, endIndex + 1);
+        if (isCompleteCommandDeleteTag(candidate)) {
+          this.pending = this.pending.slice(endIndex + 1);
+          continue;
+        }
+      }
+
+      if (COMMAND_DELETE_PREFIX.startsWith(this.pending)) {
         break;
       }
 
@@ -215,6 +283,12 @@ export class AssistantControlCommandStreamFilter {
       return '';
     }
 
+    if (this.insideCommandUpsertBlock) {
+      this.pending = '';
+      this.insideCommandUpsertBlock = false;
+      return '';
+    }
+
     if (this.insideScheduleCreateBlock) {
       this.pending = '';
       this.insideScheduleCreateBlock = false;
@@ -231,6 +305,7 @@ export class AssistantControlCommandStreamFilter {
     this.insideScheduleCreateBlock = false;
     this.insideSkillMarketSearchBlock = false;
     this.insideSkillMarketInstallBlock = false;
+    this.insideCommandUpsertBlock = false;
   }
 }
 
@@ -413,6 +488,9 @@ export function stripAssistantControlCommands(content: string): string {
 
   const cleaned = content
     .replace(LOAD_SKILL_PATTERN, '')
+    .replace(COMMAND_UPSERT_BLOCK_PATTERN, '')
+    .replace(COMMAND_DELETE_PATTERN, '')
+    .replace(COMMAND_LIST_PATTERN, '')
     .replace(SCHEDULE_CREATE_BLOCK_PATTERN, '')
     .replace(SKILLMARKET_SEARCH_BLOCK_PATTERN, '')
     .replace(SKILLMARKET_INSTALL_BLOCK_PATTERN, '')

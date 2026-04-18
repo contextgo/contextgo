@@ -190,7 +190,7 @@ export class SpaceServiceImpl implements ISpaceService {
     const normalizedCommands = normalizeManagedSlashCommandLibrary(commands);
     await this.repo.updateSpace(id, {
       automation: {
-        ...(existing.automation ?? {}),
+        ...existing.automation,
         commands: normalizedCommands,
       },
     });

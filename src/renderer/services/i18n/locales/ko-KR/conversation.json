@@ -368,6 +368,26 @@
       "projectCommandsDescription": "이 명령들은 현재 워크스페이스의 `.contextgo/commands.json` 에 저장되며 같은 이름의 Space Commands 를 덮어씁니다.",
       "projectCommandsUsageHint": "워크스페이스 전용 override 와 private slash template 에는 project-local commands 를 사용하세요.",
       "projectCommandsPathHint": "저장 위치: {{path}}",
+      "commandEvent": {
+        "createTitle": "Command Created",
+        "createDescription": "A command template was added through the assistant workflow.",
+        "updateTitle": "Command Updated",
+        "updateDescription": "An existing command template was updated through the assistant workflow.",
+        "deleteTitle": "Command Deleted",
+        "deleteDescription": "A command template was removed through the assistant workflow.",
+        "listTitle": "Commands Listed",
+        "listDescription": "count:{{count}};scope:{{scope}}",
+        "errorTitle": "Command Action Failed",
+        "errorDescription": "The assistant command action could not be applied.",
+        "scope": {
+          "project": "Project",
+          "space": "Space"
+        },
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "templateLabel": "Template",
+        "empty": "No commands are available for this scope."
+      },
       "commandsTitle": "Project Commands",
       "commandsDescription": "여기서 수정한 project commands 는 이 프로젝트의 `.contextgo/commands.json` 에 저장되며 현재 워크스페이스 command menu 의 단일 기준이 됩니다.",
       "commandsUsageHint": "commands.json 이 아직 없으면 이 대화에 현재 적용 중인 project commands 를 시작점으로 불러옵니다.",

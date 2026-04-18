@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockSetProcessing = vi.fn();
 const mockExecuteAssistantSkillMarketCommands = vi.fn();
+const mockExecuteAssistantCommandCommands = vi.fn();
 
 vi.mock('@/common/platform', () => ({
   getPlatformServices: () => ({
@@ -54,6 +55,14 @@ vi.mock('@process/services/context/events/AssistantSkillMarketCommandService', (
   executeAssistantSkillMarketCommands: (...args: unknown[]) => mockExecuteAssistantSkillMarketCommands(...args),
 }));
 
+vi.mock('@process/services/context/events/AssistantCommandCommandService', () => ({
+  executeAssistantCommandCommands: (...args: unknown[]) => mockExecuteAssistantCommandCommands(...args),
+}));
+
+vi.mock('@process/services/context/events/command/CommandEventMessageEmitter', () => ({
+  emitCommandEventMessage: vi.fn(),
+}));
+
 describe('CodexMessageProcessor', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -62,6 +71,12 @@ describe('CodexMessageProcessor', () => {
       cleanedContent: '',
       hasCommands: false,
       systemResponses: [],
+    });
+    mockExecuteAssistantCommandCommands.mockResolvedValue({
+      cleanedContent: '',
+      hasCommands: false,
+      systemResponses: [],
+      events: [],
     });
   });
 
@@ -177,6 +192,64 @@ describe('CodexMessageProcessor', () => {
     );
     expect(emitter.sendMessageToAgent).toHaveBeenCalledWith(
       '[System Response]\n[SkillMarket Result]\nFound 1 matching skill(s).'
+    );
+    expect(emitter.scheduleAfterResponseHooks).not.toHaveBeenCalled();
+  });
+
+  it('suppresses streamed command blocks and continues with command system feedback', async () => {
+    mockExecuteAssistantCommandCommands.mockResolvedValue({
+      cleanedContent: '我来更新这个 command',
+      hasCommands: true,
+      systemResponses: ['[Command Result]\nUpdated project command /review.'],
+      events: [],
+    });
+
+    const { CodexMessageProcessor } = await import('../../src/process/agent/codex/messaging/CodexMessageProcessor');
+    const emitter = {
+      emitAndPersistMessage: vi.fn(),
+      persistMessage: vi.fn(),
+      addConfirmation: vi.fn(),
+      scheduleAfterResponseHooks: vi.fn(),
+      updateFinalAssistantContent: vi.fn(),
+      sendMessageToAgent: vi.fn(),
+    };
+
+    const processor = new CodexMessageProcessor('conv-command', emitter as any);
+    processor.processTaskStart();
+
+    processor.processMessageDelta({
+      type: 'agent_message_delta',
+      delta: '我来更新这个 command\n[COMMAND_UPS',
+    } as any);
+    processor.processMessageDelta({
+      type: 'agent_message_delta',
+      delta: 'ERT]\nscope: project\nname: review\n',
+    } as any);
+    processor.processMessageDelta({
+      type: 'agent_message_delta',
+      delta: 'description: desc\ntemplate: body\n[/COMMAND_UPSERT]',
+    } as any);
+
+    expect(emitter.emitAndPersistMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'content',
+        conversation_id: 'conv-command',
+        data: '我来更新这个 command\n',
+      }),
+      false
+    );
+
+    await processor.processFinalMessage({
+      type: 'agent_message',
+      message:
+        '我来更新这个 command\n[COMMAND_UPSERT]\nscope: project\nname: review\ndescription: desc\ntemplate: body\n[/COMMAND_UPSERT]',
+    } as any);
+
+    expect(emitter.persistMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ content: { content: '我来更新这个 command' } })
+    );
+    expect(emitter.sendMessageToAgent).toHaveBeenCalledWith(
+      '[System Response]\n[Command Result]\nUpdated project command /review.'
     );
     expect(emitter.scheduleAfterResponseHooks).not.toHaveBeenCalled();
   });

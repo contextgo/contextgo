@@ -227,6 +227,26 @@
       "projectCommandsDescription": "Bu komutlar mevcut calisma alaninin `.contextgo/commands.json` dosyasina kaydedilir ve ayni slash adina sahip Space Commands'i ezer.",
       "projectCommandsUsageHint": "Calisma alanina ozel override'lar ve ozel slash template'leri icin project-local komutlari kullanin.",
       "projectCommandsPathHint": "Kayit yolu: {{path}}",
+      "commandEvent": {
+        "createTitle": "Command Created",
+        "createDescription": "A command template was added through the assistant workflow.",
+        "updateTitle": "Command Updated",
+        "updateDescription": "An existing command template was updated through the assistant workflow.",
+        "deleteTitle": "Command Deleted",
+        "deleteDescription": "A command template was removed through the assistant workflow.",
+        "listTitle": "Commands Listed",
+        "listDescription": "count:{{count}};scope:{{scope}}",
+        "errorTitle": "Command Action Failed",
+        "errorDescription": "The assistant command action could not be applied.",
+        "scope": {
+          "project": "Project",
+          "space": "Space"
+        },
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "templateLabel": "Template",
+        "empty": "No commands are available for this scope."
+      },
       "commandsTitle": "Project Commands",
       "commandsDescription": "Buradaki proje komutlari bu projenin `.contextgo/commands.json` dosyasina kaydedilir ve mevcut calisma alani command menu icin tek kaynak olur.",
       "commandsUsageHint": "commands.json henuz yoksa editor bu konusma icin gecerli olan mevcut proje komutlarini baslangic olarak kullanir.",
