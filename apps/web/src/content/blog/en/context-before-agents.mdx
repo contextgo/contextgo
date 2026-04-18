@@ -1,17 +1,57 @@
 ---
 eyebrow: Product Model
 title: Why ContextGo starts from context before agents
-summary: The product is not trying to create another chat surface first. It starts by connecting the working context so agents can operate inside real workflows.
-readingTime: 4 min
+summary: ContextGo does not start from a chat box. It starts from a working context layer that connects files, tasks, docs, channels, and runtime state.
+readingTime: 7 min
 publishedAt: 2026-03-30
 ---
 
-## Why this product does not start from a blank chat box
+<div className='editorial-note'>
+  <p className='editorial-note-label'>Core position</p>
+  <p>Without a connected context layer, agents remain surface-level assistants. Once that layer exists, they can participate inside real workflows.</p>
+</div>
 
-A generic chat surface is easy to demo but weak in actual workflows because the context layer is missing. Files, docs, tasks, history, and channels are still scattered across tools.
+## Why a blank chat box is not enough
 
-ContextGo is built around the idea that once the context layer is connected, agents stop being isolated assistants and start becoming participants in the workflow that already exists.
+A generic chat surface is easy to demo because it compresses the story into one promise: ask anything. The problem appears when that story touches real work. Files live on the local machine, design notes live in docs, decisions live in channels, task state lives in external systems, and execution depends on the host runtime.
 
-## Product consequence
+That means users are not mainly missing another interface for asking questions. They are missing an operational layer that connects the working context. If that layer does not exist, even a strong model stays trapped in one-off question answering.
 
-This product direction affects everything else: connectors, remote access, cloud identity, and runtime management are all there to make the context layer usable in real environments.
+ContextGo starts from that layer. It is not a chat-first product that later accumulates connectors. It is a context-first product that makes connectors, runtime operations, and remote use part of the foundation.
+
+## What ContextGo means by “context layer”
+
+The context layer is not just retrieval and it is not just stuffing a few documents into a prompt. It should be a persistent working structure that can be reused, updated, and acted on over time.
+
+At minimum, it should connect:
+
+1. the files, docs, and reference material relevant to the task
+2. the surrounding decisions, conversations, comments, and channel history
+3. the machine, runtime, and connectors needed to actually run the work
+4. the remote surfaces that need to reuse the same context later, including desktop, WebUI, and remote clients
+
+Once those objects are connected, an agent stops being a temporary helper that sees one snapshot. It becomes a participant inside an actual workspace.
+
+## How this changes the product boundary
+
+As soon as you accept that the product is really about the context layer, several boundaries become much clearer.
+
+Connectors stop being decorative integrations. They become the way scattered source material and operating surfaces enter the product. Runtime management stops looking like implementation plumbing and starts looking like a requirement for real execution. Remote access stops being an optional convenience and becomes part of how the same context layer is safely reused from somewhere else.
+
+The reverse is also true. Some things should not become the center of the product story. A flashy assistant surface, a growing pile of prompt presets, or a vague claim that the model is smarter may all be useful, but they should not replace the real product boundary.
+
+## What this means for users and operators
+
+For users, this judgment changes expectations. They should expect ContextGo to assemble context, not just respond. They should expect to connect tasks, materials, execution, and history, instead of re-explaining everything every time.
+
+For operators and admins, the same judgment means the website, docs, and release behavior all need to describe one coherent model. You cannot tell the market that the product is an always-available AI workspace and then quietly depend on desktop-hosted execution without explaining where work actually runs.
+
+That is why future product decisions should keep answering the same question: does this capability strengthen the context layer, or does it only add another AI entry point on the surface?
+
+## How to keep reading the model
+
+If you accept that context comes before the agent surface, the next two notes become easier to read in the right order.
+
+Read *Desktop host, mobile client: keep the product model explicit* next, because the remote model decides where that context layer really lives. Then read *Release operations should flow through contextgo-releases*, because the release source determines how external users understand version truth, downloads, and updates.
+
+Taken together, those three notes form the current public product model ContextGo should keep consistent.

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import ContentArticlePage from '@/components/content/ContentArticlePage';
 import { getReleaseBlogEntry, getResolvedReleaseBlog } from '@/lib/releaseBlog';
 import { getResolvedReleaseDocs } from '@/lib/releaseDocs';
+import { getBlogArticleSupplement, getBlogJournalCopy } from '@/lib/site-content/blogEditorial';
 import { getSiteContent } from '@/lib/site-content';
 
 export const runtime = 'edge';
@@ -20,6 +21,12 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ la
     notFound();
   }
 
+  const journalCopy = getBlogJournalCopy(validLang);
+  const supplement = getBlogArticleSupplement(validLang, slug);
+  const relatedEntries = supplement.relatedSlugs
+    .map((relatedSlug) => resolvedBlog.bundle.blog.entries.find((entry) => entry.slug === relatedSlug))
+    .filter((entry): entry is (typeof resolvedBlog.bundle.blog.entries)[number] => Boolean(entry));
+
   return (
     <ContentArticlePage
       article={article}
@@ -29,6 +36,18 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ la
         { label: siteContent.labels.published, value: article.publishedAt || '-' },
         { label: siteContent.labels.readingTime, value: article.readingTime },
       ]}
+      roleLabel={journalCopy.articleRoleLabel}
+      role={supplement.role}
+      audienceLabel={journalCopy.articleAudienceLabel}
+      audience={supplement.audience}
+      coverageTitle={journalCopy.articleCoverageTitle}
+      coveragePoints={supplement.coverage}
+      whyTitle={journalCopy.articleWhyTitle}
+      whyBody={supplement.why}
+      continueTitle={journalCopy.articleContinueTitle}
+      relatedEntries={relatedEntries}
+      lang={validLang}
+      basePath='/blog'
       primaryAction={{
         href: `/${validLang}/docs`,
         label: resolvedDocs.bundle.docs.title,
@@ -37,8 +56,9 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ la
         href: `/${validLang}/changelog`,
         label: siteContent.changelog.title,
       }}
-      sidebarTitle={siteContent.labels.articleSidebarTitle}
-      sidebarBody={siteContent.labels.articleSidebarBody}
+      sidebarTitle={journalCopy.articleActionsTitle}
+      sidebarHeadline={journalCopy.articleActionsHeadline}
+      sidebarBody={journalCopy.articleActionsBody}
     />
   );
 }

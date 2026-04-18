@@ -13,6 +13,8 @@ import {
 const DEFAULT_RELEASE_REPOSITORY = 'contextgo/contextgo-releases';
 const DEFAULT_CONTENT_BRANCH = 'main';
 const CACHE_REVALIDATE_SECONDS = 300;
+const shouldPreferLocalDraftBlog = (): boolean =>
+  process.env.NODE_ENV !== 'production' && process.env.CONTEXTGO_PREFER_RELEASE_BLOG !== '1';
 
 const getReleaseBlogRepository = (): string => process.env.CONTEXTGO_RELEASE_REPO || DEFAULT_RELEASE_REPOSITORY;
 
@@ -95,6 +97,10 @@ export const createFallbackReleaseBlog = (locale: SiteLocale): ResolvedReleaseBl
 };
 
 export const getResolvedReleaseBlog = async (locale: SiteLocale): Promise<ResolvedReleaseBlog> => {
+  if (shouldPreferLocalDraftBlog()) {
+    return createFallbackReleaseBlog(locale);
+  }
+
   try {
     const bundle = await fetchReleaseJson<ReleaseBlogSectionPayload>(
       `${getReleaseSiteBaseUrl()}/blog/${locale}/index.json`
