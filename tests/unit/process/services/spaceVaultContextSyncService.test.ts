@@ -197,6 +197,16 @@ describe('SpaceVaultContextSyncService', () => {
       projectContent.indexOf('## Source Docs')
     );
     expect(projectContent.indexOf('## Source Docs')).toBeLessThan(projectContent.indexOf('## Source Graph'));
+    expect(
+      projectContent.indexOf(`- Project graph canvas: [[Projects/${projectDir}/Project Graph|workspace Source Graph]]`)
+    ).toBeLessThan(
+      projectContent.indexOf(`- Project insights: [[Projects/${projectDir}/Project Insights|workspace Insights]]`)
+    );
+    expect(
+      projectContent.indexOf(`- Project insights: [[Projects/${projectDir}/Project Insights|workspace Insights]]`)
+    ).toBeLessThan(
+      projectContent.indexOf(`- Project baseline: [[Projects/${projectDir}/_context/baseline|workspace Baseline]]`)
+    );
     expect(projectContent).not.toContain('Source (');
 
     const baselineContent = await fs.readFile(
