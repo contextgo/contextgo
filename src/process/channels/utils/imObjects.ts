@@ -15,11 +15,7 @@ import type {
   PluginType,
   UnifiedPeerScope,
 } from '../types';
-import {
-  getChannelAccountId,
-  getChannelBindingPublishObject,
-  getChannelPublishObjectCatalogEntryIdentity,
-} from '../types';
+import { getChannelBindingPublishObject, getChannelPublishObjectCatalogEntryIdentity } from '../types';
 
 const CATALOG_SOURCE_PRIORITY: Record<IChannelPublishObjectCatalogEntry['displayProfile']['source'], number> = {
   'official-pull': 4,
@@ -207,11 +203,7 @@ export function resolvePublishObjectCatalogEntry(
     return undefined;
   }
 
-  const channelAccountId = params.audience
-    ? getChannelAccountId(params.audience)
-    : params.binding
-      ? getChannelAccountId(params.binding)
-      : undefined;
+  const channelAccountId = params.audience?.channelAccountId ?? params.binding?.channelAccountId;
   if (!channelAccountId) {
     return undefined;
   }

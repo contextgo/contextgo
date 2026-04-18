@@ -15,11 +15,11 @@ const {
   mockReadCatalogForConversations,
 } = vi.hoisted(() => ({
   mockDb: {
-    getConnectorInstances: vi.fn(),
-    getRemoteIdentityByConnectorChat: vi.fn(),
-    getRemoteIdentityByConnectorPlatformChat: vi.fn(),
+    getChannelAccounts: vi.fn(),
+    getRemoteIdentityByChannelAccountChat: vi.fn(),
+    getRemoteIdentityByChannelAccountPlatformChat: vi.fn(),
     getConversation: vi.fn(),
-    getExternalSessionByConnectorRemote: vi.fn(),
+    getExternalSessionByChannelAccountRemote: vi.fn(),
     upsertExternalSession: vi.fn(),
     getLegacyChannelUserByPlatform: vi.fn(),
     ensureChannelUserMirror: vi.fn(),
@@ -64,10 +64,10 @@ vi.mock('@process/channels/core/ProjectChannelPublicationService', () => ({
 
 import { GOOGLE_AUTH_PROVIDER_ID } from '@/common/config/constants';
 import { ChannelRouteResolver, inferRemoteChatType } from '@process/channels/core/ChannelRouteResolver';
-import type { IChannelBinding, IChannelUser, IConnectorInstance, IRemoteIdentity } from '@process/channels/types';
+import type { IChannelAccount, IChannelBinding, IChannelUser, IRemoteIdentity } from '@process/channels/types';
 
 describe('ChannelRouteResolver', () => {
-  const connector: IConnectorInstance = {
+  const connector: IChannelAccount = {
     id: 'connector-1',
     platform: 'telegram',
     name: 'Telegram',
@@ -87,9 +87,9 @@ describe('ChannelRouteResolver', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockDb.getConnectorInstances.mockReturnValue({ success: true, data: [connector] });
-    mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: null });
-    mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({ success: true, data: null });
+    mockDb.getChannelAccounts.mockReturnValue({ success: true, data: [connector] });
+    mockDb.getRemoteIdentityByChannelAccountChat.mockReturnValue({ success: true, data: null });
+    mockDb.getRemoteIdentityByChannelAccountPlatformChat.mockReturnValue({ success: true, data: null });
     mockDb.getConversation.mockReturnValue({
       success: true,
       data: {
@@ -100,7 +100,7 @@ describe('ChannelRouteResolver', () => {
         rootRunId: 'run-root-1',
       },
     });
-    mockDb.getExternalSessionByConnectorRemote.mockReturnValue({ success: true, data: null });
+    mockDb.getExternalSessionByChannelAccountRemote.mockReturnValue({ success: true, data: null });
     mockDb.upsertExternalSession.mockReturnValue({ success: true, data: true });
     mockDb.getLegacyChannelUserByPlatform.mockReturnValue({ success: true, data: null });
     mockDb.ensureChannelUserMirror.mockReturnValue({
@@ -148,7 +148,7 @@ describe('ChannelRouteResolver', () => {
     const resolver = new ChannelRouteResolver();
     const existingIdentity: IRemoteIdentity = {
       id: 'remote_identity_group',
-      connectorId: connector.id,
+      channelAccountId: connector.id,
       remoteUserId: 'user-1',
       remoteChatId: 'group:alpha',
       remoteChatType: 'group',
@@ -156,12 +156,12 @@ describe('ChannelRouteResolver', () => {
       lastActive: 200,
       legacyUserId: 'assistant_user_legacy',
     };
-    mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: existingIdentity });
+    mockDb.getRemoteIdentityByChannelAccountChat.mockReturnValue({ success: true, data: existingIdentity });
 
     const result = await (
       resolver as unknown as {
         ensureRemoteIdentity: (
-          connector: IConnectorInstance,
+          connector: IChannelAccount,
           channelUser: IChannelUser,
           platformUserId: string,
           chatId: string,
@@ -187,7 +187,7 @@ describe('ChannelRouteResolver', () => {
     const resolver = new ChannelRouteResolver();
     const existingIdentity: IRemoteIdentity = {
       id: 'remote_identity_direct',
-      connectorId: connector.id,
+      channelAccountId: connector.id,
       remoteUserId: 'user-1',
       remoteChatId: 'user:alpha',
       remoteChatType: 'direct',
@@ -195,12 +195,12 @@ describe('ChannelRouteResolver', () => {
       lastActive: 200,
       legacyUserId: 'assistant_user_legacy',
     };
-    mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: existingIdentity });
+    mockDb.getRemoteIdentityByChannelAccountChat.mockReturnValue({ success: true, data: existingIdentity });
 
     const result = await (
       resolver as unknown as {
         ensureRemoteIdentity: (
-          connector: IConnectorInstance,
+          connector: IChannelAccount,
           channelUser: IChannelUser,
           platformUserId: string,
           chatId: string,
@@ -223,13 +223,13 @@ describe('ChannelRouteResolver', () => {
 
   it('uses a stable runtime remote identity id when the same peer misses lookup repeatedly', async () => {
     const resolver = new ChannelRouteResolver();
-    mockDb.getRemoteIdentityByConnectorChat.mockReturnValue({ success: true, data: null });
-    mockDb.getRemoteIdentityByConnectorPlatformChat.mockReturnValue({ success: true, data: null });
+    mockDb.getRemoteIdentityByChannelAccountChat.mockReturnValue({ success: true, data: null });
+    mockDb.getRemoteIdentityByChannelAccountPlatformChat.mockReturnValue({ success: true, data: null });
 
     const ensureRemoteIdentity = (
       resolver as unknown as {
         ensureRemoteIdentity: (
-          connector: IConnectorInstance,
+          connector: IChannelAccount,
           channelUser: IChannelUser,
           platformUserId: string,
           chatId: string,
@@ -297,7 +297,7 @@ describe('ChannelRouteResolver', () => {
     const result = await (
       resolver as unknown as {
         ensureChannelUserProjection: (
-          connector: IConnectorInstance,
+          connector: IChannelAccount,
           platformUserId: string,
           platform: 'telegram',
           chatId: string,
@@ -311,7 +311,7 @@ describe('ChannelRouteResolver', () => {
     expect(result.id.startsWith('remote_identity_')).toBe(true);
     expect(mockDb.upsertRemoteIdentity).toHaveBeenCalledWith(
       expect.objectContaining({
-        connectorId: connector.id,
+        channelAccountId: connector.id,
         remoteChatId: 'user-1',
         remoteChatType: 'direct',
         legacyUserId: 'assistant_user_legacy',
@@ -328,7 +328,7 @@ describe('ChannelRouteResolver', () => {
 
   it('does not bootstrap legacy direct-chat authorization when multiple connectors share the platform', async () => {
     const resolver = new ChannelRouteResolver();
-    mockDb.getConnectorInstances.mockReturnValue({
+    mockDb.getChannelAccounts.mockReturnValue({
       success: true,
       data: [
         connector,
@@ -352,7 +352,7 @@ describe('ChannelRouteResolver', () => {
       (
         resolver as unknown as {
           ensureChannelUserProjection: (
-            connector: IConnectorInstance,
+            connector: IChannelAccount,
             platformUserId: string,
             platform: 'telegram',
             chatId: string,
@@ -373,7 +373,6 @@ describe('ChannelRouteResolver', () => {
       bindings: [
         {
           id: 'binding-topic',
-          connectorId: connector.id,
           channelAccountId: connector.id,
           scopeType: 'remote_chat',
           scopeKey: 'oc_group_1:thread:om_topic_root_1',
@@ -392,7 +391,7 @@ describe('ChannelRouteResolver', () => {
     const result = await (
       resolver as unknown as {
         ensureChannelUserProjection: (
-          connector: IConnectorInstance,
+          connector: IChannelAccount,
           platformUserId: string,
           platform: 'lark',
           chatId: string,
@@ -430,7 +429,6 @@ describe('ChannelRouteResolver', () => {
       bindings: [
         {
           id: 'binding-group',
-          connectorId: connector.id,
           channelAccountId: connector.id,
           scopeType: 'remote_chat',
           scopeKey: 'oc_group_1',
@@ -449,7 +447,7 @@ describe('ChannelRouteResolver', () => {
     const result = await (
       resolver as unknown as {
         ensureChannelUserProjection: (
-          connector: IConnectorInstance,
+          connector: IChannelAccount,
           platformUserId: string,
           platform: 'lark',
           chatId: string,
@@ -482,8 +480,8 @@ describe('ChannelRouteResolver', () => {
     const resolver = new ChannelRouteResolver();
     const defaultBinding: IChannelBinding = {
       id: 'binding-default',
-      connectorId: connector.id,
-      scopeType: 'connector_default',
+      channelAccountId: connector.id,
+      scopeType: 'channel_account_default',
       agentProfileId: 'agent-default',
       priority: 0,
       enabled: true,
@@ -494,7 +492,7 @@ describe('ChannelRouteResolver', () => {
 
     const remoteUserBinding: IChannelBinding = {
       id: 'binding-remote-user',
-      connectorId: connector.id,
+      channelAccountId: connector.id,
       scopeType: 'remote_user',
       scopeKey: 'user-2',
       agentProfileId: 'agent-remote-user',
@@ -506,7 +504,7 @@ describe('ChannelRouteResolver', () => {
     };
 
     mockDb.getChannelBindingsForScope.mockImplementation(
-      (_connectorId: string, scopeType: IChannelBinding['scopeType']) => {
+      (_channelAccountId: string, scopeType: IChannelBinding['scopeType']) => {
         if (scopeType === 'remote_chat') {
           return { success: true, data: [] };
         }
@@ -520,7 +518,7 @@ describe('ChannelRouteResolver', () => {
     const result = await (
       resolver as unknown as {
         resolveBinding: (params: {
-          connector: IConnectorInstance;
+          connector: IChannelAccount;
           remoteIdentity: IRemoteIdentity;
           platform: 'telegram';
         }) => Promise<IChannelBinding>;
@@ -529,7 +527,7 @@ describe('ChannelRouteResolver', () => {
       connector,
       remoteIdentity: {
         id: 'remote_identity_group',
-        connectorId: connector.id,
+        channelAccountId: connector.id,
         remoteUserId: 'user-2',
         remoteChatId: 'group:alpha',
         remoteChatType: 'group',
@@ -546,7 +544,7 @@ describe('ChannelRouteResolver', () => {
     const resolver = new ChannelRouteResolver();
     const remoteUserBinding: IChannelBinding = {
       id: 'binding-remote-user',
-      connectorId: connector.id,
+      channelAccountId: connector.id,
       scopeType: 'remote_user',
       scopeKey: 'user-2',
       agentProfileId: 'agent-remote-user',
@@ -573,7 +571,7 @@ describe('ChannelRouteResolver', () => {
     const result = await (
       resolver as unknown as {
         resolveBinding: (params: {
-          connector: IConnectorInstance;
+          connector: IChannelAccount;
           remoteIdentity: IRemoteIdentity;
           platform: 'telegram';
         }) => Promise<IChannelBinding>;
@@ -582,7 +580,7 @@ describe('ChannelRouteResolver', () => {
       connector,
       remoteIdentity: {
         id: 'remote_identity_direct',
-        connectorId: connector.id,
+        channelAccountId: connector.id,
         remoteUserId: 'user-2',
         remoteChatId: 'user:alpha',
         remoteChatType: 'direct',
@@ -599,7 +597,7 @@ describe('ChannelRouteResolver', () => {
     const resolver = new ChannelRouteResolver();
     const temporaryOverride: IChannelBinding = {
       id: 'binding-temporary-override',
-      connectorId: connector.id,
+      channelAccountId: connector.id,
       scopeType: 'temporary_override',
       scopeKey: 'group:alpha',
       agentProfileId: 'agent-override',
@@ -611,7 +609,7 @@ describe('ChannelRouteResolver', () => {
     };
     const remoteChatBinding: IChannelBinding = {
       id: 'binding-remote-chat',
-      connectorId: connector.id,
+      channelAccountId: connector.id,
       scopeType: 'remote_chat',
       scopeKey: 'group:alpha',
       agentProfileId: 'agent-group-default',
@@ -623,7 +621,7 @@ describe('ChannelRouteResolver', () => {
     };
 
     mockDb.getChannelBindingsForScope.mockImplementation(
-      (_connectorId: string, scopeType: IChannelBinding['scopeType']) => {
+      (_channelAccountId: string, scopeType: IChannelBinding['scopeType']) => {
         if (scopeType === 'temporary_override') {
           return { success: true, data: [temporaryOverride] };
         }
@@ -637,7 +635,7 @@ describe('ChannelRouteResolver', () => {
     const result = await (
       resolver as unknown as {
         resolveBinding: (params: {
-          connector: IConnectorInstance;
+          connector: IChannelAccount;
           remoteIdentity: IRemoteIdentity;
           platform: 'telegram';
         }) => Promise<IChannelBinding>;
@@ -646,7 +644,7 @@ describe('ChannelRouteResolver', () => {
       connector,
       remoteIdentity: {
         id: 'remote_identity_group',
-        connectorId: connector.id,
+        channelAccountId: connector.id,
         remoteUserId: 'user-2',
         remoteChatId: 'group:alpha',
         remoteChatType: 'group',
@@ -681,7 +679,7 @@ describe('ChannelRouteResolver', () => {
     const result = await (
       resolver as unknown as {
         resolveBinding: (params: {
-          connector: IConnectorInstance;
+          connector: IChannelAccount;
           remoteIdentity: IRemoteIdentity;
           platform: 'telegram';
           overrideAgentProfileId: string;
@@ -691,7 +689,7 @@ describe('ChannelRouteResolver', () => {
       connector,
       remoteIdentity: {
         id: 'remote_identity_group',
-        connectorId: connector.id,
+        channelAccountId: connector.id,
         remoteUserId: 'user-2',
         remoteChatId: 'group:alpha:thread:9',
         remoteChatType: 'thread',
@@ -720,7 +718,7 @@ describe('ChannelRouteResolver', () => {
     const resolver = new ChannelRouteResolver();
     const disabledRemoteChatBinding: IChannelBinding = {
       id: 'binding-disabled-chat',
-      connectorId: connector.id,
+      channelAccountId: connector.id,
       scopeType: 'remote_chat',
       scopeKey: 'group:alpha',
       agentProfileId: 'agent-disabled',
@@ -732,8 +730,8 @@ describe('ChannelRouteResolver', () => {
     };
     const enabledDefaultBinding: IChannelBinding = {
       id: 'binding-default',
-      connectorId: connector.id,
-      scopeType: 'connector_default',
+      channelAccountId: connector.id,
+      scopeType: 'channel_account_default',
       agentProfileId: 'agent-default',
       priority: 0,
       enabled: true,
@@ -756,7 +754,7 @@ describe('ChannelRouteResolver', () => {
     const result = await (
       resolver as unknown as {
         resolveBinding: (params: {
-          connector: IConnectorInstance;
+          connector: IChannelAccount;
           remoteIdentity: IRemoteIdentity;
           platform: 'telegram';
         }) => Promise<IChannelBinding>;
@@ -765,7 +763,7 @@ describe('ChannelRouteResolver', () => {
       connector,
       remoteIdentity: {
         id: 'remote_identity_group',
-        connectorId: connector.id,
+        channelAccountId: connector.id,
         remoteUserId: 'user-2',
         remoteChatId: 'group:alpha',
         remoteChatType: 'group',
@@ -1042,7 +1040,7 @@ describe('ChannelRouteResolver', () => {
     let mirroredProfile = false;
     let mirroredBinding = false;
 
-    mockDb.getExternalSessionByConnectorRemote.mockReturnValue({ success: true, data: null });
+    mockDb.getExternalSessionByChannelAccountRemote.mockReturnValue({ success: true, data: null });
     mockDb.upsertAgentProfile.mockImplementation(() => {
       mirroredProfile = true;
       return { success: true, data: true };
@@ -1059,7 +1057,6 @@ describe('ChannelRouteResolver', () => {
 
     const binding: IChannelBinding = {
       id: 'binding-published-1',
-      connectorId: connector.id,
       channelAccountId: connector.id,
       scopeType: 'remote_user',
       scopeKey: 'user-1',
@@ -1074,7 +1071,7 @@ describe('ChannelRouteResolver', () => {
     const session = await (
       resolver as unknown as {
         ensureExternalSession: (
-          connector: IConnectorInstance,
+          connector: IChannelAccount,
           remoteIdentity: IRemoteIdentity,
           binding: IChannelBinding,
           agentProfile: {
@@ -1089,7 +1086,7 @@ describe('ChannelRouteResolver', () => {
           }
         ) => Promise<{
           id: string;
-          connectorId: string;
+          channelAccountId: string;
           remoteIdentityId: string;
           bindingId?: string;
           agentProfileId: string;
@@ -1099,7 +1096,7 @@ describe('ChannelRouteResolver', () => {
       connector,
       {
         id: 'remote_identity_direct',
-        connectorId: connector.id,
+        channelAccountId: connector.id,
         remoteUserId: 'user-1',
         remoteChatId: 'user:alpha',
         remoteChatType: 'direct',

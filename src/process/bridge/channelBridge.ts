@@ -27,6 +27,7 @@ import { toAssetUrl } from '@process/extensions/protocol/assetProtocol';
 import * as path from 'path';
 import type {
   IChannelActiveSessionEntry,
+  IChannelAccount,
   IChannelAudienceEntry,
   IChannelBinding,
   IChannelControlLease,
@@ -41,20 +42,17 @@ import type {
   IChannelPublicationCatalogRefreshResult,
   IChannelPluginStatus,
   IChannelSession,
-  IConnectorInstance,
   IExternalSession,
   IRemoteIdentity,
   PluginType,
 } from '@process/channels/types';
 import {
   findConflictingChannelBinding,
-  getChannelAccountId,
   getChannelBindingPublishObjectLabel,
   getChannelPublishObjectCatalogEntryIdentity,
   getChannelBindingSource,
   hasPluginCredentials,
   isSystemFallbackBinding,
-  withChannelAccountId,
   withChannelBindingPublishObject,
 } from '@process/channels/types';
 import type { IChannelRepository } from '@process/services/database/IChannelRepository';
@@ -312,7 +310,7 @@ function buildPublishObjectCatalogMap(
 
 function resolvePublishObjectCatalogEntry(
   identity: IRemoteIdentity,
-  connector: IConnectorInstance,
+  connector: IChannelAccount,
   publishObjectCatalog: Map<string, IChannelPublishObjectCatalogEntry>
 ): IChannelPublishObjectCatalogEntry | undefined {
   const publishObject = inferRemoteIdentityPublishObject(identity, connector.platform);
@@ -337,7 +335,7 @@ function resolvePublishObjectCatalogEntry(
 
 function buildEphemeralPublishObjectCatalogEntry(
   identity: IRemoteIdentity,
-  connector: IConnectorInstance
+  connector: IChannelAccount
 ): IChannelPublishObjectCatalogEntry {
   const publishObject = inferRemoteIdentityPublishObject(identity, connector.platform);
   const descriptor = describeRemoteIdentityObject(identity, connector.platform);
@@ -377,7 +375,7 @@ function buildEphemeralPublishObjectCatalogEntry(
   return entry;
 }
 
-function getFriendlyDisplayName(identity: IRemoteIdentity, connector?: IConnectorInstance): string | undefined {
+function getFriendlyDisplayName(identity: IRemoteIdentity, connector?: IChannelAccount): string | undefined {
   if (connector?.platform === 'lark') {
     return getLarkRemoteDisplayName(identity);
   }
@@ -390,7 +388,7 @@ function getFriendlyDisplayName(identity: IRemoteIdentity, connector?: IConnecto
   return getMetadataText(identity.metadata, 'userDisplayName') ?? getMetadataText(identity.metadata, 'chatName');
 }
 
-function getFriendlySubtitle(identity: IRemoteIdentity, connector?: IConnectorInstance): string | undefined {
+function getFriendlySubtitle(identity: IRemoteIdentity, connector?: IChannelAccount): string | undefined {
   if (connector?.platform === 'lark') {
     return getLarkObjectSubtitle(identity);
   }
@@ -400,7 +398,7 @@ function getFriendlySubtitle(identity: IRemoteIdentity, connector?: IConnectorIn
 
 function buildRemoteChatAudience(
   identity: IRemoteIdentity,
-  connectorMap: Map<string, IConnectorInstance>,
+  connectorMap: Map<string, IChannelAccount>,
   publishObjectCatalog: Map<string, IChannelPublishObjectCatalogEntry>
 ): IChannelAudienceEntry {
   const threadParts = toThreadParts(identity.remoteChatId);
@@ -408,7 +406,7 @@ function buildRemoteChatAudience(
   const threadId = identity.threadId ?? threadParts.threadId;
   const peerScope = identity.peerScope ?? (threadId ? 'thread' : 'chat');
   const chatType = identity.remoteChatType ?? (peerScope === 'thread' ? 'thread' : undefined);
-  const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
+  const connector = connectorMap.get(identity.channelAccountId);
   const kind =
     connector?.platform === 'lark' && (chatType === 'topic' || chatType === 'thread' || peerScope === 'thread')
       ? 'Topic'
@@ -458,8 +456,7 @@ function buildRemoteChatAudience(
 
   return {
     key: identity.remoteChatId,
-    connectorId: identity.connectorId,
-    channelAccountId: getChannelAccountId(identity),
+    channelAccountId: identity.channelAccountId,
     scopeType: 'remote_chat',
     remoteIdentityId: identity.id,
     remoteUserId: identity.remoteUserId,
@@ -489,7 +486,7 @@ function buildRemoteChatAudience(
 
 function buildRemoteUserAudiences(
   identities: IRemoteIdentity[],
-  connectorMap: Map<string, IConnectorInstance>,
+  connectorMap: Map<string, IChannelAccount>,
   publishObjectCatalog: Map<string, IChannelPublishObjectCatalogEntry>
 ): IChannelAudienceEntry[] {
   const uniqueByUser = new Map<string, IRemoteIdentity>();
@@ -520,7 +517,7 @@ function buildRemoteUserAudiences(
       key: identity.remoteUserId!,
     });
 
-    const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
+    const connector = connectorMap.get(identity.channelAccountId);
     const friendlyDisplayName = getFriendlyDisplayName(identity, connector);
     const friendlySubtitle = getFriendlySubtitle(identity, connector);
     const objectDescriptor = connector ? describeRemoteIdentityObject(identity, connector.platform) : undefined;
@@ -530,8 +527,7 @@ function buildRemoteUserAudiences(
 
     return {
       key: identity.remoteUserId!,
-      connectorId: identity.connectorId,
-      channelAccountId: getChannelAccountId(identity),
+      channelAccountId: identity.channelAccountId,
       scopeType: 'remote_user',
       remoteIdentityId: identity.id,
       remoteUserId: identity.remoteUserId,
@@ -578,7 +574,7 @@ function buildRemoteUserAudiences(
 
 function buildAudienceEntries(
   remoteIdentities: IRemoteIdentity[],
-  connectors: IConnectorInstance[],
+  connectors: IChannelAccount[],
   publishObjects: readonly IChannelPublishObjectCatalogEntry[]
 ): IChannelAudienceEntry[] {
   const connectorMap = new Map(connectors.map((connector) => [connector.id, connector] as const));
@@ -590,15 +586,15 @@ function buildAudienceEntries(
   const remoteUserAudienceKeys = new Set(
     remoteUserAudiences
       .filter((audience) => audience.remoteUserId)
-      .map((audience) => `${getChannelAccountId(audience)}::${audience.remoteUserId}`)
+      .map((audience) => `${audience.channelAccountId}::${audience.remoteUserId}`)
   );
   const visibleRemoteChatAudiences = remoteChatAudiences.filter((audience) => {
     if (!audience.remoteUserId) {
       return true;
     }
 
-    const audienceOwnerKey = `${getChannelAccountId(audience)}::${audience.remoteUserId}`;
-    const connector = connectorMap.get(getChannelAccountId(audience) ?? '');
+    const audienceOwnerKey = `${audience.channelAccountId}::${audience.remoteUserId}`;
+    const connector = connectorMap.get(audience.channelAccountId);
     if (connector?.platform === 'weixin' || isDirectChatType(audience.remoteChatType)) {
       return !remoteUserAudienceKeys.has(audienceOwnerKey);
     }
@@ -624,7 +620,7 @@ function buildAudienceEntries(
 function buildActiveSessionEntries(params: {
   sessions: IChannelSession[];
   remoteIdentities: IRemoteIdentity[];
-  connectors: IConnectorInstance[];
+  connectors: IChannelAccount[];
   bindings: IChannelBinding[];
   publishObjects: IChannelPublishObjectCatalogEntry[];
   externalSessions: IExternalSession[];
@@ -639,9 +635,7 @@ function buildActiveSessionEntries(params: {
 
   return params.sessions.map((session) => {
     const remoteIdentity = remoteIdentityMap.get(session.userId);
-    const connector = remoteIdentity
-      ? connectorMap.get(getChannelAccountId(remoteIdentity) ?? remoteIdentity.connectorId)
-      : undefined;
+    const connector = remoteIdentity ? connectorMap.get(remoteIdentity.channelAccountId) : undefined;
     const externalSession = externalSessionMap.get(session.id);
     const binding = externalSession?.bindingId ? bindingMap.get(externalSession.bindingId) : undefined;
     const controlLease = controlLeaseMap.get(session.id);
@@ -662,11 +656,8 @@ function buildActiveSessionEntries(params: {
     return {
       id: session.id,
       externalSessionId: externalSession?.id ?? session.id,
-      connectorId: connector?.id,
       channelAccountId: connector?.id,
-      connectorName: connector?.name,
       channelAccountName: connector?.name,
-      connectorPlatform: connector?.platform,
       channelAccountPlatform: connector?.platform,
       remoteIdentityId: remoteIdentity?.id,
       audienceTitle:
@@ -765,7 +756,7 @@ function attachPublishObjectActiveSessionPointers(params: {
 }
 
 function buildPublicationEntries(params: {
-  connectors: IConnectorInstance[];
+  connectors: IChannelAccount[];
   bindings: IChannelBinding[];
   audiences: IChannelAudienceEntry[];
   publishObjects: IChannelPublishObjectCatalogEntry[];
@@ -787,13 +778,8 @@ function buildPublicationEntries(params: {
   }
 
   return params.bindings
-    .filter((binding) => binding.scopeType !== 'connector_default')
+    .filter((binding) => binding.scopeType !== 'channel_account_default')
     .flatMap((binding) => {
-      const channelAccountId = getChannelAccountId(binding);
-      if (!channelAccountId) {
-        return [];
-      }
-
       const audience = binding.scopeKey ? audienceMap.get(binding.scopeKey) : undefined;
       const publishObject = resolveCatalogPublishObjectEntry({
         binding,
@@ -804,7 +790,7 @@ function buildPublicationEntries(params: {
         return [];
       }
 
-      const connector = connectorMap.get(channelAccountId);
+      const connector = connectorMap.get(binding.channelAccountId);
       const currentSession = (sessionsByBindingId.get(binding.id) ?? []).toSorted(
         (left, right) => right.lastActivity - left.lastActivity
       )[0];
@@ -813,7 +799,7 @@ function buildPublicationEntries(params: {
         {
           id: binding.id,
           agentProfileId: binding.agentProfileId,
-          channelAccountId,
+          channelAccountId: binding.channelAccountId,
           channelAccountName: connector?.name,
           channelAccountPlatform: connector?.platform,
           publishObject,
@@ -836,12 +822,12 @@ function buildPublicationEntries(params: {
 }
 
 function buildPublicationDiscoverySummaries(params: {
-  connectors: IConnectorInstance[];
+  connectors: IChannelAccount[];
   audiences: IChannelAudienceEntry[];
 }): IChannelPublicationDiscoverySummary[] {
   return params.connectors.map((connector) => {
     const connectorAudiences = params.audiences.filter((audience) => {
-      if (getChannelAccountId(audience) !== connector.id) {
+      if (audience.channelAccountId !== connector.id) {
         return false;
       }
 
@@ -869,7 +855,7 @@ function buildPublicationDiscoverySummaries(params: {
 }
 
 function buildPublicationCapabilitySummaries(params: {
-  connectors: IConnectorInstance[];
+  connectors: IChannelAccount[];
 }): IChannelPublicationCapabilitySummary[] {
   return params.connectors.flatMap((connector) => {
     if (!isBuiltinChannelType(connector.platform)) {
@@ -896,7 +882,7 @@ function normalizePublicationScopeKey(
   scopeType: IChannelPublicationUpsertInput['scopeType'],
   scopeKey: string
 ): string | undefined {
-  if (scopeType === 'connector_default') {
+  if (scopeType === 'channel_account_default') {
     return undefined;
   }
 
@@ -933,7 +919,6 @@ function buildBindingFromPublicationInput(params: {
         params.publication.scopeType,
         params.publication.scopeKey
       ),
-    connectorId: params.publication.channelAccountId,
     channelAccountId: params.publication.channelAccountId,
     scopeType: params.publication.scopeType,
     scopeKey: normalizePublicationScopeKey(params.publication.scopeType, params.publication.scopeKey),
@@ -953,7 +938,9 @@ function buildBindingFromPublicationInput(params: {
   };
 }
 
-function buildCatalogCapabilityRegistry(connectors: readonly IConnectorInstance[]): IChannelBindingCatalog['capabilityRegistry'] {
+function buildCatalogCapabilityRegistry(
+  connectors: readonly IChannelAccount[]
+): IChannelBindingCatalog['capabilityRegistry'] {
   return buildChannelCapabilityRegistry({
     platforms: connectors.map((connector) => connector.platform),
     includeBuiltinPlatforms: true,
@@ -975,7 +962,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   const resolvePublicationPublishObjects = async (params: {
     publicationCatalog: import('@process/channels/core/ProjectChannelPublicationService').ProjectChannelPublicationCatalog;
     remoteIdentities: IRemoteIdentity[];
-    connectors: IConnectorInstance[];
+    connectors: IChannelAccount[];
   }): Promise<IChannelPublishObjectCatalogEntry[]> => {
     if (params.publicationCatalog.workspaces.length === 0) {
       return [];
@@ -1008,7 +995,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   const buildPublicationCatalogRefreshResult = (params: {
     channelAccountId?: string;
     publicationCatalog: import('@process/channels/core/ProjectChannelPublicationService').ProjectChannelPublicationCatalog;
-    allConnectors: IConnectorInstance[];
+    allConnectors: IChannelAccount[];
     enrichedRemoteIdentities: IRemoteIdentity[];
     sessions: IChannelSession[];
     publishObjects: IChannelPublishObjectCatalogEntry[];
@@ -1051,7 +1038,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       activeSessions,
     });
     const bindings = params.channelAccountId
-      ? params.publicationCatalog.bindings.filter((binding) => getChannelAccountId(binding) === params.channelAccountId)
+      ? params.publicationCatalog.bindings.filter((binding) => binding.channelAccountId === params.channelAccountId)
       : params.publicationCatalog.bindings;
 
     return {
@@ -1060,7 +1047,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         channelAccounts: connectors,
         capabilityRegistry: buildCatalogCapabilityRegistry(params.allConnectors),
         agentProfiles: params.publicationCatalog.agentProfiles,
-        bindings: bindings.map((binding) => withChannelAccountId(binding)),
+        bindings,
         audiences,
         discoverySummaries: params.channelAccountId
           ? discoverySummaries.filter((summary) => summary.channelAccountId === params.channelAccountId)
@@ -1085,7 +1072,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     const db = await getDatabase();
     const [sessions, allConnectors, remoteIdentities, conversations] = await Promise.all([
       channelRepo.getChannelSessions(),
-      channelRepo.getConnectorInstances(),
+      listChannelAccounts(),
       channelRepo.getRemoteIdentities(channelAccountId),
       conversationServiceSingleton.listAllConversations(),
     ]);
@@ -1099,11 +1086,10 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       throw new Error(controlLeasesResult.error || 'Failed to load channel control leases');
     }
 
-    const identitiesWithAccountId = remoteIdentities.map((identity) => withChannelAccountId(identity));
     const manager = getChannelManager();
     const pluginManager = manager.getPluginManager?.();
     const enrichedRemoteIdentities = await enrichRemoteIdentitiesForPublishObjectDiscovery(
-      identitiesWithAccountId,
+      remoteIdentities,
       allConnectors,
       pluginManager ? (runtimeId) => pluginManager.getPlugin(runtimeId)?.getPublishObjectDiscoveryProvider() : undefined
     );
@@ -1117,7 +1103,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         : publicationCatalog.publishObjects;
     const connectors = allConnectors.filter((connector) => (connector.configured ?? false) && connector.enabled);
     const bindings = channelAccountId
-      ? publicationCatalog.bindings.filter((binding) => getChannelAccountId(binding) === channelAccountId)
+      ? publicationCatalog.bindings.filter((binding) => binding.channelAccountId === channelAccountId)
       : publicationCatalog.bindings;
     const activeSessions = buildActiveSessionEntries({
       sessions,
@@ -1132,7 +1118,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         return true;
       }
 
-      return getChannelAccountId(session) === channelAccountId || session.connectorId === channelAccountId;
+      return session.channelAccountId === channelAccountId;
     });
     const catalogPublishObjects = attachPublishObjectActiveSessionPointers({
       publishObjects,
@@ -1160,7 +1146,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       channelAccounts: connectors,
       capabilityRegistry: buildCatalogCapabilityRegistry(allConnectors),
       agentProfiles: publicationCatalog.agentProfiles,
-      bindings: bindings.map((binding) => withChannelAccountId(binding)),
+      bindings,
       audiences: catalogAudiences,
       discoverySummaries: channelAccountId
         ? discoverySummaries.filter((summary) => summary.channelAccountId === channelAccountId)
@@ -1189,7 +1175,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   channel.getPluginStatus.provider(async () => {
     try {
       let dbPlugins: import('@process/channels/types').IChannelPluginConfig[] = [];
-      let connectors: IConnectorInstance[] = [];
+      let connectors: IChannelAccount[] = [];
 
       try {
         dbPlugins = await channelRepo.getChannelPlugins();
@@ -1198,9 +1184,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       }
 
       try {
-        connectors = await channelRepo.getConnectorInstances();
+        connectors = await listChannelAccounts();
       } catch (dbError) {
-        console.warn('[ChannelBridge] getConnectorInstances failed, proceeding with plugin-only list:', dbError);
+        console.warn('[ChannelBridge] getChannelAccounts failed, proceeding with plugin-only list:', dbError);
       }
 
       const registry = ExtensionRegistry.getInstance();
@@ -1600,25 +1586,27 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   });
 
   const listChannelAccounts = async () => {
-    return channelRepo.getConnectorInstances();
+    return channelRepo.getChannelAccounts();
   };
 
-  const createChannelAccount = async (params: { platform: IConnectorInstance['platform']; name: string }) => {
+  const createChannelAccount = async (params: { platform: IChannelAccount['platform']; name: string }) => {
     const manager = getChannelManager();
     return manager.createChannelAccount(params);
   };
 
-  const upsertChannelAccount = async (channelAccount: IConnectorInstance) => {
-    await channelRepo.upsertConnectorInstance({
+  const upsertChannelAccount = async (channelAccount: IChannelAccount) => {
+    const normalizedChannelAccount = {
       ...channelAccount,
       legacyPluginId: channelAccount.legacyPluginId ?? channelAccount.id,
-    });
+    };
+
+    await channelRepo.upsertChannelAccount(normalizedChannelAccount);
   };
 
   const deleteChannelAccount = async (channelAccountId: string) => {
     const manager = getChannelManager();
     const db = await getDatabase();
-    const channelAccount = (await channelRepo.getConnectorInstances()).find((item) => item.id === channelAccountId);
+    const channelAccount = (await listChannelAccounts()).find((item) => item.id === channelAccountId);
     const runtimeId = channelAccount?.legacyPluginId ?? channelAccountId;
 
     const disableResult = await manager.disablePlugin(runtimeId);
@@ -1644,7 +1632,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         throw new Error(deletePluginResult.error || `Failed to delete channel plugin ${runtimeId}`);
       }
 
-      const deleteConnectorResult = db.deleteConnectorInstance(channelAccountId);
+      const deleteConnectorResult = db.deleteChannelAccount(channelAccountId);
       if (!deleteConnectorResult.success) {
         throw new Error(deleteConnectorResult.error || `Failed to delete channel account ${channelAccountId}`);
       }
@@ -1661,16 +1649,6 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       return { success: true, data };
     } catch (error) {
       console.error('[ChannelBridge] getChannelAccounts error:', error);
-      return { success: false, msg: getErrorMessage(error) };
-    }
-  });
-
-  channel.getConnectorInstances.provider(async () => {
-    try {
-      const data = await listChannelAccounts();
-      return { success: true, data };
-    } catch (error) {
-      console.error('[ChannelBridge] getConnectorInstances error:', error);
       return { success: false, msg: getErrorMessage(error) };
     }
   });
@@ -1698,16 +1676,6 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   });
 
-  channel.upsertConnectorInstance.provider(async ({ connector }) => {
-    try {
-      await upsertChannelAccount(connector);
-      return { success: true };
-    } catch (error) {
-      console.error('[ChannelBridge] upsertConnectorInstance error:', error);
-      return { success: false, msg: getErrorMessage(error) };
-    }
-  });
-
   channel.deleteChannelAccount.provider(async ({ channelAccountId }) => {
     try {
       await deleteChannelAccount(channelAccountId);
@@ -1718,22 +1686,12 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   });
 
-  channel.deleteConnectorInstance.provider(async ({ connectorId }) => {
-    try {
-      await deleteChannelAccount(connectorId);
-      return { success: true };
-    } catch (error) {
-      console.error('[ChannelBridge] deleteConnectorInstance error:', error);
-      return { success: false, msg: getErrorMessage(error) };
-    }
-  });
-
   /**
    * Get binding catalog for publication management.
    */
-  channel.getBindingCatalog.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
+  channel.getBindingCatalog.provider(async (params?: { channelAccountId?: string }) => {
     try {
-      const channelAccountId = params?.channelAccountId ?? params?.connectorId;
+      const channelAccountId = params?.channelAccountId;
       const snapshot = await readPublicationSnapshot({
         channelAccountId,
         refreshPublishObjects: false,
@@ -1748,9 +1706,9 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   });
 
-  channel.refreshPublicationCatalog.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
+  channel.refreshPublicationCatalog.provider(async (params?: { channelAccountId?: string }) => {
     try {
-      const channelAccountId = params?.channelAccountId ?? params?.connectorId;
+      const channelAccountId = params?.channelAccountId;
       const db = await getDatabase();
       const [allConnectors, remoteIdentities, conversations, sessions] = await Promise.all([
         listChannelAccounts(),
@@ -1768,11 +1726,10 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         throw new Error(controlLeasesResult.error || 'Failed to load channel control leases');
       }
 
-      const identitiesWithAccountId = remoteIdentities.map((identity) => withChannelAccountId(identity));
       const manager = getChannelManager();
       const pluginManager = manager.getPluginManager?.();
       const enrichedRemoteIdentities = await enrichRemoteIdentitiesForPublishObjectDiscovery(
-        identitiesWithAccountId,
+        remoteIdentities,
         allConnectors,
         pluginManager
           ? (runtimeId) => pluginManager.getPlugin(runtimeId)?.getPublishObjectDiscoveryProvider()
@@ -1803,10 +1760,10 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
     }
   });
 
-  channel.refreshPublicationSnapshot.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
+  channel.refreshPublicationSnapshot.provider(async (params?: { channelAccountId?: string }) => {
     try {
       const snapshot = await readPublicationSnapshot({
-        channelAccountId: params?.channelAccountId ?? params?.connectorId,
+        channelAccountId: params?.channelAccountId,
         refreshPublishObjects: true,
       });
       return { success: true, data: snapshot };
@@ -1819,15 +1776,15 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
   /**
    * Get channel bindings
    */
-  channel.getBindings.provider(async (params?: { channelAccountId?: string; connectorId?: string }) => {
+  channel.getBindings.provider(async (params?: { channelAccountId?: string }) => {
     try {
-      const channelAccountId = params?.channelAccountId ?? params?.connectorId;
+      const channelAccountId = params?.channelAccountId;
       const conversations = await conversationServiceSingleton.listAllConversations();
       const publicationCatalog = await projectChannelPublicationService.readCatalogForConversations(conversations);
       const data = channelAccountId
-        ? publicationCatalog.bindings.filter((binding) => getChannelAccountId(binding) === channelAccountId)
+        ? publicationCatalog.bindings.filter((binding) => binding.channelAccountId === channelAccountId)
         : publicationCatalog.bindings;
-      return { success: true, data: data.map((binding) => withChannelAccountId(binding)) };
+      return { success: true, data };
     } catch (error) {
       console.error('[ChannelBridge] getBindings error:', error);
       return { success: false, msg: getErrorMessage(error) };
@@ -1842,17 +1799,12 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
         ? publicationCatalog.bindings.find((binding) => binding.id === publication.publicationId)
         : undefined;
       const normalizedBinding = withChannelBindingPublishObject(
-        withChannelAccountId(
-          buildBindingFromPublicationInput({
-            publication,
-            existingBinding,
-          })
-        )
+        buildBindingFromPublicationInput({
+          publication,
+          existingBinding,
+        })
       );
-      const normalizedChannelAccountId = getChannelAccountId(normalizedBinding);
-      if (!normalizedChannelAccountId) {
-        throw new Error('Channel account is required before saving a durable IM binding');
-      }
+      const normalizedChannelAccountId = normalizedBinding.channelAccountId;
 
       const workspace = publicationCatalog.agentProfileWorkspaceById[normalizedBinding.agentProfileId];
       if (!workspace) {
@@ -1860,7 +1812,7 @@ export function initChannelBridge(channelRepo: IChannelRepository): void {
       }
 
       const conflictingBinding = findConflictingChannelBinding(
-        publicationCatalog.bindings.filter((item) => getChannelAccountId(item) === normalizedChannelAccountId),
+        publicationCatalog.bindings.filter((item) => item.channelAccountId === normalizedChannelAccountId),
         normalizedBinding
       );
       if (conflictingBinding && conflictingBinding.agentProfileId !== normalizedBinding.agentProfileId) {

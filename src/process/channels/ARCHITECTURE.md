@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-Channels 是 ContextGo 的多平台 AI 助手框架，将 ContextGo 的 AI 能力（Gemini、Claude、Codex）通过即时通讯平台暴露给远程用户。目前支持三个平台：
+Channels 是 ContextGo 的多平台 AI 助手框架，将 ContextGo 的 AI 能力（Gemini、Claude、Codex）通过即时通讯平台暴露给远程用户。目前内建支持六个平台：
 
 重要边界：
 
@@ -10,12 +10,19 @@ Channels 是 ContextGo 的多平台 AI 助手框架，将 ContextGo 的 AI 能�
 - 它负责 transport、audience、publication、routing、reply
 - 它不是 `connector` 子系统
 - 外部产品访问型 `connector` 应归属 `Space Connectors` / `cgo`
+- 任何 `connector` / `connectorId` 命名如果出现在 IM publication 代码里，都应视为历史兼容别名，本质上指的是 `channel account`
+- 以飞书为例：
+  - `IM Channels > Lark` = Agent 发布到飞书/Lark 对话的 bot/channel-account 配置
+  - `Context Connector > Feishu` = 通过 `lark-cli` / `cgo feishu` 打通文档、文件、日历等上下文能力的 connector 配置
 
 | 平台                 | SDK                     | 连接方式              | 消息更新                        |
 | -------------------- | ----------------------- | --------------------- | ------------------------------- |
 | **Telegram**         | grammY                  | 长轮询 (Long Polling) | 编辑消息文本                    |
+| **Slack**            | @slack/bolt             | Socket / Events       | Block Actions / Thread Reply    |
+| **Discord**          | discord.js              | Gateway               | Message Component / Thread      |
 | **Lark（飞书）**     | @larksuiteoapi/node-sdk | WebSocket 长连接      | 编辑互动卡片 (Interactive Card) |
 | **DingTalk（钉钉）** | dingtalk-stream         | WebSocket Stream      | AI Card 流式更新                |
+| **Weixin（微信）**   | bridge-limited runtime  | 个人号桥接            | 受限文本入口                    |
 
 核心设计原则：**平台无关的统一消息协议** — 所有平台插件将原生消息转换为 `IUnifiedIncomingMessage`，所有回复通过 `IUnifiedOutgoingMessage` 发出，由各平台适配器转回原生格式。
 
@@ -24,7 +31,7 @@ Channels 是 ContextGo 的多平台 AI 助手框架，将 ContextGo 的 AI 能�
 ## 2. 目录结构
 
 ```
-src/channels/
+src/process/channels/
 ├── index.ts                          # 模块导出入口
 ├── types.ts                          # 全局类型定义与转换工具函数
 ├── ARCHITECTURE.md                   # 本文档
@@ -70,11 +77,27 @@ src/channels/
 │   │   ├── LarkCards.ts              # 互动卡片模板（菜单、帮助、配对等）
 │   │   └── index.ts
 │   │
-│   └── dingtalk/                     # DingTalk（钉钉）插件
+│   ├── slack/                        # Slack 插件
+│   │   ├── SlackPlugin.ts            # Socket / Events 连接、线程回复
+│   │   ├── SlackAdapter.ts           # 消息格式转换（Slack ↔ Unified）
+│   │   ├── SlackBlocks.ts            # Block Kit 与交互动作
+│   │   └── index.ts
+│   │
+│   ├── discord/                      # Discord 插件
+│   │   ├── DiscordPlugin.ts          # Gateway 连接、组件交互、频道发现
+│   │   ├── DiscordAdapter.ts         # 消息格式转换（Discord ↔ Unified）
+│   │   └── index.ts
+│   │
+│   ├── dingtalk/                     # DingTalk（钉钉）插件
 │       ├── DingTalkPlugin.ts         # Stream 连接、AI Card 流式、Token 管理
 │       ├── DingTalkAdapter.ts        # 消息格式转换（DingTalk ↔ Unified）
 │       ├── DingTalkCards.ts          # AI Card / ActionCard 模板
 │       ├── README.md                 # DingTalk 插件说明
+│       └── index.ts
+│
+│   └── weixin/                       # Weixin（微信）插件
+│       ├── WeixinPlugin.ts           # 个人号桥接、登录、消息分发
+│       ├── WeixinAdapter.ts          # 消息格式转换（Weixin ↔ Unified）
 │       └── index.ts
 │
 └── utils/                            # 工具函数

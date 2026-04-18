@@ -10,8 +10,7 @@ import type {
   ChannelPublishObjectRuntimeDisplaySource as RuntimeDisplaySource,
   ChannelPublishObjectUserDisplayData as RemoteUserDisplayData,
 } from '@process/channels/plugins/BasePlugin';
-import type { IConnectorInstance, IRemoteIdentity } from '@process/channels/types';
-import { getChannelAccountId } from '@process/channels/types';
+import type { IChannelAccount, IRemoteIdentity } from '@process/channels/types';
 
 function looksLikeTechnicalIdentifier(value?: string): boolean {
   if (!value) {
@@ -61,13 +60,13 @@ function isChildRemoteObject(identity: IRemoteIdentity): boolean {
   );
 }
 
-function getDefaultDisplaySource(platform: IConnectorInstance['platform']): RuntimeDisplaySource {
+function getDefaultDisplaySource(platform: IChannelAccount['platform']): RuntimeDisplaySource {
   return platform === 'dingtalk' ? 'runtime-resolved' : 'official-pull';
 }
 
 function normalizeDisplaySource(
   value: unknown,
-  platform: IConnectorInstance['platform']
+  platform: IChannelAccount['platform']
 ): RuntimeDisplaySource | undefined {
   if (value === 'official-pull' || value === 'runtime-resolved') {
     return value;
@@ -94,7 +93,7 @@ function pickPreferredDisplaySource(
 
 async function enrichIdentityForDisplay(
   identity: IRemoteIdentity,
-  connector: IConnectorInstance,
+  connector: IChannelAccount,
   resolver: RemoteDisplayResolver
 ): Promise<IRemoteIdentity> {
   const metadata = identity.metadata ?? {};
@@ -198,7 +197,7 @@ async function enrichIdentityForDisplay(
 
 export async function enrichRemoteIdentitiesForPublishObjectDiscovery(
   remoteIdentities: readonly IRemoteIdentity[],
-  connectors: readonly IConnectorInstance[],
+  connectors: readonly IChannelAccount[],
   resolveDiscoveryProvider?: (runtimeId: string) => RemoteDisplayResolver | null | undefined
 ): Promise<IRemoteIdentity[]> {
   if (remoteIdentities.length === 0 || connectors.length === 0) {
@@ -214,7 +213,7 @@ export async function enrichRemoteIdentitiesForPublishObjectDiscovery(
 
   return Promise.all(
     remoteIdentities.map(async (identity) => {
-      const connector = connectorMap.get(getChannelAccountId(identity) ?? identity.connectorId);
+      const connector = connectorMap.get(identity.channelAccountId);
       if (!connector || !['lark', 'discord', 'dingtalk'].includes(connector.platform)) {
         return identity;
       }

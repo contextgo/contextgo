@@ -51,6 +51,23 @@ Three process types — never mix their APIs:
 Cross-process communication must go through the IPC bridge (`src/preload.ts`).
 See [docs/tech/architecture.md](docs/tech/architecture.md) for details.
 
+### Connector Terminology Boundary
+
+When changing connectors, channels, IM publishing, or external product access, keep these terms distinct:
+
+- `Context Connector` means a cross-product context-access capability such as browser activity, Feishu OpenAPI, Google Workspace, GitHub, or another external datasource/product surface
+- `IM Bot Channel` / `channel account` means the transport and publication surface used to publish an Agent into Telegram, Slack, Discord, Lark, DingTalk, or WeChat
+- do not use `connector` to mean IM bot channel in new docs, UI copy, or API names; keep that wording only where a legacy compatibility alias already exists
+- treat Feishu as two separate boundaries:
+  - `IM Channels > Lark` configures the bot transport used for Agent publication into Feishu/Lark conversations
+  - `Context Connector > Feishu` configures the `lark-cli` / `cgo feishu` runtime used to access docs, files, calendar, chat history, and other context surfaces
+
+Read these before changing the model:
+
+- [docs/tech/repo-topology.md](docs/tech/repo-topology.md)
+- [src/process/services/space/connectors/README.md](src/process/services/space/connectors/README.md)
+- [src/process/channels/ARCHITECTURE.md](src/process/channels/ARCHITECTURE.md)
+
 ### Context Engine Index
 
 When changing the Context Engine, session/project/space memory modeling, vault sync, context jobs, event-driven context flows, or connector digestion, read these first:

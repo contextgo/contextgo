@@ -74,7 +74,9 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
       if (result.success && result.data) {
         setPendingPairings(
           result.data.filter(
-            (item) => item.platformType === 'weixin' && (!item.connectorId || item.connectorId === channelAccountId)
+            (item) =>
+              item.platformType === 'weixin' &&
+              (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -92,7 +94,9 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
       if (result.success && result.data) {
         setAuthorizedTargets(
           result.data.filter(
-            (item) => item.platformType === 'weixin' && (!item.connectorId || item.connectorId === channelAccountId)
+            (item) =>
+              item.platformType === 'weixin' &&
+              (!item.channelAccountId || item.channelAccountId === channelAccountId)
           )
         );
       }
@@ -110,7 +114,10 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
 
   useEffect(() => {
     const unsubscribe = channel.pairingRequested.on((request) => {
-      if (request.platformType !== 'weixin' || (request.connectorId && request.connectorId !== channelAccountId))
+      if (
+        request.platformType !== 'weixin' ||
+        (request.channelAccountId && request.channelAccountId !== channelAccountId)
+      )
         return;
       setPendingPairings((prev) => {
         const exists = prev.some((item) => item.code === request.code);
@@ -123,7 +130,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginId, pluginSta
 
   useEffect(() => {
     const unsubscribe = channel.userAuthorized.on((user) => {
-      if (user.platformType !== 'weixin' || (user.connectorId && user.connectorId !== channelAccountId)) {
+      if (user.platformType !== 'weixin' || (user.channelAccountId && user.channelAccountId !== channelAccountId)) {
         return;
       }
       void loadAuthorizedTargets();

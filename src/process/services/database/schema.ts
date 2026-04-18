@@ -389,7 +389,7 @@ export function initSchema(db: ISqliteDriver): void {
   );
   db.exec('CREATE INDEX IF NOT EXISTS idx_context_schedules_space ON context_schedules(space_id, updated_at DESC)');
 
-  db.exec(`CREATE TABLE IF NOT EXISTS connector_instances (
+  db.exec(`CREATE TABLE IF NOT EXISTS channel_accounts (
     id TEXT PRIMARY KEY,
     platform TEXT NOT NULL,
     name TEXT NOT NULL,
@@ -402,12 +402,12 @@ export function initSchema(db: ISqliteDriver): void {
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`);
-  db.exec('CREATE INDEX IF NOT EXISTS idx_connector_instances_platform ON connector_instances(platform)');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_connector_instances_enabled ON connector_instances(enabled)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_channel_accounts_platform ON channel_accounts(platform)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_channel_accounts_enabled ON channel_accounts(enabled)');
 
   db.exec(`CREATE TABLE IF NOT EXISTS remote_identities (
     id TEXT PRIMARY KEY,
-    connector_id TEXT NOT NULL,
+    channel_account_id TEXT NOT NULL,
     remote_user_id TEXT,
     remote_chat_id TEXT NOT NULL,
     platform_chat_id TEXT,
@@ -420,21 +420,21 @@ export function initSchema(db: ISqliteDriver): void {
     last_active INTEGER,
     metadata TEXT NOT NULL DEFAULT '{}',
     legacy_user_id TEXT,
-    FOREIGN KEY (connector_id) REFERENCES connector_instances(id) ON DELETE CASCADE,
-    UNIQUE (connector_id, remote_chat_id)
+    FOREIGN KEY (channel_account_id) REFERENCES channel_accounts(id) ON DELETE CASCADE,
+    UNIQUE (channel_account_id, remote_chat_id)
   )`);
   ensureColumn(db, 'remote_identities', 'platform_chat_id', 'platform_chat_id TEXT');
   ensureColumn(db, 'remote_identities', 'peer_scope', 'peer_scope TEXT');
   ensureColumn(db, 'remote_identities', 'parent_chat_id', 'parent_chat_id TEXT');
   ensureColumn(db, 'remote_identities', 'thread_id', 'thread_id TEXT');
   db.exec(
-    'CREATE INDEX IF NOT EXISTS idx_remote_identities_connector_chat ON remote_identities(connector_id, remote_chat_id)'
+    'CREATE INDEX IF NOT EXISTS idx_remote_identities_channel_account_chat ON remote_identities(channel_account_id, remote_chat_id)'
   );
   db.exec(
-    'CREATE INDEX IF NOT EXISTS idx_remote_identities_connector_platform_chat ON remote_identities(connector_id, platform_chat_id)'
+    'CREATE INDEX IF NOT EXISTS idx_remote_identities_channel_account_platform_chat ON remote_identities(channel_account_id, platform_chat_id)'
   );
   db.exec(
-    'CREATE INDEX IF NOT EXISTS idx_remote_identities_connector_user ON remote_identities(connector_id, remote_user_id)'
+    'CREATE INDEX IF NOT EXISTS idx_remote_identities_channel_account_user ON remote_identities(channel_account_id, remote_user_id)'
   );
 
   db.exec(`CREATE TABLE IF NOT EXISTS agent_profiles (
@@ -461,7 +461,7 @@ export function initSchema(db: ISqliteDriver): void {
 
   db.exec(`CREATE TABLE IF NOT EXISTS channel_bindings (
     id TEXT PRIMARY KEY,
-    connector_id TEXT NOT NULL,
+    channel_account_id TEXT NOT NULL,
     scope_type TEXT NOT NULL,
     scope_key TEXT,
     agent_profile_id TEXT NOT NULL,
@@ -472,17 +472,17 @@ export function initSchema(db: ISqliteDriver): void {
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    FOREIGN KEY (connector_id) REFERENCES connector_instances(id) ON DELETE CASCADE,
+    FOREIGN KEY (channel_account_id) REFERENCES channel_accounts(id) ON DELETE CASCADE,
     FOREIGN KEY (agent_profile_id) REFERENCES agent_profiles(id) ON DELETE CASCADE,
     FOREIGN KEY (fallback_agent_profile_id) REFERENCES agent_profiles(id) ON DELETE SET NULL
   )`);
   db.exec(
-    'CREATE INDEX IF NOT EXISTS idx_channel_bindings_connector_scope ON channel_bindings(connector_id, scope_type, scope_key, enabled, priority)'
+    'CREATE INDEX IF NOT EXISTS idx_channel_bindings_channel_account_scope ON channel_bindings(channel_account_id, scope_type, scope_key, enabled, priority)'
   );
 
   db.exec(`CREATE TABLE IF NOT EXISTS external_sessions (
     id TEXT PRIMARY KEY,
-    connector_id TEXT NOT NULL,
+    channel_account_id TEXT NOT NULL,
     remote_identity_id TEXT NOT NULL,
     binding_id TEXT,
     agent_profile_id TEXT NOT NULL,
@@ -491,12 +491,12 @@ export function initSchema(db: ISqliteDriver): void {
     created_at INTEGER NOT NULL,
     last_activity INTEGER NOT NULL,
     metadata TEXT NOT NULL DEFAULT '{}',
-    FOREIGN KEY (connector_id) REFERENCES connector_instances(id) ON DELETE CASCADE,
+    FOREIGN KEY (channel_account_id) REFERENCES channel_accounts(id) ON DELETE CASCADE,
     FOREIGN KEY (remote_identity_id) REFERENCES remote_identities(id) ON DELETE CASCADE,
     FOREIGN KEY (binding_id) REFERENCES channel_bindings(id) ON DELETE SET NULL,
     FOREIGN KEY (agent_profile_id) REFERENCES agent_profiles(id) ON DELETE CASCADE,
     FOREIGN KEY (active_conversation_id) REFERENCES conversations(id) ON DELETE SET NULL,
-    UNIQUE (connector_id, remote_identity_id)
+    UNIQUE (channel_account_id, remote_identity_id)
   )`);
   db.exec('CREATE INDEX IF NOT EXISTS idx_external_sessions_conversation ON external_sessions(active_conversation_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_external_sessions_last_activity ON external_sessions(last_activity DESC)');
@@ -524,9 +524,9 @@ export function initSchema(db: ISqliteDriver): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_runs_root_run ON runs(root_run_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_runs_parent_run ON runs(parent_run_id)');
 
-  db.exec(`CREATE TABLE IF NOT EXISTS pairing_requests_v2 (
+  db.exec(`CREATE TABLE IF NOT EXISTS channel_pairing_requests (
     code TEXT PRIMARY KEY,
-    connector_id TEXT NOT NULL,
+    channel_account_id TEXT NOT NULL,
     remote_user_id TEXT,
     remote_chat_id TEXT NOT NULL,
     display_name TEXT,
@@ -534,10 +534,10 @@ export function initSchema(db: ISqliteDriver): void {
     expires_at INTEGER NOT NULL,
     status TEXT NOT NULL CHECK(status IN ('pending', 'approved', 'rejected', 'expired')),
     metadata TEXT NOT NULL DEFAULT '{}',
-    FOREIGN KEY (connector_id) REFERENCES connector_instances(id) ON DELETE CASCADE
+    FOREIGN KEY (channel_account_id) REFERENCES channel_accounts(id) ON DELETE CASCADE
   )`);
   db.exec(
-    'CREATE INDEX IF NOT EXISTS idx_pairing_requests_v2_connector_status ON pairing_requests_v2(connector_id, status, expires_at)'
+    'CREATE INDEX IF NOT EXISTS idx_channel_pairing_requests_account_status ON channel_pairing_requests(channel_account_id, status, expires_at)'
   );
 
   db.exec(`CREATE TABLE IF NOT EXISTS voice_input_records (

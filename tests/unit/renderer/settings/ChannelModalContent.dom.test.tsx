@@ -316,7 +316,7 @@ describe('ChannelModalContent', () => {
       data: [
         {
           id: 'remote-telegram-1',
-          connectorId: 'telegram_default',
+          channelAccountId: 'telegram_default',
           targetId: 'user:tg-123',
           targetType: 'direct',
           remoteUserId: 'tg-123',

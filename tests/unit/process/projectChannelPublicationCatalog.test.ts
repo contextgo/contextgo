@@ -9,9 +9,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
+  IChannelAccount,
   IChannelAudienceEntry,
   IChannelBinding,
-  IConnectorInstance,
   IRemoteIdentity,
 } from '@process/channels/types';
 import { ProjectChannelPublicationService } from '@process/channels/core/ProjectChannelPublicationService';
@@ -33,7 +33,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
   it('resolves a publish-object catalog entry from exact identity, audience identity, and legacy alias candidates', async () => {
     const binding: IChannelBinding = {
       id: 'binding-topic-legacy',
-      connectorId: 'connector-lark',
       channelAccountId: 'connector-lark',
       scopeType: 'remote_chat',
       scopeKey: 'oc_group_1:thread:om_topic_root_1',
@@ -53,7 +52,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
     };
     const audience: IChannelAudienceEntry = {
       key: 'oc_group_1:thread:om_topic_root_1',
-      connectorId: 'connector-lark',
       channelAccountId: 'connector-lark',
       scopeType: 'remote_chat',
       remoteChatId: 'oc_group_1:thread:om_topic_root_1',
@@ -108,7 +106,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
 
     const binding: IChannelBinding = {
       id: 'binding-topic-1',
-      connectorId: 'connector-lark',
       channelAccountId: 'connector-lark',
       scopeType: 'remote_chat',
       scopeKey: 'oc_group_1:thread:om_topic_root_1',
@@ -129,7 +126,7 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
       updatedAt: 1000,
     };
 
-    const connector: IConnectorInstance = {
+    const connector: IChannelAccount = {
       id: 'connector-lark',
       platform: 'lark',
       name: 'Feishu',
@@ -142,7 +139,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
 
     const remoteIdentity: IRemoteIdentity = {
       id: 'remote-topic-1',
-      connectorId: 'connector-lark',
       channelAccountId: 'connector-lark',
       remoteUserId: 'ou_user_1',
       remoteChatId: 'oc_group_1:thread:om_topic_root_1',
@@ -211,7 +207,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
 
     const binding: IChannelBinding = {
       id: 'binding-topic-fallback',
-      connectorId: 'connector-lark',
       channelAccountId: 'connector-lark',
       scopeType: 'remote_chat',
       scopeKey: 'oc_group_1:thread:om_topic_root_1',
@@ -232,7 +227,7 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
       updatedAt: 1000,
     };
 
-    const connector: IConnectorInstance = {
+    const connector: IChannelAccount = {
       id: 'connector-lark',
       platform: 'lark',
       name: 'Feishu',
@@ -269,7 +264,7 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
     const workspace = await createTempWorkspace();
     const service = new ProjectChannelPublicationService();
 
-    const connector: IConnectorInstance = {
+    const connector: IChannelAccount = {
       id: 'connector-lark',
       platform: 'lark',
       name: 'Feishu',
@@ -281,7 +276,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
     };
     const binding: IChannelBinding = {
       id: 'binding-topic-refresh',
-      connectorId: 'connector-lark',
       channelAccountId: 'connector-lark',
       scopeType: 'remote_chat',
       scopeKey: 'oc_group_1:thread:om_topic_root_1',
@@ -317,7 +311,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
 
     const remoteIdentity: IRemoteIdentity = {
       id: 'remote-topic-refresh',
-      connectorId: 'connector-lark',
       channelAccountId: 'connector-lark',
       remoteUserId: 'ou_user_1',
       remoteChatId: 'oc_group_1:thread:om_topic_root_1',
@@ -360,7 +353,7 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
     const workspace = await createTempWorkspace();
     const service = new ProjectChannelPublicationService();
 
-    const connector: IConnectorInstance = {
+    const connector: IChannelAccount = {
       id: 'connector-lark',
       platform: 'lark',
       name: 'Feishu',
@@ -372,7 +365,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
     };
     const binding: IChannelBinding = {
       id: 'binding-topic-explicit-refresh',
-      connectorId: 'connector-lark',
       channelAccountId: 'connector-lark',
       scopeType: 'remote_chat',
       scopeKey: 'oc_group_1:thread:om_topic_root_1',
@@ -405,7 +397,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
       remoteIdentities: [
         {
           id: 'remote-topic-explicit-refresh',
-          connectorId: 'connector-lark',
           channelAccountId: 'connector-lark',
           remoteUserId: 'ou_user_1',
           remoteChatId: 'oc_group_1:thread:om_topic_root_1',
@@ -445,7 +436,7 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
     const workspace = await createTempWorkspace();
     const service = new ProjectChannelPublicationService();
 
-    const connector: IConnectorInstance = {
+    const connector: IChannelAccount = {
       id: 'connector-discord',
       platform: 'discord',
       name: 'Discord',
@@ -458,7 +449,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
 
     const binding: IChannelBinding = {
       id: 'binding-discord-thread-1',
-      connectorId: 'connector-discord',
       channelAccountId: 'connector-discord',
       scopeType: 'remote_chat',
       scopeKey: 'parent-channel:thread:thread-1',
@@ -487,7 +477,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
 
     const remoteIdentity: IRemoteIdentity = {
       id: 'remote-discord-thread-1',
-      connectorId: 'connector-discord',
       channelAccountId: 'connector-discord',
       remoteUserId: 'discord-user-1',
       remoteChatId: 'parent-channel:thread:thread-1',
@@ -536,7 +525,7 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
     const workspace = await createTempWorkspace();
     const service = new ProjectChannelPublicationService();
 
-    const connector: IConnectorInstance = {
+    const connector: IChannelAccount = {
       id: 'connector-discord-rich',
       platform: 'discord',
       name: 'Discord',
@@ -550,7 +539,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
 
     const binding: IChannelBinding = {
       id: 'binding-discord-thread-rich',
-      connectorId: 'connector-discord-rich',
       channelAccountId: 'connector-discord-rich',
       scopeType: 'remote_chat',
       scopeKey: 'parent-channel:thread:thread-1',
@@ -573,7 +561,6 @@ describe('ProjectChannelPublicationService publish object catalog', () => {
 
     const remoteIdentity: IRemoteIdentity = {
       id: 'remote-discord-thread-rich',
-      connectorId: 'connector-discord-rich',
       channelAccountId: 'connector-discord-rich',
       remoteUserId: 'discord-user-1',
       remoteChatId: 'parent-channel:thread:thread-1',

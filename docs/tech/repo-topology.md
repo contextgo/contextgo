@@ -46,6 +46,12 @@ Important boundary:
 - the sibling `../connector` repo owns connector control-plane execution
 - this repository owns the publication model in `src/process/channels/`
 
+Feishu example:
+
+- `Settings > IM Channels > Lark` configures the bot/channel-account side used to publish Agents into Feishu/Lark conversations
+- `Context Connector > Feishu` configures the external `cgo feishu` / `lark-cli` side used to read and collect docs, chats, files, calendar data, and other context surfaces
+- these are related product surfaces, but they are not the same object, runtime, or ownership boundary
+
 ## Connector Absorption Strategy
 
 When integrating capabilities from `../connector`, prefer a staged absorption path instead of a

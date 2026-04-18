@@ -181,7 +181,15 @@ function createResolvedRoute(options: {
       displayName: options.displayName,
       authorizedAt: 1000,
     },
-    connector: undefined,
+    channelAccount: {
+      id: `connector-${options.platform}`,
+      platform: options.platform,
+      name: `${options.platform} account`,
+      enabled: true,
+      status: 'running' as const,
+      createdAt: 1000,
+      updatedAt: 1000,
+    },
     remoteIdentity: undefined,
     binding: undefined,
     agentProfile: undefined,
@@ -398,6 +406,7 @@ describe('SystemActions agent selection', () => {
     );
     expect(context.conversationId).toBe('conv-new-1');
     expect(context.sessionId).toBe('session-new');
+    expect(context.channelAccount?.id).toBe('connector-weixin');
   });
 
   it('accepts a shortened callback token for long dynamic agent keys', async () => {
