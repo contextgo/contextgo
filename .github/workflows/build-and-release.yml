@@ -231,8 +231,12 @@ jobs:
           set -euo pipefail
 
           if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ]; then
-            KEYSTORE_PATH="${RUNNER_TEMP}/contextgo-android.keystore"
+            KEYSTORE_DIR="${GITHUB_WORKSPACE}/mobile-shell/build/signing"
+            KEYSTORE_PATH="${KEYSTORE_DIR}/contextgo-android.keystore"
+            mkdir -p "${KEYSTORE_DIR}"
             echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${KEYSTORE_PATH}"
+            test -s "${KEYSTORE_PATH}"
+            chmod 600 "${KEYSTORE_PATH}"
             echo "ANDROID_KEYSTORE_PATH=${KEYSTORE_PATH}" >> "${GITHUB_ENV}"
           fi
 
@@ -348,6 +352,13 @@ jobs:
             mobile-shell/build/android-release/*.aab
           if-no-files-found: error
           retention-days: 7
+
+      - name: Clean up Android signing inputs
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          rm -f "${GITHUB_WORKSPACE}/mobile-shell/build/signing/contextgo-android.keystore"
 
   build-ios-shell:
     name: Build iOS Shell
