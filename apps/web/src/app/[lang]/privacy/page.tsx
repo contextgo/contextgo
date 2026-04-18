@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { getDictionary } from '@/app/dictionaries';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const runtime = 'edge';
 
@@ -8,10 +9,12 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const validLang = (lang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
   const dict = await getDictionary(validLang);
 
-  return {
-    title: `${dict.legal.privacy.title} | ContextGo`,
-    description: dict.legal.privacy.title,
-  };
+  return buildPageMetadata({
+    locale: validLang,
+    pathname: '/privacy',
+    title: dict.legal.privacy.title,
+    description: dict.legal.privacy.sections[0]?.content[0] || dict.legal.privacy.title,
+  });
 }
 
 export default async function PrivacyPage({ params }: { params: Promise<{ lang: string }> }) {

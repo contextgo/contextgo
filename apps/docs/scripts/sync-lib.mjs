@@ -114,8 +114,18 @@ export const staticConfig = {
   $schema: 'https://mintlify.com/docs.json',
   theme: 'mint',
   name: 'ContextGo Docs',
+  description:
+    'ContextGo product docs for setup, remote access, context systems, runtimes, connectors, publishing, and release operations.',
   appearance: {
     default: 'light',
+  },
+  seo: {
+    indexing: 'all',
+    metatags: {
+      'og:site_name': 'ContextGo Docs',
+      'og:type': 'website',
+      'twitter:card': 'summary_large_image',
+    },
   },
   colors: {
     primary: '#111111',
@@ -246,9 +256,7 @@ export function convertAdmonitionBlocks(body) {
   return body.replace(
     /:{3,4}(warning|info|tip|note|danger|caution)\s*([^\n]*)\n([\s\S]*?)\n:{3,4}/g,
     (_match, kind, title, content) => {
-      const heading = title.trim()
-        ? `${formatAdmonitionLabel(kind)}: ${title.trim()}`
-        : formatAdmonitionLabel(kind);
+      const heading = title.trim() ? `${formatAdmonitionLabel(kind)}: ${title.trim()}` : formatAdmonitionLabel(kind);
       const lines = content
         .trim()
         .split('\n')

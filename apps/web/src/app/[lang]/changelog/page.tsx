@@ -1,10 +1,26 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import SeoJsonLd from '@/components/SeoJsonLd';
 import PageHero from '@/components/content/PageHero';
 import { getReleaseSnapshot } from '@/lib/releases';
+import { buildBreadcrumbJsonLd, buildCollectionJsonLd, buildPageMetadata } from '@/lib/seo';
 import { getSiteContent } from '@/lib/site-content';
 
 export const runtime = 'edge';
 export const revalidate = 300;
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params;
+  const validLang = (lang === 'zh' ? 'zh' : 'en') as 'en' | 'zh';
+  const siteContent = getSiteContent(validLang);
+
+  return buildPageMetadata({
+    locale: validLang,
+    pathname: '/changelog',
+    title: siteContent.changelog.title,
+    description: siteContent.changelog.description,
+  });
+}
 
 export default async function ChangelogPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
@@ -16,6 +32,20 @@ export default async function ChangelogPage({ params }: { params: Promise<{ lang
 
   return (
     <>
+      <SeoJsonLd
+        data={[
+          buildCollectionJsonLd({
+            locale: validLang,
+            pathname: '/changelog',
+            name: siteContent.changelog.title,
+            description: siteContent.changelog.description,
+          }),
+          buildBreadcrumbJsonLd(validLang, [
+            { name: 'ContextGo', pathname: '' },
+            { name: siteContent.changelog.title, pathname: '/changelog' },
+          ]),
+        ]}
+      />
       <PageHero
         badge={siteContent.changelog.badge}
         title={siteContent.changelog.title}

@@ -1,19 +1,16 @@
-import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import ThemeScript from '@/components/ThemeScript';
+import { buildRootMetadata, resolveSiteLocale } from '@/lib/seo';
 import './globals.css';
 
-export const metadata: Metadata = {
-  title: 'ContextGo | Product, Docs, Blog, and Releases',
-  description:
-    'ContextGo connects knowledge, tasks, conversations, and channels so agents can work inside real workflows. Explore product pages, docs, blog, and release downloads on contextgo.io.',
-  icons: {
-    icon: '/icon.png',
-  },
-};
+export const metadata = buildRootMetadata();
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const requestHeaders = await headers();
+  const locale = resolveSiteLocale(requestHeaders.get('x-contextgo-locale') || 'en');
+
   return (
-    <html lang='en' suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <ThemeScript />
       </head>
