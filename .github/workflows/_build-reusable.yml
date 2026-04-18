@@ -42,54 +42,12 @@ jobs:
     if: ${{ !inputs.skip_code_quality }}
 
     steps:
-      - name: Download source archive
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
-          ARCHIVE_REF: ${{ inputs.ref != '' && inputs.ref || github.sha }}
-        run: |
-          set -euo pipefail
-
-          RAW_WORKSPACE="${GITHUB_WORKSPACE}"
-          RAW_ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
-          RAW_EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
-
-          normalize_path() {
-            if [ "${RUNNER_OS:-}" = "Windows" ]; then
-              cygpath -u "$1"
-            else
-              printf '%s\n' "$1"
-            fi
-          }
-
-          WORKSPACE="$(normalize_path "${RAW_WORKSPACE}")"
-          ARCHIVE="$(normalize_path "${RAW_ARCHIVE}")"
-          EXTRACT_DIR="$(normalize_path "${RAW_EXTRACT_DIR}")"
-
-          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-          rm -rf "${EXTRACT_DIR}"
-
-          curl --fail --show-error --silent --location --http1.1 \
-            --retry 8 \
-            --retry-all-errors \
-            --retry-delay 5 \
-            --connect-timeout 20 \
-            --max-time 900 \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
-            -o "${ARCHIVE}"
-
-          mkdir -p "${EXTRACT_DIR}"
-          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
-
-          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-          if [ -z "${SOURCE_DIR}" ]; then
-            echo "::error::Failed to unpack source archive"
-            exit 1
-          fi
-
-          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+      - name: Checkout source
+        uses: actions/checkout@v5
+        with:
+          clean: true
+          fetch-depth: 1
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -133,54 +91,12 @@ jobs:
       matrix: ${{ fromJSON(inputs.matrix) }}
 
     steps:
-      - name: Download source archive
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
-          ARCHIVE_REF: ${{ inputs.ref != '' && inputs.ref || github.sha }}
-        run: |
-          set -euo pipefail
-
-          RAW_WORKSPACE="${GITHUB_WORKSPACE}"
-          RAW_ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
-          RAW_EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
-
-          normalize_path() {
-            if [ "${RUNNER_OS:-}" = "Windows" ]; then
-              cygpath -u "$1"
-            else
-              printf '%s\n' "$1"
-            fi
-          }
-
-          WORKSPACE="$(normalize_path "${RAW_WORKSPACE}")"
-          ARCHIVE="$(normalize_path "${RAW_ARCHIVE}")"
-          EXTRACT_DIR="$(normalize_path "${RAW_EXTRACT_DIR}")"
-
-          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-          rm -rf "${EXTRACT_DIR}"
-
-          curl --fail --show-error --silent --location --http1.1 \
-            --retry 8 \
-            --retry-all-errors \
-            --retry-delay 5 \
-            --connect-timeout 20 \
-            --max-time 900 \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
-            -o "${ARCHIVE}"
-
-          mkdir -p "${EXTRACT_DIR}"
-          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
-
-          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-          if [ -z "${SOURCE_DIR}" ]; then
-            echo "::error::Failed to unpack source archive"
-            exit 1
-          fi
-
-          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+      - name: Checkout source
+        uses: actions/checkout@v5
+        with:
+          clean: true
+          fetch-depth: 1
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -248,7 +164,9 @@ jobs:
         if: runner.environment != 'self-hosted' || runner.os != 'macOS'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          # Python is only needed for native module builds; 3.11 is widely
+          # available across hosted runners and our Debian 12 self-hosted Linux.
+          python-version: '3.11'
         env:
           AGENT_TOOLSDIRECTORY: ${{ runner.temp }}/hostedtoolcache
           RUNNER_TOOL_CACHE: ${{ runner.temp }}/hostedtoolcache
