@@ -15,6 +15,7 @@ import {
   type HookManifest,
   type HookOutputRoutingConfig,
 } from '@/common/types/hookTypes';
+import type { Dirent } from 'node:fs';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -54,6 +55,20 @@ import {
 const execFileAsync = promisify(execFile);
 const SKILLS_MARKET_SKILL_DIR = 'contextgo-skills';
 const LEGACY_SKILLS_MARKET_SKILL_DIR = 'aionui-skills';
+const RECENT_WORKSPACE_FILES_LIMIT = 50;
+const RECENT_WORKSPACE_FILES_SCAN_LIMIT = 5000;
+const IGNORED_RECENT_WORKSPACE_DIRS = new Set([
+  '.git',
+  '.contextgo',
+  'node_modules',
+  'dist',
+  'build',
+  '.next',
+  '.nuxt',
+  '.turbo',
+  'coverage',
+  'out',
+]);
 
 // ============================================================================
 // Helper functions for builtin resource directory resolution
@@ -300,6 +315,102 @@ async function getWorkspaceGitChanges(targetPath: string): Promise<{
   return {
     repository,
     changes: parseWorkspaceGitStatus(stdout, workingDir),
+  };
+}
+
+async function getWorkspaceRecentFiles(targetPath: string): Promise<{
+  files: Array<{
+    path: string;
+    absolutePath: string;
+    lastModified: number;
+    size: number;
+  }>;
+}> {
+  const workingDir = await resolveWorkspaceGitWorkingDir(targetPath);
+  if (!workingDir) {
+    return { files: [] };
+  }
+
+  const recentFiles: Array<{
+    path: string;
+    absolutePath: string;
+    lastModified: number;
+    size: number;
+  }> = [];
+  let scannedFiles = 0;
+  let shouldStop = false;
+
+  const pushRecentFile = (file: { path: string; absolutePath: string; lastModified: number; size: number }) => {
+    recentFiles.push(file);
+    recentFiles.sort((left, right) => right.lastModified - left.lastModified || left.path.localeCompare(right.path));
+
+    if (recentFiles.length > RECENT_WORKSPACE_FILES_LIMIT) {
+      recentFiles.length = RECENT_WORKSPACE_FILES_LIMIT;
+    }
+  };
+
+  const walkDirectory = async (dirPath: string): Promise<void> => {
+    if (shouldStop) {
+      return;
+    }
+
+    let entries: Dirent[];
+    try {
+      entries = await fs.readdir(dirPath, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (shouldStop) {
+        return;
+      }
+
+      if (entry.isDirectory() && IGNORED_RECENT_WORKSPACE_DIRS.has(entry.name)) {
+        continue;
+      }
+
+      const absolutePath = path.join(dirPath, entry.name);
+
+      let entryStat: Awaited<ReturnType<typeof fs.lstat>>;
+      try {
+        entryStat = await fs.lstat(absolutePath);
+      } catch {
+        continue;
+      }
+
+      if (entryStat.isSymbolicLink()) {
+        continue;
+      }
+
+      if (entryStat.isDirectory()) {
+        await walkDirectory(absolutePath);
+        continue;
+      }
+
+      if (!entryStat.isFile()) {
+        continue;
+      }
+
+      scannedFiles += 1;
+      pushRecentFile({
+        path: path.relative(workingDir, absolutePath).replaceAll(path.sep, '/'),
+        absolutePath,
+        lastModified: entryStat.mtimeMs,
+        size: entryStat.size,
+      });
+
+      if (scannedFiles >= RECENT_WORKSPACE_FILES_SCAN_LIMIT) {
+        shouldStop = true;
+        return;
+      }
+    }
+  };
+
+  await walkDirectory(workingDir);
+
+  return {
+    files: recentFiles,
   };
 }
 
@@ -787,6 +898,20 @@ export function initFsBridge(): void {
         data: {
           content: await getWorkspaceGitDiff(workspacePath, filePath),
         },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcBridge.fs.getWorkspaceRecentFiles.provider(async ({ path: targetPath }) => {
+    try {
+      return {
+        success: true,
+        data: await getWorkspaceRecentFiles(targetPath),
       };
     } catch (error) {
       return {

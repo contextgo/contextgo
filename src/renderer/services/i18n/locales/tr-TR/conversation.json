@@ -122,6 +122,8 @@
     "refresh": "Yenile",
     "changesEmpty": "Çalışma alanında değişiklik yok",
     "changesNotRepository": "Bu çalışma alanı bir git deposunun içinde değil",
+    "changesRecentFallback": "Burada Git değişiklikleri kullanılamıyor. Bunun yerine son değiştirilen dosyalar gösteriliyor.",
+    "changesRecentEmpty": "Son çalışma alanı dosyası yok",
     "temporarySpace": "Geçici Alan",
     "groupMembers": {
       "title": "Grup Uyeleri",

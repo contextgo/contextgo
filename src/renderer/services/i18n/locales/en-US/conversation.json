@@ -277,6 +277,8 @@
     "refresh": "Refresh",
     "changesEmpty": "No workspace changes",
     "changesNotRepository": "This workspace is not inside a git repository",
+    "changesRecentFallback": "Git changes are unavailable here. Showing recently modified files instead.",
+    "changesRecentEmpty": "No recent workspace files",
     "temporarySpace": "Temporary Space",
     "groupMembers": {
       "title": "Group Members",

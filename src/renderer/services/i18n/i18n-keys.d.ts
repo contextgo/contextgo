@@ -682,6 +682,8 @@ export type I18nKey =
   | 'conversation.workspace.changeWorkspace'
   | 'conversation.workspace.changesEmpty'
   | 'conversation.workspace.changesNotRepository'
+  | 'conversation.workspace.changesRecentEmpty'
+  | 'conversation.workspace.changesRecentFallback'
   | 'conversation.workspace.contextMenu.addToChat'
   | 'conversation.workspace.contextMenu.addedToChat'
   | 'conversation.workspace.contextMenu.deleteConfirm'

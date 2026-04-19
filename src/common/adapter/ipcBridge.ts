@@ -405,6 +405,12 @@ export const fs = {
       filePath: string;
     }
   >('get-workspace-git-diff'),
+  getWorkspaceRecentFiles: bridge.buildProvider<
+    IBridgeResponse<IWorkspaceRecentFilesPayload>,
+    {
+      path: string;
+    }
+  >('get-workspace-recent-files'),
   createTempFile: bridge.buildProvider<string, { fileName: string }>('create-temp-file'), // 创建临时文件
   writeFile: bridge.buildProvider<boolean, { path: string; data: Uint8Array | string }>('write-file'), // 写入文件
   createZip: bridge.buildProvider<
@@ -1365,6 +1371,17 @@ export interface IWorkspaceGitChange {
 export interface IWorkspaceGitChangesPayload {
   repository: IGitRepositoryInfo | null;
   changes: IWorkspaceGitChange[];
+}
+
+export interface IWorkspaceRecentFile {
+  path: string;
+  absolutePath: string;
+  lastModified: number;
+  size: number;
+}
+
+export interface IWorkspaceRecentFilesPayload {
+  files: IWorkspaceRecentFile[];
 }
 
 // 文件元数据接口

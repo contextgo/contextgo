@@ -262,6 +262,8 @@
     "addFile": "ファイルを追加",
     "changesEmpty": "ワークスペースに変更はありません",
     "changesNotRepository": "このワークスペースは git リポジトリ内にありません",
+    "changesRecentFallback": "ここでは Git の変更を表示できないため、最近更新されたファイルを表示しています。",
+    "changesRecentEmpty": "最近のワークスペースファイルはありません",
     "refresh": "更新",
     "temporarySpace": "一時スペース",
     "groupMembers": {

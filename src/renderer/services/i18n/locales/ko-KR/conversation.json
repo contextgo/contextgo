@@ -263,6 +263,8 @@
     "refresh": "새로고침",
     "changesEmpty": "워크스페이스 변경 사항이 없습니다",
     "changesNotRepository": "이 워크스페이스는 git 저장소 안에 있지 않습니다",
+    "changesRecentFallback": "여기에서는 Git 변경 사항을 볼 수 없어 최근 수정한 파일을 대신 보여줍니다.",
+    "changesRecentEmpty": "최근 워크스페이스 파일이 없습니다",
     "temporarySpace": "임시 공간",
     "groupMembers": {
       "title": "그룹 멤버",

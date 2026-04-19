@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getWorkspaceGitChangesInvokeMock = vi.fn();
 const getWorkspaceGitDiffInvokeMock = vi.fn();
+const getWorkspaceRecentFilesInvokeMock = vi.fn();
+const getImageBase64InvokeMock = vi.fn();
+const readFileInvokeMock = vi.fn();
 const openPreviewMock = vi.fn();
 
 vi.mock('@/common', () => ({
@@ -14,6 +17,15 @@ vi.mock('@/common', () => ({
       },
       getWorkspaceGitDiff: {
         invoke: (...args: unknown[]) => getWorkspaceGitDiffInvokeMock(...args),
+      },
+      getWorkspaceRecentFiles: {
+        invoke: (...args: unknown[]) => getWorkspaceRecentFilesInvokeMock(...args),
+      },
+      getImageBase64: {
+        invoke: (...args: unknown[]) => getImageBase64InvokeMock(...args),
+      },
+      readFile: {
+        invoke: (...args: unknown[]) => readFileInvokeMock(...args),
       },
     },
   },
@@ -74,6 +86,14 @@ describe('WorkspaceChanges', () => {
         content: 'diff --git a/src/app.ts b/src/app.ts',
       },
     });
+    getWorkspaceRecentFilesInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        files: [],
+      },
+    });
+    getImageBase64InvokeMock.mockResolvedValue('data:image/png;base64,abc');
+    readFileInvokeMock.mockResolvedValue('## Notes');
   });
 
   it('loads workspace changes and opens diff preview for a selected file', async () => {
@@ -98,5 +118,76 @@ describe('WorkspaceChanges', () => {
         })
       );
     });
+  });
+
+  it('shows recent files for a non-git workspace and opens file preview', async () => {
+    getWorkspaceGitChangesInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        repository: null,
+        changes: [],
+      },
+    });
+    getWorkspaceRecentFilesInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        files: [
+          {
+            path: 'docs/notes.md',
+            absolutePath: '/workspace/docs/notes.md',
+            lastModified: 1713510000000,
+            size: 128,
+          },
+        ],
+      },
+    });
+    readFileInvokeMock.mockResolvedValue('# Notes');
+
+    render(<WorkspaceChanges workspace='/workspace' openPreview={openPreviewMock} />);
+
+    expect(await screen.findByText('docs/notes.md')).toBeInTheDocument();
+    expect(screen.getByText('conversation.workspace.changesRecentFallback')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'docs/notes.md' }));
+
+    await waitFor(() => {
+      expect(getWorkspaceRecentFilesInvokeMock).toHaveBeenCalledWith({
+        path: '/workspace',
+      });
+      expect(readFileInvokeMock).toHaveBeenCalledWith({
+        path: '/workspace/docs/notes.md',
+      });
+      expect(openPreviewMock).toHaveBeenCalledWith(
+        '# Notes',
+        'markdown',
+        expect.objectContaining({
+          title: 'docs/notes.md',
+          fileName: 'notes.md',
+          filePath: '/workspace/docs/notes.md',
+          workspace: '/workspace',
+          editable: false,
+        })
+      );
+    });
+  });
+
+  it('shows an empty state when recent files are unavailable for a non-git workspace', async () => {
+    getWorkspaceGitChangesInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        repository: null,
+        changes: [],
+      },
+    });
+    getWorkspaceRecentFilesInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        files: [],
+      },
+    });
+
+    render(<WorkspaceChanges workspace='/workspace' openPreview={openPreviewMock} />);
+
+    expect(await screen.findByText('conversation.workspace.changesRecentEmpty')).toBeInTheDocument();
   });
 });
