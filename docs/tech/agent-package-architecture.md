@@ -2,7 +2,7 @@
 
 This document defines the default architecture for built-in assistants, imported assistant bundles, and future cloud-delivered assistant packages.
 
-For the stable `cwd` vs `HOME` rule and the naming split between `.contextgo/<runtime>/` and `.contextgo/.<runtime>/`, see [docs/conventions/runtime-boundary.md](../conventions/runtime-boundary.md).
+For the stable `cwd` vs runtime-native home rule and the naming split between runtime-native global state, workspace projections, and `.contextgo/` metadata, see [docs/conventions/runtime-boundary.md](../conventions/runtime-boundary.md).
 
 ## Product Rule
 
@@ -178,21 +178,12 @@ Runtime-native directories remain derived views:
 .opencode/skills -> projection of .contextgo/skills
 ```
 
-Home-scoped compatibility directories also remain derived views:
-
-```text
-.contextgo/.codex/
-.contextgo/.claude/
-.contextgo/.gemini/
-.contextgo/.opencode/
-```
-
 ContextGo must not treat runtime-native directories as the source of truth for package installation.
 
 Naming rule:
 
-- `.contextgo/<runtime>/` is the canonical runtime store
-- `.contextgo/.<runtime>/` is the runtime-home compatibility directory
+- runtime-native global state stays in each runtime's own home / XDG / app-data locations
+- `.contextgo/` stores ContextGo workspace metadata only
 - workspace-root runtime-native directories such as `.codex/skills/` are projections, not canonical storage
 
 Connector-specific rule:

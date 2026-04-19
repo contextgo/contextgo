@@ -101,7 +101,6 @@ export type WorkspaceAutomationPaths = {
   hooksFile: string;
   commandsFile: string;
   schedulesFile: string;
-  runtimePolicyFile: string;
 };
 
 export const getWorkspaceAutomationPaths = (workspacePath: string): WorkspaceAutomationPaths => {
@@ -114,6 +113,5 @@ export const getWorkspaceAutomationPaths = (workspacePath: string): WorkspaceAut
     hooksFile: joinWorkspacePath(rootDir, WORKSPACE_HOOKS_FILE_NAME),
     commandsFile: joinWorkspacePath(rootDir, WORKSPACE_COMMANDS_FILE_NAME),
     schedulesFile: joinWorkspacePath(rootDir, WORKSPACE_SCHEDULES_FILE_NAME),
-    runtimePolicyFile: joinWorkspacePath(rootDir, 'runtime.json'),
   };
 };

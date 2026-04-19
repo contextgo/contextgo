@@ -1,6 +1,6 @@
 # Runtime Boundary
 
-This document defines the stable runtime-boundary rule for ContextGo-managed coding runtimes.
+This document defines the stable runtime boundary for ContextGo-managed coding runtimes.
 
 Supported runtimes:
 
@@ -11,23 +11,44 @@ Supported runtimes:
 
 ## Core Rule
 
-For a ContextGo-managed runtime launch:
+ContextGo does **not** project or re-home runtime config, auth, cache, session, sqlite, or plugin state into the current project.
+
+For a ContextGo-managed launch:
 
 - process `cwd` is the workspace root
-- process `HOME` is `<workspace>/.contextgo`
-- `XDG_CONFIG_HOME` is `<workspace>/.contextgo`
-- `XDG_DATA_HOME` is `<workspace>/.contextgo`
+- runtime `HOME` / `XDG_*` remain runtime-native and user-owned
+- runtime config and runtime-generated data stay in each runtime's own native locations
+- project `.contextgo/` stores only ContextGo-owned workspace metadata
+- runtime-facing workspace projections managed by ContextGo are limited to entry docs and skill directories
 
-That means the repository root and the runtime home are intentionally different surfaces:
+Rejected model:
 
-- the workspace root is the project and documentation surface
-- `.contextgo/` is the project-owned runtime state boundary
-
-ContextGo must not launch managed runtimes against the user's global home by default.
+- do not treat `<workspace>/.contextgo` as a runtime home
+- do not create or rely on `.contextgo/.codex`, `.contextgo/.claude`, `.contextgo/.gemini`, or `.contextgo/.opencode`
+- do not store project runtime policy in `.contextgo/runtime.json`
 
 ## Boundary Layers
 
-### 1. Workspace Root Surface
+### 1. Runtime-Native Global State
+
+These paths remain owned by the runtime, not by ContextGo:
+
+- `~/.codex/`
+- `~/.claude/`
+- `~/.gemini/`
+- `~/.config/opencode/`
+- `~/.local/share/opencode/`
+- other runtime-native app-data paths on Windows or platform-specific equivalents
+
+Rules:
+
+- authentication stays here
+- session sqlite / logs / caches stay here
+- runtime plugin or package caches stay here
+- external session discovery reads these native locations
+- ContextGo must not copy these locations into project state just to launch or inspect a runtime
+
+## 2. Workspace Root Surface
 
 Path:
 
@@ -35,7 +56,7 @@ Path:
 <workspace>/
 ```
 
-This is the runtime-facing project surface that is discovered from the current working directory.
+This is the project-facing surface discovered from `cwd`.
 
 Examples:
 
@@ -43,13 +64,17 @@ Examples:
 - `CLAUDE.md`
 - `GEMINI.md`
 - `docs/`
-- workspace-root runtime-native projections such as `.codex/skills/`, `.claude/skills/`, `.gemini/skills/`, or `.opencode/skills/` when a runtime explicitly discovers them from `cwd`
+- runtime-native workspace projections such as `.codex/skills/`, `.claude/skills/`, `.gemini/skills/`, or `.opencode/skills/`
 
-This layer is for repository instructions, scaffolded docs, and `cwd`-scoped compatibility projections.
+Rules:
 
-It is not the canonical store for runtime config or auth material.
+- workspace-root instruction files are for runtime consumption from `cwd`
+- workspace-root runtime-native directories are projections only
+- workspace-root projections are not the source of truth for runtime auth or runtime state
+- ContextGo should only manage runtime entry docs and runtime-native skill projections here
+- other runtime-documented project files remain runtime-owned compatibility surfaces
 
-### 2. Canonical ContextGo Runtime Store
+## 3. ContextGo Workspace Metadata
 
 Path:
 
@@ -57,144 +82,93 @@ Path:
 <workspace>/.contextgo/
 ```
 
-This is the project-owned source of truth for runtime state.
+This directory stores ContextGo-owned workspace metadata only.
 
-Stable layout:
+Stable examples:
 
 ```text
 .contextgo/
-  runtime.json
   skills/
-  claude/
-  codex/
-  opencode/
-  gemini/
+  hooks/
+  hooks.json
+  commands.json
+  schedules.json
+  connectors/
 ```
 
 Rules:
 
-- `.contextgo/runtime.json` stores the project runtime policy
-- `.contextgo/skills/` is the canonical project skill store
-- `.contextgo/<runtime>/` stores canonical imported or generated runtime state for that backend
-- ContextGo-owned automation metadata also lives under `.contextgo/`
-
-Do not treat workspace-root runtime-native directories as the source of truth when the same state already exists under `.contextgo/`.
-
-### 3. Runtime-Home Compatibility Directory
-
-Path pattern:
-
-```text
-<workspace>/.contextgo/.<runtime>/
-```
-
-This is a derived compatibility layer for runtimes that resolve home-scoped paths such as `~/.codex`, `~/.claude`, `~/.opencode`, or `~/.gemini`.
-
-Stable names:
-
-- `.contextgo/.claude/`
-- `.contextgo/.codex/`
-- `.contextgo/.opencode/`
-- `.contextgo/.gemini/`
-
-Rules:
-
-- these directories are derived views, not the source of truth
-- the canonical backend store remains `.contextgo/<runtime>/`
-- do not use `.contextgo/<runtime>/` and `.contextgo/.<runtime>/` interchangeably
-- if a runtime only needs a compatibility projection, project from `.contextgo/<runtime>/` into `.contextgo/.<runtime>/`
-
-This naming is intentionally uniform across Claude, Codex, OpenCode, and Gemini.
+- `.contextgo/skills/` is the canonical workspace skill store
+- `hooks`, `commands`, and `schedules` remain ContextGo-native automation
+- connector mount metadata may live here
+- runtime config, auth, session databases, logs, and caches must not live here
 
 ## Naming Rule
 
-Use the following terms consistently:
+Use these terms consistently:
 
-- `canonical runtime store`: `.contextgo/<runtime>/`
-- `runtime-home compatibility directory`: `.contextgo/.<runtime>/`
-- `workspace-root runtime projection`: runtime-facing files or directories in the workspace root such as `CLAUDE.md` or `.codex/skills/`
+- `runtime-native global state`
+  - the runtime's own home / XDG / app-data directories
+- `runtime workspace projection`
+  - runtime-facing files or directories in the workspace root, such as `CLAUDE.md` or `.codex/skills/`
+- `ContextGo workspace metadata`
+  - project-owned state under `.contextgo/`
 
-Do not call `.contextgo/<runtime>/` the compatibility layer.
+Do not use the old terms:
 
-Do not call `.contextgo/.<runtime>/` the source of truth.
+- `canonical runtime store`
+- `runtime-home compatibility directory`
+- `.contextgo/<runtime>/` as a runtime config root
+- `.contextgo/.<runtime>/` as a compatibility home
 
-Do not collapse workspace-root projections and runtime-home compatibility directories into one concept.
-
-## Policy Resolution
-
-Every project has one runtime policy in `.contextgo/runtime.json`.
-
-Supported modes:
-
-- `project_managed`
-- `import_local_runtime`
-- `auto`
-
-Resolution rules:
-
-- `project_managed`
-  - ContextGo model-center selection and project-owned secrets are materialized into the project boundary
-- `import_local_runtime`
-  - ContextGo imports the minimum required runtime config and auth from the user's global runtime into `.contextgo/<runtime>/`
-  - managed execution still reads only the project boundary after import
-- `auto`
-  - ContextGo first attempts a project-local import for the requested backend
-  - if no importable local runtime is available, it resolves to project-managed state
-  - the resolved execution state still lives inside the project boundary
-
-`import_local_runtime` is an import model, not a live passthrough model.
-
-## Backend Matrix
-
-| Runtime    | Canonical store           | Runtime-home compatibility directory | Current note |
-| ---------- | ------------------------- | ------------------------------------ | ------------ |
-| `codex`    | `.contextgo/codex/`       | `.contextgo/.codex/`                 | Active for managed config and auth projection |
-| `claude`   | `.contextgo/claude/`      | `.contextgo/.claude/`                | Active for managed settings projection |
-| `opencode` | `.contextgo/opencode/`    | `.contextgo/.opencode/`              | Active for managed config and auth projection |
-| `gemini`   | `.contextgo/gemini/`      | `.contextgo/.gemini/`                | Naming is reserved now; full runtime-home convergence is still partial in current implementation |
-
-Gemini rule:
-
-- keep the compatibility-layer name aligned with the other runtimes as `.contextgo/.gemini/`
-- do not invent a different Gemini-only naming model
-- document partial adoption honestly until Gemini's remaining global or in-process config paths are converged
-
-## Skills Rule
-
-Skill state follows the same boundary rule as runtime config:
-
-- `.contextgo/skills/` is the canonical project skill store
-- workspace-root skill directories such as `.codex/skills/`, `.claude/skills/`, `.gemini/skills/`, and `.opencode/skills/` are projections only
-- a managed runtime must not load personal global skills from `~/.codex`, `~/.claude`, `~/.gemini`, `~/.opencode`, or other user-global skill directories
-- bundled or imported skills should be materialized into the project boundary before execution
-
-## Global State Boundary
-
-The following surfaces are intentionally outside the project runtime boundary:
-
-- `~/.contextgo/`
-- `~/.codex/`
-- `~/.claude/`
-- `~/.config/opencode/`
-- `~/.local/share/opencode/`
-- `~/.gemini/`
-
-Rules:
-
-- `~/.contextgo/` is host-global ContextGo state such as sessions, sqlite databases, caches, or logs
-- host-global ContextGo state is not the runtime home for a managed project launch
-- third-party runtime global directories may be read during explicit import, detection, or diagnostics
-- those global directories must not remain the live execution source for a managed project runtime
-
-## Practical Launch Rule
+## Launch Rule
 
 When ContextGo starts a managed runtime:
 
 1. set `cwd` to the workspace root
-2. set `HOME`, `XDG_CONFIG_HOME`, and `XDG_DATA_HOME` to `<workspace>/.contextgo`
-3. resolve runtime policy from `.contextgo/runtime.json`
-4. materialize canonical backend state under `.contextgo/<runtime>/`
-5. project any required home-scoped compatibility files into `.contextgo/.<runtime>/`
-6. project any required workspace-root runtime files separately when the runtime discovers them from `cwd`
+2. keep runtime home and XDG resolution unchanged
+3. prepare ContextGo-owned workspace entry docs and skill projections when needed
+4. pass supported launch-time flags or session-level overrides only when ContextGo explicitly controls that turn
 
-This keeps repository instructions, project-owned runtime state, and compatibility projections separate and predictable.
+ContextGo must not launch a runtime by pretending the workspace is the runtime's home directory.
+
+## External Session Rule
+
+When ContextGo imports or discovers external sessions:
+
+- scan the runtime's native global session/config locations
+- do not look for project-copied runtime session databases under `.contextgo/`
+- do not create project-owned mirrors of runtime history just to enable discovery
+
+This keeps external-session import aligned with how the runtime actually runs on the user's machine.
+
+## Model Ownership Rule
+
+By default, model selection and auth follow the user's runtime-native CLI configuration.
+
+That means:
+
+- if the user configures a default model in their runtime, ContextGo inherits that runtime behavior
+- ContextGo does not persist a project-level runtime model policy
+- ContextGo may still apply explicit session-level overrides when the user chooses a model in ContextGo UI for that session
+
+Session-level control is allowed.
+
+Project-owned runtime home or project-owned runtime policy is not.
+
+## Skills Rule
+
+Skill handling remains project-aware without turning the project into a runtime home:
+
+- `.contextgo/skills/` is the canonical workspace skill store
+- runtime-native workspace skill directories are projections only
+- personal global skill directories must not become the live source of truth for a managed workspace install
+
+This rule applies to:
+
+- `.codex/skills/`
+- `.claude/skills/`
+- `.gemini/skills/`
+- `.opencode/skills/`
+
+Those are runtime workspace projections, not runtime homes.

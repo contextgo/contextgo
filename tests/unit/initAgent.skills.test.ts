@@ -13,7 +13,6 @@ const {
   statResults,
   lstatResults,
   existsSyncResults,
-  projectRuntimeResolveMock,
   resetAll,
 } = vi.hoisted(() => {
   const mkdirCalls: string[] = [];
@@ -24,49 +23,6 @@ const {
   const statResults: Record<string, boolean> = {};
   const lstatResults: Record<string, boolean> = {};
   const existsSyncResults: Record<string, boolean> = {};
-  const projectRuntimeResolveMock = vi.fn(async (workspace: string, _options?: unknown) => {
-    const runtimePolicyPath = `${norm(workspace)}/.contextgo/runtime.json`;
-    if (!fileContents[runtimePolicyPath]) {
-      const defaultPolicy = JSON.stringify(
-        {
-          version: 1,
-          mode: 'auto',
-          resolvedSource: 'model_center',
-          providerProtocol: 'openai',
-          baseUrl: null,
-          apiKeyRef: null,
-          defaultModel: null,
-          importedFrom: null,
-          lastImportedAt: null,
-        },
-        null,
-        2
-      );
-      fileContents[runtimePolicyPath] = `${defaultPolicy}\n`;
-      writeFileCalls.push({
-        path: runtimePolicyPath,
-        content: `${defaultPolicy}\n`,
-      });
-      existsSyncResults[runtimePolicyPath] = true;
-    }
-
-    return {
-      policy: {
-        version: 1,
-        mode: 'auto',
-        resolvedSource: 'model_center',
-        providerProtocol: 'openai',
-        baseUrl: null,
-        apiKeyRef: null,
-        defaultModel: null,
-        importedFrom: null,
-        lastImportedAt: null,
-      },
-      effectiveSource: 'model_center',
-      runtimeRoot: `${norm(workspace)}/.contextgo`,
-      runtimeEnv: {},
-    };
-  });
 
   const resetAll = () => {
     mkdirCalls.length = 0;
@@ -77,7 +33,6 @@ const {
     for (const key of Object.keys(statResults)) delete statResults[key];
     for (const key of Object.keys(lstatResults)) delete lstatResults[key];
     for (const key of Object.keys(existsSyncResults)) delete existsSyncResults[key];
-    projectRuntimeResolveMock.mockClear();
   };
 
   return {
@@ -89,18 +44,9 @@ const {
     statResults,
     lstatResults,
     existsSyncResults,
-    projectRuntimeResolveMock,
     resetAll,
   };
 });
-
-vi.mock('@process/services/runtime/ProjectRuntimeService', () => ({
-  ProjectRuntimeService: class MockProjectRuntimeService {
-    resolve(...args: unknown[]) {
-      return projectRuntimeResolveMock(...args);
-    }
-  },
-}));
 
 vi.mock('fs/promises', () => ({
   default: {
@@ -511,17 +457,6 @@ describe('initAgent — skill support', () => {
       });
     });
 
-    it('resolves the project runtime with the current backend before projecting workspace state', async () => {
-      await setupAssistantWorkspace('/tmp/workspace', {
-        backend: 'claude',
-        enabledSkills: [],
-      });
-
-      expect(projectRuntimeResolveMock).toHaveBeenCalledWith('/tmp/workspace', {
-        backend: 'claude',
-      });
-    });
-
     it('should still project builtin auto skills when enabledSkills is undefined', async () => {
       existsSyncResults['/mock/builtin-skills/_builtin'] = true;
       statResults['/mock/builtin-skills/_builtin/schedule'] = true;
@@ -865,20 +800,6 @@ describe('initAgent — skill support', () => {
         target: '/tmp/workspace/.claude/skills/pptx',
         type: 'junction',
       });
-    });
-
-    it('writes a default project runtime policy during workspace bootstrap', async () => {
-      statResults['/mock/user/skills/pptx'] = true;
-      fileContents['/mock/user/skills/pptx/SKILL.md'] = '---\nname: pptx\ndescription: mock skill\n---\n';
-
-      await setupAssistantWorkspace('/tmp/workspace', {
-        backend: 'codex',
-        enabledSkills: ['pptx'],
-      });
-
-      const runtimePolicyCall = writeFileCalls.find((call) => call.path === '/tmp/workspace/.contextgo/runtime.json');
-      expect(runtimePolicyCall).toBeDefined();
-      expect(runtimePolicyCall?.content).toContain('"mode": "auto"');
     });
 
     it('projects AGENTS.md into CLAUDE.md for Claude workspaces', async () => {

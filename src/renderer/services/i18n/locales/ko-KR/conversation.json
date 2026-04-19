@@ -442,32 +442,7 @@
       "skillsAvailableTitle": "Workspace Skills",
       "skillsAvailableDescription": "Skills discovered from the project-local `.contextgo/skills` directory.",
       "skillsEmpty": "No project-local skills were found in this workspace.",
-      "skillsLoadFailed": "Failed to load project skills",
-      "runtime": {
-        "title": "런타임",
-        "description": "이 워크스페이스의 project-level runtime policy를 한곳에서 관리합니다. ContextGo는 `.contextgo/runtime.json`에 저장하고 이 파일을 진짜 원본으로 사용합니다.",
-        "policyPathHint": "정책 파일: {{path}}",
-        "runtimeRootHint": "현재 백엔드 설정 루트: {{path}}",
-        "saveAction": "런타임 정책 저장",
-        "modeTitle": "런타임 모드",
-        "modeDescription": "이 프로젝트가 런타임 설정과 모델 접근 원본을 어떻게 해석할지 선택합니다.",
-        "currentSource": "현재 적용 중인 소스: {{source}}",
-        "currentMode": "현재 모드: {{mode}}",
-        "loading": "런타임 정책을 불러오는 중...",
-        "saving": "저장 중...",
-        "loadFailed": "프로젝트 런타임 정책을 불러오지 못했습니다.",
-        "saveSuccess": "프로젝트 런타임 정책을 저장했습니다.",
-        "saveFailed": "프로젝트 런타임 정책을 저장하지 못했습니다.",
-        "source": {
-          "imported": "가져온 로컬 런타임",
-          "modelCenter": "ContextGo 모델 센터"
-        },
-        "mode": {
-          "projectManaged": "ContextGo 모델 센터 사용",
-          "importLocal": "로컬 Runtime 설정 가져오기",
-          "auto": "자동"
-        }
-      }
+      "skillsLoadFailed": "Failed to load project skills"
     },
     "skillMarket": {
       "action": "Skill Market",

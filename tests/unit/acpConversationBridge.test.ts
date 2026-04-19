@@ -47,9 +47,6 @@ vi.mock('../../src/common', () => ({
       refreshCustomAgents: makeChannel('refreshCustomAgents'),
       refreshDetectedAgents: makeChannel('refreshDetectedAgents'),
       installManagedRuntime: makeChannel('installManagedRuntime'),
-      importProjectRuntime: makeChannel('importProjectRuntime'),
-      resetProjectRuntime: makeChannel('resetProjectRuntime'),
-      saveProjectRuntimePolicy: makeChannel('saveProjectRuntimePolicy'),
       managedRuntimeInstallEvent: {
         provider: vi.fn(),
         emit: hoisted.managedRuntimeInstallEventEmit,
@@ -124,12 +121,8 @@ vi.mock('../../src/process/agent/codex/connection/CodexConnection', () => ({
       stop: hoisted.codexStop,
     };
   }),
-  getCodexConfigPath: vi.fn((runtimeRoot?: string) =>
-    runtimeRoot ? `${runtimeRoot}/.codex/config.toml` : '/Users/tester/.codex/config.toml'
-  ),
-  getCodexAuthPath: vi.fn((runtimeRoot?: string) =>
-    runtimeRoot ? `${runtimeRoot}/.codex/auth.json` : '/Users/tester/.codex/auth.json'
-  ),
+  getCodexConfigPath: vi.fn(() => '/Users/tester/.codex/config.toml'),
+  getCodexAuthPath: vi.fn(() => '/Users/tester/.codex/auth.json'),
 }));
 
 vi.mock('../../src/process/task/AcpAgentManager', () => ({ default: class AcpAgentManager {} }));
@@ -148,12 +141,6 @@ vi.mock('../../src/process/utils/tray', () => ({
 const safeExecMock = vi.fn(async () => ({ stdout: '', stderr: '' }));
 const safeExecFileMock = vi.fn(async () => ({ stdout: '', stderr: '' }));
 const getEnhancedEnvMock = vi.fn(() => ({ PATH: '/usr/bin' }));
-const getProjectRuntimeEnvMock = vi.fn(({ runtimeRoot }: { runtimeRoot: string }) => ({
-  PATH: '/usr/bin',
-  HOME: runtimeRoot,
-  XDG_CONFIG_HOME: runtimeRoot,
-  XDG_DATA_HOME: runtimeRoot,
-}));
 
 vi.mock('../../src/process/utils/safeExec', () => ({
   safeExec: (...args: unknown[]) => safeExecMock(...args),
@@ -162,7 +149,6 @@ vi.mock('../../src/process/utils/safeExec', () => ({
 
 vi.mock('../../src/process/utils/shellEnv', () => ({
   getEnhancedEnv: (...args: unknown[]) => getEnhancedEnvMock(...args),
-  getProjectRuntimeEnv: (...args: unknown[]) => getProjectRuntimeEnvMock(...args),
 }));
 
 const listSessionsMock = vi.fn(async () => []);
@@ -215,7 +201,6 @@ describe('acpConversationBridge', () => {
     safeExecMock.mockResolvedValue({ stdout: '', stderr: '' });
     safeExecFileMock.mockReset();
     safeExecFileMock.mockResolvedValue({ stdout: '', stderr: '' });
-    getProjectRuntimeEnvMock.mockClear();
     hoisted.managedRuntimeInstallEventEmit.mockReset();
     hoisted.openClawAgentStart.mockReset();
     hoisted.openClawAgentStart.mockResolvedValue(undefined);
@@ -327,59 +312,6 @@ describe('acpConversationBridge', () => {
     existsSyncSpy.mockRestore();
   });
 
-  it('returns project runtime config entries when a workspace is provided', async () => {
-    const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
-      return targetPath === '/tmp/project/.contextgo/.codex/config.toml';
-    });
-
-    const result = await handlers['getManagedRuntimeConfigLocation']({ backend: 'codex', workspace: '/tmp/project' });
-
-    expect(result).toEqual({
-      success: true,
-      data: {
-        backend: 'codex',
-        entries: [
-          {
-            kind: 'config',
-            path: '/tmp/project/.contextgo/.codex/config.toml',
-            exists: true,
-          },
-          {
-            kind: 'auth',
-            path: '/tmp/project/.contextgo/.codex/auth.json',
-            exists: false,
-          },
-        ],
-      },
-    });
-
-    existsSyncSpy.mockRestore();
-  });
-
-  it('returns the Claude runtime config entry from the runtime-home compatibility layer for a workspace', async () => {
-    const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
-      return targetPath === '/tmp/project/.contextgo/.claude/settings.json';
-    });
-
-    const result = await handlers['getManagedRuntimeConfigLocation']({ backend: 'claude', workspace: '/tmp/project' });
-
-    expect(result).toEqual({
-      success: true,
-      data: {
-        backend: 'claude',
-        entries: [
-          {
-            kind: 'config',
-            path: '/tmp/project/.contextgo/.claude/settings.json',
-            exists: true,
-          },
-        ],
-      },
-    });
-
-    existsSyncSpy.mockRestore();
-  });
-
   it('returns the OpenCode runtime config entries as a list', async () => {
     const homeDir = os.homedir();
     const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
@@ -401,35 +333,6 @@ describe('acpConversationBridge', () => {
           {
             kind: 'auth',
             path: `${homeDir}/.local/share/opencode/auth.json`,
-            exists: false,
-          },
-        ],
-      },
-    });
-
-    existsSyncSpy.mockRestore();
-  });
-
-  it('returns the OpenCode runtime config entries from the runtime-home compatibility layer for a workspace', async () => {
-    const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
-      return targetPath === '/tmp/project/.contextgo/.opencode/opencode.json';
-    });
-
-    const result = await handlers['getManagedRuntimeConfigLocation']({ backend: 'opencode', workspace: '/tmp/project' });
-
-    expect(result).toEqual({
-      success: true,
-      data: {
-        backend: 'opencode',
-        entries: [
-          {
-            kind: 'config',
-            path: '/tmp/project/.contextgo/.opencode/opencode.json',
-            exists: true,
-          },
-          {
-            kind: 'auth',
-            path: '/tmp/project/.contextgo/.opencode/auth.json',
             exists: false,
           },
         ],

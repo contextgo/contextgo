@@ -132,19 +132,11 @@ export interface ClaudeSettings {
  * - macOS/Linux: ~/.claude/settings.json
  * - Windows: %USERPROFILE%\.claude\settings.json
  */
-export function getClaudeSettingsPath(runtimeRoot?: string): string {
-  if (runtimeRoot) {
-    return path.join(runtimeRoot, '.claude', 'settings.json');
-  }
-
+export function getClaudeSettingsPath(): string {
   return path.join(os.homedir(), '.claude', 'settings.json');
 }
 
-export function getOpencodeConfigPath(runtimeRoot?: string): string {
-  if (runtimeRoot) {
-    return path.join(runtimeRoot, '.opencode', 'opencode.json');
-  }
-
+export function getOpencodeConfigPath(): string {
   const homeDir = os.homedir();
 
   if (process.platform === 'win32') {
@@ -156,11 +148,7 @@ export function getOpencodeConfigPath(runtimeRoot?: string): string {
   return path.join(xdgConfigHome, 'opencode', 'opencode.json');
 }
 
-export function getOpencodeAuthPath(runtimeRoot?: string): string {
-  if (runtimeRoot) {
-    return path.join(runtimeRoot, '.opencode', 'auth.json');
-  }
-
+export function getOpencodeAuthPath(): string {
   const homeDir = os.homedir();
 
   if (process.platform === 'win32') {
@@ -175,9 +163,9 @@ export function getOpencodeAuthPath(runtimeRoot?: string): string {
 /**
  * Read Claude settings from settings.json
  */
-export function readClaudeSettings(runtimeRoot?: string): ClaudeSettings | null {
+export function readClaudeSettings(): ClaudeSettings | null {
   try {
-    const settingsPath = getClaudeSettingsPath(runtimeRoot);
+    const settingsPath = getClaudeSettingsPath();
     if (!fs.existsSync(settingsPath)) {
       return null;
     }
@@ -191,8 +179,8 @@ export function readClaudeSettings(runtimeRoot?: string): ClaudeSettings | null 
 /**
  * Get ANTHROPIC_MODEL from Claude settings (under env object)
  */
-export function getClaudeModel(runtimeRoot?: string): string | null {
-  const settings = readClaudeSettings(runtimeRoot);
+export function getClaudeModel(): string | null {
+  const settings = readClaudeSettings();
   return settings?.env?.ANTHROPIC_MODEL ?? null;
 }
 

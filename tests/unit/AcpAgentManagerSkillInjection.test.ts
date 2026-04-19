@@ -1,25 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Track calls to prepareFirstMessageWithSkillsIndex
-const { mockPrepareFirstMessage, mockAgentSendMessage, projectRuntimeResolveMock } = vi.hoisted(() => ({
+const { mockPrepareFirstMessage, mockAgentSendMessage } = vi.hoisted(() => ({
   mockPrepareFirstMessage: vi.fn(async (content: string) => `[injected] ${content}`),
   mockAgentSendMessage: vi.fn(async () => ({ success: true })),
-  projectRuntimeResolveMock: vi.fn(async () => ({
-    policy: {
-      version: 1,
-      mode: 'auto',
-      resolvedSource: 'model_center',
-      providerProtocol: 'openai',
-      baseUrl: null,
-      apiKeyRef: null,
-      defaultModel: null,
-      importedFrom: null,
-      lastImportedAt: null,
-    },
-    effectiveSource: 'model_center',
-    runtimeRoot: '/tmp/test-workspace/.contextgo',
-    runtimeEnv: {},
-  })),
 }));
 
 // --- Module mocks ---
@@ -134,14 +118,6 @@ vi.mock('@process/task/agentUtils', () => ({
   buildSystemInstructions: vi.fn(async () => undefined),
 }));
 
-vi.mock('@process/services/runtime/ProjectRuntimeService', () => ({
-  ProjectRuntimeService: class MockProjectRuntimeService {
-    resolve(...args: unknown[]) {
-      return projectRuntimeResolveMock(...args);
-    }
-  },
-}));
-
 // Mock AcpAgent class
 vi.mock('@process/agent/acp', () => ({
   AcpAgent: vi.fn().mockImplementation(() => ({
@@ -201,7 +177,6 @@ async function sendFirstMessage(manager: InstanceType<typeof AcpAgentManager>, c
 describe('AcpAgentManager — first-message skill injection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    projectRuntimeResolveMock.mockClear();
   });
 
   it('uses native skills (no prompt injection) for supported backend without customWorkspace', async () => {

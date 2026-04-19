@@ -33,7 +33,6 @@ export interface CodexAgentConfig {
   id: string;
   cliPath?: string; // e.g. 'codex' or absolute path
   workingDir: string;
-  runtimeRoot?: string;
   runtimeEnv?: Record<string, string>;
   eventHandler: CodexEventHandler;
   sessionManager: CodexSessionManager;
@@ -52,7 +51,6 @@ export class CodexAgent {
   private readonly id: string;
   private readonly cliPath?: string;
   private readonly workingDir: string;
-  private readonly runtimeRoot?: string;
   private readonly runtimeEnv?: Record<string, string>;
   private readonly eventHandler: CodexEventHandler;
   private readonly sessionManager: CodexSessionManager;
@@ -73,7 +71,6 @@ export class CodexAgent {
     this.id = cfg.id;
     this.cliPath = cfg.cliPath;
     this.workingDir = cfg.workingDir;
-    this.runtimeRoot = cfg.runtimeRoot;
     this.runtimeEnv = cfg.runtimeEnv;
     this.eventHandler = cfg.eventHandler;
     this.sessionManager = cfg.sessionManager;
@@ -93,7 +90,6 @@ export class CodexAgent {
       // Pass yoloMode option for cron jobs to enable automatic execution
       await this.conn.start(this.cliPath || 'codex', this.workingDir, [], {
         yoloMode: this.yoloMode,
-        runtimeRoot: this.runtimeRoot,
         env: this.runtimeEnv,
       });
 

@@ -39,7 +39,6 @@ import {
   getConfiguredCodexMcpProtocolVersion,
   setAppConfig,
 } from '@/common/utils/appConfig';
-import { ProjectRuntimeService } from '@process/services/runtime/ProjectRuntimeService';
 
 const APP_CLIENT_NAME = getConfiguredAppClientName();
 const APP_CLIENT_VERSION = getConfiguredAppClientVersion();
@@ -101,9 +100,6 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
     // Use async bootstrap to read config and initialize agent
     this.bootstrap = (async () => {
       const runtimeWorkspace = data.workspace || process.cwd();
-      const resolvedRuntime = await new ProjectRuntimeService().resolve(runtimeWorkspace, {
-        backend: 'codex',
-      });
 
       // 设置 Codex Agent 的应用配置，使用 Electron API 在主进程中
       try {
@@ -153,8 +149,6 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
         id: data.conversation_id,
         cliPath: data.cliPath,
         workingDir: runtimeWorkspace,
-        runtimeRoot: resolvedRuntime.runtimeRoot,
-        runtimeEnv: resolvedRuntime.runtimeEnv,
         eventHandler,
         sessionManager,
         fileOperationHandler,

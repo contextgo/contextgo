@@ -456,32 +456,7 @@
       "skillsAvailableTitle": "工作空间技能",
       "skillsAvailableDescription": "从项目本地 `.contextgo/skills` 目录发现的 skills。",
       "skillsEmpty": "当前工作空间还没有发现项目本地 skill。",
-      "skillsLoadFailed": "加载项目技能失败",
-      "runtime": {
-        "title": "运行时",
-        "description": "按项目维度控制这一套统一的 runtime policy。ContextGo 会把它保存到 `.contextgo/runtime.json`，并以这个文件作为真源。",
-        "policyPathHint": "策略文件：{{path}}",
-        "runtimeRootHint": "当前后端配置根目录：{{path}}",
-        "saveAction": "保存运行时策略",
-        "modeTitle": "运行时模式",
-        "modeDescription": "选择这个项目如何解析运行时配置和模型访问来源。",
-        "currentSource": "当前生效来源：{{source}}",
-        "currentMode": "当前模式：{{mode}}",
-        "loading": "正在加载运行时策略...",
-        "saving": "保存中...",
-        "loadFailed": "加载项目运行时策略失败。",
-        "saveSuccess": "项目运行时策略已保存。",
-        "saveFailed": "保存项目运行时策略失败。",
-        "source": {
-          "imported": "已导入的本地运行时",
-          "modelCenter": "ContextGo 模型中心"
-        },
-        "mode": {
-          "projectManaged": "使用 ContextGo 模型中心",
-          "importLocal": "导入本地 Runtime 配置",
-          "auto": "自动"
-        }
-      }
+      "skillsLoadFailed": "加载项目技能失败"
     },
     "skillMarket": {
       "action": "技能市场",

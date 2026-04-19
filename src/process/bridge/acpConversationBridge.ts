@@ -27,7 +27,6 @@ import {
   type ManagedRuntimeConfigEntry,
   type ManagedRuntimeInstallEvent,
 } from '@/common/types/acpTypes';
-import { isProjectRuntimeBackend } from '@/common/types/projectRuntime';
 import { ExternalSessionDiscoveryService } from './services/ExternalSessionDiscoveryService';
 import * as os from 'os';
 import fs from 'node:fs';
@@ -35,7 +34,6 @@ import path from 'node:path';
 import { safeExec, safeExecFile } from '@process/utils/safeExec';
 import { getEnhancedEnv } from '@process/utils/shellEnv';
 import { contextRuntimeService } from '@process/services/context/contextServiceSingleton';
-import { ProjectRuntimeService } from '@process/services/runtime/ProjectRuntimeService';
 
 const refreshTrayMenuSafely = async (): Promise<void> => {
   try {
@@ -184,7 +182,7 @@ async function resolveRuntimeDisplayPath(cliPath?: string): Promise<string | und
   }
 }
 
-function resolveManagedRuntimeConfigEntries(backend: AcpBackend, runtimeRoot?: string): ManagedRuntimeConfigEntry[] {
+function resolveManagedRuntimeConfigEntries(backend: AcpBackend): ManagedRuntimeConfigEntry[] {
   switch (backend) {
     case 'gemini':
       return [{ kind: 'config', path: USER_SETTINGS_PATH, exists: fs.existsSync(USER_SETTINGS_PATH) }];
@@ -192,26 +190,26 @@ function resolveManagedRuntimeConfigEntries(backend: AcpBackend, runtimeRoot?: s
       return [
         {
           kind: 'config',
-          path: getClaudeSettingsPath(runtimeRoot),
-          exists: fs.existsSync(getClaudeSettingsPath(runtimeRoot)),
+          path: getClaudeSettingsPath(),
+          exists: fs.existsSync(getClaudeSettingsPath()),
         },
       ];
     case 'codex':
       return [
         {
           kind: 'config',
-          path: getCodexConfigPath(runtimeRoot),
-          exists: fs.existsSync(getCodexConfigPath(runtimeRoot)),
+          path: getCodexConfigPath(),
+          exists: fs.existsSync(getCodexConfigPath()),
         },
         {
           kind: 'auth',
-          path: getCodexAuthPath(runtimeRoot),
-          exists: fs.existsSync(getCodexAuthPath(runtimeRoot)),
+          path: getCodexAuthPath(),
+          exists: fs.existsSync(getCodexAuthPath()),
         },
       ];
     case 'opencode': {
-      const configPath = getOpencodeConfigPath(runtimeRoot);
-      const authPath = getOpencodeAuthPath(runtimeRoot);
+      const configPath = getOpencodeConfigPath();
+      const authPath = getOpencodeAuthPath();
       return [
         {
           kind: 'config',
@@ -402,18 +400,9 @@ export function initAcpConversationBridge(
     }
   });
 
-  ipcBridge.acpConversation.getManagedRuntimeConfigLocation.provider(async ({ backend, workspace }) => {
+  ipcBridge.acpConversation.getManagedRuntimeConfigLocation.provider(async ({ backend }) => {
     try {
-      const runtimeRoot = workspace
-        ? (
-            await new ProjectRuntimeService().resolve(workspace, {
-              backend: isProjectRuntimeBackend(backend) ? backend : undefined,
-              allowMutations: false,
-              persistDefaultPolicy: false,
-            })
-          ).runtimeRoot
-        : undefined;
-      const entries = resolveManagedRuntimeConfigEntries(backend, runtimeRoot);
+      const entries = resolveManagedRuntimeConfigEntries(backend);
       if (entries.length === 0) {
         return { success: true, data: null };
       }
@@ -423,68 +412,6 @@ export function initAcpConversationBridge(
         data: {
           backend,
           entries,
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        msg: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  });
-
-  ipcBridge.acpConversation.importProjectRuntime.provider(async ({ workspace, backend }) => {
-    try {
-      const resolvedRuntime = await new ProjectRuntimeService().importCurrentGlobalRuntime(workspace, backend);
-
-      return {
-        success: true,
-        data: {
-          backend,
-          policy: resolvedRuntime.policy,
-          effectiveSource: resolvedRuntime.effectiveSource,
-          runtimeRoot: resolvedRuntime.runtimeRoot,
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        msg: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  });
-
-  ipcBridge.acpConversation.resetProjectRuntime.provider(async ({ workspace, backend }) => {
-    try {
-      const resolvedRuntime = await new ProjectRuntimeService().resetProjectRuntimeOverride(workspace, backend);
-
-      return {
-        success: true,
-        data: {
-          backend,
-          policy: resolvedRuntime.policy,
-          effectiveSource: resolvedRuntime.effectiveSource,
-          runtimeRoot: resolvedRuntime.runtimeRoot,
-        },
-      };
-    } catch (error) {
-      return {
-        success: false,
-        msg: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
-  });
-
-  ipcBridge.acpConversation.saveProjectRuntimePolicy.provider(async ({ workspace, policy }) => {
-    try {
-      const resolvedRuntime = await new ProjectRuntimeService().saveProjectRuntimePolicy(workspace, policy);
-
-      return {
-        success: true,
-        data: {
-          policy: resolvedRuntime.policy,
-          effectiveSource: resolvedRuntime.effectiveSource,
-          runtimeRoot: resolvedRuntime.runtimeRoot,
         },
       };
     } catch (error) {

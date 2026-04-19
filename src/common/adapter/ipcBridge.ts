@@ -860,37 +860,8 @@ export const acpConversation = {
   >('acp.install-managed-runtime'),
   getManagedRuntimeConfigLocation: bridge.buildProvider<
     IBridgeResponse<{ backend: AcpBackend; entries: import('../types/acpTypes').ManagedRuntimeConfigEntry[] } | null>,
-    { backend: AcpBackend; workspace?: string }
+    { backend: AcpBackend }
   >('acp.get-managed-runtime-config-location'),
-  importProjectRuntime: bridge.buildProvider<
-    IBridgeResponse<{
-      backend: import('../types/projectRuntime').ProjectRuntimeBackend;
-      policy: import('../types/projectRuntime').ProjectRuntimePolicy;
-      effectiveSource: import('../types/projectRuntime').ProjectRuntimeResolvedSource;
-      runtimeRoot: string;
-    }>,
-    { workspace: string; backend: import('../types/projectRuntime').ProjectRuntimeBackend }
-  >('acp.import-project-runtime'),
-  resetProjectRuntime: bridge.buildProvider<
-    IBridgeResponse<{
-      backend: import('../types/projectRuntime').ProjectRuntimeBackend;
-      policy: import('../types/projectRuntime').ProjectRuntimePolicy;
-      effectiveSource: import('../types/projectRuntime').ProjectRuntimeResolvedSource;
-      runtimeRoot: string;
-    }>,
-    { workspace: string; backend: import('../types/projectRuntime').ProjectRuntimeBackend }
-  >('acp.reset-project-runtime'),
-  saveProjectRuntimePolicy: bridge.buildProvider<
-    IBridgeResponse<{
-      policy: import('../types/projectRuntime').ProjectRuntimePolicy;
-      effectiveSource: import('../types/projectRuntime').ProjectRuntimeResolvedSource;
-      runtimeRoot: string;
-    }>,
-    {
-      workspace: string;
-      policy: import('../types/projectRuntime').ProjectRuntimePolicy;
-    }
-  >('acp.save-project-runtime-policy'),
   checkAgentHealth: bridge.buildProvider<
     IBridgeResponse<{ available: boolean; latency?: number; error?: string }>,
     { backend: AcpBackend }

@@ -32,7 +32,6 @@ import { scheduleConversationGuard } from '@process/services/context/events/sche
 import { executeAssistantSkillMarketCommands } from '@process/services/context/events/AssistantSkillMarketCommandService';
 import { mainLog, mainWarn, mainError } from '@process/utils/mainLogger';
 import { AssistantHookRuntime } from '@process/bridge/services/AssistantHookRuntime';
-import { isProjectRuntimeBackend } from '@/common/types/projectRuntime';
 /** Enable ACP performance diagnostics via ACP_PERF=1 */
 const ACP_PERF_LOG = process.env.ACP_PERF === '1';
 
@@ -42,7 +41,6 @@ import { hasNativeSkillSupport } from '@process/utils/initAgent';
 import { prepareFirstMessageWithSkillsIndex } from '@process/task/agentUtils';
 import { extractTextFromMessage } from './MessageMiddleware';
 import { stripThinkTags } from './ThinkTagDetector';
-import { ProjectRuntimeService } from '@process/services/runtime/ProjectRuntimeService';
 
 interface AcpAgentManagerData {
   workspace?: string;
@@ -261,12 +259,6 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
       let customArgs: string[] | undefined;
       let customEnv: Record<string, string> | undefined;
       let yoloMode: boolean | undefined;
-      const runtimeWorkspace = data.workspace || process.cwd();
-      const resolvedRuntime = await new ProjectRuntimeService().resolve(runtimeWorkspace, {
-        backend: isProjectRuntimeBackend(data.backend) ? data.backend : undefined,
-      });
-      const runtimeRoot = resolvedRuntime.runtimeRoot;
-      const runtimeEnv = resolvedRuntime.runtimeEnv;
 
       // 处理自定义后端：优先读 acp.customAgents；若未命中则尝试扩展贡献的 adapter
       // Handle custom backend: prefer acp.customAgents; fallback to extension-contributed adapters
@@ -306,10 +298,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
           // and lost npx package arguments when acpArgs was also set.
           cliPath = customAgentConfig.defaultCliPath.trim();
           customArgs = customAgentConfig.acpArgs;
-          customEnv = {
-            ...runtimeEnv,
-            ...customAgentConfig.env,
-          };
+          customEnv = customAgentConfig.env;
         }
       } else if (data.backend !== 'custom') {
         // Handle built-in backends: read from acp.config
@@ -354,8 +343,6 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         if (!cliPath && backendConfig?.cliCommand) {
           cliPath = backendConfig.cliCommand;
         }
-
-        customEnv = runtimeEnv;
       } else {
         // backend === 'custom' but no customAgentId - this is an invalid state
         // 自定义后端但缺少 customAgentId - 这是无效状态
@@ -371,7 +358,6 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
         customEnv: customEnv,
         extra: {
           workspace: data.workspace,
-          runtimeRoot,
           backend: data.backend,
           cliPath: cliPath,
           customWorkspace: data.customWorkspace,
@@ -781,7 +767,9 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
             hasNativeSkillSupport(this.options.backend) &&
             (!this.options.customWorkspace || this.options.nativeWorkspaceBootstrap === true);
           if (useNativeSkills && this.options.externalSessionImported === true) {
-            // Imported external sessions should only advertise ContextGo builtin skills on first turn.
+            // Imported external sessions should only expose ContextGo builtin skills on first turn.
+            // Package-scoped skills are projected natively when needed, but the prompt index should
+            // stay limited to builtin surfaces like schedule / skillmarket / command-management.
             contentToSend = await prepareFirstMessageWithSkillsIndex(contentToSend, {
               presetContext: this.options.presetContext,
               enabledSkills: undefined,
