@@ -83,6 +83,7 @@ const toRuntimePlanEntries = (
 const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }) => {
   const initialUiState = readConversationUiState(CODEX_UI_STATE_SCOPE, conversation_id, createDefaultCodexUiState());
   const [workspacePath, setWorkspacePath] = useState('');
+  const [pendingUploadCount, setPendingUploadCount] = useState(0);
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
   const addOrUpdateMessage = useAddOrUpdateMessage();
@@ -642,12 +643,21 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
         }
         onStop={handleStop}
         onFilesAdded={handleFilesAdded}
+        pendingUploadCount={pendingUploadCount}
+        selectedWorkspaceItems={atPath}
+        onSelectedWorkspaceItemsChange={setAtPath}
         supportedExts={allSupportedExts}
         defaultMultiLine={true}
         lockMultiLine={true}
         tools={
           <div className='sendbox-tool-cluster'>
-            <FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />
+            <FileAttachButton
+              openFileSelector={openFileSelector}
+              onLocalFilesAdded={handleFilesAdded}
+              onUploadStateChange={({ pendingCount }) => {
+                setPendingUploadCount(pendingCount);
+              }}
+            />
             <div className='sendbox-tool-pill-row'>
               <AgentModeSelector
                 backend='codex'

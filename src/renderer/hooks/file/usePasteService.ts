@@ -12,26 +12,43 @@ interface UsePasteServiceProps {
   onTextPaste?: (text: string) => void;
   /** Conversation ID for WebUI file uploads */
   conversationId?: string;
+  onUploadStateChange?: (state: { isUploading: boolean; pendingCount: number }) => void;
 }
 
 /**
  * 通用的PasteService集成hook
  * 为所有组件提供统一的粘贴处理功能
  */
-export const usePasteService = ({ supportedExts, onFilesAdded, onTextPaste, conversationId }: UsePasteServiceProps) => {
+export const usePasteService = ({
+  supportedExts,
+  onFilesAdded,
+  onTextPaste,
+  conversationId,
+  onUploadStateChange,
+}: UsePasteServiceProps) => {
   const { t } = useTranslation();
   const componentId = useRef('paste-service-' + uuid(4)).current;
   // 统一的粘贴事件处理
   const handlePaste = useCallback(
     async (event: React.ClipboardEvent) => {
+      const clipboardFiles = event.clipboardData?.files;
+      const hasClipboardFiles = Boolean(clipboardFiles && clipboardFiles.length > 0);
+
       // 检查是否有文件，如果有文件立即阻止默认行为
-      const files = event.clipboardData?.files;
+      const files = clipboardFiles;
       if (files && files.length > 0) {
         event.preventDefault();
         event.stopPropagation();
       }
 
       try {
+        if (hasClipboardFiles) {
+          onUploadStateChange?.({
+            isUploading: true,
+            pendingCount: clipboardFiles?.length || 0,
+          });
+        }
+
         const handled = await PasteService.handlePaste(
           event,
           supportedExts,
@@ -52,9 +69,16 @@ export const usePasteService = ({ supportedExts, onFilesAdded, onTextPaste, conv
           Message.error(t('common.fileAttach.failed'));
         }
         return false;
+      } finally {
+        if (hasClipboardFiles) {
+          onUploadStateChange?.({
+            isUploading: false,
+            pendingCount: 0,
+          });
+        }
       }
     },
-    [conversationId, supportedExts, onFilesAdded, onTextPaste, t]
+    [conversationId, onFilesAdded, onTextPaste, onUploadStateChange, supportedExts, t]
   );
 
   // 焦点处理

@@ -6,13 +6,15 @@
 
 import { iconColors } from '@/renderer/styles/colors';
 import { isElectronDesktop } from '@/renderer/utils/platform';
-import { Dropdown, Input, Menu, Tooltip } from '@arco-design/web-react';
+import { Button, Dropdown, Input, Menu, Tooltip } from '@arco-design/web-react';
 import { Down, Plus, Refresh, Search } from '@icon-park/react';
 import React, { useId } from 'react';
 import type { TFunction } from 'i18next';
 import type { RefInputType } from '@arco-design/web-react/es/Input/interface';
 
 type WorkspaceToolbarProps = {
+  currentView: 'files' | 'changes';
+  onViewChange: (view: 'files' | 'changes') => void;
   t: TFunction;
   isWorkspaceCollapsed: boolean;
   setIsWorkspaceCollapsed: (v: boolean) => void;
@@ -66,6 +68,8 @@ const ChangeWorkspaceIcon: React.FC<React.SVGProps<SVGSVGElement>> = ({ classNam
 
 /** Toolbar area: workspace name, search toggle, refresh button, upload menu, settings. */
 const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
+  currentView,
+  onViewChange,
   t,
   isWorkspaceCollapsed,
   setIsWorkspaceCollapsed,
@@ -107,8 +111,24 @@ const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
 
   return (
     <div className='px-12px pt-8px workspace-toolbar-shell'>
+      <div className='mb-10px flex items-center gap-8px'>
+        <Button
+          size='mini'
+          type={currentView === 'files' ? 'primary' : 'secondary'}
+          onClick={() => onViewChange('files')}
+        >
+          {t('conversation.workspace.viewFiles')}
+        </Button>
+        <Button
+          size='mini'
+          type={currentView === 'changes' ? 'primary' : 'secondary'}
+          onClick={() => onViewChange('changes')}
+        >
+          {t('conversation.workspace.viewChanges')}
+        </Button>
+      </div>
       {/* Search Input */}
-      {(showSearch || searchText) && (
+      {currentView === 'files' && (showSearch || searchText) && (
         <div className='pb-10px workspace-toolbar-search'>
           <Input
             className='w-full workspace-search-input'
@@ -126,7 +146,9 @@ const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
       )}
 
       {/* Border divider below search */}
-      {!isWorkspaceCollapsed && (showSearch || searchText) && <div className='border-b border-b-base' />}
+      {!isWorkspaceCollapsed && currentView === 'files' && (showSearch || searchText) && (
+        <div className='border-b border-b-base' />
+      )}
 
       {/* Directory name with collapse and action icons */}
       <div className='workspace-toolbar-row flex min-h-32px items-center justify-between gap-8px'>

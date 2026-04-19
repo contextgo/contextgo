@@ -140,7 +140,12 @@
     "createNewConversation": "Mevcut çalışma alanında yeni sohbet oluştur",
     "search.empty": "Arama sonucu boş",
     "addFile": "Dosya Ekle",
+    "viewFiles": "Dosyalar",
+    "viewChanges": "Değişiklikler",
     "refresh": "Yenile",
+    "changesEmpty": "Çalışma alanında değişiklik yok",
+    "changesRecentFallback": "Burada Git değişiklikleri kullanılamıyor. Bunun yerine son değiştirilen dosyalar gösteriliyor.",
+    "changesRecentEmpty": "Son çalışma alanı dosyası yok",
     "temporarySpace": "Geçici Alan",
     "groupMembers": {
       "title": "Grup Uyeleri",
