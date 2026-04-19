@@ -134,10 +134,42 @@ export interface ClaudeSettings {
  */
 export function getClaudeSettingsPath(runtimeRoot?: string): string {
   if (runtimeRoot) {
-    return path.join(runtimeRoot, 'claude', 'settings.json');
+    return path.join(runtimeRoot, '.claude', 'settings.json');
   }
 
   return path.join(os.homedir(), '.claude', 'settings.json');
+}
+
+export function getOpencodeConfigPath(runtimeRoot?: string): string {
+  if (runtimeRoot) {
+    return path.join(runtimeRoot, '.opencode', 'opencode.json');
+  }
+
+  const homeDir = os.homedir();
+
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
+    return path.join(appData, 'opencode', 'opencode.json');
+  }
+
+  const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config');
+  return path.join(xdgConfigHome, 'opencode', 'opencode.json');
+}
+
+export function getOpencodeAuthPath(runtimeRoot?: string): string {
+  if (runtimeRoot) {
+    return path.join(runtimeRoot, '.opencode', 'auth.json');
+  }
+
+  const homeDir = os.homedir();
+
+  if (process.platform === 'win32') {
+    const localAppData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
+    return path.join(localAppData, 'opencode', 'auth.json');
+  }
+
+  const xdgDataHome = process.env.XDG_DATA_HOME || path.join(homeDir, '.local', 'share');
+  return path.join(xdgDataHome, 'opencode', 'auth.json');
 }
 
 /**

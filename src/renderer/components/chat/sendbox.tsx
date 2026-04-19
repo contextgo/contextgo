@@ -30,6 +30,32 @@ const constVoid = (): void => undefined;
 // 临界值：超过该字符数直接切换至多行模式，避免为超长文本做昂贵的宽度测量
 // Threshold: switch to multi-line mode directly when character count exceeds this value to avoid heavy layout work
 const MAX_SINGLE_LINE_CHARACTERS = 800;
+const MANAGED_TEMPLATE_COMMAND_INPUT_RE = /^\/([a-zA-Z0-9_-]+)(?:\s+([\s\S]*))?$/;
+
+function expandManagedSlashCommandInput(input: string, commands: readonly SlashCommandItem[]): string {
+  const normalizedInput = input.replace(/\r\n/g, '\n').trim();
+  const match = normalizedInput.match(MANAGED_TEMPLATE_COMMAND_INPUT_RE);
+  if (!match) {
+    return input;
+  }
+
+  const [, rawCommandName, rawTrailingContent = ''] = match;
+  const matchedCommand = commands.find(
+    (command) =>
+      command.kind === 'template' &&
+      command.source === 'custom' &&
+      typeof command.template === 'string' &&
+      command.template.length > 0 &&
+      command.name.toLowerCase() === rawCommandName.toLowerCase()
+  );
+
+  if (!matchedCommand?.template) {
+    return input;
+  }
+
+  const trailingContent = rawTrailingContent.trim();
+  return trailingContent ? `${matchedCommand.template}\n\n${trailingContent}` : matchedCommand.template;
+}
 
 const SendBox: React.FC<{
   value?: string;
@@ -232,10 +258,6 @@ const SendBox: React.FC<{
       setInput('');
     },
     onSelectTemplate: (command) => {
-      if (command.template) {
-        setInput(command.template);
-        return;
-      }
       setInput(`/${command.name} `);
     },
   });
@@ -319,16 +341,16 @@ const SendBox: React.FC<{
   const hasMessageContent = Boolean(input.trim() || domSnippets.length > 0);
 
   const buildFinalMessage = useCallback(() => {
-    let finalMessage = input;
+    let finalMessage = expandManagedSlashCommandInput(input, mergedSlashCommands);
     if (domSnippets.length > 0) {
       const snippetsHtml = domSnippets
         .map((s) => `\n\n---\nDOM Snippet (${s.tag}):\n\`\`\`html\n${s.html}\n\`\`\``)
         .join('');
-      finalMessage = input + snippetsHtml;
+      finalMessage += snippetsHtml;
     }
 
     return finalMessage;
-  }, [domSnippets, input]);
+  }, [domSnippets, input, mergedSlashCommands]);
 
   const consumeInputMessage = useCallback(() => {
     const finalMessage = buildFinalMessage();

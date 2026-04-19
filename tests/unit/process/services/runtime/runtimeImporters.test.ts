@@ -68,7 +68,35 @@ describe('runtimeImporters', () => {
     await expect(fs.readFile(path.join(workspace, '.contextgo', 'codex', 'config.toml'), 'utf-8')).resolves.toContain(
       'gpt-5.4'
     );
+    await expect(fs.readFile(path.join(workspace, '.contextgo', '.codex', 'config.toml'), 'utf-8')).resolves.toContain(
+      'gpt-5.4'
+    );
     await expect(fs.access(path.join(workspace, '.contextgo', 'codex', 'auth.json'))).rejects.toThrow();
+    await expect(fs.access(path.join(workspace, '.contextgo', '.codex', 'auth.json'))).rejects.toThrow();
+  });
+
+  it('projects Claude runtime settings into the runtime-home compatibility layer', async () => {
+    await fs.mkdir(path.join(homeDir, '.claude'), { recursive: true });
+    await fs.writeFile(
+      path.join(homeDir, '.claude', 'settings.json'),
+      '{"env":{"ANTHROPIC_MODEL":"claude-sonnet-4-5"}}\n',
+      'utf-8'
+    );
+
+    const { importProjectLocalRuntimeForBackend } = await import('@process/services/runtime/runtimeImporters');
+
+    const result = await importProjectLocalRuntimeForBackend(workspace, 'claude');
+
+    expect(result.imported).toBe(true);
+    expect(result.importedFrom).toEqual({
+      claude: '~/.claude/settings.json',
+    });
+    await expect(
+      fs.readFile(path.join(workspace, '.contextgo', 'claude', 'settings.json'), 'utf-8')
+    ).resolves.toContain('claude-sonnet-4-5');
+    await expect(
+      fs.readFile(path.join(workspace, '.contextgo', '.claude', 'settings.json'), 'utf-8')
+    ).resolves.toContain('claude-sonnet-4-5');
   });
 
   it('keeps the existing backend override intact when a multi-file import fails midway', async () => {
@@ -127,6 +155,12 @@ describe('runtimeImporters', () => {
     await expect(fs.readFile(path.join(workspace, '.contextgo', 'codex', 'auth.json'), 'utf-8')).resolves.toContain(
       '"custom"'
     );
+    await expect(fs.readFile(path.join(workspace, '.contextgo', '.codex', 'config.toml'), 'utf-8')).resolves.toContain(
+      'gpt-5.4'
+    );
+    await expect(fs.readFile(path.join(workspace, '.contextgo', '.codex', 'auth.json'), 'utf-8')).resolves.toContain(
+      '"custom"'
+    );
   });
 
   it('uses XDG OpenCode paths when importing project runtime state', async () => {
@@ -154,5 +188,56 @@ describe('runtimeImporters', () => {
     await expect(fs.readFile(path.join(workspace, '.contextgo', 'opencode', 'auth.json'), 'utf-8')).resolves.toContain(
       '"xdg-auth"'
     );
+    await expect(
+      fs.readFile(path.join(workspace, '.contextgo', '.opencode', 'opencode.json'), 'utf-8')
+    ).resolves.toContain('"gpt-5.4"');
+    await expect(
+      fs.readFile(path.join(workspace, '.contextgo', '.opencode', 'auth.json'), 'utf-8')
+    ).resolves.toContain('"xdg-auth"');
+  });
+
+  it('removes codex runtime projection files when clearing the project override', async () => {
+    const sourceDir = path.join(homeDir, '.codex');
+
+    await fs.mkdir(sourceDir, { recursive: true });
+    await fs.writeFile(path.join(sourceDir, 'config.toml'), 'model = "gpt-5.4"\n', 'utf-8');
+    await fs.writeFile(path.join(sourceDir, 'auth.json'), '{"token":"custom"}\n', 'utf-8');
+
+    const { clearProjectRuntimeOverride, importProjectLocalRuntimeForBackend } = await import(
+      '@process/services/runtime/runtimeImporters'
+    );
+
+    await importProjectLocalRuntimeForBackend(workspace, 'codex');
+    await clearProjectRuntimeOverride(workspace, 'codex');
+
+    await expect(fs.access(path.join(workspace, '.contextgo', 'codex'))).rejects.toThrow();
+    await expect(fs.access(path.join(workspace, '.contextgo', '.codex', 'config.toml'))).rejects.toThrow();
+    await expect(fs.access(path.join(workspace, '.contextgo', '.codex', 'auth.json'))).rejects.toThrow();
+  });
+
+  it('removes OpenCode runtime projection files when clearing the project override', async () => {
+    const xdgConfigHome = path.join(tempRoot, 'xdg-config');
+    const xdgDataHome = path.join(tempRoot, 'xdg-data');
+    const sourceConfigPath = path.join(xdgConfigHome, 'opencode', 'opencode.json');
+    const sourceAuthPath = path.join(xdgDataHome, 'opencode', 'auth.json');
+
+    process.env.XDG_CONFIG_HOME = xdgConfigHome;
+    process.env.XDG_DATA_HOME = xdgDataHome;
+
+    await fs.mkdir(path.dirname(sourceConfigPath), { recursive: true });
+    await fs.mkdir(path.dirname(sourceAuthPath), { recursive: true });
+    await fs.writeFile(sourceConfigPath, '{"model":"gpt-5.4"}\n', 'utf-8');
+    await fs.writeFile(sourceAuthPath, '{"token":"xdg-auth"}\n', 'utf-8');
+
+    const { clearProjectRuntimeOverride, importProjectLocalRuntimeForBackend } = await import(
+      '@process/services/runtime/runtimeImporters'
+    );
+
+    await importProjectLocalRuntimeForBackend(workspace, 'opencode');
+    await clearProjectRuntimeOverride(workspace, 'opencode');
+
+    await expect(fs.access(path.join(workspace, '.contextgo', 'opencode'))).rejects.toThrow();
+    await expect(fs.access(path.join(workspace, '.contextgo', '.opencode', 'opencode.json'))).rejects.toThrow();
+    await expect(fs.access(path.join(workspace, '.contextgo', '.opencode', 'auth.json'))).rejects.toThrow();
   });
 });

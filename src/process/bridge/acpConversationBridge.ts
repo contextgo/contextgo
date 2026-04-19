@@ -6,7 +6,7 @@
 
 import { acpDetector } from '@process/agent/acp/AcpDetector';
 import { AcpConnection } from '@process/agent/acp/AcpConnection';
-import { getClaudeSettingsPath } from '@process/agent/acp/utils';
+import { getClaudeSettingsPath, getOpencodeAuthPath, getOpencodeConfigPath } from '@process/agent/acp/utils';
 import { buildAcpModelInfo, summarizeAcpModelInfo } from '@process/agent/acp/modelInfo';
 import { CodexConnection, getCodexAuthPath, getCodexConfigPath } from '@process/agent/codex/connection/CodexConnection';
 import { USER_SETTINGS_PATH } from '@process/agent/gemini/cli/settings';
@@ -185,16 +185,6 @@ async function resolveRuntimeDisplayPath(cliPath?: string): Promise<string | und
 }
 
 function resolveManagedRuntimeConfigEntries(backend: AcpBackend, runtimeRoot?: string): ManagedRuntimeConfigEntry[] {
-  const homeDir = os.homedir();
-  const globalOpencodeConfigPath =
-    process.platform === 'win32'
-      ? path.join(process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming'), 'opencode', 'opencode.json')
-      : path.join(process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config'), 'opencode', 'opencode.json');
-  const globalOpencodeAuthPath =
-    process.platform === 'win32'
-      ? path.join(process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local'), 'opencode', 'auth.json')
-      : path.join(process.env.XDG_DATA_HOME || path.join(homeDir, '.local', 'share'), 'opencode', 'auth.json');
-
   switch (backend) {
     case 'gemini':
       return [{ kind: 'config', path: USER_SETTINGS_PATH, exists: fs.existsSync(USER_SETTINGS_PATH) }];
@@ -220,8 +210,8 @@ function resolveManagedRuntimeConfigEntries(backend: AcpBackend, runtimeRoot?: s
         },
       ];
     case 'opencode': {
-      const configPath = runtimeRoot ? path.join(runtimeRoot, 'opencode', 'opencode.json') : globalOpencodeConfigPath;
-      const authPath = runtimeRoot ? path.join(runtimeRoot, 'opencode', 'auth.json') : globalOpencodeAuthPath;
+      const configPath = getOpencodeConfigPath(runtimeRoot);
+      const authPath = getOpencodeAuthPath(runtimeRoot);
       return [
         {
           kind: 'config',

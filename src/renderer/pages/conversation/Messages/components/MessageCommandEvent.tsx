@@ -5,15 +5,39 @@
  */
 
 import type { IMessageCommandEvent } from '@/common/chat/chatLib';
-import type { CommandEventScope } from '@/common/chat/command/events';
+import type { CommandEventAction, CommandEventScope } from '@/common/chat/command/events';
+import { emitter } from '@/renderer/utils/emitter';
 import { Tag } from '@arco-design/web-react';
 import { Command } from '@icon-park/react';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type MessageCommandEventProps = {
   message: IMessageCommandEvent;
 };
+
+const COMMAND_LIBRARY_REFRESH_ACTIONS = new Set<CommandEventAction>(['create', 'update', 'delete']);
+const RECENT_COMMAND_LIBRARY_REFRESH_LIMIT = 128;
+const recentCommandLibraryRefreshKeys: string[] = [];
+const recentCommandLibraryRefreshKeySet = new Set<string>();
+
+function shouldEmitCommandLibraryRefresh(key: string): boolean {
+  if (recentCommandLibraryRefreshKeySet.has(key)) {
+    return false;
+  }
+
+  recentCommandLibraryRefreshKeySet.add(key);
+  recentCommandLibraryRefreshKeys.push(key);
+
+  if (recentCommandLibraryRefreshKeys.length > RECENT_COMMAND_LIBRARY_REFRESH_LIMIT) {
+    const oldestKey = recentCommandLibraryRefreshKeys.shift();
+    if (oldestKey) {
+      recentCommandLibraryRefreshKeySet.delete(oldestKey);
+    }
+  }
+
+  return true;
+}
 
 const resolveScopeLabel = (scope: CommandEventScope | undefined, t: ReturnType<typeof useTranslation>['t']): string => {
   if (scope === 'space') {
@@ -108,6 +132,19 @@ const MessageCommandEvent: React.FC<MessageCommandEventProps> = ({ message }) =>
   const { t } = useTranslation();
   const header = resolveHeader(message, t);
   const commands = message.content.commands ?? (message.content.command ? [message.content.command] : []);
+
+  useEffect(() => {
+    if (!COMMAND_LIBRARY_REFRESH_ACTIONS.has(message.content.action)) {
+      return;
+    }
+
+    const refreshKey = `${message.conversation_id}:${message.msg_id}`;
+    if (!shouldEmitCommandLibraryRefresh(refreshKey)) {
+      return;
+    }
+
+    emitter.emit('commands.library.updated');
+  }, [message.content.action, message.conversation_id, message.msg_id]);
 
   return (
     <div className='w-full min-w-0'>

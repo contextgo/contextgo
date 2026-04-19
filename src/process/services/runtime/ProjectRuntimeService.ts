@@ -13,6 +13,7 @@ import { PROJECT_RUNTIME_BACKENDS } from '@/common/types/projectRuntime';
 import { getProjectRuntimeRoot } from './ProjectRuntimePaths';
 import {
   clearProjectRuntimeOverride,
+  ensureProjectRuntimeProjectionForBackend,
   hasProjectRuntimeOverride,
   importProjectLocalRuntime,
   importProjectLocalRuntimeForBackend,
@@ -49,6 +50,7 @@ type ProjectRuntimeServiceDeps = {
     backend?: ProjectRuntimeBackend
   ) => Promise<RuntimeImportResult>;
   importLocalRuntimeForBackend?: (workspace: string, backend: ProjectRuntimeBackend) => Promise<RuntimeImportResult>;
+  ensureBackendProjection?: (workspace: string, backend: ProjectRuntimeBackend) => Promise<void>;
   clearBackendOverride?: (workspace: string, backend: ProjectRuntimeBackend) => Promise<void>;
   hasBackendOverride?: (workspace: string, backend: ProjectRuntimeBackend) => Promise<boolean>;
 };
@@ -64,6 +66,7 @@ export class ProjectRuntimeService {
   private readonly writePolicy;
   private readonly importLocalRuntime;
   private readonly importLocalRuntimeForBackend;
+  private readonly ensureBackendProjection;
   private readonly clearBackendOverride;
   private readonly hasBackendOverride;
 
@@ -72,6 +75,7 @@ export class ProjectRuntimeService {
     this.writePolicy = deps.writePolicy ?? writeProjectRuntimePolicy;
     this.importLocalRuntime = deps.importLocalRuntime ?? importProjectLocalRuntime;
     this.importLocalRuntimeForBackend = deps.importLocalRuntimeForBackend ?? importProjectLocalRuntimeForBackend;
+    this.ensureBackendProjection = deps.ensureBackendProjection ?? ensureProjectRuntimeProjectionForBackend;
     this.clearBackendOverride = deps.clearBackendOverride ?? clearProjectRuntimeOverride;
     this.hasBackendOverride = deps.hasBackendOverride ?? hasProjectRuntimeOverride;
   }
@@ -139,6 +143,9 @@ export class ProjectRuntimeService {
     const backend = options.backend;
 
     if (backend && (await this.hasBackendOverride(workspace, backend))) {
+      if (shouldAllowMutations) {
+        await this.ensureBackendProjection(workspace, backend);
+      }
       importedRuntime = {
         imported: true,
         importedFrom: policy.importedFrom,

@@ -47,12 +47,14 @@ describe('ProjectRuntimeService', () => {
 
   it('resolves auto mode to a project-owned imported runtime when the current backend has an override', async () => {
     const hasBackendOverride = vi.fn(async () => true);
+    const ensureBackendProjection = vi.fn(async () => {});
     const service = new ProjectRuntimeService({
       readPolicy: async (): Promise<ProjectRuntimePolicy> =>
         buildPolicy({
           importedFrom: { codex: '~/.codex/config.toml' },
         }),
       writePolicy: vi.fn(),
+      ensureBackendProjection,
       hasBackendOverride,
     });
 
@@ -61,6 +63,7 @@ describe('ProjectRuntimeService', () => {
     });
 
     expect(hasBackendOverride).toHaveBeenCalledWith('/workspace/app', 'codex');
+    expect(ensureBackendProjection).toHaveBeenCalledWith('/workspace/app', 'codex');
     expect(resolved.effectiveSource).toBe('imported_local_runtime');
     expect(resolved.runtimeRoot).toBe('/workspace/app/.contextgo');
     expect(resolved.policy.importedFrom).toEqual({ codex: '~/.codex/config.toml' });
@@ -192,10 +195,12 @@ describe('ProjectRuntimeService', () => {
       currentPolicy = policy;
     });
     const clearBackendOverride = vi.fn(async () => {});
+    const ensureBackendProjection = vi.fn(async () => {});
     const service = new ProjectRuntimeService({
       readPolicy: async (): Promise<ProjectRuntimePolicy> => currentPolicy,
       writePolicy,
       clearBackendOverride,
+      ensureBackendProjection,
       hasBackendOverride: vi.fn(async (_workspace, backend) => backend === 'claude'),
     });
 
@@ -213,6 +218,7 @@ describe('ProjectRuntimeService', () => {
     expect(resolvedClaude.policy.importedFrom).toEqual({
       claude: '~/.claude/settings.json',
     });
+    expect(ensureBackendProjection).toHaveBeenCalledWith('/workspace/app', 'claude');
     expect(resolvedClaude.runtimeRoot).toBe('/workspace/app/.contextgo');
     expect(writePolicy).toHaveBeenCalledWith(
       '/workspace/app',

@@ -9,10 +9,10 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { ProjectRuntimeBackend, ProjectRuntimePolicy } from '@/common/types/projectRuntime';
-import { getClaudeSettingsPath } from '@process/agent/acp/utils';
+import { getClaudeSettingsPath, getOpencodeAuthPath, getOpencodeConfigPath } from '@process/agent/acp/utils';
 import { getCodexAuthPath, getCodexConfigPath } from '@process/agent/codex/connection/CodexConnection';
 import { getEnhancedEnv } from '@process/utils/shellEnv';
-import { getProjectRuntimeConfigDir, getProjectRuntimeRoot } from './ProjectRuntimePaths';
+import { getProjectRuntimeCompatibilityDir, getProjectRuntimeConfigDir, getProjectRuntimeRoot } from './ProjectRuntimePaths';
 
 export type RuntimeImportResult = {
   imported: boolean;
@@ -25,6 +25,14 @@ type RuntimeImportFile = {
   sourcePath: string;
   relativeTargetPath: string;
 };
+
+const RUNTIME_HOME_PROJECTION_FILES = {
+  claude: ['settings.json'],
+  codex: ['config.toml', 'auth.json'],
+  opencode: ['opencode.json', 'auth.json'],
+} as const satisfies Partial<Record<ProjectRuntimeBackend, readonly string[]>>;
+
+type BackendWithRuntimeProjection = keyof typeof RUNTIME_HOME_PROJECTION_FILES;
 
 const BACKEND_ENV_KEYS: Record<ProjectRuntimeBackend, readonly string[]> = {
   gemini: [],
@@ -42,30 +50,6 @@ const pathExists = async (targetPath: string): Promise<boolean> => {
   } catch {
     return false;
   }
-};
-
-const getGlobalOpencodeConfigPath = (): string => {
-  const homeDir = os.homedir();
-
-  if (process.platform === 'win32') {
-    const appData = process.env.APPDATA || path.join(homeDir, 'AppData', 'Roaming');
-    return path.join(appData, 'opencode', 'opencode.json');
-  }
-
-  const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(homeDir, '.config');
-  return path.join(xdgConfigHome, 'opencode', 'opencode.json');
-};
-
-const getGlobalOpencodeAuthPath = (): string => {
-  const homeDir = os.homedir();
-
-  if (process.platform === 'win32') {
-    const localAppData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
-    return path.join(localAppData, 'opencode', 'auth.json');
-  }
-
-  const xdgDataHome = process.env.XDG_DATA_HOME || path.join(homeDir, '.local', 'share');
-  return path.join(xdgDataHome, 'opencode', 'auth.json');
 };
 
 const getImportFiles = (backend: ProjectRuntimeBackend): RuntimeImportFile[] => {
@@ -91,11 +75,11 @@ const getImportFiles = (backend: ProjectRuntimeBackend): RuntimeImportFile[] => 
     case 'opencode':
       return [
         {
-          sourcePath: getGlobalOpencodeConfigPath(),
+          sourcePath: getOpencodeConfigPath(),
           relativeTargetPath: 'opencode.json',
         },
         {
-          sourcePath: getGlobalOpencodeAuthPath(),
+          sourcePath: getOpencodeAuthPath(),
           relativeTargetPath: 'auth.json',
         },
       ];
@@ -133,6 +117,58 @@ const selectImportedSourceLabel = (
   return undefined;
 };
 
+function hasRuntimeHomeProjection(backend: ProjectRuntimeBackend): backend is BackendWithRuntimeProjection {
+  return backend in RUNTIME_HOME_PROJECTION_FILES;
+}
+
+const syncRuntimeHomeProjection = async (
+  workspace: string,
+  backend: BackendWithRuntimeProjection,
+  relativeTargetPaths: readonly string[]
+): Promise<void> => {
+  const projectionDir = getProjectRuntimeCompatibilityDir(workspace, backend);
+  const sourceDir = getProjectRuntimeConfigDir(workspace, backend);
+  const projectedFiles = new Set(relativeTargetPaths);
+  const projectionFiles = RUNTIME_HOME_PROJECTION_FILES[backend];
+
+  await fs.mkdir(projectionDir, { recursive: true });
+
+  await Promise.all(
+    projectionFiles.map(async (fileName) => {
+      const projectionPath = path.join(projectionDir, fileName);
+      if (!projectedFiles.has(fileName)) {
+        await fs.rm(projectionPath, {
+          force: true,
+          recursive: true,
+        });
+        return;
+      }
+
+      const sourcePath = path.join(sourceDir, fileName);
+      const relativeSourcePath = path.relative(path.dirname(projectionPath), sourcePath);
+
+      try {
+        const existing = await fs.lstat(projectionPath);
+        if (existing.isSymbolicLink()) {
+          const currentTarget = await fs.readlink(projectionPath);
+          if (currentTarget === relativeSourcePath) {
+            return;
+          }
+        }
+
+        await fs.rm(projectionPath, {
+          force: true,
+          recursive: true,
+        });
+      } catch {
+        // Projection does not exist yet.
+      }
+
+      await fs.symlink(relativeSourcePath, projectionPath);
+    })
+  );
+};
+
 const copyFilesAtomically = async (
   workspace: string,
   backend: ProjectRuntimeBackend,
@@ -167,6 +203,14 @@ const copyFilesAtomically = async (
 
     await fs.rename(tempDir, targetDir);
 
+    if (hasRuntimeHomeProjection(backend)) {
+      await syncRuntimeHomeProjection(
+        workspace,
+        backend,
+        files.map((file) => file.relativeTargetPath)
+      );
+    }
+
     if (targetExists) {
       await fs.rm(backupDir, {
         recursive: true,
@@ -197,6 +241,29 @@ export async function hasProjectRuntimeOverride(workspace: string, backend: Proj
     getImportFiles(backend).map((file) => pathExists(path.join(configDir, file.relativeTargetPath)))
   );
   return existingFiles.some(Boolean);
+}
+
+export async function ensureProjectRuntimeProjectionForBackend(
+  workspace: string,
+  backend: ProjectRuntimeBackend
+): Promise<void> {
+  if (!hasRuntimeHomeProjection(backend)) {
+    return;
+  }
+
+  const configDir = getProjectRuntimeConfigDir(workspace, backend);
+  const projectionFiles = RUNTIME_HOME_PROJECTION_FILES[backend];
+  const existingFiles = await Promise.all(
+    projectionFiles.map(async (fileName) =>
+      (await pathExists(path.join(configDir, fileName))) ? fileName : null
+    )
+  );
+
+  await syncRuntimeHomeProjection(
+    workspace,
+    backend,
+    existingFiles.filter((fileName): fileName is (typeof projectionFiles)[number] => fileName !== null)
+  );
 }
 
 export async function importProjectLocalRuntimeForBackend(
@@ -237,6 +304,10 @@ export async function clearProjectRuntimeOverride(workspace: string, backend: Pr
     recursive: true,
     force: true,
   });
+
+  if (hasRuntimeHomeProjection(backend)) {
+    await syncRuntimeHomeProjection(workspace, backend, []);
+  }
 }
 
 export async function importProjectLocalRuntime(

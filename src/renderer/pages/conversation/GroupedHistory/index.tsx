@@ -10,7 +10,6 @@ import { ContextGoModal } from '@/renderer/components/base';
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
 import DirectorySelectionModal from '@/renderer/components/settings/DirectorySelectionModal';
 import { useScheduleJobsMap } from '@/renderer/pages/schedule';
-import { iconColors } from '@/renderer/styles/colors';
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Down, FolderOpen, Plus } from '@icon-park/react';
@@ -526,10 +525,10 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                         <Button
                           type='text'
                           size='mini'
-                          className='flex h-24px w-24px items-center justify-center rounded-6px border-none p-0 text-t-secondary hover:bg-fill-2 hover:text-t-primary'
+                          className='app-icon-button flex h-28px w-28px items-center justify-center rounded-8px border border-solid border-[var(--color-border-2)] bg-fill-1 p-0 text-[rgb(var(--primary-6))] transition-colors hover:border-[rgb(var(--primary-4))] hover:bg-fill-2 hover:text-[rgb(var(--primary-6))]'
                           aria-label={t('conversation.entry.create') + t('conversation.entry.conversation')}
                           title={`${t('conversation.entry.create')} ${t('conversation.entry.conversation')}`}
-                          icon={<Plus theme='outline' size='14' fill={iconColors.primary} />}
+                          icon={<Plus theme='outline' size='14' fill='currentColor' className='app-icon' />}
                           onClick={(event) => {
                             event.stopPropagation();
                             const latestConversation = group.conversations[0];
@@ -540,11 +539,7 @@ const WorkspaceGroupedHistory: React.FC<WorkspaceGroupedHistoryProps> = ({
                         />
                       }
                       header={
-                        <div className='flex items-center gap-8px text-14px min-w-0'>
-                          <span className='font-medium truncate flex-1 text-t-primary min-w-0'>
-                            {group.displayName}
-                          </span>
-                        </div>
+                        <span className='block truncate text-14px font-medium text-t-primary'>{group.displayName}</span>
                       }
                     >
                       <div className={classNames('flex flex-col gap-2px min-w-0', { 'mt-4px': !collapsed })}>

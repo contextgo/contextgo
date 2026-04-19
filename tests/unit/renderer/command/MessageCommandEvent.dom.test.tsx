@@ -4,9 +4,11 @@
 
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageCommandEvent } from '../../../../src/common/chat/chatLib';
 import MessageCommandEvent from '../../../../src/renderer/pages/conversation/Messages/components/MessageCommandEvent';
+
+const emitterEmitMock = vi.fn();
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -27,6 +29,12 @@ vi.mock('@icon-park/react', () => ({
   Command: () => <span>command</span>,
 }));
 
+vi.mock('../../../../src/renderer/utils/emitter', () => ({
+  emitter: {
+    emit: (...args: unknown[]) => emitterEmitMock(...args),
+  },
+}));
+
 const createCommandMessage = (content: IMessageCommandEvent['content']): IMessageCommandEvent => ({
   id: 'msg-1',
   msg_id: 'msg-1',
@@ -37,6 +45,31 @@ const createCommandMessage = (content: IMessageCommandEvent['content']): IMessag
 });
 
 describe('MessageCommandEvent', () => {
+  beforeEach(() => {
+    emitterEmitMock.mockClear();
+  });
+
+  it('refreshes the slash command library after a command mutation event', () => {
+    render(
+      <MessageCommandEvent
+        message={createCommandMessage({
+          source: 'assistant-skill',
+          action: 'create',
+          scope: 'space',
+          command: {
+            id: 'cmd-2',
+            enabled: true,
+            name: 'sttsc',
+            description: 'Expand a short idea into an image prompt.',
+            template: 'Generate a high-quality image prompt.',
+          },
+        })}
+      />
+    );
+
+    expect(emitterEmitMock).toHaveBeenCalledWith('commands.library.updated');
+  });
+
   it('renders a created command as a product card', () => {
     render(
       <MessageCommandEvent
@@ -116,5 +149,6 @@ describe('MessageCommandEvent', () => {
     expect(screen.getByText('conversation.workspace.automation.commandEvent.listTitle')).toBeInTheDocument();
     expect(screen.getByText('count:1;scope:project')).toBeInTheDocument();
     expect(screen.getByText('/plan')).toBeInTheDocument();
+    expect(emitterEmitMock).not.toHaveBeenCalledWith('commands.library.updated');
   });
 });

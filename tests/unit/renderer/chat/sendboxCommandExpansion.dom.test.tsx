@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
 
@@ -141,14 +141,18 @@ vi.mock('react-i18next', () => ({
 
 import SendBox from '@/renderer/components/chat/sendbox';
 
-const SendBoxHarness: React.FC<{ slashCommands?: SlashCommandItem[] }> = ({ slashCommands = [] }) => {
-  const [value, setValue] = React.useState('/pla');
+const SendBoxHarness: React.FC<{
+  slashCommands?: SlashCommandItem[];
+  initialValue?: string;
+  onSend?: (message: string) => Promise<void>;
+}> = ({ slashCommands = [], initialValue = '/pla', onSend = vi.fn().mockResolvedValue(undefined) }) => {
+  const [value, setValue] = React.useState(initialValue);
 
   return (
     <SendBox
       value={value}
       onChange={setValue}
-      onSend={vi.fn().mockResolvedValue(undefined)}
+      onSend={onSend}
       slashCommands={slashCommands}
     />
   );
@@ -159,7 +163,7 @@ describe('SendBox command expansion', () => {
     capturedSlashOptions = undefined;
   });
 
-  it('expands managed commands into their template body', () => {
+  it('keeps managed commands in slash form when selecting from the menu', () => {
     const { container } = render(
       <SendBoxHarness
         slashCommands={[
@@ -185,7 +189,7 @@ describe('SendBox command expansion', () => {
     });
 
     const textarea = container.querySelector('textarea');
-    expect(textarea?.value).toBe('Restate the task first.');
+    expect(textarea?.value).toBe('/plan ');
   });
 
   it('keeps agent slash commands in slash form when no local template exists', () => {
@@ -213,5 +217,35 @@ describe('SendBox command expansion', () => {
 
     const textarea = container.querySelector('textarea');
     expect(textarea?.value).toBe('/review ');
+  });
+
+  it('expands a typed managed slash command into its template when sending', async () => {
+    const onSend = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <SendBoxHarness
+        initialValue='/sttsc a cinematic product poster'
+        onSend={onSend}
+        slashCommands={[
+          {
+            name: 'sttsc',
+            description: 'Prompt engineer',
+            kind: 'template',
+            source: 'custom',
+            template: 'Turn the user request into a high-quality image prompt.',
+          },
+        ]}
+      />
+    );
+
+    const sendButton = container.querySelector('button');
+    expect(sendButton).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(sendButton as HTMLButtonElement);
+    });
+
+    expect(onSend).toHaveBeenCalledWith(
+      'Turn the user request into a high-quality image prompt.\n\na cinematic product poster'
+    );
   });
 });

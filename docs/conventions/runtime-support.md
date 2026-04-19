@@ -1,5 +1,9 @@
 # Runtime Support Scope
 
+Runtime-boundary rules such as `cwd` vs `HOME`, `.contextgo/<runtime>/` vs `.contextgo/.<runtime>/`, and import vs passthrough are defined in [docs/conventions/runtime-boundary.md](./runtime-boundary.md).
+
+This document focuses on which runtime surfaces ContextGo recognizes and supports.
+
 ContextGo's current product-facing coding runtime set is intentionally narrowed to:
 
 - `gemini`
@@ -39,7 +43,8 @@ The supported runtimes above share the same product-level assistant package mode
 
 - package-root `AGENTS.md` and package `docs/` are product-facing package surfaces shared across supported runtimes
 - `.contextgo/` is the canonical workspace installation root for assistant package state
-- runtime-native directories such as `.codex/skills` or `.claude/skills` are projections only
+- runtime-home compatibility directories such as `.contextgo/.codex/` or `.contextgo/.claude/` are derived views only
+- workspace-root runtime-native directories such as `.codex/skills` or `.claude/skills` are projections only
 - only skills should be projected into runtime-native directories
 - connector declarations remain package- and project-level metadata, not runtime-native state
 - `hooks`, `commands`, and `schedules` remain ContextGo-native automation owned by `.contextgo/`
@@ -143,7 +148,8 @@ Rules for new work:
 When ContextGo projects package state into runtime-native directories:
 
 - `.contextgo/skills` remains the source of truth
-- runtime-native skill directories are compatibility projections only
+- runtime-home compatibility directories such as `.contextgo/.codex/`, `.contextgo/.claude/`, `.contextgo/.opencode/`, and `.contextgo/.gemini/` are compatibility layers only
+- workspace-root runtime-native skill directories are compatibility projections only
 - do not infer a runtime's supported project surfaces from another runtime's conventions
 - only project a surface when the target runtime actually documents and supports that surface
 - do not invent runtime-native adapter-state conventions for Context Engine strategy adapters
@@ -151,9 +157,17 @@ When ContextGo projects package state into runtime-native directories:
 
 Examples:
 
-- Codex skill projection target: `.codex/skills/`
-- Claude Code skill projection target: `.claude/skills/`
-- Gemini CLI skill projection target: `.gemini/skills/`
-- OpenCode native skill target: `.opencode/skills/`
+- Codex canonical runtime store: `.contextgo/codex/`
+- Codex runtime-home compatibility directory: `.contextgo/.codex/`
+- Codex workspace skill projection target: `.codex/skills/`
+- Claude canonical runtime store: `.contextgo/claude/`
+- Claude runtime-home compatibility directory: `.contextgo/.claude/`
+- Claude Code workspace skill projection target: `.claude/skills/`
+- Gemini canonical runtime store: `.contextgo/gemini/`
+- Gemini runtime-home compatibility directory: `.contextgo/.gemini/`
+- Gemini CLI workspace skill projection target: `.gemini/skills/`
+- OpenCode canonical runtime store: `.contextgo/opencode/`
+- OpenCode runtime-home compatibility directory: `.contextgo/.opencode/`
+- OpenCode workspace skill projection target: `.opencode/skills/`
 
 See [docs/tech/agent-package-architecture.md](../tech/agent-package-architecture.md) for the package model and installation boundary.

@@ -125,10 +125,10 @@ vi.mock('../../src/process/agent/codex/connection/CodexConnection', () => ({
     };
   }),
   getCodexConfigPath: vi.fn((runtimeRoot?: string) =>
-    runtimeRoot ? `${runtimeRoot}/codex/config.toml` : '/Users/tester/.codex/config.toml'
+    runtimeRoot ? `${runtimeRoot}/.codex/config.toml` : '/Users/tester/.codex/config.toml'
   ),
   getCodexAuthPath: vi.fn((runtimeRoot?: string) =>
-    runtimeRoot ? `${runtimeRoot}/codex/auth.json` : '/Users/tester/.codex/auth.json'
+    runtimeRoot ? `${runtimeRoot}/.codex/auth.json` : '/Users/tester/.codex/auth.json'
   ),
 }));
 
@@ -329,7 +329,7 @@ describe('acpConversationBridge', () => {
 
   it('returns project runtime config entries when a workspace is provided', async () => {
     const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
-      return targetPath === '/tmp/project/.contextgo/codex/config.toml';
+      return targetPath === '/tmp/project/.contextgo/.codex/config.toml';
     });
 
     const result = await handlers['getManagedRuntimeConfigLocation']({ backend: 'codex', workspace: '/tmp/project' });
@@ -341,13 +341,37 @@ describe('acpConversationBridge', () => {
         entries: [
           {
             kind: 'config',
-            path: '/tmp/project/.contextgo/codex/config.toml',
+            path: '/tmp/project/.contextgo/.codex/config.toml',
             exists: true,
           },
           {
             kind: 'auth',
-            path: '/tmp/project/.contextgo/codex/auth.json',
+            path: '/tmp/project/.contextgo/.codex/auth.json',
             exists: false,
+          },
+        ],
+      },
+    });
+
+    existsSyncSpy.mockRestore();
+  });
+
+  it('returns the Claude runtime config entry from the runtime-home compatibility layer for a workspace', async () => {
+    const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
+      return targetPath === '/tmp/project/.contextgo/.claude/settings.json';
+    });
+
+    const result = await handlers['getManagedRuntimeConfigLocation']({ backend: 'claude', workspace: '/tmp/project' });
+
+    expect(result).toEqual({
+      success: true,
+      data: {
+        backend: 'claude',
+        entries: [
+          {
+            kind: 'config',
+            path: '/tmp/project/.contextgo/.claude/settings.json',
+            exists: true,
           },
         ],
       },
@@ -377,6 +401,35 @@ describe('acpConversationBridge', () => {
           {
             kind: 'auth',
             path: `${homeDir}/.local/share/opencode/auth.json`,
+            exists: false,
+          },
+        ],
+      },
+    });
+
+    existsSyncSpy.mockRestore();
+  });
+
+  it('returns the OpenCode runtime config entries from the runtime-home compatibility layer for a workspace', async () => {
+    const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockImplementation((targetPath) => {
+      return targetPath === '/tmp/project/.contextgo/.opencode/opencode.json';
+    });
+
+    const result = await handlers['getManagedRuntimeConfigLocation']({ backend: 'opencode', workspace: '/tmp/project' });
+
+    expect(result).toEqual({
+      success: true,
+      data: {
+        backend: 'opencode',
+        entries: [
+          {
+            kind: 'config',
+            path: '/tmp/project/.contextgo/.opencode/opencode.json',
+            exists: true,
+          },
+          {
+            kind: 'auth',
+            path: '/tmp/project/.contextgo/.opencode/auth.json',
             exists: false,
           },
         ],

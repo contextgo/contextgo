@@ -45,7 +45,7 @@ const WorkspaceCollapse: React.FC<WorkspaceCollapseProps> = ({
       {/* 折叠头部 - 侧栏折叠时隐藏 */}
       {!siderCollapsed && (
         <div
-          className='group flex h-32px w-full min-w-0 cursor-pointer items-center gap-8px rounded-4px pl-8px pr-18px py-4px transition-colors hover:bg-hover'
+          className='group flex h-32px w-full min-w-0 cursor-pointer items-center gap-6px rounded-8px pl-8px pr-10px py-4px transition-colors hover:bg-fill-1'
           onClick={onToggle}
         >
           {/* 展开/收起箭头 */}
@@ -58,13 +58,15 @@ const WorkspaceCollapse: React.FC<WorkspaceCollapseProps> = ({
           />
 
           {/* 标题内容 */}
-          <div className='ml-6px flex-1 min-w-0 overflow-hidden'>{header}</div>
+          <div className='ml-4px flex min-w-0 max-w-full items-center'>
+            <div className='min-w-0 max-w-full overflow-hidden'>{header}</div>
 
-          {headerActions ? (
-            <div className='ml-0 max-w-0 shrink-0 overflow-hidden opacity-0 transition-[max-width,opacity,margin] duration-150 group-hover:ml-12px group-hover:max-w-64px group-hover:opacity-100 group-focus-within:ml-12px group-focus-within:max-w-64px group-focus-within:opacity-100'>
-              {headerActions}
-            </div>
-          ) : null}
+            {headerActions ? (
+              <div className='ml-0 max-w-0 shrink-0 overflow-hidden opacity-0 transition-[max-width,opacity,margin] duration-150 ease-out group-hover:ml-8px group-hover:max-w-80px group-hover:opacity-100 group-focus-within:ml-8px group-focus-within:max-w-80px group-focus-within:opacity-100'>
+                {headerActions}
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
 

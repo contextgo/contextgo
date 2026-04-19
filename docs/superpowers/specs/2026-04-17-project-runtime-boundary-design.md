@@ -1,5 +1,7 @@
 # Project Runtime Boundary 设计
 
+> Note: this document records the design exploration. The stable current rule now lives in [docs/conventions/runtime-boundary.md](../../conventions/runtime-boundary.md).
+
 ## 概述
 
 这份设计为 ContextGo 当前支持的代码运行时定义一个按 `project` 收口的运行时边界：

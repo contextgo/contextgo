@@ -21,7 +21,7 @@ import { JSONRPC_VERSION } from '@/common/types/acpTypes';
  */
 export function getCodexConfigPath(runtimeRoot?: string): string {
   if (runtimeRoot) {
-    return join(runtimeRoot, 'codex', 'config.toml');
+    return join(runtimeRoot, '.codex', 'config.toml');
   }
 
   if (process.platform === 'win32') {
