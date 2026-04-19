@@ -4,6 +4,7 @@ This document is the practical execution checklist for multi-platform release pr
 
 Use it together with:
 
+- `docs/release-operations-runbook.md`
 - `docs/tech/release-distribution-standards.md`
 - `docs/tech/mobile-remote-control.md`
 - `docs/tech/mobile-shell-readiness.md`

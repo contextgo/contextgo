@@ -12,6 +12,7 @@ Use this before changing:
 
 Related references:
 
+- `docs/release-operations-runbook.md`
 - `docs/tech/checklist.md`
 - `docs/tech/mobile-remote-control.md`
 - `docs/tech/mobile-shell-readiness.md`
