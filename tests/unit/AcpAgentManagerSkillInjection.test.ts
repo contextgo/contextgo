@@ -161,6 +161,7 @@ function createManager(
     backend?: string;
     customWorkspace?: boolean;
     nativeWorkspaceBootstrap?: boolean;
+    externalSessionImported?: boolean;
     presetContext?: string;
     enabledSkills?: string[];
   } = {}
@@ -171,6 +172,7 @@ function createManager(
     workspace: '/tmp/test-workspace',
     customWorkspace: overrides.customWorkspace,
     nativeWorkspaceBootstrap: overrides.nativeWorkspaceBootstrap,
+    externalSessionImported: overrides.externalSessionImported,
     presetContext: overrides.presetContext,
     enabledSkills: overrides.enabledSkills,
   };
@@ -252,6 +254,24 @@ describe('AcpAgentManager — first-message skill injection', () => {
     expect(sentContent).toContain('[Assistant Rules');
     expect(sentContent).toContain('You are helpful.');
     expect(sentContent).toContain('[User Request]');
+  });
+
+  it('injects builtin-only skill index for imported external sessions on native bootstrap path', async () => {
+    const manager = createManager({
+      backend: 'claude',
+      customWorkspace: true,
+      nativeWorkspaceBootstrap: true,
+      externalSessionImported: true,
+      presetContext: 'You are helpful.',
+      enabledSkills: ['pptx'],
+    });
+
+    await sendFirstMessage(manager);
+
+    expect(mockPrepareFirstMessage).toHaveBeenCalledWith('Hello', {
+      presetContext: 'You are helpful.',
+      enabledSkills: undefined,
+    });
   });
 
   it('uses native skills for opencode when workspace bootstrap is available', async () => {

@@ -50,6 +50,7 @@ interface AcpAgentManagerData {
   cliPath?: string;
   customWorkspace?: boolean;
   nativeWorkspaceBootstrap?: boolean;
+  externalSessionImported?: boolean;
   conversation_id: string;
   customAgentId?: string; // 用于标识特定自定义代理的 UUID / UUID for identifying specific custom agent
   /** Display name for the agent (from extension or custom config) / Agent 显示名称（来自扩展或自定义配置） */
@@ -779,7 +780,13 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
           const useNativeSkills =
             hasNativeSkillSupport(this.options.backend) &&
             (!this.options.customWorkspace || this.options.nativeWorkspaceBootstrap === true);
-          if (useNativeSkills) {
+          if (useNativeSkills && this.options.externalSessionImported === true) {
+            // Imported external sessions should only advertise ContextGo builtin skills on first turn.
+            contentToSend = await prepareFirstMessageWithSkillsIndex(contentToSend, {
+              presetContext: this.options.presetContext,
+              enabledSkills: undefined,
+            });
+          } else if (useNativeSkills) {
             // Native skill discovery via workspace symlinks — only inject preset rules
             if (this.options.presetContext) {
               contentToSend = `[Assistant Rules - You MUST follow these instructions]\n${this.options.presetContext}\n\n[User Request]\n${contentToSend}`;
