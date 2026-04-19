@@ -11,6 +11,7 @@ import type {
   ContextPack,
   MemoryCandidateEntry,
   MemoryEntry,
+  MountedBoundaryTrace,
   RetrievalTrace,
 } from '../../../../packages/context-engine/src/index';
 import type { ContextTier, MemoryKind, ProfileSegment } from '../../../../packages/context-engine/src/domain';
@@ -56,6 +57,7 @@ type PendingTurn = {
   preparedAt: number;
   contextPackProvenance?: ContextPack['provenance'];
   capabilitySnapshot?: ProjectCapabilitySnapshot;
+  mountedBoundary?: MountedBoundaryTrace;
 };
 
 type PrepareOutgoingTurnInput = {
@@ -202,11 +204,44 @@ function summarizeFrozenMountedState(mountedState: FrozenMountedState): {
   };
 }
 
+function createMountedBoundaryId(threadId: string, preparedAt: number): string {
+  return `mounted-boundary:${threadId}:${preparedAt}`;
+}
+
+function buildPinnedInstructionIds(instructions: readonly string[]): string[] {
+  return instructions.map((_, index) => `instruction-${index}`);
+}
+
+function buildMountedBoundaryTrace(input: {
+  threadId: string;
+  preparedAt: number;
+  mountedState: FrozenMountedState;
+}): MountedBoundaryTrace {
+  return {
+    boundaryId: createMountedBoundaryId(input.threadId, input.preparedAt),
+    mode: 'frozen-snapshot',
+    refreshPolicy: 'next-turn-rebuild',
+    threadSummaryIncluded: Boolean(input.mountedState.threadSummary),
+    mountedSectionIds: uniqueStrings(input.mountedState.mountedSections.map((section) => section.id)),
+    mountedProfileIds: uniqueStrings(input.mountedState.mountedProfiles.map((profile) => profile.id)),
+    pinnedInstructionIds: buildPinnedInstructionIds(input.mountedState.pinnedInstructions),
+    fences: {
+      recapture: 'no-recapture',
+      reingest: 'no-reingest',
+    },
+  };
+}
+
+function formatTraceIds(ids: readonly string[]): string {
+  return ids.length > 0 ? ids.join(', ') : 'none';
+}
+
 function buildContextTraceCheckpointBody(input: {
   pack: ContextPack;
   retrievalTrace: RetrievalTrace;
   assemblyTrace: AssemblyTrace;
   mountedState: FrozenMountedState;
+  mountedBoundary: MountedBoundaryTrace;
 }): string | undefined {
   const packBody = buildContextPackCheckpointBody(input.pack);
   const mountedSummary = summarizeFrozenMountedState(input.mountedState);
@@ -222,6 +257,12 @@ function buildContextTraceCheckpointBody(input: {
     `- Mounted sections: ${mountedSummary.mountedSectionCount}`,
     `- Mounted profiles: ${mountedSummary.mountedProfileCount}`,
     `- Pinned instructions: ${mountedSummary.pinnedInstructionCount}`,
+    `- Mounted boundary: ${input.mountedBoundary.boundaryId}`,
+    `- Boundary mode: ${input.mountedBoundary.mode}`,
+    `- Boundary refresh: ${input.mountedBoundary.refreshPolicy}`,
+    `- Boundary fences: ${input.mountedBoundary.fences.recapture}, ${input.mountedBoundary.fences.reingest}`,
+    `- Mounted section ids: ${formatTraceIds(input.mountedBoundary.mountedSectionIds)}`,
+    `- Mounted profile ids: ${formatTraceIds(input.mountedBoundary.mountedProfileIds)}`,
     `- Assembly kept: ${keptSections}`,
     `- Omitted sections: ${omittedSections}`,
   ].join('\n');
@@ -234,7 +275,8 @@ function buildContextTraceCheckpointBody(input: {
 function buildCompactTurnTraceSummary(
   retrievalTrace: RetrievalTrace,
   assemblyTrace: AssemblyTrace,
-  mountedState: FrozenMountedState
+  mountedState: FrozenMountedState,
+  mountedBoundary: MountedBoundaryTrace
 ): string {
   const mountedSummary = summarizeFrozenMountedState(mountedState);
   const keptSections = assemblyTrace.entries.filter((entry) => entry.outcome === 'kept').length;
@@ -242,6 +284,9 @@ function buildCompactTurnTraceSummary(
   return [
     `retrieval ${retrievalTrace.entries.length}`,
     `mounted ${mountedSummary.mountedSectionCount}/${mountedSummary.mountedProfileCount}`,
+    `boundary ${mountedBoundary.mode}`,
+    `refresh ${mountedBoundary.refreshPolicy}`,
+    `fences ${mountedBoundary.fences.recapture}/${mountedBoundary.fences.reingest}`,
     `kept ${keptSections}`,
     `omitted ${omittedSections}`,
     `budget ${assemblyTrace.spentTokens}/${assemblyTrace.budgetTokens}`,
@@ -622,6 +667,11 @@ export class ContextRuntimeService {
       mountedProfiles,
       pinnedInstructions,
     });
+    const mountedBoundary = buildMountedBoundaryTrace({
+      threadId: input.conversation.id,
+      preparedAt,
+      mountedState,
+    });
     const retrieval = await this.contextService.retrieve({
       spaceId,
       threadId: input.conversation.id,
@@ -642,6 +692,7 @@ export class ContextRuntimeService {
       retrieval,
       budgetTokens: CONTEXT_BUDGET_TOKENS,
       overlays: mountedState,
+      mountedBoundary,
     });
 
     const contextBlock = buildContextPackPrompt(assembled.pack);
@@ -674,6 +725,7 @@ export class ContextRuntimeService {
       preparedAt,
       contextPackProvenance: assembled.pack.provenance,
       capabilitySnapshot,
+      mountedBoundary,
     });
 
     await this.vaultSyncService.appendUserTurnStarted({
@@ -706,13 +758,14 @@ export class ContextRuntimeService {
         retrievalTrace: retrieval.trace,
         assemblyTrace: assembled.trace,
         mountedState,
+        mountedBoundary,
       }),
     });
     await this.vaultSyncService.appendSessionTimelineEvent({
       conversation: input.conversation,
       timestamp: new Date(preparedAt).toISOString(),
       title: 'Context trace',
-      body: buildCompactTurnTraceSummary(retrieval.trace, assembled.trace, mountedState),
+      body: buildCompactTurnTraceSummary(retrieval.trace, assembled.trace, mountedState, mountedBoundary),
     });
 
     await this.eventBus?.emit('context.window.prepared', {
@@ -724,6 +777,7 @@ export class ContextRuntimeService {
         pendingTurn: this.pendingTurns.get(input.conversation.id),
         signals: [buildSignal('context_window_prepared', 'Context window prepared for the current turn.', preparedAt)],
       }),
+      mountedBoundary,
     });
 
     return {
@@ -991,6 +1045,7 @@ export class ContextRuntimeService {
         conversationId,
         usageEvidence
       ),
+      mountedBoundary: pendingTurn.mountedBoundary,
     });
 
     if (pendingReviewCandidates.length > 0) {
@@ -1034,6 +1089,7 @@ export class ContextRuntimeService {
         interruptionReason: reason,
         signals: [buildSignal('user_interrupt', `Session interrupted: ${reason}`, stoppedAt)],
       }),
+      mountedBoundary: pendingTurn.mountedBoundary,
     });
 
     this.pendingTurns.delete(conversation.id);

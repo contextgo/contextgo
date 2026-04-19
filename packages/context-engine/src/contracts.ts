@@ -152,12 +152,27 @@ export type ContextAssemblyOverlays = {
   pinnedInstructions?: readonly string[];
 };
 
+export type MountedBoundaryTrace = {
+  boundaryId: string;
+  mode: 'frozen-snapshot';
+  refreshPolicy: 'next-turn-rebuild';
+  threadSummaryIncluded: boolean;
+  mountedSectionIds: readonly string[];
+  mountedProfileIds: readonly string[];
+  pinnedInstructionIds: readonly string[];
+  fences: {
+    recapture: 'no-recapture';
+    reingest: 'no-reingest';
+  };
+};
+
 export type AssembleContextPackInput = {
   spaceId: SpaceId;
   threadId?: ThreadId;
   retrieval: RetrieveContextResult;
   budgetTokens: number;
   overlays?: ContextAssemblyOverlays;
+  mountedBoundary?: MountedBoundaryTrace;
   threadSummary?: string;
   mountedSections?: ContextPack['sections'];
   mountedProfiles?: readonly ProfileSegment[];
@@ -188,6 +203,7 @@ export type AssemblyTrace = {
   budgetTokens: number;
   spentTokens: number;
   entries: readonly AssemblyTraceEntry[];
+  mountedBoundary?: MountedBoundaryTrace;
 };
 
 export type AssembleContextPackResult = {

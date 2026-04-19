@@ -13,6 +13,7 @@ import type {
   SessionCompactionSnapshot,
   SessionSignal,
 } from '../contextDomain';
+import type { MountedBoundaryTrace } from '../../../../../packages/context-engine/src/index';
 
 export type ContextEventMap = {
   'context.window.prepared': {
@@ -21,6 +22,7 @@ export type ContextEventMap = {
     projectSlug?: string;
     preparedAt: number;
     snapshot: SessionCompactionSnapshot;
+    mountedBoundary?: MountedBoundaryTrace;
   };
   'session.turn.completed': {
     spaceId: string;
@@ -29,6 +31,7 @@ export type ContextEventMap = {
     completedAt: number;
     snapshot: SessionCompactionSnapshot;
     promotionCandidate?: ProjectPromotionCandidate;
+    mountedBoundary?: MountedBoundaryTrace;
   };
   'session.interrupted': {
     spaceId: string;
@@ -36,6 +39,7 @@ export type ContextEventMap = {
     projectSlug?: string;
     interruptedAt: number;
     snapshot: SessionCompactionSnapshot;
+    mountedBoundary?: MountedBoundaryTrace;
   };
   'delegation.completed': GovernanceLifecycleEnvelope & {
     delegationSummary: string;

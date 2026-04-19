@@ -14,6 +14,7 @@ import {
   type ContextEngineDependencies,
   type ContextEnginePolicySet,
   type ContextEngineProviderDependencies,
+  type MountedBoundaryTrace,
   splitContextEngineDependencies,
   type EvaluateCompactionInput,
   type EvaluatePromotionInput,
@@ -347,6 +348,18 @@ function resolveAssemblyOverlays(input: AssembleContextPackInput): ContextAssemb
       pinnedInstructions: input.pinnedInstructions,
     }
   );
+}
+
+function cloneMountedBoundaryTrace(boundary: MountedBoundaryTrace): MountedBoundaryTrace {
+  return {
+    ...boundary,
+    mountedSectionIds: [...boundary.mountedSectionIds],
+    mountedProfileIds: [...boundary.mountedProfileIds],
+    pinnedInstructionIds: [...boundary.pinnedInstructionIds],
+    fences: {
+      ...boundary.fences,
+    },
+  };
 }
 
 function buildIngestionLifecycle(snapshot?: DocumentSnapshot): IngestionLifecycle {
@@ -788,6 +801,7 @@ export class ContextEngineService implements IContextService {
       budgetTokens: input.budgetTokens,
       spentTokens,
       entries: traceEntries,
+      mountedBoundary: input.mountedBoundary ? cloneMountedBoundaryTrace(input.mountedBoundary) : undefined,
     };
 
     const operation: ContextOperation = {

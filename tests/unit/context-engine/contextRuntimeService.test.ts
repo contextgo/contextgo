@@ -407,6 +407,19 @@ describe('ContextRuntimeService', () => {
             expect.objectContaining({ kind: 'source', id: 'source:Projects/workspace/Sources/AGENTS.md' }),
           ]),
         }),
+        mountedBoundary: expect.objectContaining({
+          boundaryId: expect.stringMatching(/^mounted-boundary:conv-1:/),
+          mode: 'frozen-snapshot',
+          refreshPolicy: 'next-turn-rebuild',
+          threadSummaryIncluded: true,
+          mountedSectionIds: ['profile:Projects/workspace/workspace.md', 'source:Projects/workspace/Sources/AGENTS.md'],
+          mountedProfileIds: [],
+          pinnedInstructionIds: ['instruction-0'],
+          fences: {
+            recapture: 'no-recapture',
+            reingest: 'no-reingest',
+          },
+        }),
       })
     );
     expect(mockContextService.ingestSource).toHaveBeenCalledWith(
@@ -608,6 +621,14 @@ describe('ContextRuntimeService', () => {
     expect(checkpointBody).toContain('Mounted thread summary: yes');
     expect(checkpointBody).toContain('Mounted sections: 3');
     expect(checkpointBody).toContain('Mounted profiles: 1');
+    expect(checkpointBody).toMatch(/Mounted boundary: mounted-boundary:conv-1:\d+/);
+    expect(checkpointBody).toContain('Boundary mode: frozen-snapshot');
+    expect(checkpointBody).toContain('Boundary refresh: next-turn-rebuild');
+    expect(checkpointBody).toContain('Boundary fences: no-recapture, no-reingest');
+    expect(checkpointBody).toContain(
+      'Mounted section ids: session-working-context:conv-1, profile:Projects/workspace/workspace.md, source:Projects/workspace/Sources/AGENTS.md'
+    );
+    expect(checkpointBody).toContain('Mounted profile ids: profile-compact-1');
   });
 
   it('persists a compact retrieval and assembly trace through checkpoint and timeline surfaces', async () => {
@@ -746,6 +767,9 @@ describe('ContextRuntimeService', () => {
     expect(checkpointBody).toContain('Mounted sections: 2');
     expect(checkpointBody).toContain('Mounted profiles: 0');
     expect(checkpointBody).toContain('Pinned instructions: 1');
+    expect(checkpointBody).toContain('Boundary mode: frozen-snapshot');
+    expect(checkpointBody).toContain('Boundary refresh: next-turn-rebuild');
+    expect(checkpointBody).toContain('Boundary fences: no-recapture, no-reingest');
     expect(checkpointBody).toContain('Assembly kept: 1');
     expect(checkpointBody).toContain('Omitted sections: 1');
 
@@ -754,9 +778,97 @@ describe('ContextRuntimeService', () => {
     );
     expect(traceTimelineCall?.[0]?.body).toContain('retrieval 2');
     expect(traceTimelineCall?.[0]?.body).toContain('mounted 2/0');
+    expect(traceTimelineCall?.[0]?.body).toContain('boundary frozen-snapshot');
+    expect(traceTimelineCall?.[0]?.body).toContain('refresh next-turn-rebuild');
+    expect(traceTimelineCall?.[0]?.body).toContain('fences no-recapture/no-reingest');
     expect(traceTimelineCall?.[0]?.body).toContain('kept 1');
     expect(traceTimelineCall?.[0]?.body).toContain('omitted 1');
     expect(traceTimelineCall?.[0]?.body).toContain('budget 18/420');
+  });
+
+  it('emits mounted boundary metadata through runtime governance events', async () => {
+    const observedEvents: Array<{ type: string; payload: Record<string, unknown> }> = [];
+    const eventBus = {
+      emit: vi.fn(async (type: string, payload: Record<string, unknown>) => {
+        observedEvents.push({ type, payload });
+      }),
+    };
+    mockVaultSyncService.readSessionWorkingContextSection.mockResolvedValue({
+      kind: 'profile',
+      id: 'session-working-context:conv-1',
+      summary: 'Current Task\nShip the release with minimal, verifiable changes.',
+      priority: 96,
+      tokenCount: 18,
+    });
+    mockContextService.listProfiles.mockResolvedValue([
+      {
+        id: 'profile-compact-1',
+        spaceId: 'space-1',
+        key: 'session.compaction.conv-1',
+        summary: 'Compacted session summary for the active release thread.',
+        memoryIds: ['memory-1'],
+        confidence: 0.88,
+        state: 'active',
+        createdAt: '2026-04-08T00:00:00.000Z',
+        updatedAt: '2026-04-08T00:10:00.000Z',
+      },
+    ]);
+    const service = new ContextRuntimeService(
+      mockContextService as any,
+      undefined,
+      mockVaultSyncService as any,
+      eventBus as any,
+      mockProjectContextMirrorService as any,
+      mockSpaceService as any
+    );
+
+    await service.prepareOutgoingTurn({
+      conversation: makeConversation(),
+      userInput: 'Use the mounted release boundary for this turn.',
+      agentInput: 'Use the mounted release boundary for this turn.',
+      agentContent: '[User Request]\nUse the mounted release boundary for this turn.',
+      msgId: 'msg-mounted-boundary-events',
+    });
+
+    const preparedEvent = observedEvents.find((event) => event.type === 'context.window.prepared');
+    expect(preparedEvent?.payload.mountedBoundary).toEqual(
+      expect.objectContaining({
+        boundaryId: expect.stringMatching(/^mounted-boundary:conv-1:/),
+        mode: 'frozen-snapshot',
+        refreshPolicy: 'next-turn-rebuild',
+        threadSummaryIncluded: false,
+        mountedSectionIds: [
+          'session-working-context:conv-1',
+          'profile:Projects/workspace/workspace.md',
+          'source:Projects/workspace/Sources/AGENTS.md',
+        ],
+        mountedProfileIds: ['profile-compact-1'],
+        pinnedInstructionIds: ['instruction-0'],
+        fences: {
+          recapture: 'no-recapture',
+          reingest: 'no-reingest',
+        },
+      })
+    );
+
+    await service.completeAssistantTurn(
+      'conv-1',
+      'Decision: keep the mounted release boundary frozen for the current turn.',
+      'assistant-mounted-boundary'
+    );
+
+    const turnCompletedEvent = observedEvents.find((event) => event.type === 'session.turn.completed');
+    expect(turnCompletedEvent?.payload.mountedBoundary).toEqual(
+      expect.objectContaining({
+        boundaryId: preparedEvent?.payload.mountedBoundary?.boundaryId,
+        mode: 'frozen-snapshot',
+        refreshPolicy: 'next-turn-rebuild',
+        fences: {
+          recapture: 'no-recapture',
+          reingest: 'no-reingest',
+        },
+      })
+    );
   });
 
   it('auto-promotes strong candidates into durable memories', async () => {

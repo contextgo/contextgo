@@ -516,6 +516,75 @@ describe('ContextEngineService', () => {
     );
   });
 
+  it('records mounted boundary metadata in the assembly trace when runtime provides it', async () => {
+    const dependencies = createInMemoryContextEngineDependencies();
+    const service = new ContextEngineService(dependencies);
+
+    const result = await service.assemble({
+      spaceId: SPACE_ID,
+      threadId: 'thread-1',
+      retrieval: {
+        memories: [],
+        chunks: [],
+        profiles: [],
+        sources: [],
+        totalEstimatedTokens: 0,
+        trace: {
+          query: 'empty assembly retrieval',
+          queryTerms: [],
+          searchMode: 'hybrid',
+          entries: [],
+        },
+      },
+      budgetTokens: 120,
+      overlays: {
+        mountedSections: [
+          {
+            kind: 'profile',
+            id: 'mounted-project',
+            summary: 'Project wiki says to keep diffs minimal.',
+            tokenCount: 12,
+            priority: 94,
+          },
+        ],
+        mountedProfiles: [
+          makeProfile({
+            id: 'profile-compact-1',
+            summary: 'Session compaction summary for current thread.',
+          }),
+        ],
+        pinnedInstructions: ['Prefer minimal verified diffs.'],
+      },
+      mountedBoundary: {
+        boundaryId: 'mounted-boundary:thread-1:1',
+        mode: 'frozen-snapshot',
+        refreshPolicy: 'next-turn-rebuild',
+        threadSummaryIncluded: false,
+        mountedSectionIds: ['mounted-project'],
+        mountedProfileIds: ['profile-compact-1'],
+        pinnedInstructionIds: ['instruction-0'],
+        fences: {
+          recapture: 'no-recapture',
+          reingest: 'no-reingest',
+        },
+      },
+    });
+
+    expect(result.trace.mountedBoundary).toEqual({
+      boundaryId: 'mounted-boundary:thread-1:1',
+      mode: 'frozen-snapshot',
+      refreshPolicy: 'next-turn-rebuild',
+      threadSummaryIncluded: false,
+      mountedSectionIds: ['mounted-project'],
+      mountedProfileIds: ['profile-compact-1'],
+      pinnedInstructionIds: ['instruction-0'],
+      fences: {
+        recapture: 'no-recapture',
+        reingest: 'no-reingest',
+      },
+    });
+  });
+
   it('skips archived sources and their chunks during retrieval', async () => {
     const dependencies = createInMemoryContextEngineDependencies({
       sources: [
