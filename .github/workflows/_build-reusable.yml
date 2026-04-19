@@ -206,6 +206,82 @@ jobs:
       - name: Cache status
         run: echo "electron-cache-hit=${{ steps.electron-cache.outputs.cache-hit }}"
 
+      - name: Configure Electron cache environment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ELECTRON_CACHE_ROOT="${RUNNER_TEMP}/.cache/electron"
+          ELECTRON_BUILDER_CACHE_ROOT="${RUNNER_TEMP}/.cache/electron-builder"
+          mkdir -p "${ELECTRON_CACHE_ROOT}" "${ELECTRON_BUILDER_CACHE_ROOT}"
+
+          {
+            echo "ELECTRON_CACHE=${ELECTRON_CACHE_ROOT}"
+            echo "ELECTRON_BUILDER_CACHE=${ELECTRON_BUILDER_CACHE_ROOT}"
+            echo "electron_config_cache=${ELECTRON_CACHE_ROOT}"
+            echo "npm_config_electron_config_cache=${ELECTRON_CACHE_ROOT}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Prewarm Electron binary cache (Linux self-hosted)
+        if: matrix.platform == 'linux' && runner.environment == 'self-hosted'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ELECTRON_VERSION="$(node - <<'NODE'
+          const fs = require('fs');
+          const lock = fs.readFileSync('bun.lock', 'utf8');
+          const match = lock.match(/"electron": \["electron@([^"]+)"/);
+          if (!match) {
+            throw new Error('Unable to resolve electron version from bun.lock');
+          }
+          process.stdout.write(match[1]);
+          NODE
+          )"
+
+          ELECTRON_URL="https://github.com/electron/electron/releases/download/v${ELECTRON_VERSION}/electron-v${ELECTRON_VERSION}-linux-x64.zip"
+          ELECTRON_FILE="electron-v${ELECTRON_VERSION}-linux-x64.zip"
+          CACHE_BUCKET="$(node - "${ELECTRON_URL}" <<'NODE'
+          const crypto = require('crypto');
+          const { URL } = require('url');
+
+          const parsed = new URL(process.argv[2]);
+          parsed.hash = '';
+          parsed.search = '';
+          parsed.pathname = parsed.pathname.substring(0, parsed.pathname.lastIndexOf('/'));
+
+          process.stdout.write(
+            crypto.createHash('sha256').update(parsed.toString()).digest('hex'),
+          );
+          NODE
+          )"
+
+          TARGET_DIR="${ELECTRON_CACHE}/${CACHE_BUCKET}"
+          TARGET_FILE="${TARGET_DIR}/${ELECTRON_FILE}"
+          TARGET_PART="${TARGET_FILE}.part"
+          mkdir -p "${TARGET_DIR}"
+
+          if [ -s "${TARGET_FILE}" ]; then
+            echo "Electron cache hit: ${TARGET_FILE}"
+            exit 0
+          fi
+
+          echo "Prewarming Electron cache: ${ELECTRON_URL}"
+          curl \
+            --fail \
+            --location \
+            --retry 8 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 3600 \
+            --continue-at - \
+            --output "${TARGET_PART}" \
+            "${ELECTRON_URL}"
+
+          mv -f "${TARGET_PART}" "${TARGET_FILE}"
+          ls -lh "${TARGET_FILE}"
+
       - name: Install dependencies
         shell: bash
         run: |
