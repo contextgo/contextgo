@@ -1,11 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
+import type { FileOrFolderItem } from '@/renderer/utils/file/fileTypes';
 
 let capturedSlashOptions:
   | {
       onSelectTemplate?: (command: SlashCommandItem) => void;
+    }
+  | undefined;
+let _capturedDragUploadOptions:
+  | {
+      onUploadStateChange?: (state: { isUploading: boolean; pendingCount: number }) => void;
+    }
+  | undefined;
+let capturedPasteOptions:
+  | {
+      onUploadStateChange?: (state: { isUploading: boolean; pendingCount: number }) => void;
     }
   | undefined;
 
@@ -34,6 +45,8 @@ const mockUsePasteService = vi.fn(() => ({
   onPaste: vi.fn(),
   onFocus: vi.fn(),
 }));
+const mockListWorkspaceFileItems = vi.fn();
+const messageWarningMock = vi.fn();
 
 vi.mock('@/common', () => ({
   ipcBridge: {
@@ -67,11 +80,25 @@ vi.mock('@/renderer/hooks/chat/useCompositionInput', () => ({
 }));
 
 vi.mock('@/renderer/hooks/file/useDragUpload', () => ({
-  useDragUpload: () => mockUseDragUpload(),
+  useDragUpload: (options: unknown) => {
+    _capturedDragUploadOptions = options as {
+      onUploadStateChange?: (state: { isUploading: boolean; pendingCount: number }) => void;
+    };
+    return mockUseDragUpload();
+  },
 }));
 
 vi.mock('@/renderer/hooks/file/usePasteService', () => ({
-  usePasteService: () => mockUsePasteService(),
+  usePasteService: (options: unknown) => {
+    capturedPasteOptions = options as {
+      onUploadStateChange?: (state: { isUploading: boolean; pendingCount: number }) => void;
+    };
+    return mockUsePasteService();
+  },
+}));
+
+vi.mock('@/renderer/utils/file/workspaceFs', () => ({
+  listWorkspaceFileItems: (...args: unknown[]) => mockListWorkspaceFileItems(...args),
 }));
 
 vi.mock('@renderer/hooks/ui/useLatestRef', () => ({
@@ -114,15 +141,17 @@ vi.mock('@arco-design/web-react', () => ({
       value,
       onChange,
       ...props
-    }: React.ComponentProps<'textarea'> & { onChange?: (value: string) => void }) =>
+    }: React.ComponentProps<'textarea'> & {
+      onChange?: (value: string, event?: React.ChangeEvent<HTMLTextAreaElement>) => void;
+    }) =>
       React.createElement('textarea', {
         value,
-        onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => onChange?.(event.target.value),
+        onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => onChange?.(event.target.value, event),
         ...props,
       }),
   },
   Message: {
-    useMessage: () => [{ warning: vi.fn() }, null],
+    useMessage: () => [{ warning: (...args: unknown[]) => messageWarningMock(...args) }, null],
   },
   Tag: ({ children }: { children: React.ReactNode }) => React.createElement('div', {}, children),
 }));
@@ -158,9 +187,43 @@ const SendBoxHarness: React.FC<{
   );
 };
 
+const MentionHarness: React.FC<{
+  initialValue?: string;
+  pendingUploadCount?: number;
+  onSend?: (message: string) => Promise<void>;
+  onSelectionChange?: (items: Array<string | FileOrFolderItem>) => void;
+}> = ({
+  initialValue = '',
+  onSelectionChange,
+  pendingUploadCount = 0,
+  onSend = vi.fn().mockResolvedValue(undefined),
+}) => {
+  const [value, setValue] = React.useState(initialValue);
+  const [selectedWorkspaceItems, setSelectedWorkspaceItems] = React.useState<Array<string | FileOrFolderItem>>([]);
+
+  React.useEffect(() => {
+    onSelectionChange?.(selectedWorkspaceItems);
+  }, [onSelectionChange, selectedWorkspaceItems]);
+
+  return (
+    <SendBox
+      value={value}
+      onChange={setValue}
+      onSend={onSend}
+      pendingUploadCount={pendingUploadCount}
+      selectedWorkspaceItems={selectedWorkspaceItems}
+      onSelectedWorkspaceItemsChange={setSelectedWorkspaceItems}
+    />
+  );
+};
+
 describe('SendBox command expansion', () => {
   beforeEach(() => {
     capturedSlashOptions = undefined;
+    _capturedDragUploadOptions = undefined;
+    capturedPasteOptions = undefined;
+    vi.clearAllMocks();
+    mockUseConversationContextSafe.mockReturnValue({ conversationId: 'test-conv-1' });
   });
 
   it('keeps managed commands in slash form when selecting from the menu', () => {
@@ -247,5 +310,225 @@ describe('SendBox command expansion', () => {
     expect(onSend).toHaveBeenCalledWith(
       'Turn the user request into a high-quality image prompt.\n\na cinematic product poster'
     );
+  });
+
+  it('opens workspace mention suggestions and inserts the selected file', async () => {
+    mockUseConversationContextSafe.mockReturnValue({
+      conversationId: 'test-conv-1',
+      workspace: '/tmp/project',
+    });
+    mockListWorkspaceFileItems.mockResolvedValue([
+      {
+        path: '/tmp/project/src/readme.md',
+        name: 'readme.md',
+        isFile: true,
+        relativePath: 'src/readme.md',
+      },
+    ]);
+    const onSelectionChange = vi.fn();
+
+    const { container } = render(<MentionHarness onSelectionChange={onSelectionChange} />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+
+    fireEvent.focus(textarea);
+    fireEvent.change(textarea, {
+      target: { value: '@rea', selectionStart: 4, selectionEnd: 4 },
+    });
+
+    await screen.findByText('readme.md');
+
+    fireEvent.mouseDown(screen.getByText('readme.md'));
+
+    await waitFor(() => {
+      expect(textarea.value).toBe('@workspace/src/readme.md ');
+    });
+    expect(onSelectionChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({
+        path: '/tmp/project/src/readme.md',
+        relativePath: 'src/readme.md',
+      }),
+    ]);
+  });
+
+  it('syncs manually typed workspace mentions into selected workspace items', async () => {
+    mockUseConversationContextSafe.mockReturnValue({
+      conversationId: 'test-conv-1',
+      workspace: '/tmp/project',
+    });
+    mockListWorkspaceFileItems.mockResolvedValue([
+      {
+        path: '/tmp/project/src/readme.md',
+        name: 'readme.md',
+        isFile: true,
+        relativePath: 'src/readme.md',
+      },
+    ]);
+    const onSelectionChange = vi.fn();
+
+    const { container } = render(<MentionHarness onSelectionChange={onSelectionChange} />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+
+    fireEvent.focus(textarea);
+    fireEvent.change(textarea, {
+      target: {
+        value: '@workspace/src/readme.md ',
+        selectionStart: 25,
+        selectionEnd: 25,
+      },
+    });
+
+    await waitFor(() => {
+      expect(onSelectionChange).toHaveBeenLastCalledWith([
+        expect.objectContaining({
+          path: '/tmp/project/src/readme.md',
+          relativePath: 'src/readme.md',
+        }),
+      ]);
+    });
+  });
+
+  it('removes mention-owned selections after the mention text is deleted', async () => {
+    mockUseConversationContextSafe.mockReturnValue({
+      conversationId: 'test-conv-1',
+      workspace: '/tmp/project',
+    });
+    mockListWorkspaceFileItems.mockResolvedValue([
+      {
+        path: '/tmp/project/src/readme.md',
+        name: 'readme.md',
+        isFile: true,
+        relativePath: 'src/readme.md',
+      },
+    ]);
+    const onSelectionChange = vi.fn();
+
+    const { container } = render(<MentionHarness onSelectionChange={onSelectionChange} />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+
+    fireEvent.focus(textarea);
+    fireEvent.change(textarea, {
+      target: {
+        value: '@workspace/src/readme.md ',
+        selectionStart: 25,
+        selectionEnd: 25,
+      },
+    });
+
+    await waitFor(() => {
+      expect(onSelectionChange).toHaveBeenLastCalledWith([
+        expect.objectContaining({
+          path: '/tmp/project/src/readme.md',
+        }),
+      ]);
+    });
+
+    fireEvent.change(textarea, {
+      target: { value: '', selectionStart: 0, selectionEnd: 0 },
+    });
+
+    await waitFor(() => {
+      expect(onSelectionChange).toHaveBeenLastCalledWith([]);
+    });
+  });
+
+  it('matches workspace files by basename even when only the leaf filename is typed', async () => {
+    mockUseConversationContextSafe.mockReturnValue({
+      conversationId: 'test-conv-1',
+      workspace: '/tmp/project',
+    });
+    mockListWorkspaceFileItems.mockResolvedValue([
+      {
+        path: '/tmp/project/docs/architecture-notes.md',
+        name: 'architecture-notes.md',
+        isFile: true,
+        relativePath: 'docs/architecture-notes.md',
+      },
+      {
+        path: '/tmp/project/src/architecture.ts',
+        name: 'architecture.ts',
+        isFile: true,
+        relativePath: 'src/architecture.ts',
+      },
+    ]);
+
+    const { container } = render(<MentionHarness />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+
+    fireEvent.focus(textarea);
+    fireEvent.change(textarea, {
+      target: { value: '@notes', selectionStart: 6, selectionEnd: 6 },
+    });
+
+    await screen.findByText('architecture-notes.md');
+    expect(screen.queryByText('architecture.ts')).toBeNull();
+  });
+
+  it('matches workspace files by relative path when the query includes directories', async () => {
+    mockUseConversationContextSafe.mockReturnValue({
+      conversationId: 'test-conv-1',
+      workspace: '/tmp/project',
+    });
+    mockListWorkspaceFileItems.mockResolvedValue([
+      {
+        path: '/tmp/project/docs/setup/install.md',
+        name: 'install.md',
+        isFile: true,
+        relativePath: 'docs/setup/install.md',
+      },
+      {
+        path: '/tmp/project/src/install.ts',
+        name: 'install.ts',
+        isFile: true,
+        relativePath: 'src/install.ts',
+      },
+    ]);
+
+    const { container } = render(<MentionHarness />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+
+    fireEvent.focus(textarea);
+    fireEvent.change(textarea, {
+      target: { value: '@workspace/docs/setup', selectionStart: 21, selectionEnd: 21 },
+    });
+
+    await screen.findByText('install.md');
+    expect(screen.queryByText('install.ts')).toBeNull();
+  });
+
+  it('keeps send blocked while internal uploads are still pending after external uploads clear', async () => {
+    const onSend = vi.fn().mockResolvedValue(undefined);
+    const { container, rerender } = render(<MentionHarness pendingUploadCount={1} onSend={onSend} />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+
+    fireEvent.change(textarea, {
+      target: { value: 'Ship this change.', selectionStart: 17, selectionEnd: 17 },
+    });
+
+    act(() => {
+      capturedPasteOptions?.onUploadStateChange?.({
+        isUploading: true,
+        pendingCount: 1,
+      });
+    });
+
+    rerender(<MentionHarness pendingUploadCount={0} onSend={onSend} />);
+
+    fireEvent.click(screen.getByRole('button'));
+
+    expect(onSend).not.toHaveBeenCalled();
+    expect(messageWarningMock).toHaveBeenCalledWith('messages.conversationInProgress');
+
+    act(() => {
+      capturedPasteOptions?.onUploadStateChange?.({
+        isUploading: false,
+        pendingCount: 0,
+      });
+    });
+
+    fireEvent.click(screen.getByRole('button'));
+
+    await waitFor(() => {
+      expect(onSend).toHaveBeenCalledWith('Ship this change.');
+    });
   });
 });

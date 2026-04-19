@@ -6,6 +6,7 @@
 
 import type { TChatConversation } from '@/common/config/storage';
 import React from 'react';
+import ConversationBrowserContextButton from './ConversationBrowserContextButton';
 import { renderWorkflowHeaderAddon } from './group/workflow/workflowUiRegistry';
 
 type HeaderAddonRenderContext = {
@@ -19,6 +20,12 @@ type HeaderAddonDefinition = {
 };
 
 const headerAddonDefinitions: HeaderAddonDefinition[] = [
+  {
+    id: 'browser-context',
+    shouldRender: ({ conversation }) =>
+      Boolean((conversation.extra as { browserContextAssetId?: string } | undefined)?.browserContextAssetId),
+    render: ({ conversation }) => <ConversationBrowserContextButton conversation={conversation} />,
+  },
   {
     id: 'group-workflow',
     shouldRender: ({ conversation }) =>

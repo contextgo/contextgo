@@ -5,12 +5,34 @@
  */
 
 import { ipcBridge } from '@/common';
+import type { FileOrFolderItem } from '@/renderer/utils/file/fileTypes';
 
 interface IBridgeResponse<D = unknown> {
   success: boolean;
   data?: D;
   msg?: string;
 }
+
+/**
+ * List workspace file candidates for typed `@workspace/...` mentions in the renderer.
+ * 使用专门的深度扫描 bridge，避免复用浅层 lazy tree 的语义。
+ */
+export const listWorkspaceFileItems = async (workspace: string): Promise<FileOrFolderItem[]> => {
+  const normalizedWorkspace = workspace.trim();
+  if (!normalizedWorkspace) {
+    return [];
+  }
+
+  const items = await ipcBridge.fs.getWorkspaceFileItems.invoke({
+    workspacePath: normalizedWorkspace,
+  });
+
+  return items.toSorted((left, right) => {
+    const leftRelativePath = left.relativePath || left.name;
+    const rightRelativePath = right.relativePath || right.name;
+    return leftRelativePath.localeCompare(rightRelativePath);
+  });
+};
 
 /**
  * Remove a file or directory from the workspace using the main-process bridge.

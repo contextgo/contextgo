@@ -8,9 +8,11 @@ const navigateMock = vi.fn();
 const mockPrepareConversationPublicationInvoke = vi.fn();
 const mockGetAssociateConversationInvoke = vi.fn();
 const mockConversationWarmupInvoke = vi.fn();
+const mockBrowserContextGetInvoke = vi.fn();
 const emitterEmitMock = vi.fn();
 const projectAutomationModalRenderMock = vi.fn();
 const projectSkillMarketModalRenderMock = vi.fn();
+const openPreviewMock = vi.fn();
 
 vi.mock('@/common/adapter/ipcBridge', () => ({
   channel: {
@@ -22,6 +24,11 @@ vi.mock('@/common/adapter/ipcBridge', () => ({
 
 vi.mock('@/common', () => ({
   ipcBridge: {
+    browserContext: {
+      get: {
+        invoke: (...args: unknown[]) => mockBrowserContextGetInvoke(...args),
+      },
+    },
     conversation: {
       getAssociateConversation: {
         invoke: (...args: unknown[]) => mockGetAssociateConversationInvoke(...args),
@@ -45,6 +52,13 @@ vi.mock('@/common', () => ({
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
+  }),
+}));
+
+vi.mock('@/renderer/pages/conversation/Preview', () => ({
+  usePreviewActions: () => ({
+    openPreview: (...args: unknown[]) => openPreviewMock(...args),
+    closePreview: vi.fn(),
   }),
 }));
 
@@ -249,6 +263,16 @@ describe('ChatConversation', () => {
     vi.clearAllMocks();
     projectAutomationModalRenderMock.mockClear();
     projectSkillMarketModalRenderMock.mockClear();
+    mockBrowserContextGetInvoke.mockResolvedValue({
+      success: true,
+      data: {
+        id: 'asset-1',
+        label: 'Browser Context',
+        metadata: {
+          startUrl: 'https://example.com',
+        },
+      },
+    });
     mockConversationWarmupInvoke.mockResolvedValue(undefined);
     mockGetAssociateConversationInvoke.mockResolvedValue([]);
     mockPrepareConversationPublicationInvoke.mockResolvedValue({
@@ -377,7 +401,7 @@ describe('ChatConversation', () => {
     );
   });
 
-  it('keeps the header clear of workspace, preview, and browser capability surfaces', () => {
+  it('renders the browser context entry and opens preview with the bound browser asset', async () => {
     const conversation = {
       ...createConversation('acp', 'acp-header-minimal'),
       extra: {
@@ -389,9 +413,21 @@ describe('ChatConversation', () => {
 
     render(<ChatConversation conversation={conversation} />);
 
-    expect(screen.queryByText('Workspace')).not.toBeInTheDocument();
     expect(screen.queryByText(/capability-workspace/i)).not.toBeInTheDocument();
-    expect(screen.queryByText('Preview')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.browser.open' }));
+
+    await waitFor(() => {
+      expect(mockBrowserContextGetInvoke).toHaveBeenCalledWith({ id: 'asset-1' });
+      expect(openPreviewMock).toHaveBeenCalledWith(
+        'https://example.com',
+        'url',
+        expect.objectContaining({
+          title: 'Browser Context',
+          browserContextAssetId: 'asset-1',
+        })
+      );
+    });
   });
 
   it('writes publication intent into url search when opening the agent publish page', async () => {

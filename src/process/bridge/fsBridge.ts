@@ -20,8 +20,6 @@ import path from 'path';
 import os from 'os';
 import https from 'node:https';
 import http from 'node:http';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import JSZip from 'jszip';
 import { ipcBridge } from '@/common';
 import {
@@ -44,6 +42,13 @@ import {
 } from '@process/utils/initStorage';
 import { readDirectoryRecursive } from '@process/utils';
 import {
+  getGitRepositoryInfo,
+  listWorkspaceFileItems,
+  listWorkspaceGitChanges,
+  listWorkspaceRecentFiles,
+  readWorkspaceGitDiff,
+} from '@process/bridge/services/workspaceFiles';
+import {
   buildSkillDependencyHints,
   discoverSkillDirectories,
   parseSkillFrontmatter,
@@ -51,7 +56,6 @@ import {
   resolveSkillDirectory,
 } from '@process/utils/skillDiscovery';
 
-const execFileAsync = promisify(execFile);
 const SKILLS_MARKET_SKILL_DIR = 'contextgo-skills';
 const LEGACY_SKILLS_MARKET_SKILL_DIR = 'aionui-skills';
 
@@ -183,54 +187,6 @@ async function readBuiltinResource(resourceType: ResourceType, fileName: string)
   }
   const dir = await findBuiltinResourceDirNode(resourceType);
   return fs.readFile(path.join(dir, safeFileName), 'utf-8');
-}
-
-async function getGitRepositoryInfo(targetPath: string): Promise<{
-  isRepository: boolean;
-  repositoryRoot?: string;
-  branch?: string | null;
-  gitDir?: string | null;
-  remoteUrl?: string | null;
-}> {
-  const resolvedPath = path.resolve(targetPath);
-  let workingDir = resolvedPath;
-
-  try {
-    const stat = await fs.stat(resolvedPath);
-    if (!stat.isDirectory()) {
-      workingDir = path.dirname(resolvedPath);
-    }
-  } catch {
-    return { isRepository: false };
-  }
-
-  try {
-    const { stdout: rootStdout } = await execFileAsync('git', ['rev-parse', '--show-toplevel'], {
-      cwd: workingDir,
-    });
-    const repositoryRoot = rootStdout.trim();
-    if (!repositoryRoot) {
-      return { isRepository: false };
-    }
-
-    const [{ stdout: branchStdout }, { stdout: gitDirStdout }, remoteResult] = await Promise.all([
-      execFileAsync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: repositoryRoot }),
-      execFileAsync('git', ['rev-parse', '--git-dir'], { cwd: repositoryRoot }),
-      execFileAsync('git', ['config', '--get', 'remote.origin.url'], { cwd: repositoryRoot }).catch(() => ({
-        stdout: '',
-      })),
-    ]);
-
-    return {
-      isRepository: true,
-      repositoryRoot,
-      branch: branchStdout.trim() || null,
-      gitDir: gitDirStdout.trim() || null,
-      remoteUrl: remoteResult.stdout.trim() || null,
-    };
-  } catch {
-    return { isRepository: false };
-  }
 }
 
 /**
@@ -444,6 +400,15 @@ export function initFsBridge(): void {
     }
   });
 
+  ipcBridge.fs.getWorkspaceFileItems.provider(async ({ workspacePath }) => {
+    try {
+      return await listWorkspaceFileItems(workspacePath);
+    } catch (error) {
+      console.error('[fsBridge] Failed to list workspace file items:', workspacePath, error);
+      return [];
+    }
+  });
+
   ipcBridge.fs.getImageBase64.provider(async ({ path: filePath }) => {
     try {
       const ext = (path.extname(filePath) || '').toLowerCase().replace(/^\./, '');
@@ -635,6 +600,52 @@ export function initFsBridge(): void {
       return {
         success: true,
         data: await getGitRepositoryInfo(targetPath),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcBridge.fs.getWorkspaceGitChanges.provider(async ({ workspacePath }) => {
+    try {
+      return {
+        success: true,
+        data: await listWorkspaceGitChanges(workspacePath),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcBridge.fs.getWorkspaceGitDiff.provider(async ({ workspacePath, filePath }) => {
+    try {
+      return {
+        success: true,
+        data: {
+          content: await readWorkspaceGitDiff(workspacePath, filePath),
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcBridge.fs.getWorkspaceRecentFiles.provider(async ({ path: workspacePath, limit }) => {
+    try {
+      return {
+        success: true,
+        data: {
+          files: await listWorkspaceRecentFiles(workspacePath, limit),
+        },
       };
     } catch (error) {
       return {

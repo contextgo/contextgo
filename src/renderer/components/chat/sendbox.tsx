@@ -5,28 +5,41 @@
  */
 
 import { ipcBridge } from '@/common';
-import { useInputFocusRing } from '@/renderer/hooks/chat/useInputFocusRing';
+import type { SlashCommandItem } from '@/common/chat/slash/types';
 import SlashCommandMenu, { type SlashCommandMenuItem } from '@/renderer/components/chat/SlashCommandMenu';
+import { useCompositionInput } from '@/renderer/hooks/chat/useCompositionInput';
+import { useInputFocusRing } from '@/renderer/hooks/chat/useInputFocusRing';
 import { useSlashCommandController } from '@/renderer/hooks/chat/useSlashCommandController';
-import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
+import { useDragUpload } from '@/renderer/hooks/file/useDragUpload';
+import { usePasteService } from '@/renderer/hooks/file/usePasteService';
+import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
+import WorkspaceMentionMenu from '@/renderer/pages/conversation/platforms/WorkspaceMentionMenu';
 import { usePreviewComposer } from '@/renderer/pages/conversation/Preview';
-import { blurActiveElement, shouldBlockMobileInputFocus } from '@/renderer/utils/ui/focus';
+import type { FileMetadata } from '@/renderer/services/FileService';
+import { allSupportedExts } from '@/renderer/services/FileService';
 import { getTextLayoutStyle, measureTextLineCount } from '@/renderer/utils/chat/textLayout';
+import { mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
+import type { FileOrFolderItem } from '@/renderer/utils/file/fileTypes';
+import { listWorkspaceFileItems } from '@/renderer/utils/file/workspaceFs';
+import {
+  findActiveWorkspaceMention,
+  matchWorkspaceMentionItems,
+  replaceActiveWorkspaceMention,
+  resolveExactWorkspaceMentionItems,
+  type WorkspaceMentionItem,
+} from '@/renderer/utils/file/workspaceMentions';
+import { blurActiveElement, shouldBlockMobileInputFocus } from '@/renderer/utils/ui/focus';
 import { Button, Input, Message, Tag } from '@arco-design/web-react';
 import { ArrowUp, CloseSmall, SquareSmall } from '@icon-park/react';
-import type { SlashCommandItem } from '@/common/chat/slash/types';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useCompositionInput } from '@renderer/hooks/chat/useCompositionInput';
-import { useDragUpload } from '@renderer/hooks/file/useDragUpload';
-import { useLatestRef } from '@renderer/hooks/ui/useLatestRef';
-import { usePasteService } from '@renderer/hooks/file/usePasteService';
-import type { FileMetadata } from '@renderer/services/FileService';
-import { allSupportedExts } from '@renderer/services/FileService';
 import './sendbox.css';
 
 const constVoid = (): void => undefined;
+const EMPTY_SELECTED_WORKSPACE_ITEMS: Array<string | FileOrFolderItem> = [];
+
 // 临界值：超过该字符数直接切换至多行模式，避免为超长文本做昂贵的宽度测量
 // Threshold: switch to multi-line mode directly when character count exceeds this value to avoid heavy layout work
 const MAX_SINGLE_LINE_CHARACTERS = 800;
@@ -57,7 +70,39 @@ function expandManagedSlashCommandInput(input: string, commands: readonly SlashC
   return trailingContent ? `${matchedCommand.template}\n\n${trailingContent}` : matchedCommand.template;
 }
 
-const SendBox: React.FC<{
+const getSelectionItemPath = (item: string | FileOrFolderItem): string => {
+  if (typeof item === 'string') {
+    return item;
+  }
+  return item.path;
+};
+
+const areSelectionItemsEqual = (
+  left: Array<string | FileOrFolderItem>,
+  right: Array<string | FileOrFolderItem>
+): boolean => {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  for (let i = 0; i < left.length; i += 1) {
+    if (typeof left[i] !== typeof right[i]) {
+      return false;
+    }
+
+    if (getSelectionItemPath(left[i]) !== getSelectionItemPath(right[i])) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+const toWorkspaceMentionItems = (items: FileOrFolderItem[]): WorkspaceMentionItem[] => {
+  return items.filter((item): item is WorkspaceMentionItem => Boolean(item.isFile && item.relativePath));
+};
+
+type SendBoxProps = {
   value?: string;
   onChange?: (value: string) => void;
   onSend: (message: string) => Promise<void>;
@@ -78,7 +123,12 @@ const SendBox: React.FC<{
   sendButtonPrefix?: React.ReactNode;
   slashCommands?: SlashCommandItem[];
   onSlashBuiltinCommand?: (name: string) => void;
-}> = ({
+  pendingUploadCount?: number;
+  selectedWorkspaceItems?: Array<string | FileOrFolderItem>;
+  onSelectedWorkspaceItemsChange?: (items: Array<string | FileOrFolderItem>) => void;
+};
+
+const SendBox: React.FC<SendBoxProps> = ({
   onSend,
   onQueue,
   onSteer,
@@ -99,14 +149,23 @@ const SendBox: React.FC<{
   sendButtonPrefix,
   slashCommands = [],
   onSlashBuiltinCommand,
+  pendingUploadCount = 0,
+  selectedWorkspaceItems = EMPTY_SELECTED_WORKSPACE_ITEMS,
+  onSelectedWorkspaceItemsChange,
 }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const conversationContext = useConversationContextSafe();
+  const workspacePath = conversationContext?.workspace?.trim() || '';
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [isSingleLine, setIsSingleLine] = useState(!defaultMultiLine);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState(input.length);
+  const [dragPendingUploadCount, setDragPendingUploadCount] = useState(0);
+  const [pastePendingUploadCount, setPastePendingUploadCount] = useState(0);
+  const [workspaceItems, setWorkspaceItems] = useState<WorkspaceMentionItem[]>([]);
+  const [activeWorkspaceMentionIndex, setActiveWorkspaceMentionIndex] = useState(0);
   const isInputActive = isInputFocused;
   const { activeBorderColor, inactiveBorderColor, activeShadow } = useInputFocusRing();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -116,6 +175,15 @@ const SendBox: React.FC<{
   const warmupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestInputRef = useLatestRef(input);
   const setInputRef = useLatestRef(setInput);
+  const workspaceItemsRef = useLatestRef(workspaceItems);
+  const loadedWorkspacePathRef = useRef<string | undefined>(undefined);
+  const workspaceItemsRequestRef = useRef<Promise<WorkspaceMentionItem[]> | null>(null);
+  const mentionOwnedSelectionPathsRef = useRef<Set<string>>(new Set());
+
+  const activeWorkspaceMention = useMemo(
+    () => findActiveWorkspaceMention(input, cursorPosition),
+    [cursorPosition, input]
+  );
 
   // 集成预览面板的"添加到聊天"功能 / Integrate preview panel's "Add to chat" functionality
   const { setSendBoxHandler, domSnippets, removeDomSnippet, clearDomSnippets } = usePreviewComposer();
@@ -131,7 +199,7 @@ const SendBox: React.FC<{
     return () => {
       setSendBoxHandler(null);
     };
-  }, [setSendBoxHandler]);
+  }, [latestInputRef, setInputRef, setSendBoxHandler]);
 
   // 初始化时获取单行输入框的可用宽度
   // Initialize and get the available width of single-line input
@@ -157,6 +225,20 @@ const SendBox: React.FC<{
     }, 0);
     return () => clearTimeout(timer);
   }, [isMobile]);
+
+  useEffect(() => {
+    setCursorPosition((prev) => Math.min(prev, input.length));
+  }, [input.length]);
+
+  useEffect(() => {
+    if (loadedWorkspacePathRef.current === workspacePath) {
+      return;
+    }
+
+    workspaceItemsRequestRef.current = null;
+    loadedWorkspacePathRef.current = undefined;
+    setWorkspaceItems([]);
+  }, [workspacePath]);
 
   // 检测是否单行
   // Detect whether to use single-line or multi-line mode
@@ -219,6 +301,9 @@ const SendBox: React.FC<{
     supportedExts,
     onFilesAdded,
     conversationId: conversationContext?.conversationId,
+    onUploadStateChange: ({ pendingCount }) => {
+      setDragPendingUploadCount(pendingCount);
+    },
   });
 
   const [message, context] = Message.useMessage();
@@ -281,55 +366,199 @@ const SendBox: React.FC<{
     supportedExts,
     onFilesAdded,
     conversationId: conversationContext?.conversationId,
+    onUploadStateChange: ({ pendingCount }) => {
+      setPastePendingUploadCount(pendingCount);
+    },
     onTextPaste: (text: string) => {
       // 处理清理后的文本粘贴，在当前光标位置插入文本而不是替换整个内容
       const textarea = document.activeElement as HTMLTextAreaElement;
       if (textarea && textarea.tagName === 'TEXTAREA') {
-        const cursorPosition = textarea.selectionStart;
         const currentValue = textarea.value;
         const start = textarea.selectionStart ?? textarea.value.length;
         const end = textarea.selectionEnd ?? start;
         const newValue = currentValue.slice(0, start) + text + currentValue.slice(end);
         setInput(newValue);
+        setCursorPosition(start + text.length);
         // 设置光标到插入文本后的位置
         setTimeout(() => {
-          textarea.setSelectionRange(cursorPosition + text.length, cursorPosition + text.length);
+          textarea.setSelectionRange(start + text.length, start + text.length);
         }, 0);
       } else {
         // 如果无法获取光标位置，回退到追加到末尾的行为
         setInput(text);
+        setCursorPosition(text.length);
       }
     },
   });
+
+  const ensureWorkspaceItems = useCallback(async (): Promise<WorkspaceMentionItem[]> => {
+    if (!workspacePath) {
+      return [];
+    }
+
+    if (loadedWorkspacePathRef.current === workspacePath) {
+      return workspaceItemsRef.current;
+    }
+
+    if (workspaceItemsRequestRef.current) {
+      return workspaceItemsRequestRef.current;
+    }
+
+    const request = listWorkspaceFileItems(workspacePath)
+      .then((items) => {
+        const mentionItems = toWorkspaceMentionItems(items);
+        loadedWorkspacePathRef.current = workspacePath;
+        setWorkspaceItems(mentionItems);
+        return mentionItems;
+      })
+      .catch((error) => {
+        console.warn('[SendBox] Failed to load workspace mention items:', error);
+        loadedWorkspacePathRef.current = workspacePath;
+        setWorkspaceItems([]);
+        return [] as WorkspaceMentionItem[];
+      })
+      .finally(() => {
+        workspaceItemsRequestRef.current = null;
+      });
+
+    workspaceItemsRequestRef.current = request;
+    return request;
+  }, [conversationContext?.conversationId, workspaceItemsRef, workspacePath]);
+
+  const syncWorkspaceMentionSelections = useCallback(
+    (nextInput: string, availableItems: WorkspaceMentionItem[]) => {
+      if (!onSelectedWorkspaceItemsChange) {
+        return;
+      }
+
+      const previousMentionPaths = mentionOwnedSelectionPathsRef.current;
+      const mentionItems = resolveExactWorkspaceMentionItems(nextInput, availableItems);
+      const nextMentionPaths = new Set(mentionItems.map((item) => item.path));
+      const baseSelections = selectedWorkspaceItems.filter(
+        (item) => !previousMentionPaths.has(getSelectionItemPath(item))
+      );
+      const nextSelections = mergeFileSelectionItems(baseSelections, mentionItems);
+
+      mentionOwnedSelectionPathsRef.current = nextMentionPaths;
+
+      if (!areSelectionItemsEqual(selectedWorkspaceItems, nextSelections)) {
+        onSelectedWorkspaceItemsChange(nextSelections as Array<string | FileOrFolderItem>);
+      }
+    },
+    [onSelectedWorkspaceItemsChange, selectedWorkspaceItems]
+  );
+
+  useEffect(() => {
+    if (!workspacePath) {
+      if (mentionOwnedSelectionPathsRef.current.size > 0) {
+        mentionOwnedSelectionPathsRef.current = new Set();
+      }
+      return;
+    }
+
+    if (!activeWorkspaceMention && !input.includes('@workspace/')) {
+      return;
+    }
+
+    void ensureWorkspaceItems();
+  }, [activeWorkspaceMention, ensureWorkspaceItems, input, workspacePath]);
+
+  useEffect(() => {
+    if (!onSelectedWorkspaceItemsChange) {
+      return;
+    }
+
+    if (
+      input.includes('@workspace/') &&
+      workspaceItems.length === 0 &&
+      loadedWorkspacePathRef.current !== workspacePath
+    ) {
+      void ensureWorkspaceItems().then((items) => {
+        syncWorkspaceMentionSelections(input, items);
+      });
+      return;
+    }
+
+    syncWorkspaceMentionSelections(input, workspaceItems);
+  }, [
+    ensureWorkspaceItems,
+    input,
+    onSelectedWorkspaceItemsChange,
+    syncWorkspaceMentionSelections,
+    workspaceItems,
+    workspacePath,
+  ]);
+
+  const workspaceMentionSuggestions = useMemo(() => {
+    if (!activeWorkspaceMention || !workspacePath) {
+      return [];
+    }
+
+    return matchWorkspaceMentionItems(workspaceItems, activeWorkspaceMention.rawQuery);
+  }, [activeWorkspaceMention, workspaceItems, workspacePath]);
+
+  useEffect(() => {
+    setActiveWorkspaceMentionIndex((prev) => Math.min(prev, Math.max(workspaceMentionSuggestions.length - 1, 0)));
+  }, [workspaceMentionSuggestions.length]);
+
+  const handleWorkspaceMentionSelect = useCallback(
+    (item: WorkspaceMentionItem) => {
+      if (!activeWorkspaceMention) {
+        return;
+      }
+
+      const replacement = replaceActiveWorkspaceMention(input, activeWorkspaceMention, item);
+      setInput(replacement.value);
+      setCursorPosition(replacement.selectionStart);
+      syncWorkspaceMentionSelections(replacement.value, workspaceItemsRef.current);
+
+      setTimeout(() => {
+        const textarea = containerRef.current?.querySelector('textarea');
+        if (!textarea) {
+          return;
+        }
+        textarea.focus();
+        textarea.setSelectionRange(replacement.selectionStart, replacement.selectionStart);
+      }, 0);
+    },
+    [activeWorkspaceMention, input, setInput, syncWorkspaceMentionSelections, workspaceItemsRef]
+  );
+
   const markMobileFocusIntent = useCallback(() => {
     if (!isMobile) return;
     mobileUserFocusIntentUntilRef.current = Date.now() + 1500;
   }, [isMobile]);
 
-  const handleInputFocus = useCallback(() => {
-    if (isMobile && Date.now() > mobileUserFocusIntentUntilRef.current) {
-      blurActiveElement();
-      return;
-    }
-    if (isMobile && shouldBlockMobileInputFocus()) {
-      blurActiveElement();
-      return;
-    }
-    mobileUserFocusIntentUntilRef.current = 0;
-    handlePasteFocus();
-    setIsInputFocused(true);
+  const handleInputFocus = useCallback(
+    (event: React.FocusEvent<HTMLTextAreaElement>) => {
+      setCursorPosition(event.target.selectionStart ?? event.target.value.length);
 
-    // Pre-warm worker bootstrap after focus stays for 1s (debounce).
-    // Avoids triggering warmup for every conversation during rapid switching.
-    const cid = conversationContext?.conversationId;
-    if (cid && warmedConversationRef.current !== cid) {
-      if (warmupTimerRef.current) clearTimeout(warmupTimerRef.current);
-      warmupTimerRef.current = setTimeout(() => {
-        warmedConversationRef.current = cid;
-        ipcBridge.conversation.warmup.invoke({ conversation_id: cid }).catch(() => {});
-      }, 1000);
-    }
-  }, [handlePasteFocus, isMobile, conversationContext?.conversationId]);
+      if (isMobile && Date.now() > mobileUserFocusIntentUntilRef.current) {
+        blurActiveElement();
+        return;
+      }
+      if (isMobile && shouldBlockMobileInputFocus()) {
+        blurActiveElement();
+        return;
+      }
+      mobileUserFocusIntentUntilRef.current = 0;
+      handlePasteFocus();
+      setIsInputFocused(true);
+
+      // Pre-warm worker bootstrap after focus stays for 1s (debounce).
+      // Avoids triggering warmup for every conversation during rapid switching.
+      const cid = conversationContext?.conversationId;
+      if (cid && warmedConversationRef.current !== cid) {
+        if (warmupTimerRef.current) clearTimeout(warmupTimerRef.current);
+        warmupTimerRef.current = setTimeout(() => {
+          warmedConversationRef.current = cid;
+          ipcBridge.conversation.warmup.invoke({ conversation_id: cid }).catch(() => {});
+        }, 1000);
+      }
+    },
+    [conversationContext?.conversationId, handlePasteFocus, isMobile]
+  );
+
   const handleInputBlur = useCallback(() => {
     if (warmupTimerRef.current) {
       clearTimeout(warmupTimerRef.current);
@@ -339,12 +568,13 @@ const SendBox: React.FC<{
   }, []);
 
   const hasMessageContent = Boolean(input.trim() || domSnippets.length > 0);
+  const totalPendingUploadCount = pendingUploadCount + dragPendingUploadCount + pastePendingUploadCount;
 
   const buildFinalMessage = useCallback(() => {
     let finalMessage = expandManagedSlashCommandInput(input, mergedSlashCommands);
     if (domSnippets.length > 0) {
       const snippetsHtml = domSnippets
-        .map((s) => `\n\n---\nDOM Snippet (${s.tag}):\n\`\`\`html\n${s.html}\n\`\`\``)
+        .map((snippet) => `\n\n---\nDOM Snippet (${snippet.tag}):\n\`\`\`html\n${snippet.html}\n\`\`\``)
         .join('');
       finalMessage += snippetsHtml;
     }
@@ -364,16 +594,20 @@ const SendBox: React.FC<{
       if (!handler || !hasMessageContent) {
         return false;
       }
+      if (loading || isLoading || totalPendingUploadCount > 0) {
+        message.warning(t('messages.conversationInProgress'));
+        return false;
+      }
 
       const finalMessage = consumeInputMessage();
       void Promise.resolve(handler(finalMessage));
       return true;
     },
-    [consumeInputMessage, hasMessageContent]
+    [consumeInputMessage, hasMessageContent, isLoading, loading, message, t, totalPendingUploadCount]
   );
 
   const sendMessageHandler = () => {
-    if (loading || isLoading) {
+    if (loading || isLoading || totalPendingUploadCount > 0) {
       message.warning(t('messages.conversationInProgress'));
       return;
     }
@@ -455,6 +689,37 @@ const SendBox: React.FC<{
         return;
       }
 
+      if (!slashController.isOpen && workspaceMentionSuggestions.length > 0) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          setActiveWorkspaceMentionIndex((prev) => (prev + 1) % workspaceMentionSuggestions.length);
+          return;
+        }
+
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          setActiveWorkspaceMentionIndex(
+            (prev) => (prev - 1 + workspaceMentionSuggestions.length) % workspaceMentionSuggestions.length
+          );
+          return;
+        }
+
+        if ((event.key === 'Enter' && !event.shiftKey) || (event.key === 'Tab' && !event.shiftKey)) {
+          event.preventDefault();
+          handleWorkspaceMentionSelect(
+            workspaceMentionSuggestions[activeWorkspaceMentionIndex] || workspaceMentionSuggestions[0]
+          );
+          return;
+        }
+
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          const textarea = event.currentTarget as HTMLTextAreaElement;
+          setCursorPosition(textarea.selectionStart ?? textarea.value.length);
+          return;
+        }
+      }
+
       if (!slashController.isOpen && !disabled) {
         if (event.key === 'Tab' && !event.shiftKey && onQueue && hasMessageContent) {
           event.preventDefault();
@@ -478,8 +743,10 @@ const SendBox: React.FC<{
       baseKeyDownHandler(event);
     },
     [
+      activeWorkspaceMentionIndex,
       baseKeyDownHandler,
       disabled,
+      handleWorkspaceMentionSelect,
       hasMessageContent,
       isComposing,
       onEditLatestPending,
@@ -487,14 +754,19 @@ const SendBox: React.FC<{
       onSteer,
       sendDeferredMessage,
       slashController.isOpen,
+      workspaceMentionSuggestions,
     ]
   );
+
+  const shouldShowWorkspaceMentionMenu = !slashController.isOpen && workspaceMentionSuggestions.length > 0;
 
   return (
     <div className={className}>
       <div
         ref={containerRef}
-        className={`relative border-3 b bg-dialog-fill-0 b-solid flex flex-col ${isMobile ? 'p-12px rd-18px' : 'p-16px rd-20px'} ${slashController.isOpen ? 'overflow-visible' : 'overflow-hidden'} ${isFileDragging ? 'b-dashed' : ''}`}
+        className={`relative border-3 b bg-dialog-fill-0 b-solid flex flex-col ${isMobile ? 'p-12px rd-18px' : 'p-16px rd-20px'} ${
+          slashController.isOpen || shouldShowWorkspaceMentionMenu ? 'overflow-visible' : 'overflow-hidden'
+        } ${isFileDragging ? 'b-dashed' : ''}`}
         style={{
           transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
           ...(isFileDragging
@@ -511,6 +783,15 @@ const SendBox: React.FC<{
         }}
         {...dragHandlers}
       >
+        {shouldShowWorkspaceMentionMenu && (
+          <div className='absolute left-12px right-12px bottom-[calc(100%+8px)] z-70'>
+            <WorkspaceMentionMenu
+              items={workspaceMentionSuggestions}
+              activeIndex={activeWorkspaceMentionIndex}
+              onSelect={handleWorkspaceMentionSelect}
+            />
+          </div>
+        )}
         {slashController.isOpen && (
           <div className='absolute left-12px right-12px bottom-[calc(100%+8px)] z-70'>
             <SlashCommandMenu
@@ -535,14 +816,14 @@ const SendBox: React.FC<{
           {context}
           {/* DOM 片段标签 / DOM snippet tags */}
           {domSnippets.length > 0 && (
-            <div className='flex flex-wrap gap-6px mb-8px'>
+            <div className='mb-8px flex flex-wrap gap-6px'>
               {domSnippets.map((snippet) => (
                 <Tag
                   key={snippet.id}
                   closable
                   closeIcon={<CloseSmall theme='outline' size='12' />}
                   onClose={() => removeDomSnippet(snippet.id)}
-                  className='text-12px bg-fill-2 b-1 b-solid b-border-2 rd-4px'
+                  className='rd-4px bg-fill-2 text-12px b-1 b-solid b-border-2'
                 >
                   {snippet.tag}
                 </Tag>
@@ -581,8 +862,12 @@ const SendBox: React.FC<{
               wordBreak: isSingleLine ? 'normal' : 'break-word',
               overflowWrap: 'break-word',
             }}
-            onChange={(v) => {
-              setInput(v);
+            onChange={(value, event) => {
+              setInput(value);
+              setCursorPosition(event?.target.selectionStart ?? value.length);
+            }}
+            onSelect={(event) => {
+              setCursorPosition(event.currentTarget.selectionStart ?? event.currentTarget.value.length);
             }}
             onPaste={onPaste}
             onTouchStart={markMobileFocusIntent}

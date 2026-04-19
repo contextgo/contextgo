@@ -86,6 +86,7 @@ const GeminiSendBox: React.FC<{
   modelSelection: GeminiModelSelection;
 }> = ({ conversation_id, modelSelection }) => {
   const [workspacePath, setWorkspacePath] = useState('');
+  const [pendingUploadCount, setPendingUploadCount] = useState(0);
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
 
@@ -381,12 +382,21 @@ const GeminiSendBox: React.FC<{
         onStop={handleStop}
         className='z-10'
         onFilesAdded={handleFilesAdded}
+        pendingUploadCount={pendingUploadCount}
+        selectedWorkspaceItems={atPath}
+        onSelectedWorkspaceItemsChange={setAtPath}
         supportedExts={allSupportedExts}
         defaultMultiLine={true}
         lockMultiLine={true}
         tools={
           <div className='sendbox-tool-cluster'>
-            <FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />
+            <FileAttachButton
+              openFileSelector={openFileSelector}
+              onLocalFilesAdded={handleFilesAdded}
+              onUploadStateChange={({ pendingCount }) => {
+                setPendingUploadCount(pendingCount);
+              }}
+            />
             <div className='sendbox-tool-pill-row'>
               <AgentModeSelector
                 backend='gemini'
