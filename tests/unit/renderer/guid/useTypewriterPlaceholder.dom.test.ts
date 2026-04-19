@@ -59,6 +59,39 @@ describe('useTypewriterPlaceholder', () => {
     expect(result.current).toBe('Second phrase');
   });
 
+  it('supports a fixed cycle duration for rotating phrases', () => {
+    const firstPhrase = 'First phrase';
+    const secondPhrase = 'Second phrase';
+    const firstPhraseTypingMs = 80 * (firstPhrase.length - 1);
+    const fixedCycleHoldMs = 10_000 - firstPhraseTypingMs - 260;
+
+    const { result } = renderHook(() =>
+      useTypewriterPlaceholder([firstPhrase, secondPhrase], {
+        cycleDurationMs: 10_000,
+      })
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(300 + firstPhraseTypingMs);
+    });
+    expect(result.current).toBe(firstPhrase);
+
+    act(() => {
+      vi.advanceTimersByTime(fixedCycleHoldMs - 1);
+    });
+    expect(result.current).toBe(firstPhrase);
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current).toBe('');
+
+    act(() => {
+      vi.advanceTimersByTime(260);
+    });
+    expect(result.current).toBe('S|');
+  });
+
   it('ignores blank phrases when building the rotation list', () => {
     const { result } = renderHook(() => useTypewriterPlaceholder(['  ', 'Keep going', '']));
 

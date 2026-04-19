@@ -269,8 +269,12 @@ const GuidPage: React.FC = () => {
     ]
   );
 
-  const typewriterSlogan = useTypewriterPlaceholder(rotatingSlogans);
-  const typewriterPlaceholder = useTypewriterPlaceholder(rotatingPrompts);
+  const typewriterSlogan = useTypewriterPlaceholder(rotatingSlogans, {
+    cycleDurationMs: 10_000,
+  });
+  const typewriterPlaceholder = useTypewriterPlaceholder(rotatingPrompts, {
+    cycleDurationMs: 10_000,
+  });
 
   // Determine if model selector should be in Gemini mode
   const isGeminiMode = agentSelection.selectedAgent === 'gemini';

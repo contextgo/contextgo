@@ -6,14 +6,22 @@
 
 import { useEffect, useState } from 'react';
 
+type TypewriterPlaceholderOptions = {
+  cycleDurationMs?: number;
+};
+
 /**
  * Typewriter animation hook for rotating text phrases.
  */
-export const useTypewriterPlaceholder = (texts: string | string[]): string => {
+export const useTypewriterPlaceholder = (
+  texts: string | string[],
+  options?: TypewriterPlaceholderOptions
+): string => {
   const [placeholder, setPlaceholder] = useState('');
   const sourceTexts = Array.isArray(texts) ? texts : [texts];
   const textKey = sourceTexts.join('\u0000');
   const normalizedTexts = sourceTexts.map((text) => text.trim()).filter((text) => text.length > 0);
+  const cycleDurationMs = options?.cycleDurationMs;
 
   useEffect(() => {
     if (normalizedTexts.length === 0) {
@@ -23,7 +31,6 @@ export const useTypewriterPlaceholder = (texts: string | string[]): string => {
 
     const initialDelayMs = 300;
     const typingSpeedMs = 80;
-    const holdDelayMs = 1800;
     const rotateDelayMs = 260;
     const phraseCount = normalizedTexts.length;
     let currentPhraseIndex = Math.min(Math.floor(Math.random() * phraseCount), Math.max(phraseCount - 1, 0));
@@ -40,6 +47,12 @@ export const useTypewriterPlaceholder = (texts: string | string[]): string => {
           if (phraseCount <= 1) {
             return;
           }
+
+          const typingDurationMs = Math.max(currentText.length - 1, 0) * typingSpeedMs;
+          const holdDelayMs =
+            typeof cycleDurationMs === 'number' && Number.isFinite(cycleDurationMs)
+              ? Math.max(cycleDurationMs - typingDurationMs - rotateDelayMs, 0)
+              : 1800;
 
           timeoutId = setTimeout(() => {
             currentPhraseIndex = (currentPhraseIndex + 1) % phraseCount;
@@ -63,7 +76,7 @@ export const useTypewriterPlaceholder = (texts: string | string[]): string => {
         clearTimeout(timeoutId);
       }
     };
-  }, [textKey]);
+  }, [cycleDurationMs, textKey]);
 
   return placeholder;
 };
