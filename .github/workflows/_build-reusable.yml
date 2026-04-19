@@ -825,6 +825,7 @@ jobs:
           (!startsWith(matrix.platform, 'windows') || steps.windows-build.outputs.result == 'success')
         with:
           name: ${{ inputs.append_commit_hash && format('{0}-{1}', matrix.artifact-name, steps.commit.outputs.short) || matrix.artifact-name }}
+          compression-level: 0
           path: |
             out/*.exe
             out/*.msi
