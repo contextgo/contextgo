@@ -281,7 +281,12 @@
     "createNewConversation": "現在のワークスペースで新しいチャットを作成",
     "search.empty": "検索結果は空です",
     "addFile": "ファイルを追加",
+    "viewFiles": "ファイル",
+    "viewChanges": "変更",
     "refresh": "更新",
+    "changesEmpty": "ワークスペースに変更はありません",
+    "changesRecentFallback": "ここでは Git の変更を表示できないため、最近更新されたファイルを表示しています。",
+    "changesRecentEmpty": "最近のワークスペースファイルはありません",
     "temporarySpace": "一時スペース",
     "groupMembers": {
       "title": "グループメンバー",

@@ -41,11 +41,15 @@ vi.mock('@/common', () => ({
   ipcBridge: {
     fs: {
       getFilesByDir: { provider: vi.fn() },
+      getWorkspaceFileItems: { provider: vi.fn() },
       getImageBase64: { provider: vi.fn() },
       fetchRemoteImage: { provider: vi.fn() },
       readFile: { provider: vi.fn() },
       readFileBuffer: { provider: vi.fn() },
       getGitRepositoryInfo: { provider: vi.fn() },
+      getWorkspaceGitChanges: { provider: vi.fn() },
+      getWorkspaceGitDiff: { provider: vi.fn() },
+      getWorkspaceRecentFiles: { provider: vi.fn() },
       createTempFile: { provider: vi.fn() },
       writeFile: { provider: vi.fn() },
       createZip: { provider: vi.fn() },

@@ -295,7 +295,12 @@
     "createNewConversation": "当前空间创建新会话",
     "search.empty": "搜索结果为空",
     "addFile": "添加文件",
+    "viewFiles": "文件",
+    "viewChanges": "变更",
     "refresh": "刷新",
+    "changesEmpty": "当前工作区没有变更",
+    "changesRecentFallback": "这里暂时没有 Git 变更可看，先展示最近修改的文件。",
+    "changesRecentEmpty": "当前工作区没有最近文件",
     "temporarySpace": "临时空间",
     "groupMembers": {
       "title": "组内成员",

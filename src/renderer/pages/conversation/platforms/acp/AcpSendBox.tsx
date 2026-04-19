@@ -17,7 +17,7 @@ import { Shield } from '@icon-park/react';
 import { iconColors } from '@/renderer/styles/colors';
 import FileAttachButton from '@/renderer/components/media/FileAttachButton';
 import AcpConfigSelector from '@/renderer/components/agent/AcpConfigSelector';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
@@ -84,6 +84,7 @@ const AcpSendBox: React.FC<{
   sessionMode?: string;
   agentName?: string;
 }> = ({ conversation_id, backend, sessionMode, agentName }) => {
+  const [pendingUploadCount, setPendingUploadCount] = useState(0);
   const {
     running,
     acpStatus,
@@ -326,12 +327,21 @@ const AcpSendBox: React.FC<{
         className='z-10'
         onStop={handleStop}
         onFilesAdded={handleFilesAdded}
+        pendingUploadCount={pendingUploadCount}
+        selectedWorkspaceItems={atPath}
+        onSelectedWorkspaceItemsChange={setAtPath}
         supportedExts={allSupportedExts}
         defaultMultiLine={true}
         lockMultiLine={true}
         tools={
           <div className='sendbox-tool-cluster'>
-            <FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />
+            <FileAttachButton
+              openFileSelector={openFileSelector}
+              onLocalFilesAdded={handleFilesAdded}
+              onUploadStateChange={({ pendingCount }) => {
+                setPendingUploadCount(pendingCount);
+              }}
+            />
             <div className='sendbox-tool-pill-row'>
               <AgentModeSelector
                 backend={backend}

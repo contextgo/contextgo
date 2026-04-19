@@ -295,7 +295,12 @@
     "createNewConversation": "Create new chat in current workspace",
     "search.empty": "The search result is empty",
     "addFile": "Add File",
+    "viewFiles": "Files",
+    "viewChanges": "Changes",
     "refresh": "Refresh",
+    "changesEmpty": "No workspace changes",
+    "changesRecentFallback": "Git changes are unavailable here. Showing recently modified files instead.",
+    "changesRecentEmpty": "No recent workspace files",
     "temporarySpace": "Temporary Space",
     "groupMembers": {
       "title": "Group Members",

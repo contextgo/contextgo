@@ -387,6 +387,9 @@ export type BundledAgentPackageDocumentPayload = {
 
 export const fs = {
   getFilesByDir: bridge.buildProvider<Array<IDirOrFile>, { dir: string; root: string }>('get-file-by-dir'), // 获取指定文件夹下所有文件夹和文件列表
+  getWorkspaceFileItems: bridge.buildProvider<IWorkspaceFileItem[], { workspacePath: string }>(
+    'get-workspace-file-items'
+  ),
   getImageBase64: bridge.buildProvider<string, { path: string }>('get-image-base64'), // 获取图片base64
   fetchRemoteImage: bridge.buildProvider<string, { url: string }>('fetch-remote-image'), // 远程图片转base64
   readFile: bridge.buildProvider<string, { path: string }>('read-file'), // 读取文件内容（UTF-8）
@@ -397,6 +400,26 @@ export const fs = {
       path: string;
     }
   >('get-git-repository-info'),
+  getWorkspaceGitChanges: bridge.buildProvider<
+    IBridgeResponse<IWorkspaceGitChangesPayload>,
+    {
+      workspacePath: string;
+    }
+  >('get-workspace-git-changes'),
+  getWorkspaceGitDiff: bridge.buildProvider<
+    IBridgeResponse<{ content: string }>,
+    {
+      workspacePath: string;
+      filePath: string;
+    }
+  >('get-workspace-git-diff'),
+  getWorkspaceRecentFiles: bridge.buildProvider<
+    IBridgeResponse<{ files: IWorkspaceRecentFile[] }>,
+    {
+      path: string;
+      limit?: number;
+    }
+  >('get-workspace-recent-files'),
   createTempFile: bridge.buildProvider<string, { fileName: string }>('create-temp-file'), // 创建临时文件
   writeFile: bridge.buildProvider<boolean, { path: string; data: Uint8Array | string }>('write-file'), // 写入文件
   createZip: bridge.buildProvider<
@@ -1375,6 +1398,39 @@ export interface IGitRepositoryInfo {
   branch?: string | null;
   gitDir?: string | null;
   remoteUrl?: string | null;
+}
+
+export interface IWorkspaceFileItem {
+  path: string;
+  name: string;
+  isFile: boolean;
+  relativePath: string;
+}
+
+export interface IWorkspaceGitChange {
+  path: string;
+  absolutePath: string;
+  status: string;
+  previousPath?: string;
+}
+
+export interface IWorkspaceGitChangesPayload {
+  repository: IGitRepositoryInfo | null;
+  changes: IWorkspaceGitChange[];
+}
+
+export interface IWorkspaceRecentFile {
+  path: string;
+  absolutePath: string;
+  lastModified: number;
+  size: number;
+}
+
+export interface IWorkspaceFileItem {
+  name: string;
+  path: string;
+  relativePath: string;
+  isFile: boolean;
 }
 
 // 文件元数据接口
