@@ -213,11 +213,15 @@ describe('fsBridge skills functionality', () => {
         ipcBridge: {
           fs: {
             getFilesByDir: createCommandMock('get-file-by-dir'),
+            getWorkspaceFileItems: createCommandMock('get-workspace-file-items'),
             getImageBase64: createCommandMock('get-image-base64'),
             fetchRemoteImage: createCommandMock('fetch-remote-image'),
             readFile: createCommandMock('read-file'),
             readFileBuffer: createCommandMock('read-file-buffer'),
             getGitRepositoryInfo: createCommandMock('get-git-repository-info'),
+            getWorkspaceGitChanges: createCommandMock('get-workspace-git-changes'),
+            getWorkspaceGitDiff: createCommandMock('get-workspace-git-diff'),
+            getWorkspaceRecentFiles: createCommandMock('get-workspace-recent-files'),
             createTempFile: createCommandMock('create-temp-file'),
             writeFile: createCommandMock('write-file'),
             createZip: createCommandMock('create-zip-file'),
