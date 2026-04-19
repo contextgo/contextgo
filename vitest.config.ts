@@ -39,6 +39,7 @@ export default defineConfig({
         test: {
           name: 'dom',
           environment: 'jsdom',
+          maxWorkers: 1,
           include: ['tests/unit/**/*.dom.test.ts', 'tests/unit/**/*.dom.test.tsx'],
           setupFiles: ['./tests/vitest.dom.setup.ts'],
         },

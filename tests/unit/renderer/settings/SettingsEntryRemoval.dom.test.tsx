@@ -116,6 +116,7 @@ vi.mock('@/renderer/components/settings/SettingsModal/contents/WebuiModalContent
 
 describe('settings entry removal', () => {
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
     getSettingsTabsInvoke.mockResolvedValue([]);
   });

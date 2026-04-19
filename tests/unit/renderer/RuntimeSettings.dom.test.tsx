@@ -87,6 +87,96 @@ vi.mock('@/renderer/pages/conversation/Preview/components/editors/TextEditor', (
   ),
 }));
 
+vi.mock('@/renderer/pages/settings/components/RuntimeConfigDock', () => ({
+  default: ({
+    runtimeName,
+    entries,
+    onClose,
+  }: {
+    runtimeName: string;
+    entries: Array<{ path: string; kind: string; exists: boolean }>;
+    onClose: () => void;
+  }) => {
+    const [activePath, setActivePath] = React.useState(entries[0]?.path ?? '');
+    const [contentByPath, setContentByPath] = React.useState<Record<string, string>>({});
+
+    React.useEffect(() => {
+      let cancelled = false;
+
+      setActivePath(entries[0]?.path ?? '');
+      setContentByPath({});
+
+      void Promise.all(
+        entries.map(
+          async (entry) => [entry.path, entry.exists ? await readFileInvokeMock({ path: entry.path }) : ''] as const
+        )
+      ).then((pairs) => {
+        if (cancelled) {
+          return;
+        }
+
+        setContentByPath(Object.fromEntries(pairs));
+      });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [entries]);
+
+    const activeEntry = entries.find((entry) => entry.path === activePath) ?? entries[0];
+    const activeValue = activeEntry ? (contentByPath[activeEntry.path] ?? '') : '';
+
+    return (
+      <div data-testid='runtime-config-dock'>
+        <div>{runtimeName}</div>
+        <div role='tablist'>
+          {entries.map((entry) => {
+            const fileName = entry.path.split(/[\\/]/).pop() ?? entry.path;
+            return (
+              <button key={entry.path} type='button' role='tab' onClick={() => setActivePath(entry.path)}>
+                {fileName}
+              </button>
+            );
+          })}
+        </div>
+        <textarea
+          aria-label='Runtime config editor'
+          value={activeValue}
+          onChange={(event) => {
+            if (!activeEntry) {
+              return;
+            }
+
+            const nextValue = event.target.value;
+            setContentByPath((current) => ({
+              ...current,
+              [activeEntry.path]: nextValue,
+            }));
+          }}
+        />
+        <button
+          type='button'
+          onClick={() => {
+            if (!activeEntry) {
+              return;
+            }
+
+            void writeFileInvokeMock({
+              path: activeEntry.path,
+              data: contentByPath[activeEntry.path] ?? '',
+            });
+          }}
+        >
+          Save config
+        </button>
+        <button type='button' onClick={onClose}>
+          Close
+        </button>
+      </div>
+    );
+  },
+}));
+
 vi.mock('@/renderer/components/settings/SettingsModal/contents/channels/ChannelModalContent', () => ({
   default: () => <div data-testid='channel-modal-content' />,
 }));

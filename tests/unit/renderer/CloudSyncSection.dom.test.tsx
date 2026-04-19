@@ -219,6 +219,7 @@ vi.mock('react-i18next', () => ({
 
 describe('CloudSyncSection', () => {
   beforeEach(() => {
+    vi.resetModules();
     getStatusInvoke.mockReset();
     getObsidianSyncStatusInvoke.mockReset();
     startLoginInvoke.mockReset();
