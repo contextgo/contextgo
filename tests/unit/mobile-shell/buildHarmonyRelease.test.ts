@@ -69,12 +69,8 @@ describe('build-harmony-release.sh', () => {
       cwd: rootDir,
     });
 
-    expect(
-      await fs.readFile(path.join(outputDir, 'ContextGo-1.0.0-harmony-arm64.app'), 'utf8')
-    ).toBe('signed-app');
-    expect(
-      await fs.readFile(path.join(outputDir, 'ContextGo-1.0.0-harmony-arm64.hap'), 'utf8')
-    ).toBe('signed-hap');
+    expect(await fs.readFile(path.join(outputDir, 'ContextGo-1.0.0-harmony-arm64.app'), 'utf8')).toBe('signed-app');
+    expect(await fs.readFile(path.join(outputDir, 'ContextGo-1.0.0-harmony-arm64.hap'), 'utf8')).toBe('signed-hap');
   });
 
   it('falls back to unsigned Harmony artifacts when signed ones are unavailable', async () => {
@@ -103,11 +99,11 @@ describe('build-harmony-release.sh', () => {
       cwd: rootDir,
     });
 
-    expect(
-      await fs.readFile(path.join(outputDir, 'ContextGo-1.0.0-harmony-arm64-unsigned.app'), 'utf8')
-    ).toBe('unsigned-app');
-    expect(
-      await fs.readFile(path.join(outputDir, 'ContextGo-1.0.0-harmony-arm64-unsigned.hap'), 'utf8')
-    ).toBe('unsigned-hap');
+    expect(await fs.readFile(path.join(outputDir, 'ContextGo-1.0.0-harmony-arm64-unsigned.app'), 'utf8')).toBe(
+      'unsigned-app'
+    );
+    expect(await fs.readFile(path.join(outputDir, 'ContextGo-1.0.0-harmony-arm64-unsigned.hap'), 'utf8')).toBe(
+      'unsigned-hap'
+    );
   });
 });

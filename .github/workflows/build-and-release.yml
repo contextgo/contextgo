@@ -499,29 +499,59 @@ jobs:
         shell: bash
         env:
           DEVECO_SDK_HOME: ${{ vars.DEVECO_SDK_HOME }}
+          CONTEXTGO_HARMONY_TOOLS_ROOT: ${{ vars.CONTEXTGO_HARMONY_TOOLS_ROOT }}
           CONTEXTGO_HARMONY_RELEASE_COMMAND: ${{ vars.CONTEXTGO_HARMONY_RELEASE_COMMAND }}
           CONTEXTGO_HARMONY_ARCH: ${{ vars.CONTEXTGO_HARMONY_ARCH != '' && vars.CONTEXTGO_HARMONY_ARCH || 'arm64' }}
+          CONTEXTGO_HARMONY_COMMANDLINE_TOOLS_URL: ${{ vars.CONTEXTGO_HARMONY_COMMANDLINE_TOOLS_URL }}
         run: |
           set -euo pipefail
 
           VERSION="$(node -p "require('./package.json').version")"
-          HARMONY_TOOLS_ROOT="${HOME}/Library/Huawei/command-line-tools"
-          EFFECTIVE_DEVECO_SDK_HOME="${DEVECO_SDK_HOME:-${HARMONY_TOOLS_ROOT}/sdk}"
+          BOOTSTRAP_PARENT="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/contextgo-harmony-tools"
+          BOOTSTRAP_ROOT="${BOOTSTRAP_PARENT}/command-line-tools"
 
-          if [ -d "${HARMONY_TOOLS_ROOT}/bin" ]; then
-            export PATH="${HARMONY_TOOLS_ROOT}/bin:${PATH}"
+          resolve_tooling() {
+            local output
+
+            if ! output="$(bash mobile-shell/scripts/resolve-harmony-tooling.sh)"; then
+              return 1
+            fi
+
+            while IFS='=' read -r key value; do
+              export "${key}=${value}"
+            done <<< "${output}"
+          }
+
+          if ! resolve_tooling; then
+            TOOLS_URL="${CONTEXTGO_HARMONY_COMMANDLINE_TOOLS_URL:-https://github.com/harmonyos-dev/hos-sdk/releases/download/v2.0.2/commandline-tools-mac-2.0.0.2.zip}"
+            TOOLS_ARCHIVE="${BOOTSTRAP_PARENT}/command-line-tools.zip"
+
+            echo "Bootstrapping HarmonyOS command-line tools from ${TOOLS_URL}"
+            rm -rf "${BOOTSTRAP_PARENT}"
+            mkdir -p "${BOOTSTRAP_PARENT}"
+            curl -L "${TOOLS_URL}" -o "${TOOLS_ARCHIVE}"
+            unzip -q "${TOOLS_ARCHIVE}" -d "${BOOTSTRAP_PARENT}"
+
+            export CONTEXTGO_HARMONY_BOOTSTRAP_ROOT="${BOOTSTRAP_ROOT}"
+            resolve_tooling
           fi
 
-          if [ -d "${HARMONY_TOOLS_ROOT}/ohpm/bin" ]; then
-            export PATH="${HARMONY_TOOLS_ROOT}/ohpm/bin:${PATH}"
-          fi
+          export PATH="$(dirname "${CONTEXTGO_HARMONY_OHPM}"):${PATH}"
+          export PATH="$(dirname "${CONTEXTGO_HARMONY_HVIGORW}"):${PATH}"
+
+          echo "Using Harmony tools root: ${HARMONY_TOOLS_ROOT}"
+          echo "Using Harmony SDK home: ${DEVECO_SDK_HOME}"
+          echo "Using ohpm: ${CONTEXTGO_HARMONY_OHPM}"
+          echo "Using hvigorw: ${CONTEXTGO_HARMONY_HVIGORW}"
 
           EFFECTIVE_BUILD_COMMAND="${CONTEXTGO_HARMONY_RELEASE_COMMAND:-}"
           if [ -z "${EFFECTIVE_BUILD_COMMAND}" ]; then
-            EFFECTIVE_BUILD_COMMAND='ohpm install && hvigorw assembleApp --debug --stacktrace'
+            printf -v EFFECTIVE_BUILD_COMMAND '"%s" install && "%s" assembleApp --debug --stacktrace' \
+              "${CONTEXTGO_HARMONY_OHPM}" \
+              "${CONTEXTGO_HARMONY_HVIGORW}"
           fi
 
-          DEVECO_SDK_HOME="${EFFECTIVE_DEVECO_SDK_HOME}" \
+          DEVECO_SDK_HOME="${DEVECO_SDK_HOME}" \
           CONTEXTGO_HARMONY_RELEASE_COMMAND="${EFFECTIVE_BUILD_COMMAND}" \
           bash mobile-shell/scripts/build-harmony-release.sh "${VERSION}" mobile-shell/build/harmony-release
 
