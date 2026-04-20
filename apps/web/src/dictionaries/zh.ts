@@ -67,7 +67,6 @@ export const zh = {
     connector_story_title: '上下文不该散在标签页里。',
     connector_story_body:
       '来源一旦接通，ContextGo 就能看见全局。同一份上下文，随后可被整理、检索、发布，再交给下一个 Agent 或流程。',
-    preview_alt: 'ContextGo connector 工作区',
     features: [
       {
         title: '从重要来源开始',
