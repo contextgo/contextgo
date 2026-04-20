@@ -420,6 +420,12 @@ export const fs = {
       limit?: number;
     }
   >('get-workspace-recent-files'),
+  initializeWorkspaceGitRepository: bridge.buildProvider<
+    IBridgeResponse<IGitRepositoryInfo>,
+    {
+      workspacePath: string;
+    }
+  >('initialize-workspace-git-repository'),
   createTempFile: bridge.buildProvider<string, { fileName: string }>('create-temp-file'), // 创建临时文件
   writeFile: bridge.buildProvider<boolean, { path: string; data: Uint8Array | string }>('write-file'), // 写入文件
   createZip: bridge.buildProvider<
@@ -1430,6 +1436,8 @@ export type IProjectSkillCapability = {
   description: string;
   docKey: string;
   workspaceRelativePath: string;
+  skillDocumentRelativePath?: string;
+  skillDocumentBody?: string;
   compatibility: string[];
   implicitInvocation: boolean;
   openAIDisplayName?: string;

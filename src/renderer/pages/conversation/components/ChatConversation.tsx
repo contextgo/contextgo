@@ -13,7 +13,7 @@ import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistan
 import { iconColors } from '@/renderer/styles/colors';
 import { getConversationWorkspacePath } from '@/renderer/utils/workspace/workspace';
 import { Button, Dropdown, Menu, Message, Tooltip, Typography } from '@arco-design/web-react';
-import { ConnectionPoint, History, SettingTwo } from '@icon-park/react';
+import { ConnectionPoint, History, Search, SettingTwo } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -46,6 +46,7 @@ const REMOUNT_DIAG_TAG = '[RemountDiag]';
 const ProjectAutomationModal = React.lazy(
   async () => import('@/renderer/pages/schedule/components/ProjectAutomationModal')
 );
+const ProjectSkillMarketModal = React.lazy(async () => import('@/renderer/pages/conversation/ProjectSkillMarketModal'));
 
 const logRemountDiag = (scope: string, phase: string, payload: Record<string, unknown>) => {
   console.log(`${REMOUNT_DIAG_TAG}[${scope}] ${phase} ${JSON.stringify(payload)}`);
@@ -199,6 +200,48 @@ const PublishAgentEntryButton: React.FC<{ conversation: TChatConversation }> = (
         </span>
       </Button>
     </Tooltip>
+  );
+};
+
+const ProjectSkillMarketEntryButton: React.FC<{ conversation: TChatConversation }> = ({ conversation }) => {
+  const { t } = useTranslation();
+  const workspacePath = getConversationWorkspacePath(conversation);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  if (!workspacePath) {
+    return null;
+  }
+
+  return (
+    <>
+      <Tooltip content={t('conversation.workspace.skillMarket.action')}>
+        <Button
+          type='text'
+          size='small'
+          className='app-header-pill-button chat-header-publish-pill !h-auto !w-auto !min-w-0'
+          aria-label={t('conversation.workspace.skillMarket.action')}
+          onClick={() => setModalVisible(true)}
+        >
+          <span className='app-header-pill'>
+            <span className='app-header-pill__icon'>
+              <Search theme='outline' size={16} fill={iconColors.primary} />
+            </span>
+            <span className='hidden md:inline text-12px text-t-primary'>
+              {t('conversation.workspace.skillMarket.action')}
+            </span>
+          </span>
+        </Button>
+      </Tooltip>
+      {modalVisible ? (
+        <React.Suspense fallback={null}>
+          <ProjectSkillMarketModal
+            visible={modalVisible}
+            workspacePath={workspacePath}
+            onClose={() => setModalVisible(false)}
+          />
+        </React.Suspense>
+      ) : null}
+    </>
   );
 };
 
@@ -374,6 +417,9 @@ const GeminiConversationPanel: React.FC<{
           <PublishAgentEntryButton conversation={conversation} />
         </div>
         <div className='shrink-0'>
+          <ProjectSkillMarketEntryButton conversation={conversation} />
+        </div>
+        <div className='shrink-0'>
           <ProjectAutomationEntryButton conversation={conversation} />
         </div>
       </div>
@@ -529,6 +575,11 @@ const ChatConversation: React.FC<{
         {conversation ? (
           <div className='shrink-0'>
             <PublishAgentEntryButton conversation={conversation} />
+          </div>
+        ) : null}
+        {conversation ? (
+          <div className='shrink-0'>
+            <ProjectSkillMarketEntryButton conversation={conversation} />
           </div>
         ) : null}
         {conversation ? (

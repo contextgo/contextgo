@@ -14,8 +14,17 @@
   filter: drop-shadow(0 0 0.5px currentColor);
 }
 
-.sendbox-stop-button .arco-icon > svg {
-  filter: drop-shadow(0 0 0.4px currentColor);
+.sendbox-stop-button .arco-btn-icon,
+.sendbox-stop-button .arco-btn-content,
+.sendbox-stop-button .arco-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+.sendbox-stop-button svg {
+  display: block;
 }
 
 .sendbox-stop-button,
@@ -29,6 +38,7 @@
   min-height: 32px !important;
   padding: 0 !important;
   border-radius: 999px !important;
+  box-shadow: none !important;
   transition:
     background-color 160ms ease,
     border-color 160ms ease,
@@ -138,6 +148,26 @@
   align-items: center;
   gap: 4px;
   min-width: 0;
+}
+
+.conversation-run-status-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
+  transition: min-height 180ms ease;
+}
+
+.conversation-run-status-stack--single.conversation-run-status-stack--active {
+  min-height: 40px;
+}
+
+.conversation-run-status-stack--double.conversation-run-status-stack--active {
+  min-height: 96px;
+}
+
+.conversation-run-status-stack--triple.conversation-run-status-stack--active {
+  min-height: 144px;
 }
 
 /* Mobile: allow horizontal scrolling for sendbox tools (model/permission pills) */

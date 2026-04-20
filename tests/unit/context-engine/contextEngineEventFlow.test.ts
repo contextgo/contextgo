@@ -436,6 +436,7 @@ describe('context engine event flow', () => {
     };
     const vaultSyncService = {
       appendContextCheckpoint: vi.fn(async () => undefined),
+      appendSessionTimelineEvent: vi.fn(async () => undefined),
       appendSessionCheckpoint: vi.fn(async () => ({
         relativePath:
           'Projects/workspace/_context/sessions/thread-1/checkpoints/2026-04-08T00-03-00Z-session-compaction.md',
@@ -474,8 +475,8 @@ describe('context engine event flow', () => {
         noteTitle: 'Session checkpoint',
         relativePath:
           'Projects/workspace/_context/sessions/thread-1/checkpoints/2026-04-08T00-03-00Z-session-compaction.md',
-        workingSetTitle: 'Release Session Working Context',
-        workingSetRelativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
+        workingContextTitle: 'Release Session Working Context',
+        workingContextRelativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
         pressure: 58,
         promotedCount: 1,
         pendingReviewCount: 1,
@@ -505,6 +506,12 @@ describe('context engine event flow', () => {
       expect.objectContaining({
         title: 'Session checkpoint',
         kind: 'session-compaction',
+      })
+    );
+    expect(vaultSyncService.appendSessionTimelineEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Session Compacted',
+        body: expect.stringContaining('Pressure 58'),
       })
     );
   });
@@ -794,8 +801,8 @@ describe('context engine event flow', () => {
       {
         run: vi.fn(async () => ({
           projectSlug: 'workspace-abcd1234',
-          noteTitle: 'workspace Capabilities',
-          relativePath: 'Projects/workspace/_context/Capabilities.md',
+          noteTitle: 'workspace Automation',
+          relativePath: 'Projects/workspace/_context/Automation.md',
           summary: 'Refreshed project capability mirror.',
         })),
       } as never
@@ -814,8 +821,8 @@ describe('context engine event flow', () => {
     const vaultSyncService = {
       curateProjectCapabilities: vi.fn(async () => ({
         projectSlug: 'workspace-abcd1234',
-        noteTitle: 'workspace Capabilities',
-        relativePath: 'Projects/workspace/_context/Capabilities.md',
+        noteTitle: 'workspace Automation',
+        relativePath: 'Projects/workspace/_context/Automation.md',
         summary: 'Refreshed project capability mirror.',
       })),
       writeProjectCuratorProposal: vi
@@ -903,8 +910,8 @@ describe('context engine event flow', () => {
       completedAt: '2026-04-08T00:06:00.000Z',
       artifact: {
         projectSlug: 'workspace-abcd1234',
-        noteTitle: 'workspace Capabilities',
-        relativePath: 'Projects/workspace/_context/Capabilities.md',
+        noteTitle: 'workspace Automation',
+        relativePath: 'Projects/workspace/_context/Automation.md',
         summary: 'Refreshed project capability mirror.',
       },
     });

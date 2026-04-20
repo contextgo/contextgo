@@ -12,7 +12,12 @@ import type { TChatConversation } from '@/common/config/storage';
 import type { ContextPackSection, SourceRecord } from '../../../../packages/context-engine/src/domain';
 import type { ContextServiceImpl } from '../context/ContextServiceImpl';
 import { createWorkspaceProjectSlug } from './SpaceVaultContextSyncService';
-import { getProjectRelativePath } from './vaultLayout';
+import {
+  getProjectRelativePath,
+  PROJECT_AUTOMATION_DIR_NAME,
+  PROJECT_AUTOMATION_FILE_NAME,
+  PROJECT_CONTEXT_DIR,
+} from './vaultLayout';
 
 const PROJECTS_DIR = 'Projects';
 const SOURCE_DIR = 'Sources';
@@ -24,6 +29,8 @@ const PROJECT_DOC_SPECS: ReadonlyArray<{ kind: 'baseline' | 'project' | 'insight
 const MAX_SOURCE_DOCS = 12;
 const MAX_SOURCE_SCAN_DEPTH = 6;
 const MAX_SOURCE_DOC_CHARS = 8_000;
+const MAX_AUTOMATION_SCAN_DEPTH = 4;
+const MAX_AUTOMATION_DOC_CHARS = 8_000;
 const MAX_SECTION_CHARS = 1_200;
 
 type ProjectContextDocument = {
@@ -273,6 +280,119 @@ async function readSourceDocuments(
   return docs;
 }
 
+function resolveAutomationDocTags(relativePath: string): string[] {
+  const normalizedRelativePath = relativePath.toLowerCase();
+  const tags = ['project', 'automation'];
+
+  if (normalizedRelativePath.endsWith(`/${PROJECT_AUTOMATION_FILE_NAME.toLowerCase()}`)) {
+    return [...tags, 'inventory'];
+  }
+
+  if (normalizedRelativePath.includes(`/${PROJECT_AUTOMATION_DIR_NAME}/skills/`)) {
+    return [...tags, 'skill'];
+  }
+  if (normalizedRelativePath.includes(`/${PROJECT_AUTOMATION_DIR_NAME}/hooks/`)) {
+    return [...tags, 'hook'];
+  }
+  if (normalizedRelativePath.includes(`/${PROJECT_AUTOMATION_DIR_NAME}/commands/`)) {
+    return [...tags, 'command'];
+  }
+  if (normalizedRelativePath.includes(`/${PROJECT_AUTOMATION_DIR_NAME}/schedules/`)) {
+    return [...tags, 'schedule'];
+  }
+
+  return tags;
+}
+
+async function readAutomationDocuments(
+  contextFolder: string,
+  projectFolderName: string
+): Promise<ProjectContextDocument[]> {
+  const summaryRelativePath = path.posix.join(
+    PROJECTS_DIR,
+    projectFolderName,
+    PROJECT_CONTEXT_DIR,
+    PROJECT_AUTOMATION_FILE_NAME
+  );
+  const docs: ProjectContextDocument[] = [];
+
+  const summaryDoc = await readMarkdownDocument(
+    path.join(contextFolder, PROJECT_AUTOMATION_FILE_NAME),
+    summaryRelativePath,
+    resolveAutomationDocTags(summaryRelativePath)
+  );
+  if (summaryDoc) {
+    docs.push({
+      ...summaryDoc,
+      content: excerptMarkdown(summaryDoc.content, MAX_AUTOMATION_DOC_CHARS),
+    });
+  }
+
+  const automationFolder = path.join(contextFolder, PROJECT_AUTOMATION_DIR_NAME);
+  const queue: Array<{ absolutePath: string; relativePath: string; depth: number }> = [
+    { absolutePath: automationFolder, relativePath: '', depth: 0 },
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current) {
+      continue;
+    }
+
+    const entries = await fs.readdir(current.absolutePath, { withFileTypes: true }).catch((): Dirent[] => []);
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+
+    for (const entry of entries) {
+      const nextRelativePath = current.relativePath ? path.posix.join(current.relativePath, entry.name) : entry.name;
+      const nextAbsolutePath = path.join(current.absolutePath, entry.name);
+
+      if (entry.isDirectory()) {
+        if (current.depth + 1 > MAX_AUTOMATION_SCAN_DEPTH) {
+          continue;
+        }
+
+        queue.push({
+          absolutePath: nextAbsolutePath,
+          relativePath: nextRelativePath,
+          depth: current.depth + 1,
+        });
+        continue;
+      }
+
+      if (!entry.isFile() || !/\.md$/i.test(entry.name)) {
+        continue;
+      }
+
+      const relativePath = path.posix.join(
+        PROJECTS_DIR,
+        projectFolderName,
+        PROJECT_CONTEXT_DIR,
+        PROJECT_AUTOMATION_DIR_NAME,
+        nextRelativePath
+      );
+      const doc = await readMarkdownDocument(nextAbsolutePath, relativePath, resolveAutomationDocTags(relativePath));
+      if (!doc) {
+        continue;
+      }
+
+      docs.push({
+        ...doc,
+        content: excerptMarkdown(doc.content, MAX_AUTOMATION_DOC_CHARS),
+      });
+    }
+  }
+
+  return docs.toSorted((left, right) => {
+    if (left.relativePath === summaryRelativePath) {
+      return -1;
+    }
+    if (right.relativePath === summaryRelativePath) {
+      return 1;
+    }
+    return left.relativePath.localeCompare(right.relativePath);
+  });
+}
+
 export class ProjectContextMirrorService {
   constructor(
     private readonly contextService: Pick<
@@ -294,6 +414,7 @@ export class ProjectContextMirrorService {
     const projectSlug = createWorkspaceProjectSlug(workspacePath);
     const projectFolderName = createProjectFolderName(workspacePath);
     const projectFolder = path.join(input.vaultPath, PROJECTS_DIR, projectFolderName);
+    const contextFolder = path.join(projectFolder, PROJECT_CONTEXT_DIR);
     const sourceFolder = path.join(projectFolder, SOURCE_DIR);
 
     const projectDocRelativePath = getProjectRelativePath(projectFolderName);
@@ -326,6 +447,10 @@ export class ProjectContextMirrorService {
       ...doc,
       projectSlug,
     }));
+    const automationDocs = (await readAutomationDocuments(contextFolder, projectFolderName)).map((doc) => ({
+      ...doc,
+      projectSlug,
+    }));
 
     const snapshot: ProjectContextSnapshot = {
       projectSlug,
@@ -341,7 +466,7 @@ export class ProjectContextMirrorService {
     await this.persistSnapshot({
       spaceId: input.spaceId,
       projectSlug,
-      docs: [...projectDocs, ...sourceDocs],
+      docs: [...projectDocs, ...sourceDocs, ...automationDocs],
     });
 
     return snapshot;

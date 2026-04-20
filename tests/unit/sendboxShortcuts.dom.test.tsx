@@ -110,6 +110,7 @@ vi.mock('@arco-design/web-react', () => ({
 vi.mock('@icon-park/react', () => ({
   ArrowUp: () => React.createElement('span', {}, 'ArrowUp'),
   CloseSmall: () => React.createElement('span', {}, 'CloseSmall'),
+  Square: () => React.createElement('span', {}, 'Square'),
   SquareSmall: () => React.createElement('span', {}, 'SquareSmall'),
 }));
 

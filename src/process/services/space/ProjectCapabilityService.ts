@@ -45,6 +45,8 @@ export type ProjectSkillCapability = {
   description: string;
   docKey: string;
   workspaceRelativePath: string;
+  skillDocumentRelativePath?: string;
+  skillDocumentBody?: string;
   compatibility: readonly string[];
   implicitInvocation: boolean;
   openAIDisplayName?: string;
@@ -125,12 +127,38 @@ const EMPTY_COUNTS: Readonly<Record<ProjectCapabilityKind, number>> = {
 
 const HOOK_MANIFEST_FILE_NAME = 'manifest.json';
 const SKILLS_DIR_NAME = 'skills';
+const SKILL_DOCUMENT_FILE_NAME = 'SKILL.md';
+const FRONTMATTER_BLOCK_PATTERN = /^---\s*\n[\s\S]*?\n---(?:\n|$)/;
 
 const safeRelativePath = (workspacePath: string, targetPath: string): string => {
   return path.relative(workspacePath, targetPath).split(path.sep).join(path.posix.sep);
 };
 
 const createDocKey = (parts: readonly string[]): string => parts.join(':').trim().toLowerCase();
+
+const stripSkillFrontmatter = (content: string): string => {
+  return content.replace(/\r\n/g, '\n').replace(FRONTMATTER_BLOCK_PATTERN, '').replace(/^\n+/, '');
+};
+
+const stripMatchingLeadingHeading = (content: string, title: string): string => {
+  const normalized = content.replace(/\r\n/g, '\n');
+  const match = normalized.match(/^#\s+(.+)\n+/);
+  if (!match) {
+    return normalized.trim();
+  }
+
+  const heading = match[1]?.trim().replace(/\s+/g, ' ');
+  const normalizedTitle = title.trim().replace(/\s+/g, ' ');
+  if (!heading || heading !== normalizedTitle) {
+    return normalized.trim();
+  }
+
+  return normalized.slice(match[0].length).replace(/^\n+/, '').trim();
+};
+
+const extractSkillDocumentBody = (content: string, title: string): string => {
+  return stripMatchingLeadingHeading(stripSkillFrontmatter(content), title);
+};
 
 const trimOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
@@ -220,6 +248,8 @@ const buildSkillCapability = async (
   workspacePath: string,
   skill: SkillDirectoryInfo
 ): Promise<ProjectSkillCapability> => {
+  const skillDocumentPath = path.join(skill.dirPath, SKILL_DOCUMENT_FILE_NAME);
+  const skillDocumentContent = await fs.readFile(skillDocumentPath, 'utf8').catch((): string => '');
   const openAIConfig = await readSkillOpenAIConfig(skill.dirPath);
   return {
     kind: 'skill',
@@ -228,6 +258,8 @@ const buildSkillCapability = async (
     description: skill.description,
     docKey: createDocKey(['skill', safeRelativePath(workspacePath, skill.dirPath)]),
     workspaceRelativePath: safeRelativePath(workspacePath, skill.dirPath),
+    skillDocumentRelativePath: safeRelativePath(workspacePath, skillDocumentPath),
+    skillDocumentBody: extractSkillDocumentBody(skillDocumentContent, skill.name),
     compatibility: skill.compatibility,
     implicitInvocation: openAIConfig?.policy?.allowImplicitInvocation === true,
     openAIDisplayName: trimOptionalString(openAIConfig?.interface?.displayName),

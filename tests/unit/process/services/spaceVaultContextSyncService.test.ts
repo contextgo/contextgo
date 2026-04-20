@@ -39,6 +39,22 @@ function makeLongPromptConversation(spaceId: string, workspacePath: string) {
   } as const;
 }
 
+const listCanvasNodeFiles = (canvas: { nodes?: Array<{ file?: string }> }): string[] => {
+  return (canvas.nodes || []).flatMap((node) => (node.file ? [node.file] : []));
+};
+
+const resolveCanvasNodeTargets = (
+  vaultPath: string,
+  canvasRelativePath: string,
+  canvas: { nodes?: Array<{ file?: string }> }
+) => {
+  const canvasDir = path.join(vaultPath, path.posix.dirname(canvasRelativePath));
+  return listCanvasNodeFiles(canvas).map((file) => ({
+    file,
+    absolutePath: path.resolve(canvasDir, file),
+  }));
+};
+
 describe('SpaceVaultContextSyncService', () => {
   const tempDirs: string[] = [];
 
@@ -127,7 +143,7 @@ describe('SpaceVaultContextSyncService', () => {
     expect(homeContent).toContain('[[Projects/workspace/Sessions/conv-1|Release Session (conv-1)]]');
 
     const sessionPath = path.join(vaultPath, 'Projects', 'workspace', 'Sessions', 'conv-1.md');
-    const sessionWorkingSetPath = path.join(
+    const legacyWorkingSetPath = path.join(
       vaultPath,
       'Projects',
       'workspace',
@@ -141,7 +157,8 @@ describe('SpaceVaultContextSyncService', () => {
     expect(sessionContent).toContain('contextgoNamespace: session');
     expect(sessionContent).toContain('contextgoProjection: semantic-context');
     expect(sessionContent).toContain('- Space doc: [[Home|My Space Space]]');
-    expect(sessionContent).toContain('Projects/workspace/_context/sessions/conv-1/working-set');
+    expect(sessionContent).toContain('Projects/workspace/_context/sessions/conv-1/working-context');
+    expect(sessionContent).not.toContain('working-set');
     expect(sessionContent).toContain('## Rolling Summary');
     expect(sessionContent).toContain('- User turns: 1');
     expect(sessionContent).toContain('- Assistant replies: 1');
@@ -160,11 +177,7 @@ describe('SpaceVaultContextSyncService', () => {
     expect(projectDir).toBe('workspace');
     expect(homeContent).toContain(`[[Projects/${projectDir}/${projectDir}|workspace]]`);
     expect(sessionContent).toContain(`- Project doc: [[Projects/${projectDir}/${projectDir}|workspace]]`);
-    const workingSetContent = await fs.readFile(sessionWorkingSetPath, 'utf8');
-    expect(workingSetContent).toContain('contextgoNamespace: session');
-    expect(workingSetContent).toContain('contextgoProjection: semantic-context');
-    expect(workingSetContent).toContain('# Release Session Working Set');
-    expect(workingSetContent).toContain('No active task distilled yet.');
+    await expect(fs.access(legacyWorkingSetPath)).rejects.toThrow();
 
     const projectContent = await fs.readFile(path.join(vaultPath, 'Projects', projectDir, `${projectDir}.md`), 'utf8');
     expect(projectContent).toContain('# workspace');
@@ -175,13 +188,13 @@ describe('SpaceVaultContextSyncService', () => {
     expect(projectContent).toContain('## Entry Points');
     expect(projectContent).toContain('## Promoted Context');
     expect(projectContent).toContain('## Related Sessions');
-    expect(projectContent).toContain('## Project Capabilities');
+    expect(projectContent).toContain('## Project Automation');
     expect(projectContent).toContain('## Source Docs');
     expect(projectContent).toContain('## Source Graph');
     expect(projectContent).toContain('workspace Source Graph');
     expect(projectContent).toContain('workspace Baseline');
     expect(projectContent).toContain('workspace Insights');
-    expect(projectContent).toContain('workspace Capabilities');
+    expect(projectContent).toContain('workspace Automation');
     expect(projectContent).toContain('### Graph Backbone');
     expect(projectContent).toContain('### Orphan Docs');
     expect(projectContent).toContain('[[Projects/' + projectDir + '/Sources/docs/guide|Guide]]');
@@ -190,10 +203,8 @@ describe('SpaceVaultContextSyncService', () => {
     expect(projectContent).not.toContain('## Source Mirrors');
     expect(projectContent.indexOf('## Entry Points')).toBeLessThan(projectContent.indexOf('## Promoted Context'));
     expect(projectContent.indexOf('## Promoted Context')).toBeLessThan(projectContent.indexOf('## Related Sessions'));
-    expect(projectContent.indexOf('## Related Sessions')).toBeLessThan(
-      projectContent.indexOf('## Project Capabilities')
-    );
-    expect(projectContent.indexOf('## Project Capabilities')).toBeLessThan(projectContent.indexOf('## Source Docs'));
+    expect(projectContent.indexOf('## Related Sessions')).toBeLessThan(projectContent.indexOf('## Project Automation'));
+    expect(projectContent.indexOf('## Project Automation')).toBeLessThan(projectContent.indexOf('## Source Docs'));
     expect(projectContent.indexOf('## Source Docs')).toBeLessThan(projectContent.indexOf('## Source Graph'));
     expect(
       projectContent.indexOf(`- Project graph canvas: [[Projects/${projectDir}/Project Graph|workspace Source Graph]]`)
@@ -235,21 +246,41 @@ describe('SpaceVaultContextSyncService', () => {
     const graphCanvas = JSON.parse(
       await fs.readFile(path.join(vaultPath, 'Projects', projectDir, 'Project Graph.canvas'), 'utf8')
     );
-    expect(
-      graphCanvas.nodes.some(
-        (node: { file?: string }) => node.file === 'Projects/' + projectDir + '/' + projectDir + '.md'
-      )
-    ).toBe(true);
+    expect(graphCanvas.nodes.some((node: { file?: string }) => node.file === projectDir + '.md')).toBe(true);
     expect(graphCanvas.nodes.some((node: { file?: string }) => node.file?.includes('Sources/docs/guide.md'))).toBe(
       true
     );
     expect(graphCanvas.edges.some((edge: { label?: string }) => edge.label === 'ref')).toBe(true);
+    expect(
+      resolveCanvasNodeTargets(vaultPath, `Projects/${projectDir}/Project Graph.canvas`, graphCanvas).every((node) =>
+        node.absolutePath.startsWith(vaultPath)
+      )
+    ).toBe(true);
+    await expect(
+      Promise.all(
+        resolveCanvasNodeTargets(vaultPath, `Projects/${projectDir}/Project Graph.canvas`, graphCanvas).map((node) =>
+          fs.access(node.absolutePath)
+        )
+      )
+    ).resolves.toHaveLength(listCanvasNodeFiles(graphCanvas).length);
 
     const canvas = JSON.parse(await fs.readFile(path.join(vaultPath, 'Canvas', 'Space Overview.canvas'), 'utf8'));
-    expect(canvas.nodes.some((node: { file?: string }) => node.file === 'Home.md')).toBe(true);
-    expect(canvas.nodes.some((node: { file?: string }) => node.file === 'Projects/workspace/Sessions/conv-1.md')).toBe(
-      true
-    );
+    expect(canvas.nodes.some((node: { file?: string }) => node.file === '../Home.md')).toBe(true);
+    expect(
+      canvas.nodes.some((node: { file?: string }) => node.file === '../Projects/workspace/Sessions/conv-1.md')
+    ).toBe(true);
+    expect(
+      resolveCanvasNodeTargets(vaultPath, 'Canvas/Space Overview.canvas', canvas).every((node) =>
+        node.absolutePath.startsWith(vaultPath)
+      )
+    ).toBe(true);
+    await expect(
+      Promise.all(
+        resolveCanvasNodeTargets(vaultPath, 'Canvas/Space Overview.canvas', canvas).map((node) =>
+          fs.access(node.absolutePath)
+        )
+      )
+    ).resolves.toHaveLength(listCanvasNodeFiles(canvas).length);
   });
 
   it('writes the space overview immediately for a bound vault without waiting for a conversation', async () => {
@@ -291,10 +322,17 @@ describe('SpaceVaultContextSyncService', () => {
     expect(homeContent).toContain('- No projects synced yet.');
 
     const canvas = JSON.parse(await fs.readFile(path.join(vaultPath, 'Canvas', 'Space Overview.canvas'), 'utf8'));
-    expect(canvas.nodes.some((node: { file?: string }) => node.file === 'Home.md')).toBe(true);
+    expect(canvas.nodes.some((node: { file?: string }) => node.file === '../Home.md')).toBe(true);
+    await expect(
+      Promise.all(
+        resolveCanvasNodeTargets(vaultPath, 'Canvas/Space Overview.canvas', canvas).map((node) =>
+          fs.access(node.absolutePath)
+        )
+      )
+    ).resolves.toHaveLength(listCanvasNodeFiles(canvas).length);
   });
 
-  it('writes and reads a session working set section', async () => {
+  it('removes legacy session working-set artifacts during sync', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
     tempDirs.push(root);
 
@@ -320,29 +358,22 @@ describe('SpaceVaultContextSyncService', () => {
 
     const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
     const conversation = makeConversation(space.id, workspacePath);
+    const legacyWorkingSetPath = path.join(
+      vaultPath,
+      'Projects',
+      'workspace',
+      '_context',
+      'sessions',
+      'conv-1',
+      'working-set.md'
+    );
+
+    await fs.mkdir(path.dirname(legacyWorkingSetPath), { recursive: true });
+    await fs.writeFile(legacyWorkingSetPath, '# Legacy Working Set\n', 'utf8');
 
     await service.ensureConversationContext({ conversation: conversation as any });
-    await service.writeSessionWorkingSet({
-      conversation: conversation as any,
-      timestamp: '2026-04-08T08:00:00.000Z',
-      currentTask: 'Ship the release safely.',
-      stableStrategies: ['Use the staged release checklist.'],
-      failureModes: ['Long runs get interrupted by the user.'],
-      pendingConstraints: ['Do not widen rollout without review.'],
-      signalKinds: ['user_interrupt'],
-      pressure: 58,
-      sourceProfileKey: 'session.compaction.conv-1',
-    });
 
-    const mounted = await service.readSessionWorkingSetSection({ conversation: conversation as any });
-    expect(mounted).toEqual(
-      expect.objectContaining({
-        id: 'session-working-set:conv-1',
-        kind: 'profile',
-      })
-    );
-    expect(mounted?.summary).toContain('Ship the release safely.');
-    expect(mounted?.summary).toContain('Use the staged release checklist.');
+    await expect(fs.access(legacyWorkingSetPath)).rejects.toThrow();
   });
 
   it('appends session timeline events into a dedicated session timeline file', async () => {
@@ -376,14 +407,14 @@ describe('SpaceVaultContextSyncService', () => {
     await service.appendSessionTimelineEvent({
       conversation: conversation as any,
       timestamp: '2026-04-23T13:00:00.000Z',
-      title: 'User query',
-      body: '用户发起 query: aaaa',
+      title: 'Turn Started',
+      body: 'Request captured and queued for context assembly.',
     });
 
     const timelinePath = path.join(vaultPath, 'Projects', 'workspace', '_context', 'sessions', 'conv-1', 'timeline.md');
     const timelineContent = await fs.readFile(timelinePath, 'utf8');
     expect(timelineContent).toContain('[2026-04-23 13:00:00]');
-    expect(timelineContent).toContain('User query: 用户发起 query: aaaa');
+    expect(timelineContent).toContain('Turn Started: Request captured and queued for context assembly.');
   });
 
   it('writes and reads the session working-context file separately from the timeline', async () => {
@@ -515,7 +546,7 @@ describe('SpaceVaultContextSyncService', () => {
       '- Artifact targets: `session_timeline`, `session_working_context`, `session_checkpoint`'
     );
     expect(checkpointContent).toContain(
-      '- Session timeline: [[Projects/workspace/Sessions/conv-1|Release Session (conv-1)]]'
+      '- Session timeline: [[Projects/workspace/_context/sessions/conv-1/timeline|Release Session Timeline]]'
     );
     expect(checkpointContent).toContain(
       '- Session working context: [[Projects/workspace/_context/sessions/conv-1/working-context|Release Session Working Context]]'
@@ -677,9 +708,20 @@ describe('SpaceVaultContextSyncService', () => {
     await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
     await fs.writeFile(
       path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'SKILL.md'),
-      ['---', 'name: Release Guard', 'description: Keep rollout changes narrow.', '---', '', '# Release Guard'].join(
-        '\n'
-      ),
+      [
+        '---',
+        'name: Release Guard',
+        'description: Keep rollout changes narrow.',
+        '---',
+        '',
+        '# Release Guard',
+        '',
+        'Use this skill when release work must stay narrowly scoped.',
+        '',
+        '## Checklist',
+        '',
+        '- Confirm the rollback path before editing.',
+      ].join('\n'),
       'utf8'
     );
     await fs.writeFile(
@@ -706,6 +748,14 @@ describe('SpaceVaultContextSyncService', () => {
     const conversation = makeConversation(space.id, workspacePath);
 
     await service.ensureConversationContext({ conversation: conversation as any });
+    await fs.mkdir(path.join(vaultPath, 'Projects', 'workspace', '_context', 'capabilities', 'skills'), {
+      recursive: true,
+    });
+    await fs.writeFile(path.join(vaultPath, 'Projects', 'workspace', '_context', 'Capabilities.md'), '# legacy\n');
+    await fs.writeFile(
+      path.join(vaultPath, 'Projects', 'workspace', '_context', 'capabilities', 'skills', 'Legacy.md'),
+      '# legacy\n'
+    );
 
     const artifact = await service.curateProjectCapabilities({
       spaceId: space.id,
@@ -717,33 +767,153 @@ describe('SpaceVaultContextSyncService', () => {
     expect(artifact).toEqual(
       expect.objectContaining({
         projectSlug: createWorkspaceProjectSlug(workspacePath),
-        noteTitle: 'workspace Capabilities',
-        relativePath: 'Projects/workspace/_context/Capabilities.md',
+        noteTitle: 'workspace Automation',
+        relativePath: 'Projects/workspace/_context/Automation.md',
         summary: 'Refresh local project capabilities into the vault.',
       })
     );
 
-    const capabilitiesContent = await fs.readFile(
-      path.join(vaultPath, 'Projects', 'workspace', '_context', 'Capabilities.md'),
+    const automationContent = await fs.readFile(
+      path.join(vaultPath, 'Projects', 'workspace', '_context', 'Automation.md'),
       'utf8'
     );
-    expect(capabilitiesContent).toContain('# workspace Capabilities');
-    expect(capabilitiesContent).toContain('contextgoNamespace: capability');
-    expect(capabilitiesContent).toContain('contextgoProjection: capability-inventory');
-    expect(capabilitiesContent).toContain('- Skills: 1');
-    expect(capabilitiesContent).toContain(
-      '[[Projects/workspace/_context/capabilities/skills/Release-Guard|Release Guard]]'
+    expect(automationContent).toContain('# workspace Automation');
+    expect(automationContent).toContain('contextgoNamespace: automation');
+    expect(automationContent).toContain('contextgoProjection: automation-inventory');
+    expect(automationContent).toContain('- Skills: 1');
+    expect(automationContent).toContain(
+      '[[Projects/workspace/_context/automation/skills/Release-Guard|Release Guard]]'
     );
 
     const capabilityDocContent = await fs.readFile(
-      path.join(vaultPath, 'Projects', 'workspace', '_context', 'capabilities', 'skills', 'Release-Guard.md'),
+      path.join(vaultPath, 'Projects', 'workspace', '_context', 'automation', 'skills', 'Release-Guard.md'),
       'utf8'
     );
-    expect(capabilityDocContent).toContain('contextgoType: project-capability');
-    expect(capabilityDocContent).toContain('contextgoNamespace: capability');
-    expect(capabilityDocContent).toContain('contextgoProjection: capability-inventory');
-    expect(capabilityDocContent).toContain('- Capability kind: Skills');
+    expect(capabilityDocContent).toContain('contextgoType: project-automation-item');
+    expect(capabilityDocContent).toContain('contextgoNamespace: automation');
+    expect(capabilityDocContent).toContain('contextgoProjection: automation-inventory');
+    expect(capabilityDocContent).toContain('- Automation kind: Skills');
+    expect(capabilityDocContent).toContain('- Skill package root: `.contextgo/skills/release-guard`');
+    expect(capabilityDocContent).toContain('- SKILL.md path: `.contextgo/skills/release-guard/SKILL.md`');
     expect(capabilityDocContent).toContain('- Implicit invocation: enabled');
+    expect(capabilityDocContent).toContain('## SKILL.md');
+    expect(capabilityDocContent).toContain('Use this skill when release work must stay narrowly scoped.');
+    expect(capabilityDocContent).toContain('### Checklist');
+    expect(capabilityDocContent).toContain('- Confirm the rollback path before editing.');
+    await expect(
+      fs.access(path.join(vaultPath, 'Projects', 'workspace', '_context', 'Capabilities.md'))
+    ).rejects.toThrow();
+    await expect(
+      fs.access(path.join(vaultPath, 'Projects', 'workspace', '_context', 'capabilities', 'skills', 'Legacy.md'))
+    ).rejects.toThrow();
+  });
+
+  it('keeps skill package markdown out of source mirrors while retaining the SKILL.md automation note', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    const staleSkillReferenceMirrorPath = path.join(
+      vaultPath,
+      'Projects',
+      'workspace',
+      'Sources',
+      '.contextgo',
+      'skills',
+      'release-guard',
+      'references',
+      'rollout.md'
+    );
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'references'), {
+      recursive: true,
+    });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+    await fs.writeFile(
+      path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'SKILL.md'),
+      [
+        '---',
+        'name: Release Guard',
+        'description: Keep rollout changes narrow.',
+        '---',
+        '',
+        '# Release Guard',
+        '',
+        'Use this skill when release work must stay narrowly scoped.',
+      ].join('\n'),
+      'utf8'
+    );
+    await fs.writeFile(
+      path.join(workspacePath, '.contextgo', 'skills', 'release-guard', 'references', 'rollout.md'),
+      '# Rollout Reference\n\nThis reference doc should stay out of the vault source graph.\n',
+      'utf8'
+    );
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+    await fs.mkdir(path.dirname(staleSkillReferenceMirrorPath), { recursive: true });
+    await fs.writeFile(staleSkillReferenceMirrorPath, '# stale mirrored reference\n', 'utf8');
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+
+    const projectContent = await fs.readFile(path.join(vaultPath, 'Projects', 'workspace', 'workspace.md'), 'utf8');
+    expect(projectContent).toContain('[[Projects/workspace/Sources/AGENTS|Project Router]]');
+    expect(projectContent).not.toContain('Sources/.contextgo/skills/release-guard/SKILL');
+    expect(projectContent).not.toContain('Sources/.contextgo/skills/release-guard/references/rollout');
+
+    await expect(fs.access(path.join(vaultPath, 'Projects', 'workspace', 'Sources', 'AGENTS.md'))).resolves.toBe(
+      undefined
+    );
+    await expect(
+      fs.access(path.join(vaultPath, 'Projects', 'workspace', 'Sources', '.contextgo', 'skills', 'release-guard'))
+    ).rejects.toThrow();
+    await expect(fs.access(staleSkillReferenceMirrorPath)).rejects.toThrow();
+
+    const automationContent = await fs.readFile(
+      path.join(vaultPath, 'Projects', 'workspace', '_context', 'Automation.md'),
+      'utf8'
+    );
+    expect(automationContent).toContain('- Skills: 1');
+    expect(automationContent).toContain(
+      '[[Projects/workspace/_context/automation/skills/Release-Guard|Release Guard]]'
+    );
+
+    const capabilityDocContent = await fs.readFile(
+      path.join(vaultPath, 'Projects', 'workspace', '_context', 'automation', 'skills', 'Release-Guard.md'),
+      'utf8'
+    );
+    expect(capabilityDocContent).toContain('## SKILL.md');
+    expect(capabilityDocContent).toContain('Use this skill when release work must stay narrowly scoped.');
+    expect(capabilityDocContent).not.toContain('This reference doc should stay out of the vault source graph.');
+
+    const graphCanvas = JSON.parse(
+      await fs.readFile(path.join(vaultPath, 'Projects', 'workspace', 'Project Graph.canvas'), 'utf8')
+    );
+    expect(graphCanvas.nodes.some((node: { file?: string }) => node.file?.includes('Sources/.contextgo/skills'))).toBe(
+      false
+    );
+    expect(
+      graphCanvas.nodes.some((node: { file?: string }) =>
+        node.file?.includes('_context/automation/skills/Release-Guard.md')
+      )
+    ).toBe(true);
   });
 
   it('writes project curator proposal notes under the project context proposals directory', async () => {

@@ -1,9 +1,5 @@
 <p align="center">
-  <img src="./resources/contextgo_readme_header_0807.png" alt="ContextGo" width="100%">
-</p>
-
-<p align="center">
-  <img src="./resources/contextgo_logo_no_border.png" alt="ContextGo Logo" width="120">
+  <img src="./public/readme-assets/contextgo-no-bg-black.png" alt="ContextGo" width="100%">
 </p>
 
 <p align="center">
@@ -136,12 +132,28 @@ ContextGo 默认采用 `Host Runtime + Client Shell` 模型：
 
 ContextGo 在产品层不是一堆抽象概念，而是一套可直接使用的工作台：
 
+<p align="center">
+  <img src="./public/readme-assets/contextgo-product-overview-grid.png" alt="ContextGo 产品总览" width="100%">
+</p>
+
+<p align="center">
+  <em>工作台首页、Connector、内置 Agent、Context Space、调度执行与远程 Host</em>
+</p>
+
 - 内置 Agent 与 Agent Package
 - 可组合的 skills、hooks、commands、schedules
 - 项目级 harness 初始化能力
 - 多端访问与远程控制
 - 可回到 IM / 业务渠道的发布与交互能力
 - 逐步接入更多本地工具、浏览器操作和外部产品能力
+
+<p align="center">
+  <img src="./public/readme-assets/contextgo-publishing-flow-grid.png" alt="ContextGo 发布与渠道回流" width="100%">
+</p>
+
+<p align="center">
+  <em>Agent 发布与渠道回流能力</em>
+</p>
 
 它既服务开发者，也服务不懂底层技术、但只想让 Agent 真的替自己做事的人。
 

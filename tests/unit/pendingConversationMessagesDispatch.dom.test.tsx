@@ -2,8 +2,8 @@
  * @vitest-environment jsdom
  */
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePendingConversationMessages } from '@/renderer/pages/conversation/hooks/usePendingConversationMessages';
 
 const dispatchMock =
@@ -46,6 +46,10 @@ describe('usePendingConversationMessages dispatch lifecycle', () => {
     dispatchMock.mockReset();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('removes dispatched items from the pending list immediately instead of keeping a dispatching ghost row', async () => {
     let resolveDispatch: (() => void) | null = null;
     dispatchMock.mockImplementation(
@@ -82,5 +86,51 @@ describe('usePendingConversationMessages dispatch lifecycle', () => {
     await waitFor(() => {
       expect(screen.getByText('pending:hello world')).toBeInTheDocument();
     });
+  });
+
+  it('waits for a short idle grace period before dispatching queued send messages', async () => {
+    vi.useFakeTimers();
+    dispatchMock.mockResolvedValue(undefined);
+
+    const { result, rerender } = renderHook(
+      ({ canSendNow }) =>
+        usePendingConversationMessages({
+          conversationId: 'conv-dispatch-delayed',
+          canSendNow,
+          canSteerNow: false,
+          onDispatch: dispatchMock,
+          sendDispatchDelayMs: 120,
+        }),
+      {
+        initialProps: { canSendNow: false },
+      }
+    );
+
+    act(() => {
+      result.current.enqueuePendingMessage('queue', 'hello world', []);
+    });
+
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(result.current.pendingMessages).toHaveLength(1);
+
+    rerender({ canSendNow: true });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(119);
+    });
+
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(result.current.pendingMessages).toHaveLength(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.pendingMessages).toHaveLength(0);
   });
 });

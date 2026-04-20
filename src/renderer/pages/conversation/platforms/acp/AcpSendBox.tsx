@@ -21,7 +21,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
-import { usePreviewComposer } from '@/renderer/pages/conversation/Preview';
 import {
   usePendingConversationMessages,
   type PendingConversationMessage,
@@ -45,6 +44,7 @@ const useAcpSendBoxDraft = getSendBoxDraftHook('acp', {
 
 const EMPTY_AT_PATH: Array<string | FileOrFolderItem> = [];
 const EMPTY_UPLOAD_FILES: string[] = [];
+const QUEUED_SEND_DISPATCH_DELAY_MS = 120;
 
 const useSendBoxDraft = (conversation_id: string) => {
   const { data, mutate } = useAcpSendBoxDraft(conversation_id);
@@ -102,9 +102,8 @@ const AcpSendBox: React.FC<{
   const { checkAndUpdateTitle } = useAutoTitle();
   const slashCommands = useSlashCommands(conversation_id, { agentStatus: acpStatus });
   const { atPath, uploadFile, setAtPath, setUploadFile, content, setContent } = useSendBoxDraft(conversation_id);
-  const { setSendBoxHandler } = usePreviewComposer();
 
-  // Use useLatestRef to keep latest setters to avoid re-registering handler
+  // Use useLatestRef to keep latest setters for long-lived event listeners
   const setContentRef = useLatestRef(setContent);
   const atPathRef = useLatestRef(atPath);
 
@@ -118,16 +117,6 @@ const AcpSendBox: React.FC<{
     setAtPath,
     setUploadFile,
   });
-
-  // Register handler for adding text from preview panel to sendbox
-  useEffect(() => {
-    const handler = (text: string) => {
-      // If there's existing content, add newline and new text; otherwise just set the text
-      const newContent = content ? `${content}\n${text}` : text;
-      setContentRef.current(newContent);
-    };
-    setSendBoxHandler(handler);
-  }, [setSendBoxHandler, content]);
 
   // Listen for sendbox.fill event to populate input from external sources
   useAddEventListener(
@@ -225,6 +214,7 @@ const AcpSendBox: React.FC<{
     conversationId: conversation_id,
     canSendNow: !(running || aiProcessing),
     canSteerNow: canSteerPendingMessage,
+    sendDispatchDelayMs: QUEUED_SEND_DISPATCH_DELAY_MS,
     onDispatch: async (pendingMessage: PendingConversationMessage) => {
       await sendAcpMessage(pendingMessage.content, pendingMessage.attachments);
     },
@@ -308,8 +298,14 @@ const AcpSendBox: React.FC<{
 
   return (
     <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
-      <RuntimePlanCard entries={runtimePlanEntries} running={running || aiProcessing} />
-      <AgentRunStatus trace={runTrace} running={running || aiProcessing} />
+      <div
+        className={`conversation-run-status-stack conversation-run-status-stack--triple ${
+          running || aiProcessing ? 'conversation-run-status-stack--active' : ''
+        }`}
+      >
+        <RuntimePlanCard entries={runtimePlanEntries} running={running || aiProcessing} />
+        <AgentRunStatus trace={runTrace} running={running || aiProcessing} />
+      </div>
 
       <SendBox
         value={content}

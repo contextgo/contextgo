@@ -83,10 +83,18 @@ type UsePendingConversationMessagesOptions = {
   canSteerNow?: boolean;
   onDispatch: (message: PendingConversationMessage) => Promise<void>;
   onDispatchError?: (error: unknown, message: PendingConversationMessage) => void;
+  sendDispatchDelayMs?: number;
 };
 
 export function usePendingConversationMessages(options: UsePendingConversationMessagesOptions) {
-  const { conversationId, canSendNow, canSteerNow = false, onDispatch, onDispatchError } = options;
+  const {
+    conversationId,
+    canSendNow,
+    canSteerNow = false,
+    onDispatch,
+    onDispatchError,
+    sendDispatchDelayMs = 0,
+  } = options;
   const { data, mutate } = useSWR([`/conversation/pending-messages/${conversationId}`, conversationId], ([, id]) =>
     getPendingMessages(id)
   );
@@ -95,7 +103,17 @@ export function usePendingConversationMessages(options: UsePendingConversationMe
   const onDispatchRef = useLatestRef(onDispatch);
   const onDispatchErrorRef = useLatestRef(onDispatchError);
   const dispatchingMessageIdRef = useRef<string | null>(null);
+  const dispatchDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const delayedSendDispatchRef = useRef<{ messageId: string; readyAt: number } | null>(null);
   const [dispatchTick, bumpDispatchTick] = useReducer((value: number) => value + 1, 0);
+
+  const clearDispatchDelay = useCallback(() => {
+    if (dispatchDelayTimerRef.current) {
+      clearTimeout(dispatchDelayTimerRef.current);
+      dispatchDelayTimerRef.current = null;
+    }
+    delayedSendDispatchRef.current = null;
+  }, []);
 
   const mutatePendingMessages = useCallback(
     (updater: (messages: PendingConversationMessage[]) => PendingConversationMessage[]) => {
@@ -176,8 +194,11 @@ export function usePendingConversationMessages(options: UsePendingConversationMe
     return latestMessage;
   }, [pendingMessages, removePendingMessage]);
 
+  useEffect(() => clearDispatchDelay, [clearDispatchDelay]);
+
   useEffect(() => {
     if (dispatchingMessageIdRef.current) {
+      clearDispatchDelay();
       return;
     }
 
@@ -187,9 +208,37 @@ export function usePendingConversationMessages(options: UsePendingConversationMe
     });
 
     if (!nextPendingMessage) {
+      clearDispatchDelay();
       return;
     }
 
+    if (canSendNow && sendDispatchDelayMs > 0) {
+      const now = Date.now();
+      const activeDelay = delayedSendDispatchRef.current;
+
+      if (!activeDelay || activeDelay.messageId !== nextPendingMessage.id) {
+        delayedSendDispatchRef.current = {
+          messageId: nextPendingMessage.id,
+          readyAt: now + sendDispatchDelayMs,
+        };
+      }
+
+      const readyAt = delayedSendDispatchRef.current?.readyAt ?? now;
+      const remainingMs = readyAt - now;
+
+      if (remainingMs > 0) {
+        if (dispatchDelayTimerRef.current) {
+          clearTimeout(dispatchDelayTimerRef.current);
+        }
+        dispatchDelayTimerRef.current = setTimeout(() => {
+          dispatchDelayTimerRef.current = null;
+          bumpDispatchTick();
+        }, remainingMs);
+        return;
+      }
+    }
+
+    clearDispatchDelay();
     dispatchingMessageIdRef.current = nextPendingMessage.id;
     mutatePendingMessages((messages) => messages.filter((message) => message.id !== nextPendingMessage.id));
 
@@ -220,6 +269,8 @@ export function usePendingConversationMessages(options: UsePendingConversationMe
     onDispatchErrorRef,
     onDispatchRef,
     pendingMessages,
+    sendDispatchDelayMs,
+    clearDispatchDelay,
   ]);
 
   return {

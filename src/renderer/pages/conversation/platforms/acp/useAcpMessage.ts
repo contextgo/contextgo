@@ -71,21 +71,68 @@ const buildRunTaskText = (input: string, files: string[] = []): string => {
   return normalizedInput ? `${normalizedInput}\n\n${fileSection}` : fileSection;
 };
 
-const resolveThoughtText = (previous: string, incoming: string): string => {
-  const next = incoming.trim();
-  if (!next) {
-    return previous;
+const getThoughtOverlapLength = (previous: string, incoming: string): number => {
+  const maxOverlap = Math.min(previous.length, incoming.length);
+
+  for (let length = maxOverlap; length > 0; length -= 1) {
+    if (previous.endsWith(incoming.slice(0, length))) {
+      return length;
+    }
   }
 
-  return incoming;
+  return 0;
+};
+
+const shouldInsertThoughtSpace = (previous: string, incoming: string): boolean => {
+  const previousLastChar = previous.at(-1);
+  const incomingFirstChar = incoming[0];
+
+  if (!previousLastChar || !incomingFirstChar) {
+    return false;
+  }
+
+  return /\S/u.test(previousLastChar) && /\S/u.test(incomingFirstChar) && /[\p{L}\p{N}]/u.test(previousLastChar);
+};
+
+const resolveThoughtText = (previous: string, incoming: string): string => {
+  const normalizedPrevious = previous.replace(/\r\n/g, '\n').trimEnd();
+  const normalizedIncoming = incoming.replace(/\r\n/g, '\n').trim();
+
+  if (!normalizedIncoming) {
+    return normalizedPrevious;
+  }
+
+  if (!normalizedPrevious) {
+    return normalizedIncoming;
+  }
+
+  if (normalizedIncoming === normalizedPrevious) {
+    return normalizedPrevious;
+  }
+
+  if (normalizedIncoming.startsWith(normalizedPrevious)) {
+    return normalizedIncoming;
+  }
+
+  if (normalizedPrevious.endsWith(normalizedIncoming)) {
+    return normalizedPrevious;
+  }
+
+  const overlapLength = getThoughtOverlapLength(normalizedPrevious, normalizedIncoming);
+  if (overlapLength > 0) {
+    return normalizedPrevious + normalizedIncoming.slice(overlapLength);
+  }
+
+  const separator = shouldInsertThoughtSpace(normalizedPrevious, normalizedIncoming) ? ' ' : '';
+  return normalizedPrevious + separator + normalizedIncoming;
 };
 
 const extractThoughtSubject = (content: string): string => {
-  const lines = content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const firstLine = lines[0] || '';
+  const firstLine =
+    content
+      .split('\n')
+      .map((line) => line.trim())
+      .find(Boolean) || '';
 
   const heading = firstLine.match(/^\*\*(.+?)\*\*$/);
   if (heading) {
@@ -154,7 +201,7 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
   }>({ lastUpdate: 0, pending: null, timer: null });
 
   const throttledSetThought = useMemo(() => {
-    const THROTTLE_MS = 50;
+    const THROTTLE_MS = 120;
     return (data: ThoughtData) => {
       const now = Date.now();
       const ref = thoughtThrottleRef.current;
@@ -381,7 +428,6 @@ export const useAcpMessage = (conversation_id: string): UseAcpMessageReturn => {
                 }
               : current
           );
-          addOrUpdateMessage(transformedMessage);
           break;
         }
         case 'acp_tool_call': {

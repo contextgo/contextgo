@@ -1,9 +1,5 @@
 <p align="center">
-  <img src="./resources/contextgo_readme_header_0807.png" alt="ContextGo" width="100%">
-</p>
-
-<p align="center">
-  <img src="./resources/contextgo_logo_no_border.png" alt="ContextGo Logo" width="120">
+  <img src="./public/readme-assets/contextgo-no-bg-black.png" alt="ContextGo" width="100%">
 </p>
 
 <p align="center">
@@ -136,12 +132,28 @@ In practice:
 
 At the product layer, ContextGo turns those ideas into a usable workbench:
 
+<p align="center">
+  <img src="./public/readme-assets/contextgo-product-overview-grid.png" alt="ContextGo product overview" width="100%">
+</p>
+
+<p align="center">
+  <em>Workbench, connectors, built-in agents, context space, scheduling, and remote host</em>
+</p>
+
 - built-in agents and Agent Packages
 - composable skills, hooks, commands, and schedules
 - project-level harness bootstrapping
 - multi-device access and remote control
 - publishing and interaction back into IM and operational channels
 - an expanding set of local tools, browser actions, and external integrations
+
+<p align="center">
+  <img src="./public/readme-assets/contextgo-publishing-flow-grid.png" alt="ContextGo publishing and channel loop" width="100%">
+</p>
+
+<p align="center">
+  <em>Agent publishing and channel feedback loop</em>
+</p>
 
 It is designed both for developers and for users who do not care about the internals and only want an agent that can actually work.
 

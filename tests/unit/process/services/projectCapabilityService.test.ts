@@ -30,6 +30,12 @@ describe('ProjectCapabilityService', () => {
         '---',
         '',
         '# Release Guard',
+        '',
+        'Use this skill when release work must stay narrow and reversible.',
+        '',
+        '## Checklist',
+        '',
+        '- Verify the exact file set before editing.',
       ].join('\n'),
       'utf8'
     );
@@ -140,6 +146,14 @@ describe('ProjectCapabilityService', () => {
         id: 'release-guard',
         name: 'Release Guard',
         workspaceRelativePath: '.contextgo/skills/release-guard',
+        skillDocumentRelativePath: '.contextgo/skills/release-guard/SKILL.md',
+        skillDocumentBody: [
+          'Use this skill when release work must stay narrow and reversible.',
+          '',
+          '## Checklist',
+          '',
+          '- Verify the exact file set before editing.',
+        ].join('\n'),
         implicitInvocation: true,
         openAIDisplayName: 'Release Guard',
         openAIShortDescription: 'Keep release work narrow.',

@@ -15,7 +15,6 @@ import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/cha
 import { createSetUploadFile, useSendBoxFiles } from '@/renderer/hooks/chat/useSendBoxFiles';
 import { useSlashCommands } from '@/renderer/hooks/chat/useSlashCommands';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
-import { usePreviewComposer } from '@/renderer/pages/conversation/Preview';
 import {
   usePendingConversationMessages,
   type PendingConversationMessage,
@@ -47,6 +46,7 @@ const useGeminiSendBoxDraft = getSendBoxDraftHook('gemini', {
 
 const EMPTY_AT_PATH: Array<string | FileOrFolderItem> = [];
 const EMPTY_UPLOAD_FILES: string[] = [];
+const QUEUED_SEND_DISPATCH_DELAY_MS = 120;
 
 const useSendBoxDraft = (conversation_id: string) => {
   const { data, mutate } = useGeminiSendBoxDraft(conversation_id);
@@ -176,20 +176,10 @@ const GeminiSendBox: React.FC<{
   const slashCommands = useSlashCommands(conversation_id);
 
   const addOrUpdateMessage = useAddOrUpdateMessage();
-  const { setSendBoxHandler } = usePreviewComposer();
 
-  // Use useLatestRef to keep latest setters to avoid re-registering handler
+  // Use useLatestRef to keep latest setters for long-lived event listeners
   const setContentRef = useLatestRef(setContent);
   const atPathRef = useLatestRef(atPath);
-
-  // Register handler for adding text from preview panel to sendbox
-  useEffect(() => {
-    const handler = (text: string) => {
-      const newContent = content ? `${content}\n${text}` : text;
-      setContentRef.current(newContent);
-    };
-    setSendBoxHandler(handler);
-  }, [setSendBoxHandler, content]);
 
   // Listen for sendbox.fill event to populate input from external sources
   useAddEventListener(
@@ -268,6 +258,7 @@ const GeminiSendBox: React.FC<{
     conversationId: conversation_id,
     canSendNow: Boolean(currentModel?.useModel) && !running,
     canSteerNow: canSteerPendingMessage,
+    sendDispatchDelayMs: QUEUED_SEND_DISPATCH_DELAY_MS,
     onDispatch: async (pendingMessage: PendingConversationMessage) => {
       await sendGeminiMessage(pendingMessage.content, pendingMessage.attachments);
     },
@@ -367,7 +358,13 @@ const GeminiSendBox: React.FC<{
         />
       )}
 
-      <ThoughtDisplay thought={thought} running={running} onStop={handleStop} />
+      <div
+        className={`conversation-run-status-stack conversation-run-status-stack--single ${
+          running ? 'conversation-run-status-stack--active' : ''
+        }`}
+      >
+        <ThoughtDisplay thought={thought} running={running} onStop={handleStop} />
+      </div>
 
       <SendBox
         value={content}

@@ -32,7 +32,7 @@ import {
 } from '@/renderer/utils/file/workspaceMentions';
 import { blurActiveElement, shouldBlockMobileInputFocus } from '@/renderer/utils/ui/focus';
 import { Button, Input, Message, Tag } from '@arco-design/web-react';
-import { ArrowUp, CloseSmall, SquareSmall } from '@icon-park/react';
+import { ArrowUp, CloseSmall, Square } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import './sendbox.css';
@@ -173,8 +173,11 @@ const SendBox: React.FC<SendBoxProps> = ({
   const mobileUserFocusIntentUntilRef = useRef(0);
   const warmedConversationRef = useRef<string | undefined>(undefined);
   const warmupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shouldRestoreDesktopFocusRef = useRef(false);
+  const desktopFocusSelectionRef = useRef<{ start: number; end: number } | null>(null);
   const latestInputRef = useLatestRef(input);
   const setInputRef = useLatestRef(setInput);
+  const cursorPositionRef = useLatestRef(cursorPosition);
   const workspaceItemsRef = useLatestRef(workspaceItems);
   const loadedWorkspacePathRef = useRef<string | undefined>(undefined);
   const workspaceItemsRequestRef = useRef<Promise<WorkspaceMentionItem[]> | null>(null);
@@ -225,6 +228,64 @@ const SendBox: React.FC<SendBoxProps> = ({
     }, 0);
     return () => clearTimeout(timer);
   }, [isMobile]);
+
+  const getTextareaElement = useCallback((): HTMLTextAreaElement | null => {
+    return containerRef.current?.querySelector('textarea') ?? null;
+  }, []);
+
+  // Restore the desktop chat input after the window briefly loses focus.
+  // This prevents transient main-window blur/focus churn from interrupting typing.
+  useEffect(() => {
+    if (isMobile || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleWindowBlur = () => {
+      const textarea = getTextareaElement();
+      if (!textarea || document.activeElement !== textarea) {
+        shouldRestoreDesktopFocusRef.current = false;
+        desktopFocusSelectionRef.current = null;
+        return;
+      }
+
+      shouldRestoreDesktopFocusRef.current = true;
+      desktopFocusSelectionRef.current = {
+        start: textarea.selectionStart ?? textarea.value.length,
+        end: textarea.selectionEnd ?? textarea.value.length,
+      };
+    };
+
+    const handleWindowFocus = () => {
+      if (!shouldRestoreDesktopFocusRef.current) {
+        return;
+      }
+
+      shouldRestoreDesktopFocusRef.current = false;
+      const restoreSelection = desktopFocusSelectionRef.current;
+
+      window.setTimeout(() => {
+        const textarea = getTextareaElement();
+        if (!textarea || textarea.disabled || document.activeElement === textarea) {
+          return;
+        }
+
+        textarea.focus();
+
+        const defaultPosition = Math.min(cursorPositionRef.current, textarea.value.length);
+        const selectionStart = Math.min(restoreSelection?.start ?? defaultPosition, textarea.value.length);
+        const selectionEnd = Math.min(restoreSelection?.end ?? selectionStart, textarea.value.length);
+        textarea.setSelectionRange(selectionStart, selectionEnd);
+      }, 0);
+    };
+
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [cursorPositionRef, getTextareaElement, isMobile]);
 
   useEffect(() => {
     setCursorPosition((prev) => Math.min(prev, input.length));
@@ -590,11 +651,16 @@ const SendBox: React.FC<SendBoxProps> = ({
   }, [buildFinalMessage, clearDomSnippets, setInput]);
 
   const sendDeferredMessage = useCallback(
-    (handler?: (message: string) => Promise<void> | void) => {
+    (
+      handler?: (message: string) => Promise<void> | void,
+      options?: {
+        allowWhileBusy?: boolean;
+      }
+    ) => {
       if (!handler || !hasMessageContent) {
         return false;
       }
-      if (loading || isLoading || totalPendingUploadCount > 0) {
+      if (totalPendingUploadCount > 0 || (!options?.allowWhileBusy && (loading || isLoading))) {
         message.warning(t('messages.conversationInProgress'));
         return false;
       }
@@ -659,10 +725,10 @@ const SendBox: React.FC<SendBoxProps> = ({
       shape='circle'
       type='secondary'
       disabled={!hasStopAction}
-      className='bg-animate sendbox-stop-button'
+      className='bg-animate sendbox-stop-button sendbox-tool-button'
       style={stopButtonStyle}
       aria-label={t('conversation.group.workflow.decision.stop')}
-      icon={<SquareSmall theme='filled' size='10' fill='currentColor' strokeWidth={3} />}
+      icon={<Square theme='filled' size='12' fill='currentColor' strokeWidth={2} />}
       onClick={hasStopAction ? () => void stopHandler() : undefined}
     ></Button>
   );
@@ -723,13 +789,13 @@ const SendBox: React.FC<SendBoxProps> = ({
       if (!slashController.isOpen && !disabled) {
         if (event.key === 'Tab' && !event.shiftKey && onQueue && hasMessageContent) {
           event.preventDefault();
-          sendDeferredMessage(onQueue);
+          sendDeferredMessage(onQueue, { allowWhileBusy: true });
           return;
         }
 
         if ((event.metaKey || event.ctrlKey) && event.key === 'Enter' && onSteer && hasMessageContent) {
           event.preventDefault();
-          sendDeferredMessage(onSteer);
+          sendDeferredMessage(onSteer, { allowWhileBusy: true });
           return;
         }
 

@@ -81,7 +81,7 @@ describe('useAcpMessage', () => {
       { content: '提炼运行时计划', status: 'in_progress' },
     ]);
     expect(result.current.runTrace?.planEntries).toEqual(result.current.runtimePlanEntries);
-    expect(addOrUpdateMessageMock).toHaveBeenCalledTimes(1);
+    expect(addOrUpdateMessageMock).not.toHaveBeenCalled();
 
     act(() => {
       capturedResponseListener?.({
@@ -95,7 +95,7 @@ describe('useAcpMessage', () => {
     expect(result.current.runtimePlanEntries).toEqual([]);
   });
 
-  it('overwrites live thought text with the latest streamed thought instead of accumulating chunks', async () => {
+  it('merges streamed thought chunks into a stable live thought string', async () => {
     const { result } = renderHook(() => useAcpMessage(CONVERSATION_ID));
 
     await act(async () => {
@@ -127,16 +127,33 @@ describe('useAcpMessage', () => {
         msg_id: 'thought-2',
         conversation_id: CONVERSATION_ID,
         data: {
-          subject: '第二版思路',
-          description: '第二版思路：直接覆盖当前展示，不累计旧文本。',
+          subject: '追加片段',
+          description: '再核对工具调用边界。',
         },
       });
       vi.runAllTimers();
     });
 
-    expect(result.current.thought.description).toBe('第二版思路：直接覆盖当前展示，不累计旧文本。');
-    expect(result.current.runTrace?.liveThoughtText).toBe('第二版思路：直接覆盖当前展示，不累计旧文本。');
-    expect(result.current.runTrace?.liveThoughtText).not.toContain('第一版思路');
+    expect(result.current.thought.description).toBe('第一版思路：先收集上下文。再核对工具调用边界。');
+    expect(result.current.runTrace?.liveThoughtText).toBe('第一版思路：先收集上下文。再核对工具调用边界。');
+
+    act(() => {
+      capturedResponseListener?.({
+        type: 'thought',
+        msg_id: 'thought-3',
+        conversation_id: CONVERSATION_ID,
+        data: {
+          subject: '完整快照',
+          description: '第一版思路：先收集上下文。再核对工具调用边界。最后整理结论。',
+        },
+      });
+      vi.runAllTimers();
+    });
+
+    expect(result.current.thought.description).toBe('第一版思路：先收集上下文。再核对工具调用边界。最后整理结论。');
+    expect(result.current.runTrace?.liveThoughtText).toBe(
+      '第一版思路：先收集上下文。再核对工具调用边界。最后整理结论。'
+    );
   });
 
   it('ignores plan events from other conversations and drops stale plan data on reset paths', async () => {

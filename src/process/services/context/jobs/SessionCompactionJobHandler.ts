@@ -27,7 +27,7 @@ type SupportedContextService = Pick<
 
 type SupportedVaultSyncService = Pick<
   SpaceVaultContextSyncService,
-  'appendContextCheckpoint' | 'appendSessionCheckpoint' | 'writeSessionWorkingContext'
+  'appendContextCheckpoint' | 'appendSessionCheckpoint' | 'appendSessionTimelineEvent' | 'writeSessionWorkingContext'
 >;
 
 const SESSIONS_DIR = 'Sessions';
@@ -388,7 +388,7 @@ export class SessionCompactionJobHandler {
       conversationResult.success && conversationResult.data?.name ? conversationResult.data.name : job.threadId;
     const artifactTargets = getSessionArtifactTargets(job);
     const lifecycleSummary = getLifecycleSummary(job);
-    const workingSetArtifact =
+    const workingContextArtifact =
       conversationResult.success && conversationResult.data
         ? await this.vaultSyncService.writeSessionWorkingContext({
             conversation: conversationResult.data,
@@ -418,8 +418,8 @@ export class SessionCompactionJobHandler {
             compactionJobId: job.id,
             lifecycleSummary,
             artifactTargets,
-            workingContextRelativePath: workingSetArtifact?.relativePath,
-            workingContextTitle: workingSetArtifact?.title,
+            workingContextRelativePath: workingContextArtifact?.relativePath,
+            workingContextTitle: workingContextArtifact?.title,
           })
         : undefined;
     if (conversationResult.success && conversationResult.data) {
@@ -432,7 +432,9 @@ export class SessionCompactionJobHandler {
           `Profile: \`${profile.key}\``,
           `Artifacts: ${artifactTargets.map((target) => `\`${target}\``).join(', ')}`,
           lifecycleSummary ? `Handoff summary: ${lifecycleSummary}` : undefined,
-          workingSetArtifact?.relativePath ? `Working context: \`${workingSetArtifact.relativePath}\`` : undefined,
+          workingContextArtifact?.relativePath
+            ? `Working context: \`${workingContextArtifact.relativePath}\``
+            : undefined,
           sessionCheckpointArtifact?.relativePath
             ? `Checkpoint: \`${sessionCheckpointArtifact.relativePath}\``
             : undefined,
@@ -442,6 +444,20 @@ export class SessionCompactionJobHandler {
           `Pressure: ${decision.pressure}`,
         ].filter((value): value is string => Boolean(value)),
         body: detail,
+      });
+      await this.vaultSyncService.appendSessionTimelineEvent({
+        conversation: conversationResult.data,
+        timestamp: now,
+        title: 'Session Compacted',
+        body: [
+          structured.currentTask ? `Current task: ${structured.currentTask}` : undefined,
+          `Pressure ${decision.pressure}`,
+          `Signals ${signalKinds.length}`,
+          `Promoted ${promotedSummaries.length}`,
+          `Pending review ${pendingSummaries.length}`,
+        ]
+          .filter((value): value is string => Boolean(value))
+          .join(' · '),
       });
     }
 
@@ -453,8 +469,8 @@ export class SessionCompactionJobHandler {
       detail,
       noteTitle: sessionCheckpointArtifact?.title ?? sessionNoteTitle,
       relativePath: sessionCheckpointArtifact?.relativePath ?? sessionRelativePath,
-      workingSetTitle: workingSetArtifact?.title,
-      workingSetRelativePath: workingSetArtifact?.relativePath,
+      workingContextTitle: workingContextArtifact?.title,
+      workingContextRelativePath: workingContextArtifact?.relativePath,
       currentTask: structured.currentTask,
       stableStrategies: structured.stableStrategies,
       failureModes: structured.failureModes,

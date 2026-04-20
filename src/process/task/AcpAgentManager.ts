@@ -554,11 +554,6 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
             return;
           }
 
-          // Clear busy guard when turn ends
-          if (v.type === 'finish') {
-            scheduleConversationGuard.setProcessing(this.conversation_id, false);
-          }
-
           if (v.type === 'finish') {
             if (finishedMsgContent) {
               const scheduleCommandResult = await executeAssistantScheduleCommands({
@@ -633,7 +628,10 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
           });
 
           if (v.type === 'finish' && !shouldContinueAfterFinish) {
+            this.clearBusyState();
             this.scheduleAfterResponseHooks();
+          } else if (v.type === 'error') {
+            this.clearBusyState();
           }
         },
       });
@@ -970,8 +968,10 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
    * Uses ACP session/cancel so the connection stays alive for subsequent messages.
    */
   async stop() {
-    if (this.agent) {
-      this.agent.cancelPrompt();
+    try {
+      this.agent?.cancelPrompt();
+    } finally {
+      this.clearBusyState();
     }
   }
 

@@ -22,6 +22,7 @@ import type { PresetAgentType } from '@/common/types/acpTypes';
 import {
   findBundledAgentPackageDescriptorByAssistantId,
   getBundledAgentPackageInstallSurfaces,
+  getBundledAgentPackageOwnedSkillNames,
 } from '@/common/config/presets/bundledAgentPackageRegistry';
 import { resolveBuiltinAssistantWorkspaceSkillNames } from '@/common/config/presets/builtinAssistantDefaults';
 import { resolveBundledAgentPackageSourceRelativeRoots } from '@/common/config/presets/bundledAgentPackageRegistry';
@@ -477,6 +478,9 @@ export async function setupAssistantWorkspace(
     ? resolveBundledAgentPackageSourceRelativeRoots(options.presetAssistantId, 'skills')
     : [];
   const presetSkillRoots = manifestSkillRoots;
+  const packagedSkillNames = options.presetAssistantId
+    ? (getBundledAgentPackageOwnedSkillNames(options.presetAssistantId) ?? [])
+    : [];
 
   for (const presetSkillRoot of presetSkillRoots) {
     const absoluteRoot = resolveBundledResourcePath(presetSkillRoot);
@@ -485,6 +489,26 @@ export async function setupAssistantWorkspace(
     ).catch((): Awaited<ReturnType<typeof discoverSkillDirectories>> => []);
     for (const skill of presetSkills) {
       skillSources.set(skill.name, skill.dirPath);
+    }
+
+    // Packaged apps can read files inside asar reliably but bundled directory
+    // enumeration may still fail for some resource roots. Fall back to the
+    // manifest-owned packaged skill names so built-in assistant workspaces still
+    // materialize their packaged skills in `.contextgo/skills`.
+    for (const packagedSkillName of packagedSkillNames) {
+      const directSkillDir = path.join(absoluteRoot, packagedSkillName);
+      if (
+        skillSources.has(packagedSkillName) ||
+        Array.from(skillSources.values()).some((existingDir) => existingDir === directSkillDir)
+      ) {
+        continue;
+      }
+
+      if (!(await pathExists(path.join(directSkillDir, 'SKILL.md')))) {
+        continue;
+      }
+
+      skillSources.set(packagedSkillName, directSkillDir);
     }
   }
 

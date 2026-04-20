@@ -13,10 +13,7 @@ type TypewriterPlaceholderOptions = {
 /**
  * Typewriter animation hook for rotating text phrases.
  */
-export const useTypewriterPlaceholder = (
-  texts: string | string[],
-  options?: TypewriterPlaceholderOptions
-): string => {
+export const useTypewriterPlaceholder = (texts: string | string[], options?: TypewriterPlaceholderOptions): string => {
   const [placeholder, setPlaceholder] = useState('');
   const sourceTexts = Array.isArray(texts) ? texts : [texts];
   const textKey = sourceTexts.join('\u0000');

@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   ContextEngineService,
   InMemoryVectorIndexProvider,
@@ -651,6 +651,12 @@ describe('ProjectContextMirrorService', () => {
     const workspacePath = path.join(tempRoot, 'workspace');
     const vaultPath = path.join(tempRoot, 'vault');
     const projectFolder = path.join(vaultPath, 'Projects', 'workspace');
+    const ingestSourceMock = vi.fn(async (input: { sourceId?: string }) => ({
+      source: { id: input.sourceId ?? 'source-1' },
+      chunkIds: [],
+      operations: [],
+    }));
+    const indexTextDocumentMock = vi.fn(async () => ({ snapshot: { id: 'doc-1' }, chunks: [] }));
 
     try {
       await writeTestDocument(
@@ -659,12 +665,20 @@ describe('ProjectContextMirrorService', () => {
       );
       await writeTestDocument(path.join(projectFolder, 'workspace.md'), '# Workspace\n\nKeep diffs minimal.');
       await writeTestDocument(path.join(projectFolder, 'Project Insights.md'), '# Insights\n\nVerify changes locally.');
+      await writeTestDocument(
+        path.join(projectFolder, '_context', 'Automation.md'),
+        '# Workspace Automation\n\nTrack the project capability surface here.'
+      );
+      await writeTestDocument(
+        path.join(projectFolder, '_context', 'automation', 'skills', 'Release-Guard.md'),
+        '# Release Guard\n\n## SKILL.md\n\nUse the mirrored automation skill body.'
+      );
       await writeTestDocument(path.join(projectFolder, 'Sources', 'AGENTS.md'), '# AGENTS\n\nRead AGENTS.md first.');
 
       const service = new ProjectContextMirrorService({
         archiveSource: async () => undefined,
-        indexTextDocument: async () => ({ snapshot: { id: 'doc-1' }, chunks: [] }),
-        ingestSource: async (input) => ({ source: { id: input.sourceId ?? 'source-1' }, chunkIds: [], operations: [] }),
+        indexTextDocument: indexTextDocumentMock,
+        ingestSource: ingestSourceMock,
         listSources: async () => [],
       } as any);
 
@@ -688,15 +702,37 @@ describe('ProjectContextMirrorService', () => {
         'profile',
       ]);
       expect(snapshot?.assemblyOverlaySource.sourceSections.map((section) => section.kind)).toEqual(['source']);
+      expect(service.buildMountedSections(snapshot)).toEqual([
+        ...(snapshot?.assemblyOverlaySource.projectSections ?? []),
+        ...(snapshot?.assemblyOverlaySource.sourceSections ?? []),
+      ]);
+      expect(ingestSourceMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Workspace Automation',
+          canonicalUri: 'contextgo://vault/Projects/workspace/_context/Automation.md',
+          tags: expect.arrayContaining(['project', 'automation', 'inventory', `project:${snapshot?.projectSlug}`]),
+        })
+      );
+      expect(ingestSourceMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Release Guard',
+          canonicalUri: 'contextgo://vault/Projects/workspace/_context/automation/skills/Release-Guard.md',
+          tags: expect.arrayContaining(['project', 'automation', 'skill', `project:${snapshot?.projectSlug}`]),
+        })
+      );
+      expect(indexTextDocumentMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Release Guard',
+          storageUri: 'contextgo://vault/Projects/workspace/_context/automation/skills/Release-Guard.md',
+          content: expect.stringContaining('Use the mirrored automation skill body.'),
+        })
+      );
+      expect(snapshot?.assemblyOverlaySource.mountedSections).toHaveLength(4);
       expect(snapshot?.assemblyOverlaySource.mountedSections.map((section) => section.kind)).toEqual([
         'profile',
         'profile',
         'profile',
         'source',
-      ]);
-      expect(service.buildMountedSections(snapshot)).toEqual([
-        ...(snapshot?.assemblyOverlaySource.projectSections ?? []),
-        ...(snapshot?.assemblyOverlaySource.sourceSections ?? []),
       ]);
     } finally {
       await fs.rm(tempRoot, { recursive: true, force: true });

@@ -95,7 +95,6 @@ const mockVaultSyncService = {
   appendConversationStopped: vi.fn(),
   appendContextCheckpoint: vi.fn(),
   appendSessionTimelineEvent: vi.fn(),
-  readSessionWorkingSetSection: vi.fn(),
   readSessionWorkingContextSection: vi.fn(),
   removeConversationContext: vi.fn(),
 };
@@ -247,7 +246,6 @@ describe('ContextRuntimeService', () => {
     mockContextService.saveMemoryCandidate.mockResolvedValue(undefined);
     mockContextService.saveMemory.mockResolvedValue(undefined);
     mockContextService.listProfiles.mockResolvedValue([]);
-    mockVaultSyncService.readSessionWorkingSetSection.mockResolvedValue(undefined);
     mockVaultSyncService.readSessionWorkingContextSection.mockResolvedValue(undefined);
     mockProjectCapabilityService.readSnapshot.mockResolvedValue({
       workspacePath: '/tmp/workspace',
@@ -438,8 +436,8 @@ describe('ContextRuntimeService', () => {
     expect(mockVaultSyncService.appendSessionTimelineEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         conversation: expect.objectContaining({ id: 'conv-1' }),
-        title: 'User query',
-        body: 'We prefer release changes to stay minimal and verifiable.',
+        title: 'Turn Started',
+        body: 'Request captured from message `msg-1` and queued for context assembly.',
       })
     );
     expect(mockVaultSyncService.appendContextCheckpoint).toHaveBeenCalledWith(
@@ -475,7 +473,7 @@ describe('ContextRuntimeService', () => {
       userInput: 'Use the latest release context.',
       agentInput: 'Use the latest release context.',
       agentContent: '[User Request]\nUse the latest release context.',
-      msgId: 'msg-working-set',
+      msgId: 'msg-working-context',
     });
 
     expect(mockContextService.assemble).toHaveBeenCalledWith(
@@ -774,10 +772,12 @@ describe('ContextRuntimeService', () => {
     expect(checkpointBody).toContain('Omitted sections: 1');
 
     const traceTimelineCall = mockVaultSyncService.appendSessionTimelineEvent.mock.calls.find(
-      (call) => call[0]?.title === 'Context trace'
+      (call) => call[0]?.title === 'Context Window Ready'
     );
-    expect(traceTimelineCall?.[0]?.body).toContain('retrieval 2');
-    expect(traceTimelineCall?.[0]?.body).toContain('mounted 2/0');
+    expect(traceTimelineCall?.[0]?.body).toContain('Window ready');
+    expect(traceTimelineCall?.[0]?.body).toContain('retrieval hits 2');
+    expect(traceTimelineCall?.[0]?.body).toContain('mounted sections 2');
+    expect(traceTimelineCall?.[0]?.body).toContain('mounted profiles 0');
     expect(traceTimelineCall?.[0]?.body).toContain('boundary frozen-snapshot');
     expect(traceTimelineCall?.[0]?.body).toContain('refresh next-turn-rebuild');
     expect(traceTimelineCall?.[0]?.body).toContain('fences no-recapture/no-reingest');

@@ -388,6 +388,7 @@ describe('ProjectAutomationModal', () => {
           description: 'Keep rollout changes narrow and verifiable.',
           docKey: 'skill:.contextgo/skills/release-guard',
           workspaceRelativePath: '.contextgo/skills/release-guard',
+          skillDocumentRelativePath: '.contextgo/skills/release-guard/SKILL.md',
           compatibility: ['Requires command-line tool `git`'],
           implicitInvocation: true,
           openAIDisplayName: 'Release Guard',
@@ -414,7 +415,8 @@ describe('ProjectAutomationModal', () => {
     expect(screen.getByText('.contextgo/skills/release-guard')).toBeInTheDocument();
     expect(screen.getByText('Requires command-line tool `git`')).toBeInTheDocument();
     expect(screen.getByText(/Release Guard Assistant/)).toBeInTheDocument();
-    expect(screen.getByTestId('project-skill-market-panel')).toHaveTextContent('embedded:/tmp/workspace');
+    expect(screen.queryByTestId('project-skill-market-panel')).not.toBeInTheDocument();
+    expect(projectSkillMarketState.current).toBeNull();
   });
 
   it('does not repeatedly reload project skills when translation hook identity changes across renders', async () => {
@@ -477,6 +479,54 @@ describe('ProjectAutomationModal', () => {
       await screen.findByText((content) => content.includes('## Usage') && content.includes('Stay focused.'))
     ).toBeInTheDocument();
     expect(screen.queryByText('name: release-guard')).not.toBeInTheDocument();
+  });
+
+  it('uses mirrored capability markdown for preview when the raw skill file is unavailable', async () => {
+    listAvailableSkillsMock.mockResolvedValue([]);
+    readSkillContentInvokeMock.mockRejectedValue(new Error('ENOENT: no such file or directory'));
+    getProjectCapabilitySnapshotMock.mockResolvedValue({
+      workspacePath: '/tmp/workspace',
+      automationRootRelativePath: '.contextgo',
+      counts: {
+        skill: 1,
+        hook: 0,
+        command: 0,
+        schedule: 0,
+      },
+      skills: [
+        {
+          kind: 'skill',
+          id: 'release-guard',
+          name: 'release-guard',
+          description: 'Keep rollout changes narrow and verifiable.',
+          docKey: 'skill:.contextgo/skills/release-guard',
+          workspaceRelativePath: '.contextgo/skills/release-guard',
+          skillDocumentRelativePath: '.contextgo/skills/release-guard/SKILL.md',
+          skillDocumentBody: '## Usage\n\nRead the mirrored copy instead.\n',
+          compatibility: ['Requires command-line tool `git`'],
+          implicitInvocation: true,
+          openAIDisplayName: 'Release Guard',
+          openAIShortDescription: 'Keep release work narrow.',
+        },
+      ],
+      hooks: [],
+      commands: [],
+      schedules: [],
+    });
+
+    render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Release Guard')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Release Guard'));
+
+    expect(readSkillContentInvokeMock).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText((content) => content.includes('## Usage') && content.includes('Read the mirrored copy'))
+    ).toBeInTheDocument();
+    expect(screen.getByText('.contextgo/skills/release-guard/SKILL.md')).toBeInTheDocument();
   });
 
   it('shows workspace-unavailable state without trying to load project skills', async () => {

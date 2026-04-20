@@ -23,7 +23,6 @@ import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
 import ThoughtDisplay, { type ThoughtData } from '@/renderer/components/chat/ThoughtDisplay';
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
-import { usePreviewComposer } from '@/renderer/pages/conversation/Preview';
 import {
   usePendingConversationMessages,
   type PendingConversationMessage,
@@ -53,6 +52,7 @@ const useCodexSendBoxDraft = getSendBoxDraftHook('codex', {
 
 const EMPTY_AT_PATH: Array<string | FileOrFolderItem> = [];
 const EMPTY_UPLOAD_FILES: string[] = [];
+const QUEUED_SEND_DISPATCH_DELAY_MS = 120;
 
 type CodexUiStateSnapshot = {
   running: boolean;
@@ -87,7 +87,6 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
   const addOrUpdateMessage = useAddOrUpdateMessage();
-  const { setSendBoxHandler } = usePreviewComposer();
 
   const [running, setRunning] = useState(initialUiState.running);
   const [aiProcessing, setAiProcessing] = useState(initialUiState.aiProcessing); // New loading state for AI response
@@ -115,7 +114,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
   }>({ lastUpdate: 0, pending: null, timer: null });
 
   const throttledSetThought = useMemo(() => {
-    const THROTTLE_MS = 50;
+    const THROTTLE_MS = 120;
     return (data: ThoughtData) => {
       const now = Date.now();
       const ref = thoughtThrottleRef.current;
@@ -176,8 +175,8 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
     [mutateDraft]
   );
 
-  // 使用 useLatestRef 保存最新的 setContent/atPath，避免重复注册 handler
-  // Use useLatestRef to keep latest setters to avoid re-registering handler
+  // 使用 useLatestRef 保存最新的 setContent/atPath，供长生命周期事件回调读取
+  // Use useLatestRef to keep latest setters for long-lived event listeners
   const setContentRef = useLatestRef(setContent);
   const atPathRef = useLatestRef(atPath);
 
@@ -227,18 +226,6 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
     },
   });
 
-  // 注册预览面板添加到发送框的 handler
-  // Register handler for adding text from preview panel to sendbox
-  useEffect(() => {
-    const handler = (text: string) => {
-      // 如果已有内容，添加换行和新文本；否则直接设置文本
-      // If there's existing content, add newline and new text; otherwise just set the text
-      const newContent = content ? `${content}\n${text}` : text;
-      setContentRef.current(newContent);
-    };
-    setSendBoxHandler(handler);
-  }, [setSendBoxHandler, content]);
-
   // Listen for sendbox.fill event to populate input from external sources
   useAddEventListener(
     'sendbox.fill',
@@ -267,10 +254,6 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
               ?.entries ?? []
           );
           setRuntimePlanEntries(planEntries);
-          const transformedMessage = transformMessage(message);
-          if (transformedMessage) {
-            addOrUpdateMessage(transformedMessage);
-          }
           break;
         }
         case 'codex_model_info':
@@ -449,6 +432,7 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
     conversationId: conversation_id,
     canSendNow: !(running || aiProcessing),
     canSteerNow: (running || aiProcessing) && sawToolActivityInTurn && !hasActiveToolCalls,
+    sendDispatchDelayMs: QUEUED_SEND_DISPATCH_DELAY_MS,
     onDispatch: async (pendingMessage: PendingConversationMessage) => {
       await sendCodexMessage(pendingMessage.content, pendingMessage.attachments);
     },
@@ -624,8 +608,14 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
 
   return (
     <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
-      <RuntimePlanCard entries={runtimePlanEntries} running={aiProcessing || running} />
-      <ThoughtDisplay thought={thought} running={aiProcessing || running} onStop={handleStop} />
+      <div
+        className={`conversation-run-status-stack conversation-run-status-stack--double ${
+          aiProcessing || running ? 'conversation-run-status-stack--active' : ''
+        }`}
+      >
+        <RuntimePlanCard entries={runtimePlanEntries} running={aiProcessing || running} />
+        <ThoughtDisplay thought={thought} running={aiProcessing || running} onStop={handleStop} />
+      </div>
 
       <SendBox
         value={content}

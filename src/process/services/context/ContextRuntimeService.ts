@@ -282,8 +282,10 @@ function buildCompactTurnTraceSummary(
   const keptSections = assemblyTrace.entries.filter((entry) => entry.outcome === 'kept').length;
   const omittedSections = assemblyTrace.entries.filter((entry) => entry.outcome === 'omitted').length;
   return [
-    `retrieval ${retrievalTrace.entries.length}`,
-    `mounted ${mountedSummary.mountedSectionCount}/${mountedSummary.mountedProfileCount}`,
+    'Window ready',
+    `retrieval hits ${retrievalTrace.entries.length}`,
+    `mounted sections ${mountedSummary.mountedSectionCount}`,
+    `mounted profiles ${mountedSummary.mountedProfileCount}`,
     `boundary ${mountedBoundary.mode}`,
     `refresh ${mountedBoundary.refreshPolicy}`,
     `fences ${mountedBoundary.fences.recapture}/${mountedBoundary.fences.reingest}`,
@@ -737,8 +739,10 @@ export class ContextRuntimeService {
     await this.vaultSyncService.appendSessionTimelineEvent({
       conversation: input.conversation,
       timestamp: new Date(preparedAt).toISOString(),
-      title: 'User query',
-      body: input.userInput,
+      title: 'Turn Started',
+      body: input.msgId
+        ? `Request captured from message \`${input.msgId}\` and queued for context assembly.`
+        : 'Request captured and queued for context assembly.',
     });
 
     await this.vaultSyncService.appendContextCheckpoint({
@@ -764,7 +768,7 @@ export class ContextRuntimeService {
     await this.vaultSyncService.appendSessionTimelineEvent({
       conversation: input.conversation,
       timestamp: new Date(preparedAt).toISOString(),
-      title: 'Context trace',
+      title: 'Context Window Ready',
       body: buildCompactTurnTraceSummary(retrieval.trace, assembled.trace, mountedState, mountedBoundary),
     });
 
@@ -861,12 +865,6 @@ export class ContextRuntimeService {
       completedAt,
       assistantMessageId,
       preparedAt: pendingTurn?.preparedAt,
-    });
-    await this.vaultSyncService.appendSessionTimelineEvent({
-      conversation,
-      timestamp: new Date(completedAt).toISOString(),
-      title: 'Turn reply',
-      body: text,
     });
 
     const drafts = [
@@ -1022,6 +1020,18 @@ export class ContextRuntimeService {
       });
     }
 
+    await this.vaultSyncService.appendSessionTimelineEvent({
+      conversation,
+      timestamp: new Date(completedAt).toISOString(),
+      title: 'Turn Completed',
+      body: [
+        'Reply stored.',
+        `Promoted ${promotedSummaries.length}`,
+        `Pending review ${reviewSummaries.length}`,
+        `Filtered out ${rejectedSummaries.length}`,
+      ].join(' · '),
+    });
+
     await this.eventBus?.emit('session.turn.completed', {
       spaceId,
       threadId: conversationId,
@@ -1075,8 +1085,8 @@ export class ContextRuntimeService {
     await this.vaultSyncService.appendSessionTimelineEvent({
       conversation,
       timestamp: new Date(stoppedAt).toISOString(),
-      title: 'User interruption',
-      body: reason,
+      title: 'Turn Interrupted',
+      body: `Interrupted with reason \`${reason}\`.`,
     });
 
     await this.eventBus?.emit('session.interrupted', {

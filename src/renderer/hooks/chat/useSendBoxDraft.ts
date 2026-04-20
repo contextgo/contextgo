@@ -1,7 +1,5 @@
 import type { TChatConversation } from '@/common/config/storage';
-import { useCallback } from 'react';
-import useSWR from 'swr';
-import useSWRMutation from 'swr/mutation';
+import { useCallback, useSyncExternalStore } from 'react';
 import type { FileOrFolderItem } from '@/renderer/utils/file/fileTypes';
 export type { FileOrFolderItem } from '@/renderer/utils/file/fileTypes';
 
@@ -49,6 +47,19 @@ const store: SendBoxDraftStore = {
   group: new Map(),
 };
 
+const listeners = new Set<() => void>();
+
+const subscribeDraftStore = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+const notifyDraftStoreChanged = () => {
+  listeners.forEach((listener) => listener());
+};
+
 const setDraft = <K extends TChatConversation['type']>(
   type: K,
   conversation_id: string,
@@ -87,6 +98,8 @@ const setDraft = <K extends TChatConversation['type']>(
     default:
       break;
   }
+
+  notifyDraftStoreChanged();
 };
 
 const getDraft = <K extends TChatConversation['type']>(
@@ -116,32 +129,23 @@ export const getSendBoxDraftHook = <K extends TChatConversation['type']>(
   initialValue: Extract<Draft, { _type: K }>
 ) => {
   function useDraft(conversation_id: string) {
-    const swrRet = useSWR([`/send-box/${type}/draft/${conversation_id}`, conversation_id], ([_, id]) => {
-      return getDraft(type, id);
-    });
+    const data = useSyncExternalStore(
+      subscribeDraftStore,
+      () => getDraft(type, conversation_id),
+      () => getDraft(type, conversation_id)
+    );
 
     const mutateDraft = useCallback(
       (draft: (k: Extract<Draft, { _type: K }>) => typeof k | undefined): void => {
-        swrRet
-          .mutate(
-            (prev) => {
-              const newDraft = draft(prev ?? initialValue);
-              setDraft(type, conversation_id, newDraft);
-              return newDraft;
-            },
-            { revalidate: false }
-          )
-          .catch((error) => {
-            console.error('Failed to mutate draft:', error);
-          });
+        const currentDraft = getDraft(type, conversation_id) ?? initialValue;
+        const nextDraft = draft(currentDraft);
+        setDraft(type, conversation_id, nextDraft);
       },
       [conversation_id]
     );
 
     return {
-      get data() {
-        return swrRet.data;
-      },
+      data,
       mutate: mutateDraft,
     };
   }
@@ -153,28 +157,32 @@ export const getSendBoxDraftHook = <K extends TChatConversation['type']>(
  * 查询某个对话是否存在草稿
  */
 export const useHasDraft = (conversation_id: string) => {
-  const { data } = useSWR([`/send-box/draft/${conversation_id}`, conversation_id], ([_, id]) => {
-    return Object.values(store).some((draftMap) => draftMap.has(id));
-  });
+  const data = useSyncExternalStore(
+    subscribeDraftStore,
+    () => Object.values(store).some((draftMap) => draftMap.has(conversation_id)),
+    () => Object.values(store).some((draftMap) => draftMap.has(conversation_id))
+  );
 
-  return data !== undefined;
+  return data;
 };
 
 /**
  * 删除某个对话的草稿
  */
 export const useDeleteDraft = () => {
-  const { trigger } = useSWRMutation(
-    '/send-box/draft',
-    (_, { arg: { conversation_id } }: { arg: { conversation_id: string } }) => {
-      for (const draftMap of Object.values(store)) {
-        if (draftMap.has(conversation_id)) {
-          return draftMap.delete(conversation_id);
-        }
+  return useCallback(async ({ conversation_id }: { conversation_id: string }) => {
+    for (const draftMap of Object.values(store)) {
+      if (!draftMap.has(conversation_id)) {
+        continue;
       }
-      return false;
-    }
-  );
 
-  return trigger;
+      const deleted = draftMap.delete(conversation_id);
+      if (deleted) {
+        notifyDraftStoreChanged();
+      }
+      return deleted;
+    }
+
+    return false;
+  }, []);
 };

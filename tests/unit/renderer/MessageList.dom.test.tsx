@@ -258,6 +258,33 @@ describe('MessageList', () => {
     expect(latestRender?.computeItemKey?.(1, latestRender.data?.[1] ?? { id: 'missing' })).toBe('step-summary-tool-1');
   });
 
+  it('filters runtime plan messages out of the chat transcript data', () => {
+    messageListMock.push(
+      {
+        id: 'plan-1',
+        msg_id: 'plan-msg-1',
+        type: 'plan',
+        position: 'left',
+        content: {
+          sessionId: 'session-1',
+          entries: [{ content: 'Read schedule skill doc', status: 'pending' }],
+        },
+      },
+      {
+        id: 'msg-1',
+        type: 'text',
+        position: 'left',
+        content: { content: 'hello' },
+      }
+    );
+
+    renderMessageList();
+
+    const latestRender = virtuosoPropsHistory.at(-1);
+    expect(latestRender?.data).toEqual([expect.objectContaining({ id: 'msg-1', type: 'text' })]);
+    expect(latestRender?.data?.some((item) => item.type === 'plan')).toBe(false);
+  });
+
   it('applies the initial bottom position only on the first render for a conversation', () => {
     messageListMock.push(
       {

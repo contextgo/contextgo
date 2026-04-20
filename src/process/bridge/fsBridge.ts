@@ -43,6 +43,7 @@ import {
 import { readDirectoryRecursive } from '@process/utils';
 import {
   getGitRepositoryInfo,
+  initializeWorkspaceGitRepository,
   listWorkspaceFileItems,
   listWorkspaceGitChanges,
   listWorkspaceRecentFiles,
@@ -646,6 +647,20 @@ export function initFsBridge(): void {
         data: {
           files: await listWorkspaceRecentFiles(workspacePath, limit),
         },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        msg: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
+  ipcBridge.fs.initializeWorkspaceGitRepository?.provider(async ({ workspacePath }) => {
+    try {
+      return {
+        success: true,
+        data: await initializeWorkspaceGitRepository(workspacePath),
       };
     } catch (error) {
       return {

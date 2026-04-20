@@ -26,7 +26,6 @@ import MessageFileChanges, { parseDiff } from './codex/MessageFileChanges';
 import { useMessageList } from './hooks';
 import MessageAgentStatus from './components/MessageAgentStatus';
 import MessageCommandEvent from './components/MessageCommandEvent';
-import MessagePlan from './components/MessagePlan';
 import MessageScheduleEvent from './schedule/MessageScheduleEvent';
 import MessageTips from './components/MessageTips';
 import MessageToolCall from './components/MessageToolCall';
@@ -126,7 +125,7 @@ const MessageItem: React.FC<{ message: TMessage; highlighted?: boolean }> = Reac
       case 'codex_tool_call':
         return null;
       case 'plan':
-        return <MessagePlan message={message}></MessagePlan>;
+        return null;
       case 'schedule_event':
         return <MessageScheduleEvent message={message}></MessageScheduleEvent>;
       case 'command_event':
@@ -243,8 +242,8 @@ const MessageList: React.FC<{ className?: string }> = () => {
       if (shouldSuppressLifecycleMessages && shouldSuppressAgentLifecyclePersistedMessage(message)) {
         continue;
       }
-      // Skip available_commands messages
-      if (message.type === 'available_commands') continue;
+      // Skip ephemeral UI-only messages that should not render in the chat transcript.
+      if (message.type === 'available_commands' || message.type === 'plan') continue;
       if (message.type === 'text') {
         const fileOperation = parseFileOperationMessage(message.content.content);
         if (fileOperation && message.position === 'left') {

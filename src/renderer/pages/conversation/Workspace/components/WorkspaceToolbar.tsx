@@ -7,7 +7,7 @@
 import { iconColors } from '@/renderer/styles/colors';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { Button, Dropdown, Input, Menu, Tooltip } from '@arco-design/web-react';
-import { Down, Plus, Refresh, Search } from '@icon-park/react';
+import { Down, FileText, Left, Plus, Refresh, Search } from '@icon-park/react';
 import React, { useId } from 'react';
 import type { TFunction } from 'i18next';
 import type { RefInputType } from '@arco-design/web-react/es/Input/interface';
@@ -109,29 +109,15 @@ const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
     </Menu>
   );
 
+  const viewToggleTooltip =
+    currentView === 'files' ? t('conversation.workspace.viewChanges') : t('conversation.workspace.viewFiles');
+
   return (
     <div className='px-12px pt-8px workspace-toolbar-shell'>
-      <div className='mb-10px flex items-center gap-8px'>
-        <Button
-          size='mini'
-          type={currentView === 'files' ? 'primary' : 'secondary'}
-          onClick={() => onViewChange('files')}
-        >
-          {t('conversation.workspace.viewFiles')}
-        </Button>
-        <Button
-          size='mini'
-          type={currentView === 'changes' ? 'primary' : 'secondary'}
-          onClick={() => onViewChange('changes')}
-        >
-          {t('conversation.workspace.viewChanges')}
-        </Button>
-      </div>
-      {/* Search Input */}
       {currentView === 'files' && (showSearch || searchText) && (
-        <div className='pb-10px workspace-toolbar-search'>
+        <div className='app-icon-row pb-10px workspace-toolbar-search'>
           <Input
-            className='w-full workspace-search-input'
+            className='w-full min-w-0 flex-1 workspace-search-input'
             ref={searchInputRef}
             placeholder={t('conversation.workspace.searchPlaceholder')}
             value={searchText}
@@ -142,6 +128,19 @@ const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
             allowClear
             prefix={<Search theme='outline' size='14' fill={iconColors.primary} />}
           />
+          <Tooltip content={viewToggleTooltip}>
+            <Button
+              type='secondary'
+              shape='circle'
+              className='workspace-search-toggle app-icon-button'
+              aria-label={viewToggleTooltip}
+              onClick={() => onViewChange('changes')}
+            >
+              <span className='i-icon'>
+                <FileText theme='outline' size='16' fill={iconColors.secondary} />
+              </span>
+            </Button>
+          </Tooltip>
         </div>
       )}
 
@@ -191,6 +190,23 @@ const WorkspaceToolbar: React.FC<WorkspaceToolbarProps> = ({
           )}
         </div>
         <div className='workspace-toolbar-actions flex shrink-0 items-center gap-8px'>
+          {currentView === 'changes' && (
+            <Tooltip content={viewToggleTooltip}>
+              <span>
+                <Button
+                  type='secondary'
+                  shape='circle'
+                  className='workspace-toolbar-icon-btn workspace-toolbar-nav-btn app-icon-button'
+                  aria-label={viewToggleTooltip}
+                  onClick={() => onViewChange('files')}
+                >
+                  <span className='i-icon'>
+                    <Left theme='outline' size='16' fill={iconColors.secondary} />
+                  </span>
+                </Button>
+              </span>
+            </Tooltip>
+          )}
           {!isElectronDesktop() && (
             <Dropdown droplist={workspaceUploadMenu} trigger='click' position='bl'>
               <span>

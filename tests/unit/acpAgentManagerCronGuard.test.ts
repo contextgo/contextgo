@@ -14,7 +14,19 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
-const { mockSetProcessing } = vi.hoisted(() => ({ mockSetProcessing: vi.fn() }));
+const { mockSetProcessing, getLastAcpAgentConfig, resetLastAcpAgentConfig, setLastAcpAgentConfig } = vi.hoisted(() => {
+  let lastAcpAgentConfig: any = null;
+  return {
+    mockSetProcessing: vi.fn(),
+    getLastAcpAgentConfig: () => lastAcpAgentConfig,
+    resetLastAcpAgentConfig: () => {
+      lastAcpAgentConfig = null;
+    },
+    setLastAcpAgentConfig: (config: any) => {
+      lastAcpAgentConfig = config;
+    },
+  };
+});
 
 vi.mock('@process/services/context/events/schedule/ScheduleConversationGuard', () => ({
   scheduleConversationGuard: { setProcessing: mockSetProcessing },
@@ -55,10 +67,17 @@ vi.mock('@process/extensions', () => ({
 }));
 vi.mock('@process/agent/acp', () => ({
   AcpAgent: class {
+    constructor(config: any) {
+      setLastAcpAgentConfig(config);
+    }
     sendMessage = vi.fn();
     stop = vi.fn();
     kill = vi.fn();
     cancelPrompt = vi.fn();
+    start = vi.fn(() => Promise.resolve(this));
+    getModelInfo = vi.fn(() => null);
+    setMode = vi.fn(() => Promise.resolve());
+    setModelByConfigOption = vi.fn(() => Promise.resolve(null));
   },
 }));
 
@@ -98,7 +117,10 @@ import AcpAgentManager from '../../src/process/task/AcpAgentManager';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-type MockAgent = { sendMessage: ReturnType<typeof vi.fn> };
+type MockAgent = {
+  sendMessage: ReturnType<typeof vi.fn>;
+  cancelPrompt: ReturnType<typeof vi.fn>;
+};
 
 function makeManager(conversationId = 'conv-test') {
   const manager = new AcpAgentManager({
@@ -109,6 +131,7 @@ function makeManager(conversationId = 'conv-test') {
   // Inject a mock agent and pre-resolve bootstrap so initAgent() returns immediately
   const mockAgent: MockAgent = {
     sendMessage: vi.fn(),
+    cancelPrompt: vi.fn(),
   };
   (manager as any).agent = mockAgent;
   (manager as any).bootstrap = Promise.resolve(mockAgent);
@@ -123,6 +146,7 @@ function makeManager(conversationId = 'conv-test') {
 describe('AcpAgentManager.sendMessage — real class scheduleConversationGuard cleanup', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetLastAcpAgentConfig();
   });
 
   // ── First-message path (lines 645-648 in AcpAgentManager.ts) ──────────────
@@ -230,5 +254,40 @@ describe('AcpAgentManager.sendMessage — real class scheduleConversationGuard c
     await manager.sendMessage({ content: 'hello again' } as any);
 
     expect(mockSetProcessing).toHaveBeenCalledWith('conv-9', true);
+  });
+
+  it('clears scheduleConversationGuard and status when stop() cancels the prompt', async () => {
+    const { manager, mockAgent } = makeManager('conv-10');
+    manager.status = 'running';
+
+    await manager.stop();
+
+    expect(mockAgent.cancelPrompt).toHaveBeenCalledTimes(1);
+    expect(mockSetProcessing).toHaveBeenCalledWith('conv-10', false);
+    expect(manager.status).toBe('finished');
+  });
+
+  it('marks status finished when a finish signal arrives without any content message', async () => {
+    const manager = new AcpAgentManager({
+      conversation_id: 'conv-11',
+      backend: 'claude' as any,
+      workspace: '/tmp/workspace',
+    });
+    manager.status = 'running';
+
+    await (manager as any).initAgent();
+
+    const config = getLastAcpAgentConfig();
+    expect(config?.onSignalEvent).toBeTypeOf('function');
+
+    await config.onSignalEvent({
+      type: 'finish',
+      conversation_id: 'conv-11',
+      msg_id: 'finish-1',
+      data: null,
+    });
+
+    expect(mockSetProcessing).toHaveBeenCalledWith('conv-11', false);
+    expect(manager.status).toBe('finished');
   });
 });

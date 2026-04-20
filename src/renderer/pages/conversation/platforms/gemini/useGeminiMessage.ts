@@ -74,7 +74,7 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
   }>({ lastUpdate: 0, pending: null, timer: null });
 
   const throttledSetThought = useMemo(() => {
-    const THROTTLE_MS = 50; // 50ms throttle interval
+    const THROTTLE_MS = 120; // Reduce renderer churn while the assistant streams thoughts
     return (data: ThoughtData) => {
       const now = Date.now();
       const ref = thoughtThrottleRef.current;

@@ -16,13 +16,15 @@ import {
   type ContextgoNamespace,
   type ContextgoProjection,
   DEFAULT_SPACE_CANVAS_PATH,
+  LEGACY_PROJECT_CAPABILITIES_DIR_NAME,
+  LEGACY_PROJECT_CAPABILITIES_FILE_NAME,
   getConversationDocumentPaths,
   getOperationLogDailyRelativePath,
   getConnectorDigestRelativePath,
   getContextRunRelativePath,
+  getProjectAutomationItemRelativePath,
+  getProjectAutomationRelativePath,
   getProjectBaselineRelativePath,
-  getProjectCapabilitiesRelativePath,
-  getProjectCapabilityItemRelativePath,
   getProjectGraphRelativePath,
   getProjectInsightsRelativePath,
   getProjectRelativePath,
@@ -38,7 +40,9 @@ import {
   PROJECT_CONTEXT_DIR,
   PROJECT_SESSION_STATE_DIR_NAME,
   PROJECT_SESSIONS_DIR_NAME,
+  PROJECT_AUTOMATION_DIR_NAME,
   PROJECTS_DIR,
+  SESSIONS_DIR,
   SOURCE_DOCS_DIR,
   SYSTEM_DIR,
   sanitizeVaultPathSegment,
@@ -63,6 +67,7 @@ const SESSION_SUMMARY_EXCERPT_LIMIT = 160;
 const SESSION_RECENT_EVENT_LIMIT = 5;
 const SESSION_COMPACTION_OPERATION = 'session_compaction';
 const SESSION_ARTIFACT_TRIAD = ['session_timeline', 'session_working_context', 'session_checkpoint'] as const;
+const LEGACY_SESSION_WORKING_SET_FILE_NAME = 'working-set.md';
 const EXCLUDED_DIRECTORIES = new Set([
   '.git',
   '.obsidian',
@@ -76,6 +81,15 @@ const EXCLUDED_DIRECTORIES = new Set([
   'coverage',
   'tmp',
   'temp',
+]);
+const EXCLUDED_SOURCE_SCAN_DIRECTORIES = new Set([
+  '.contextgo/skills',
+  '.connector/skills',
+  '.claude/skills',
+  '.codex/skills',
+  '.gemini/skills',
+  '.opencode/skills',
+  '.agents/skills',
 ]);
 
 type ConversationContextTarget = {
@@ -197,7 +211,7 @@ type SessionCheckpointWriteInput = {
   detail?: string;
 } & SessionCompactionProvenanceInput;
 
-type SessionWorkingSetWriteInput = {
+type SessionWorkingContextWriteInput = {
   conversation: TChatConversation;
   timestamp: string;
   currentTask?: string;
@@ -337,7 +351,7 @@ const getProjectInsightsTitle = (projectName: string): string => `${projectName}
 
 const getProjectBaselineTitle = (projectName: string): string => `${projectName} Baseline`;
 
-const getProjectCapabilitiesTitle = (projectName: string): string => `${projectName} Capabilities`;
+const getProjectAutomationTitle = (projectName: string): string => `${projectName} Automation`;
 
 const getCapabilitySectionTitle = (kind: ProjectCapabilityRecord['kind']): string => {
   if (kind === 'skill') {
@@ -351,7 +365,7 @@ const getCapabilitySectionTitle = (kind: ProjectCapabilityRecord['kind']): strin
   }
   return 'Schedules';
 };
-const getSessionWorkingSetTitle = (conversationTitle: string): string => `${conversationTitle} Working Set`;
+const getSessionTimelineTitle = (conversationTitle: string): string => `${conversationTitle} Timeline`;
 const getSessionWorkingContextTitle = (conversationTitle: string): string => `${conversationTitle} Working Context`;
 
 const getSessionNoteTitle = (conversationTitle: string, conversationId: string): string => {
@@ -450,8 +464,8 @@ const sanitizeSessionTitle = (value: string | undefined, fallback: string): stri
   return cleaned;
 };
 
-const toCanvasFileReference = (_canvasRelativePath: string, targetRelativePath: string): string => {
-  return toPosixRelativePath(targetRelativePath);
+const toCanvasFileReference = (canvasRelativePath: string, targetRelativePath: string): string => {
+  return path.posix.relative(path.posix.dirname(canvasRelativePath), toPosixRelativePath(targetRelativePath));
 };
 
 const getSessionContextRootRelativePath = (conversationId: string, projectFolderName?: string): string => {
@@ -494,6 +508,10 @@ const safeExcerpt = (value: string, limit = SESSION_EXCERPT_LIMIT): string => {
 const toMarkdownCodeBlock = (value: string): string => {
   const content = safeExcerpt(value);
   return ['```md', content || '(empty)', '```'].join('\n');
+};
+
+const demoteMarkdownHeadings = (value: string): string => {
+  return value.replace(/^(#{1,5})(\s+.+)$/gm, '$1#$2');
 };
 
 const frontmatter = (record: Record<string, string | number | undefined>): string => {
@@ -616,6 +634,10 @@ const readDirectorySafe = async (absolutePath: string) => {
 
 const isMarkdownFile = (entryName: string): boolean => /\.md$/i.test(entryName);
 
+const shouldExcludeSourceScanDirectory = (relativePath: string): boolean => {
+  return EXCLUDED_SOURCE_SCAN_DIRECTORIES.has(toPosixRelativePath(relativePath));
+};
+
 const resolveSourceDocReference = (
   target: string,
   currentRelativePath: string,
@@ -714,7 +736,11 @@ const scanProjectMarkdownFiles = async (workspacePath: string): Promise<SourceDo
       const nextAbsolutePath = path.join(current.absolutePath, entry.name);
 
       if (entry.isDirectory()) {
-        if (current.depth + 1 > MAX_SCAN_DEPTH || EXCLUDED_DIRECTORIES.has(entry.name)) {
+        if (
+          current.depth + 1 > MAX_SCAN_DEPTH ||
+          EXCLUDED_DIRECTORIES.has(entry.name) ||
+          shouldExcludeSourceScanDirectory(nextRelativePath)
+        ) {
           continue;
         }
         queue.push({
@@ -903,17 +929,17 @@ const buildProjectBaselineFrontmatter = (project: ProjectContext, updatedAt: str
   );
 };
 
-const buildProjectCapabilitiesFrontmatter = (project: ProjectContext, updatedAt: string): string => {
+const buildProjectAutomationFrontmatter = (project: ProjectContext, updatedAt: string): string => {
   return frontmatter(
     withContextProjectionMetadata(
       {
-        contextgoType: 'project-capabilities',
-        title: getProjectCapabilitiesTitle(project.name),
+        contextgoType: 'project-automation',
+        title: getProjectAutomationTitle(project.name),
         projectSlug: project.slug,
         workspace: project.workspacePath,
         updatedAt,
       },
-      { namespace: 'capability', projection: 'capability-inventory' }
+      { namespace: 'automation', projection: 'automation-inventory' }
     )
   );
 };
@@ -926,26 +952,6 @@ const buildSessionFrontmatter = (
     withContextProjectionMetadata(
       {
         contextgoType: 'session',
-        conversationId: conversation.id,
-        spaceId: conversation.extra?.spaceId,
-        projectSlug: project?.slug,
-        workspace: conversation.extra?.workingDirectory || conversation.extra?.workspace,
-        updatedAt,
-      },
-      { namespace: 'session', projection: 'semantic-context' }
-    )
-  );
-};
-
-const buildSessionWorkingSetFrontmatter = (
-  conversation: TChatConversation,
-  project: ProjectContext | undefined,
-  updatedAt: string
-): string => {
-  return frontmatter(
-    withContextProjectionMetadata(
-      {
-        contextgoType: 'session-working-set',
         conversationId: conversation.id,
         spaceId: conversation.extra?.spaceId,
         projectSlug: project?.slug,
@@ -1152,7 +1158,7 @@ const getCapabilityDisplayName = (capability: ProjectCapabilityRecord): string =
 };
 
 const getProjectCapabilityRelativePath = (project: ProjectContext, capability: ProjectCapabilityRecord): string => {
-  return getProjectCapabilityItemRelativePath(
+  return getProjectAutomationItemRelativePath(
     project.folderName,
     getCapabilityDirName(capability.kind),
     getCapabilityDisplayName(capability)
@@ -1197,15 +1203,15 @@ const buildProjectCapabilitySectionLines = (
   );
 };
 
-const buildProjectCapabilitiesDocument = (
+const buildProjectAutomationDocument = (
   project: ProjectContext,
   snapshot: ProjectCapabilitySnapshot,
   updatedAt: string
 ): string => {
   return [
-    buildProjectCapabilitiesFrontmatter(project, updatedAt),
+    buildProjectAutomationFrontmatter(project, updatedAt),
     GENERATED_MARKER,
-    `# ${getProjectCapabilitiesTitle(project.name)}`,
+    `# ${getProjectAutomationTitle(project.name)}`,
     '',
     `- Project doc: ${toWikiLink(project.relativePath, getProjectNoteTitle(project.name))}`,
     `- Workspace: \`${project.workspacePath}\``,
@@ -1237,7 +1243,7 @@ const buildProjectCapabilitiesDocument = (
     '',
     '## Notes',
     '',
-    '- These documents mirror the project-local .contextgo capability surface into the space vault.',
+    '- These documents mirror the project-local .contextgo automation surface into the space vault.',
     '- The project directory remains the source of truth; vault notes exist for browsing, linking, and graphing.',
     '',
   ].join('\n');
@@ -1253,7 +1259,7 @@ const buildProjectCapabilityDocument = (
   const frontmatterBlock = frontmatter(
     withContextProjectionMetadata(
       {
-        contextgoType: 'project-capability',
+        contextgoType: 'project-automation-item',
         title,
         projectSlug: project.slug,
         workspace: project.workspacePath,
@@ -1261,15 +1267,19 @@ const buildProjectCapabilityDocument = (
         capabilityId: capability.id,
         updatedAt,
       },
-      { namespace: 'capability', projection: 'capability-inventory' }
+      { namespace: 'automation', projection: 'automation-inventory' }
     )
   );
 
   const detailLines: string[] = [];
 
   if (capability.kind === 'skill') {
+    const skillDocumentRelativePath =
+      capability.skillDocumentRelativePath || path.posix.join(capability.workspaceRelativePath, 'SKILL.md');
+    const skillDocumentBody = capability.skillDocumentBody?.trim();
     detailLines.push(
-      `- Source path: \`${capability.workspaceRelativePath}\``,
+      `- Skill package root: \`${capability.workspaceRelativePath}\``,
+      `- SKILL.md path: \`${skillDocumentRelativePath}\``,
       `- Implicit invocation: ${capability.implicitInvocation ? 'enabled' : 'disabled'}`,
       capability.openAIDisplayName ? `- OpenAI display name: ${capability.openAIDisplayName}` : '',
       capability.openAIShortDescription ? `- OpenAI short description: ${capability.openAIShortDescription}` : '',
@@ -1278,7 +1288,13 @@ const buildProjectCapabilityDocument = (
       '',
       ...(capability.compatibility.length > 0
         ? capability.compatibility.map((item) => `- ${item}`)
-        : ['- No compatibility hints declared.'])
+        : ['- No compatibility hints declared.']),
+      '',
+      '## SKILL.md',
+      '',
+      `> Mirrored from \`${skillDocumentRelativePath}\``,
+      '',
+      skillDocumentBody ? demoteMarkdownHeadings(skillDocumentBody) : '_No SKILL.md body content detected._'
     );
   } else if (capability.kind === 'hook') {
     detailLines.push(
@@ -1326,12 +1342,12 @@ const buildProjectCapabilityDocument = (
       GENERATED_MARKER,
       `# ${title}`,
       '',
-      `- Project capabilities: ${toWikiLink(
-        getProjectCapabilitiesRelativePath(project.folderName),
-        getProjectCapabilitiesTitle(project.name)
+      `- Project automation: ${toWikiLink(
+        getProjectAutomationRelativePath(project.folderName),
+        getProjectAutomationTitle(project.name)
       )}`,
       `- Project doc: ${toWikiLink(project.relativePath, getProjectNoteTitle(project.name))}`,
-      `- Capability kind: ${getCapabilitySectionTitle(capability.kind)}`,
+      `- Automation kind: ${getCapabilitySectionTitle(capability.kind)}`,
       `- Updated at: ${updatedAt}`,
       capability.description ? `- Description: ${capability.description}` : '',
       '',
@@ -1349,7 +1365,7 @@ const buildProjectCapabilityDocuments = (
   updatedAt: string
 ): { summary: string; items: ProjectCapabilityDoc[] } => {
   return {
-    summary: buildProjectCapabilitiesDocument(project, snapshot, updatedAt),
+    summary: buildProjectAutomationDocument(project, snapshot, updatedAt),
     items: getProjectCapabilityRecords(snapshot).map((capability) =>
       buildProjectCapabilityDocument(project, capability, updatedAt)
     ),
@@ -1420,7 +1436,7 @@ const buildProjectDocument = (
     `- Project graph canvas: ${toWikiLink(getProjectGraphRelativePath(project.folderName), `${project.name} Source Graph`)}`,
     `- Project insights: ${toWikiLink(getProjectInsightsRelativePath(project.folderName), getProjectInsightsTitle(project.name))}`,
     `- Project baseline: ${toWikiLink(getProjectBaselineRelativePath(project.folderName), getProjectBaselineTitle(project.name))}`,
-    `- Project capabilities: ${toWikiLink(getProjectCapabilitiesRelativePath(project.folderName), getProjectCapabilitiesTitle(project.name))}`,
+    `- Project automation: ${toWikiLink(getProjectAutomationRelativePath(project.folderName), getProjectAutomationTitle(project.name))}`,
     `- Space canvas: ${toWikiLink(DEFAULT_SPACE_CANVAS_PATH, 'Space Overview Canvas')}`,
     '',
     '## Promoted Context',
@@ -1431,9 +1447,9 @@ const buildProjectDocument = (
     '',
     ...sessionLines,
     '',
-    '## Project Capabilities',
+    '## Project Automation',
     '',
-    `- Capability index: ${toWikiLink(getProjectCapabilitiesRelativePath(project.folderName), getProjectCapabilitiesTitle(project.name))}`,
+    `- Automation index: ${toWikiLink(getProjectAutomationRelativePath(project.folderName), getProjectAutomationTitle(project.name))}`,
     `- Skills: ${capabilitySnapshot.counts.skill}`,
     `- Hooks: ${capabilitySnapshot.counts.hook}`,
     `- Commands: ${capabilitySnapshot.counts.command}`,
@@ -1441,7 +1457,7 @@ const buildProjectDocument = (
     '',
     ...(capabilityRecords.length > 0
       ? capabilityRecords.map((capability) => `- ${getProjectCapabilityLink(project, capability)}`)
-      : ['- No project capabilities mirrored yet.']),
+      : ['- No project automation mirrored yet.']),
     '',
     '## Source Docs',
     '',
@@ -1472,7 +1488,7 @@ const buildProjectDocument = (
     '## Notes',
     '',
     '- This file is generated from the bound workspace and mirrored markdown source docs.',
-    '- Project-local .contextgo capabilities are mirrored into the vault so they can be linked and graphed.',
+    '- Project-local .contextgo automation is mirrored into the vault so it can be linked and graphed.',
     '- AGENTS.md is treated as the project entry document when present.',
     '',
   ]
@@ -1491,7 +1507,7 @@ const buildSessionDocument = (
   const summaryLines = buildSessionSummaryLines(timelineBody);
   const normalizedTimelineBody = timelineBody.trim();
   const sessionTitle = getSessionNoteTitle(sanitizeSessionTitle(conversation.name, conversation.id), conversation.id);
-  const paths = getConversationDocumentPaths(conversation.id, project?.folderName);
+  const workingContextRelativePath = getSessionWorkingContextRelativePath(conversation.id, project?.folderName);
 
   return [
     buildSessionFrontmatter(conversation, project, updatedAt),
@@ -1504,7 +1520,7 @@ const buildSessionDocument = (
     `- Project doc: ${project ? toWikiLink(project.relativePath, getProjectNoteTitle(project.name)) : 'Unbound'}`,
     workspacePath ? `- Workspace: \`${workspacePath}\`` : '- Workspace: Not bound',
     `- Updated at: ${updatedAt}`,
-    `- Working set: ${toWikiLink(paths.workingSetRelativePath, getSessionWorkingSetTitle(sanitizeSessionTitle(conversation.name, conversation.id)))}`,
+    `- Working context: ${toWikiLink(workingContextRelativePath, getSessionWorkingContextTitle(sanitizeSessionTitle(conversation.name, conversation.id)))}`,
     '',
     '## Rolling Summary',
     '',
@@ -1612,73 +1628,6 @@ const buildProjectBaselineDocument = async (
     .join('\n');
 };
 
-const buildSessionWorkingSetDocument = (input: {
-  conversation: TChatConversation;
-  project: ProjectContext | undefined;
-  space: TSpace;
-  updatedAt: string;
-  currentTask?: string;
-  stableStrategies: readonly string[];
-  failureModes: readonly string[];
-  pendingConstraints: readonly string[];
-  signalKinds: readonly string[];
-  pressure: number;
-  sourceProfileKey?: string;
-}): string => {
-  const sessionTitle = sanitizeSessionTitle(input.conversation.name, input.conversation.id);
-  const paths = getConversationDocumentPaths(input.conversation.id, input.project?.folderName);
-
-  return [
-    buildSessionWorkingSetFrontmatter(input.conversation, input.project, input.updatedAt),
-    GENERATED_MARKER,
-    `# ${getSessionWorkingSetTitle(sessionTitle)}`,
-    '',
-    `- Session doc: ${toWikiLink(paths.sessionRelativePath, getSessionNoteTitle(sessionTitle, input.conversation.id))}`,
-    `- Space doc: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(input.space.name))}`,
-    `- Project doc: ${input.project ? toWikiLink(input.project.relativePath, getProjectNoteTitle(input.project.name)) : 'Unbound'}`,
-    `- Updated at: ${input.updatedAt}`,
-    input.sourceProfileKey ? `- Source profile: \`${input.sourceProfileKey}\`` : '',
-    '',
-    '## Current Task',
-    '',
-    input.currentTask || 'No active task distilled yet.',
-    '',
-    '## Stable Strategies',
-    '',
-    ...(input.stableStrategies.length > 0
-      ? input.stableStrategies.map((item) => `- ${item}`)
-      : ['- No durable strategy extracted yet.']),
-    '',
-    '## Failure Modes',
-    '',
-    ...(input.failureModes.length > 0
-      ? input.failureModes.map((item) => `- ${item}`)
-      : ['- No recurring failure pattern detected yet.']),
-    '',
-    '## Pending Constraints',
-    '',
-    ...(input.pendingConstraints.length > 0
-      ? input.pendingConstraints.map((item) => `- ${item}`)
-      : ['- No unresolved constraints tracked yet.']),
-    '',
-    '## Signals',
-    '',
-    ...(input.signalKinds.length > 0
-      ? input.signalKinds.map((kind) => `- ${kind}`)
-      : ['- No durable session signals yet.']),
-    '',
-    '## Compaction State',
-    '',
-    `- Pressure: ${input.pressure}`,
-    `- Stable strategies: ${input.stableStrategies.length}`,
-    `- Failure modes: ${input.failureModes.length}`,
-    `- Pending constraints: ${input.pendingConstraints.length}`,
-    '',
-  ]
-    .filter(Boolean)
-    .join('\n');
-};
-
 const buildSessionWorkingContextDocument = (
   input: {
     conversation: TChatConversation;
@@ -1696,13 +1645,17 @@ const buildSessionWorkingContextDocument = (
   const sessionTitle = sanitizeSessionTitle(input.conversation.name, input.conversation.id);
   const sessionNoteTitle = getSessionNoteTitle(sessionTitle, input.conversation.id);
   const paths = getConversationDocumentPaths(input.conversation.id, input.project?.folderName);
+  const sessionTimelineRelativePath =
+    input.sessionTimelineRelativePath ??
+    getSessionTimelineRelativePath(input.conversation.id, input.project?.folderName);
+  const sessionTimelineTitle = input.sessionTimelineTitle ?? getSessionTimelineTitle(sessionTitle);
   const provenance = {
     sourceProfileKey: input.sourceProfileKey,
     compactionJobId: input.compactionJobId,
     lifecycleSummary: input.lifecycleSummary,
     artifactTargets: input.artifactTargets,
-    sessionTimelineRelativePath: input.sessionTimelineRelativePath ?? paths.sessionRelativePath,
-    sessionTimelineTitle: input.sessionTimelineTitle ?? sessionNoteTitle,
+    sessionTimelineRelativePath,
+    sessionTimelineTitle,
     workingContextRelativePath: input.workingContextRelativePath,
     workingContextTitle: input.workingContextTitle,
     checkpointRelativePath: input.checkpointRelativePath,
@@ -1760,22 +1713,6 @@ const buildSessionWorkingContextDocument = (
   ]
     .filter(Boolean)
     .join('\n');
-};
-
-const toWorkingSetMountedSection = (conversationId: string, content: string): ContextPackSection | undefined => {
-  const body = stripGeneratedDocumentScaffolding(content);
-  if (!body) {
-    return undefined;
-  }
-
-  const summary = safeExcerpt(body, 2000);
-  return {
-    kind: 'profile',
-    id: `session-working-set:${conversationId}`,
-    summary,
-    priority: 96,
-    tokenCount: Math.max(1, Math.ceil(summary.length / 4)),
-  };
 };
 
 const toWorkingContextMountedSection = (conversationId: string, content: string): ContextPackSection | undefined => {
@@ -1917,9 +1854,9 @@ const buildProjectSourceGraphCanvas = (
       color: '2',
     },
     {
-      id: `project-capabilities-${project.slug}`,
+      id: `project-automation-${project.slug}`,
       type: 'file',
-      file: toCanvasFileReference(canvasRelativePath, getProjectCapabilitiesRelativePath(project.folderName)),
+      file: toCanvasFileReference(canvasRelativePath, getProjectAutomationRelativePath(project.folderName)),
       x: 520,
       y: 0,
       width: 360,
@@ -1929,13 +1866,13 @@ const buildProjectSourceGraphCanvas = (
   ];
   const edges: JsonCanvasFile['edges'] = [
     {
-      id: `edge-project-capabilities-${project.slug}`,
+      id: `edge-project-automation-${project.slug}`,
       fromNode: `project-${project.slug}`,
       fromSide: 'right',
-      toNode: `project-capabilities-${project.slug}`,
+      toNode: `project-automation-${project.slug}`,
       toSide: 'left',
       color: '3',
-      label: 'capabilities',
+      label: 'automation',
     },
   ];
 
@@ -2000,7 +1937,7 @@ const buildProjectSourceGraphCanvas = (
     });
     edges.push({
       id: `edge-capability-${stableHash(`${capability.kind}:${capability.id}`)}`,
-      fromNode: `project-capabilities-${project.slug}`,
+      fromNode: `project-automation-${project.slug}`,
       fromSide: 'right',
       toNode: nodeId,
       toSide: 'left',
@@ -2376,7 +2313,7 @@ export class SpaceVaultContextSyncService {
 
     await this.ensureBaseStructure(target.vaultPath);
     await this.ensureSessionDocument(target, input.conversation);
-    await this.ensureSessionWorkingSetDocument(target, input.conversation);
+    await this.removeLegacySessionWorkingSetDocument(target, input.conversation);
     await this.syncProjectContext(target);
     await this.syncSpaceOverview(target.space, target.vaultPath);
   }
@@ -2494,19 +2431,6 @@ export class SpaceVaultContextSyncService {
     await fs.appendFile(absolutePath, nextBlock, 'utf8');
   }
 
-  async readSessionWorkingSetSection(input: {
-    conversation: TChatConversation;
-  }): Promise<ContextPackSection | undefined> {
-    const target = await this.resolveConversationTarget(input.conversation);
-    if (!target) {
-      return undefined;
-    }
-
-    const paths = getConversationDocumentPaths(input.conversation.id, target.project?.folderName);
-    const content = await readUtf8(path.join(target.vaultPath, toPosixRelativePath(paths.workingSetRelativePath)));
-    return content ? toWorkingSetMountedSection(input.conversation.id, content) : undefined;
-  }
-
   async readSessionWorkingContextSection(input: {
     conversation: TChatConversation;
   }): Promise<ContextPackSection | undefined> {
@@ -2520,44 +2444,7 @@ export class SpaceVaultContextSyncService {
     return content ? toWorkingContextMountedSection(input.conversation.id, content) : undefined;
   }
 
-  async writeSessionWorkingSet(input: SessionWorkingSetWriteInput): Promise<
-    | {
-        relativePath: string;
-        title: string;
-      }
-    | undefined
-  > {
-    const target = await this.resolveConversationTarget(input.conversation);
-    if (!target) {
-      return undefined;
-    }
-
-    await this.ensureBaseStructure(target.vaultPath);
-    const paths = getConversationDocumentPaths(input.conversation.id, target.project?.folderName);
-    const relativePath = paths.workingSetRelativePath;
-    const absolutePath = path.join(target.vaultPath, relativePath);
-    const nextDocument = buildSessionWorkingSetDocument({
-      conversation: input.conversation,
-      project: target.project,
-      space: target.space,
-      updatedAt: input.timestamp,
-      currentTask: input.currentTask,
-      stableStrategies: input.stableStrategies,
-      failureModes: input.failureModes,
-      pendingConstraints: input.pendingConstraints,
-      signalKinds: input.signalKinds,
-      pressure: input.pressure,
-      sourceProfileKey: input.sourceProfileKey,
-    });
-
-    await ensureFile(absolutePath, nextDocument);
-    return {
-      relativePath,
-      title: getSessionWorkingSetTitle(sanitizeSessionTitle(input.conversation.name, input.conversation.id)),
-    };
-  }
-
-  async writeSessionWorkingContext(input: SessionWorkingSetWriteInput): Promise<
+  async writeSessionWorkingContext(input: SessionWorkingContextWriteInput): Promise<
     | {
         relativePath: string;
         title: string;
@@ -2617,15 +2504,17 @@ export class SpaceVaultContextSyncService {
     );
     const absolutePath = path.join(target.vaultPath, relativePath);
     const sessionTitle = sanitizeSessionTitle(input.conversation.name, input.conversation.id);
-    const sessionNoteTitle = getSessionNoteTitle(sessionTitle, input.conversation.id);
-    const conversationPaths = getConversationDocumentPaths(input.conversation.id, target.project?.folderName);
+    const sessionTimelineRelativePath =
+      input.sessionTimelineRelativePath ??
+      getSessionTimelineRelativePath(input.conversation.id, target.project?.folderName);
+    const sessionTimelineTitle = input.sessionTimelineTitle ?? getSessionTimelineTitle(sessionTitle);
     const provenance = {
       sourceProfileKey: input.sourceProfileKey,
       compactionJobId: input.compactionJobId,
       lifecycleSummary: input.lifecycleSummary,
       artifactTargets: input.artifactTargets,
-      sessionTimelineRelativePath: input.sessionTimelineRelativePath ?? conversationPaths.sessionRelativePath,
-      sessionTimelineTitle: input.sessionTimelineTitle ?? sessionNoteTitle,
+      sessionTimelineRelativePath,
+      sessionTimelineTitle,
       workingContextRelativePath: input.workingContextRelativePath,
       workingContextTitle: input.workingContextTitle,
       checkpointRelativePath: input.checkpointRelativePath,
@@ -2881,8 +2770,8 @@ export class SpaceVaultContextSyncService {
 
     return {
       projectSlug: refreshedProject.slug,
-      noteTitle: getProjectCapabilitiesTitle(refreshedProject.name),
-      relativePath: getProjectCapabilitiesRelativePath(refreshedProject.folderName),
+      noteTitle: getProjectAutomationTitle(refreshedProject.name),
+      relativePath: getProjectAutomationRelativePath(refreshedProject.folderName),
       summary: input.summary,
     };
   }
@@ -3001,9 +2890,18 @@ export class SpaceVaultContextSyncService {
 
     const paths = getConversationDocumentPaths(input.conversation.id, target.project?.folderName);
     const sessionPath = path.join(target.vaultPath, paths.sessionRelativePath);
-    const sessionWorkingSetPath = path.join(target.vaultPath, paths.workingSetRelativePath);
+    const sessionContextRootPath = path.join(
+      target.vaultPath,
+      getSessionContextRootRelativePath(input.conversation.id, target.project?.folderName)
+    );
+    const legacyUnboundSessionStatePath = target.project
+      ? undefined
+      : path.join(target.vaultPath, SESSIONS_DIR, '_state', sanitizeVaultPathSegment(input.conversation.id));
     await removeFileIfExists(sessionPath);
-    await removeDirectoryIfExists(path.dirname(sessionWorkingSetPath));
+    await removeDirectoryIfExists(sessionContextRootPath);
+    if (legacyUnboundSessionStatePath) {
+      await removeDirectoryIfExists(legacyUnboundSessionStatePath);
+    }
 
     const remainingSpaceConversations = input.remainingConversations.filter(
       (conversation) => conversation.extra?.spaceId === input.conversation.extra?.spaceId
@@ -3146,30 +3044,29 @@ export class SpaceVaultContextSyncService {
     await ensureFile(sessionPath, nextDocument);
   }
 
-  private async ensureSessionWorkingSetDocument(
+  private async removeLegacySessionWorkingSetDocument(
     target: ConversationContextTarget,
     conversation: TChatConversation
   ): Promise<void> {
-    const paths = getConversationDocumentPaths(conversation.id, target.project?.folderName);
-    const workingSetRelativePath = paths.workingSetRelativePath;
-    const workingSetPath = path.join(target.vaultPath, workingSetRelativePath);
-    if (await fileExists(workingSetPath)) {
-      return;
-    }
-
-    const updatedAt = nowIso();
-    const nextDocument = buildSessionWorkingSetDocument({
-      conversation,
-      project: target.project,
-      space: target.space,
-      updatedAt,
-      stableStrategies: [],
-      failureModes: [],
-      pendingConstraints: [],
-      signalKinds: [],
-      pressure: 0,
-    });
-    await ensureFile(workingSetPath, nextDocument);
+    const legacyPaths = [
+      path.join(
+        target.vaultPath,
+        getSessionContextRootRelativePath(conversation.id, target.project?.folderName),
+        LEGACY_SESSION_WORKING_SET_FILE_NAME
+      ),
+      ...(target.project
+        ? []
+        : [
+            path.join(
+              target.vaultPath,
+              SESSIONS_DIR,
+              '_state',
+              sanitizeVaultPathSegment(conversation.id),
+              LEGACY_SESSION_WORKING_SET_FILE_NAME
+            ),
+          ]),
+    ];
+    await Promise.all(legacyPaths.map((legacyPath) => removeFileIfExists(legacyPath)));
   }
 
   private async syncProjectContext(target: ConversationContextTarget): Promise<void> {
@@ -3179,6 +3076,7 @@ export class SpaceVaultContextSyncService {
 
     await ensureDirectory(target.project.folderPath);
     await ensureDirectory(path.join(target.project.folderPath, PROJECT_SESSIONS_DIR_NAME));
+    await removeDirectoryIfExists(path.join(target.project.folderPath, SOURCE_DOCS_DIR));
     await ensureDirectory(path.join(target.project.folderPath, SOURCE_DOCS_DIR));
     await ensureDirectory(path.join(target.project.folderPath, PROJECT_CONTEXT_DIR));
     await ensureDirectory(path.join(target.project.folderPath, PROJECT_CONTEXT_DIR, PROJECT_SESSION_STATE_DIR_NAME));
@@ -3205,9 +3103,17 @@ export class SpaceVaultContextSyncService {
     }
 
     const capabilityDocs = buildProjectCapabilityDocuments(target.project, capabilitySnapshot, updatedAt);
-    await removeDirectoryIfExists(path.join(target.project.folderPath, PROJECT_CONTEXT_DIR, 'capabilities'));
+    await removeFileIfExists(
+      path.join(target.project.folderPath, PROJECT_CONTEXT_DIR, LEGACY_PROJECT_CAPABILITIES_FILE_NAME)
+    );
+    await removeDirectoryIfExists(
+      path.join(target.project.folderPath, PROJECT_CONTEXT_DIR, LEGACY_PROJECT_CAPABILITIES_DIR_NAME)
+    );
+    await removeDirectoryIfExists(
+      path.join(target.project.folderPath, PROJECT_CONTEXT_DIR, PROJECT_AUTOMATION_DIR_NAME)
+    );
     await ensureFile(
-      path.join(target.vaultPath, getProjectCapabilitiesRelativePath(target.project.folderName)),
+      path.join(target.vaultPath, getProjectAutomationRelativePath(target.project.folderName)),
       capabilityDocs.summary
     );
     for (const capabilityDoc of capabilityDocs.items) {

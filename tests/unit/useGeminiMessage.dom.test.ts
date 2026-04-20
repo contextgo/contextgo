@@ -362,4 +362,41 @@ describe('useGeminiMessage', () => {
       })
     );
   });
+
+  it('coalesces rapid thought updates instead of re-rendering every stream chunk immediately', async () => {
+    const { result } = renderHook(() => useGeminiMessage(CONVERSATION_ID));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      capturedResponseListener?.({
+        type: 'thought',
+        conversation_id: CONVERSATION_ID,
+        msg_id: 'msg-throttle',
+        data: { subject: 'first-thought', description: 'first update' },
+      });
+      capturedResponseListener?.({
+        type: 'thought',
+        conversation_id: CONVERSATION_ID,
+        msg_id: 'msg-throttle',
+        data: { subject: 'second-thought', description: 'second update' },
+      });
+    });
+
+    expect(result.current.thought.subject).toBe('first-thought');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(119);
+    });
+
+    expect(result.current.thought.subject).toBe('first-thought');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+
+    expect(result.current.thought.subject).toBe('second-thought');
+  });
 });

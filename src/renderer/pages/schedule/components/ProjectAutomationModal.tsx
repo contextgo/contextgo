@@ -6,7 +6,12 @@
 
 import { ipcBridge } from '@/common';
 import { normalizeManagedSlashCommandLibrary, type ManagedSlashCommandRecord } from '@/common/chat/slash/library';
-import type { IContextSchedule, IProjectCapabilitySnapshot, IScheduleSpec } from '@/common/adapter/ipcBridge';
+import type {
+  IContextSchedule,
+  IProjectCapabilitySnapshot,
+  IProjectSkillCapability,
+  IScheduleSpec,
+} from '@/common/adapter/ipcBridge';
 import MarkdownView from '@/renderer/components/Markdown';
 import type { TChatConversation } from '@/common/config/storage';
 import { usePresetAssistantInfo } from '@/renderer/hooks/agent/usePresetAssistantInfo';
@@ -21,7 +26,6 @@ import {
   getConversationEnabledHooks,
   resolveConversationHookBackend,
 } from '@/renderer/pages/conversation/Workspace/utils/sessionHooks';
-import ProjectSkillMarketModal from '@/renderer/pages/conversation/ProjectSkillMarketModal';
 import ManagedCommandLibraryEditor from '@/renderer/pages/settings/ToolsSettings/ManagedCommandLibraryEditor';
 import { emitter } from '@/renderer/utils/emitter';
 import {
@@ -56,6 +60,11 @@ type AutomationTabKey = 'skills' | 'hooks' | 'commands' | 'schedules';
 
 type SkillSelectionState = {
   names: string[];
+};
+
+type SkillPreviewState = {
+  title: string;
+  sourcePath?: string;
 };
 
 const EMPTY_SCHEDULE_EDITOR_STATE: ProjectScheduleEditorState = {
@@ -135,6 +144,14 @@ const resolveSkillSummary = (skill: SkillInfo): string => {
   return skill.openAIConfig?.interface?.shortDescription?.trim() || skill.description?.trim() || skill.name || '';
 };
 
+const resolveProjectSkillTitle = (capability: IProjectSkillCapability): string => {
+  return capability.openAIDisplayName?.trim() || capability.name;
+};
+
+const resolveProjectSkillSummary = (capability: IProjectSkillCapability): string => {
+  return capability.openAIShortDescription?.trim() || capability.description?.trim() || capability.name || '';
+};
+
 const stripSkillFrontMatter = (content: string): string => {
   const match = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/);
   const markdownBody = match ? content.slice(match[0].length) : content;
@@ -177,7 +194,7 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
   const [skillsLoading, setSkillsLoading] = useState(false);
   const [availableSkills, setAvailableSkills] = useState<SkillInfo[]>([]);
   const [projectCapabilitySnapshot, setProjectCapabilitySnapshot] = useState<IProjectCapabilitySnapshot | null>(null);
-  const [previewingSkill, setPreviewingSkill] = useState<SkillInfo | null>(null);
+  const [previewingSkill, setPreviewingSkill] = useState<SkillPreviewState | null>(null);
   const [skillPreviewContent, setSkillPreviewContent] = useState('');
   const [skillPreviewLoading, setSkillPreviewLoading] = useState(false);
   const directCreateContext = useMemo(() => getScheduleDirectCreateContext(conversation), [conversation]);
@@ -228,8 +245,12 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
           };
         })
         .toSorted((left, right) => {
-          const leftTitle = left.matchedSkill ? resolveSkillTitle(left.matchedSkill) : left.capability.name;
-          const rightTitle = right.matchedSkill ? resolveSkillTitle(right.matchedSkill) : right.capability.name;
+          const leftTitle = left.matchedSkill
+            ? resolveSkillTitle(left.matchedSkill)
+            : resolveProjectSkillTitle(left.capability);
+          const rightTitle = right.matchedSkill
+            ? resolveSkillTitle(right.matchedSkill)
+            : resolveProjectSkillTitle(right.capability);
           return leftTitle.localeCompare(rightTitle);
         }),
     [availableSkills, projectCapabilitySnapshot]
@@ -510,13 +531,29 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
   }, [skillPreviewLoading]);
 
   const handleOpenSkillPreview = useCallback(
-    async (skill: SkillInfo) => {
-      if (!skill.location) {
+    async (capability: IProjectSkillCapability, skill?: SkillInfo) => {
+      const mirroredSkillBody = capability.skillDocumentBody?.trim();
+      const previewTitle = skill ? resolveSkillTitle(skill) : resolveProjectSkillTitle(capability);
+      const previewSourcePath =
+        capability.skillDocumentRelativePath || skill?.location || capability.workspaceRelativePath;
+
+      setPreviewingSkill({
+        title: previewTitle,
+        sourcePath: previewSourcePath,
+      });
+      setSkillPreviewContent(mirroredSkillBody || '');
+
+      if (mirroredSkillBody) {
+        setSkillPreviewLoading(false);
         return;
       }
 
-      setPreviewingSkill(skill);
-      setSkillPreviewContent('');
+      if (!skill?.location) {
+        setPreviewingSkill(null);
+        messageApi.error(t('settings.assistantSkillPreviewFailed', { defaultValue: 'Failed to load skill content.' }));
+        return;
+      }
+
       setSkillPreviewLoading(true);
 
       try {
@@ -751,7 +788,7 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                         {availableProjectSkills.map(({ capability, matchedSkill }) => {
                           const isSelected =
                             selectedSkillNameSet.has(capability.name) || selectedSkillNameSet.has(capability.id);
-                          const canPreview = Boolean(matchedSkill?.location);
+                          const canPreview = Boolean(capability.skillDocumentBody?.trim() || matchedSkill?.location);
                           return (
                             <div
                               key={capability.docKey}
@@ -761,14 +798,14 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                               role={canPreview ? 'button' : undefined}
                               tabIndex={canPreview ? 0 : undefined}
                               onClick={
-                                canPreview && matchedSkill ? () => void handleOpenSkillPreview(matchedSkill) : undefined
+                                canPreview ? () => void handleOpenSkillPreview(capability, matchedSkill) : undefined
                               }
                               onKeyDown={
-                                canPreview && matchedSkill
+                                canPreview
                                   ? (event) => {
                                       if (event.key === 'Enter' || event.key === ' ') {
                                         event.preventDefault();
-                                        void handleOpenSkillPreview(matchedSkill);
+                                        void handleOpenSkillPreview(capability, matchedSkill);
                                       }
                                     }
                                   : undefined
@@ -778,7 +815,9 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                                 <div className='min-w-0 flex-1'>
                                   <div className='flex flex-wrap items-center gap-6px'>
                                     <Typography.Text bold>
-                                      {matchedSkill ? resolveSkillTitle(matchedSkill) : capability.name}
+                                      {matchedSkill
+                                        ? resolveSkillTitle(matchedSkill)
+                                        : resolveProjectSkillTitle(capability)}
                                     </Typography.Text>
                                     {isSelected ? (
                                       <Tag size='small' color='green'>
@@ -799,7 +838,7 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                                   <Typography.Paragraph className='mb-0 mt-6px text-t-secondary'>
                                     {matchedSkill
                                       ? resolveSkillSummary(matchedSkill)
-                                      : capability.openAIShortDescription || capability.description || capability.name}
+                                      : resolveProjectSkillSummary(capability)}
                                   </Typography.Paragraph>
                                   <Typography.Paragraph className='mb-0 mt-6px break-all text-12px text-t-tertiary'>
                                     {capability.workspaceRelativePath}
@@ -834,16 +873,6 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                     )}
                   </AutomationSectionCard>
                 </AutomationPanel>
-                {workspacePath ? (
-                  <div className='mt-16px'>
-                    <ProjectSkillMarketModal
-                      visible={visible && activeTab === 'skills'}
-                      workspacePath={workspacePath}
-                      variant='embedded'
-                      onClose={() => undefined}
-                    />
-                  </div>
-                ) : null}
               </div>
             </Tabs.TabPane>
 
@@ -1282,16 +1311,16 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
 
       <SettingsSubModal
         visible={previewingSkill !== null}
-        title={previewingSkill ? resolveSkillTitle(previewingSkill) : undefined}
+        title={previewingSkill?.title}
         onCancel={handleCloseSkillPreview}
         footer={null}
         style={{ width: 'min(920px, calc(100vw - 32px))' }}
         contentStyle={{ padding: '12px 24px 24px', maxHeight: 'min(82vh, 920px)', overflow: 'auto' }}
       >
         <div className='flex flex-col gap-12px'>
-          {previewingSkill ? (
+          {previewingSkill?.sourcePath ? (
             <Typography.Paragraph className='mb-0 break-all text-12px text-t-tertiary'>
-              {previewingSkill.location}
+              {previewingSkill.sourcePath}
             </Typography.Paragraph>
           ) : null}
 

@@ -123,6 +123,7 @@ vi.mock('@icon-park/react', () => ({
   ArrowUp: () => React.createElement('span', {}, 'ArrowUp'),
   CloseOne: () => React.createElement('span', {}, 'CloseOne'),
   CloseSmall: () => React.createElement('span', {}, 'CloseSmall'),
+  Square: () => React.createElement('span', {}, 'Square'),
   SquareSmall: () => React.createElement('span', {}, 'SquareSmall'),
 }));
 
@@ -163,8 +164,11 @@ vi.mock('@arco-design/web-react', () => ({
 
 import SendBox from '@/renderer/components/chat/sendbox';
 
-const Harness: React.FC<{ lockMultiLine?: boolean }> = ({ lockMultiLine = false }) => {
-  const [value, setValue] = useState('');
+const Harness: React.FC<{ lockMultiLine?: boolean; initialValue?: string }> = ({
+  lockMultiLine = false,
+  initialValue = '',
+}) => {
+  const [value, setValue] = useState(initialValue);
 
   return (
     <SendBox
@@ -187,6 +191,7 @@ describe('SendBox layout mode with pretext', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    mockUseLayoutContext.mockReturnValue({ isMobile: false });
     mockMeasureTextLineCount.mockReturnValue(1);
   });
 
@@ -278,7 +283,7 @@ describe('SendBox layout mode with pretext', () => {
     expect(textarea.style.whiteSpace).toBe('pre-wrap');
   });
 
-  it('uses the composer stop button as the only danger action while loading', () => {
+  it('uses the standard square stop glyph as the only danger action while loading', () => {
     render(
       <SendBox
         value=''
@@ -292,6 +297,7 @@ describe('SendBox layout mode with pretext', () => {
     const stopButton = screen.getByRole('button', { name: 'conversation.group.workflow.decision.stop' });
     const stopStyle = stopButton.getAttribute('style') ?? '';
 
+    expect(stopButton).toHaveTextContent('Square');
     expect(stopStyle).toContain('rgb(var(--danger-6))');
     expect(stopStyle).toContain('rgba(var(--danger-6), 0.12)');
     expect(stopStyle).toContain('rgba(var(--danger-6), 0.24)');
@@ -370,5 +376,63 @@ describe('SendBox layout mode with pretext', () => {
     expect(mobileToolsShell?.className).toContain('sendbox-tools-mobile-shell');
     expect(toolCluster?.className).toContain('sendbox-tool-cluster');
     expect(pillRow?.className).toContain('sendbox-tool-pill-row');
+  });
+
+  it('restores desktop textarea focus after a transient window blur', async () => {
+    const { container } = render(<Harness initialValue='draft text' />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea).toBeTruthy();
+    setupTextarea(textarea);
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    await act(async () => {
+      textarea.focus();
+      fireEvent.focus(textarea);
+    });
+
+    textarea.setSelectionRange(5, 5);
+    fireEvent.select(textarea);
+
+    expect(document.activeElement).toBe(textarea);
+
+    await act(async () => {
+      window.dispatchEvent(new Event('blur'));
+      textarea.blur();
+    });
+
+    expect(document.activeElement).not.toBe(textarea);
+
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+      await vi.runAllTimersAsync();
+    });
+
+    expect(document.activeElement).toBe(textarea);
+    expect(textarea.selectionStart).toBe(5);
+    expect(textarea.selectionEnd).toBe(5);
+  });
+
+  it('does not steal focus when the textarea was not focused before window blur', async () => {
+    const { container } = render(<Harness initialValue='draft text' />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const button = container.querySelector('button') as HTMLButtonElement;
+    expect(textarea).toBeTruthy();
+    expect(button).toBeTruthy();
+    setupTextarea(textarea);
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      textarea.blur();
+      button.focus();
+      window.dispatchEvent(new Event('blur'));
+      window.dispatchEvent(new Event('focus'));
+      await vi.runAllTimersAsync();
+    });
+
+    expect(document.activeElement).not.toBe(textarea);
+    expect(document.activeElement).toBe(button);
   });
 });

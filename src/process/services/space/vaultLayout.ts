@@ -9,7 +9,6 @@ import path from 'node:path';
 export const DEFAULT_SPACE_CANVAS_PATH = path.posix.join('Canvas', 'Space Overview.canvas');
 export const PROJECTS_DIR = 'Projects';
 export const SESSIONS_DIR = 'Sessions';
-export const SESSION_STATE_DIR = path.posix.join(SESSIONS_DIR, '_state');
 export const PROJECT_CONTEXT_DIR = '_context';
 export const CANVAS_DIR = 'Canvas';
 export const SYSTEM_DIR = 'System';
@@ -24,20 +23,20 @@ export const PROJECT_SESSION_STATE_DIR_NAME = 'sessions';
 export const PROJECT_GRAPH_FILE_NAME = 'Project Graph.canvas';
 export const PROJECT_INSIGHTS_FILE_NAME = 'Project Insights.md';
 export const PROJECT_BASELINE_FILE_NAME = 'baseline.md';
-export const PROJECT_CAPABILITIES_FILE_NAME = 'Capabilities.md';
-export const PROJECT_CAPABILITIES_DIR_NAME = 'capabilities';
+export const PROJECT_AUTOMATION_FILE_NAME = 'Automation.md';
+export const LEGACY_PROJECT_CAPABILITIES_FILE_NAME = 'Capabilities.md';
+export const PROJECT_AUTOMATION_DIR_NAME = 'automation';
+export const LEGACY_PROJECT_CAPABILITIES_DIR_NAME = 'capabilities';
 export const PROJECT_CAPABILITY_SKILLS_DIR_NAME = 'skills';
 export const PROJECT_CAPABILITY_HOOKS_DIR_NAME = 'hooks';
 export const PROJECT_CAPABILITY_COMMANDS_DIR_NAME = 'commands';
 export const PROJECT_CAPABILITY_SCHEDULES_DIR_NAME = 'schedules';
-export const SESSION_WORKING_SET_FILE_NAME = 'working-set.md';
 
-export type ContextgoNamespace = 'space' | 'project' | 'session' | 'source' | 'capability';
-export type ContextgoProjection = 'semantic-context' | 'source-mirror' | 'capability-inventory';
+export type ContextgoNamespace = 'space' | 'project' | 'session' | 'source' | 'automation';
+export type ContextgoProjection = 'semantic-context' | 'source-mirror' | 'automation-inventory';
 
 export type ConversationDocumentPaths = {
   sessionRelativePath: string;
-  workingSetRelativePath: string;
 };
 
 const INVALID_VAULT_PATH_CHARS_REGEX = /[\p{Cc}<>:"/\\|?*]/gu;
@@ -74,27 +73,27 @@ export const getProjectBaselineRelativePath = (projectFolderName: string): strin
   return path.posix.join(PROJECTS_DIR, projectFolderName, PROJECT_CONTEXT_DIR, PROJECT_BASELINE_FILE_NAME);
 };
 
-export const getProjectCapabilitiesRelativePath = (projectFolderName: string): string => {
-  return path.posix.join(PROJECTS_DIR, projectFolderName, PROJECT_CONTEXT_DIR, PROJECT_CAPABILITIES_FILE_NAME);
+export const getProjectAutomationRelativePath = (projectFolderName: string): string => {
+  return path.posix.join(PROJECTS_DIR, projectFolderName, PROJECT_CONTEXT_DIR, PROJECT_AUTOMATION_FILE_NAME);
 };
 
-export const getProjectCapabilityItemsRelativeDir = (projectFolderName: string, capabilityDirName: string): string => {
+export const getProjectAutomationItemsRelativeDir = (projectFolderName: string, capabilityDirName: string): string => {
   return path.posix.join(
     PROJECTS_DIR,
     projectFolderName,
     PROJECT_CONTEXT_DIR,
-    PROJECT_CAPABILITIES_DIR_NAME,
+    PROJECT_AUTOMATION_DIR_NAME,
     capabilityDirName
   );
 };
 
-export const getProjectCapabilityItemRelativePath = (
+export const getProjectAutomationItemRelativePath = (
   projectFolderName: string,
   capabilityDirName: string,
   itemName: string
 ): string => {
   return path.posix.join(
-    getProjectCapabilityItemsRelativeDir(projectFolderName, capabilityDirName),
+    getProjectAutomationItemsRelativeDir(projectFolderName, capabilityDirName),
     `${sanitizeVaultPathSegment(itemName)}.md`
   );
 };
@@ -118,24 +117,12 @@ export const getSessionRelativePath = (conversationId: string, projectFolderName
     : path.posix.join(SESSIONS_DIR, `${sanitizedConversationId}.md`);
 };
 
-export const getSessionWorkingSetRelativePath = (conversationId: string, projectFolderName?: string): string => {
-  const sanitizedConversationId = sanitizeVaultPathSegment(conversationId);
-  return projectFolderName
-    ? path.posix.join(
-        getProjectSessionStateRelativeDir(projectFolderName),
-        sanitizedConversationId,
-        SESSION_WORKING_SET_FILE_NAME
-      )
-    : path.posix.join(SESSION_STATE_DIR, sanitizedConversationId, SESSION_WORKING_SET_FILE_NAME);
-};
-
 export const getConversationDocumentPaths = (
   conversationId: string,
   projectFolderName?: string
 ): ConversationDocumentPaths => {
   return {
     sessionRelativePath: getSessionRelativePath(conversationId, projectFolderName),
-    workingSetRelativePath: getSessionWorkingSetRelativePath(conversationId, projectFolderName),
   };
 };
 

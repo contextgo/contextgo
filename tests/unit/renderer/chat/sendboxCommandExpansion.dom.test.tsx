@@ -34,6 +34,7 @@ const mockUseInputFocusRing = vi.fn(() => ({
   activeShadow: '0 0 0 2px rgba(0,0,0,0.1)',
 }));
 const mockUseCompositionInput = vi.fn(() => ({
+  isComposing: { current: false },
   compositionHandlers: {},
   createKeyDownHandler: vi.fn(() => vi.fn()),
 }));
@@ -159,6 +160,7 @@ vi.mock('@arco-design/web-react', () => ({
 vi.mock('@icon-park/react', () => ({
   ArrowUp: () => React.createElement('span', {}, 'ArrowUp'),
   CloseSmall: () => React.createElement('span', {}, 'CloseSmall'),
+  Square: () => React.createElement('span', {}, 'Square'),
   SquareSmall: () => React.createElement('span', {}, 'SquareSmall'),
 }));
 
@@ -174,7 +176,17 @@ const SendBoxHarness: React.FC<{
   slashCommands?: SlashCommandItem[];
   initialValue?: string;
   onSend?: (message: string) => Promise<void>;
-}> = ({ slashCommands = [], initialValue = '/pla', onSend = vi.fn().mockResolvedValue(undefined) }) => {
+  onQueue?: (message: string) => Promise<void> | void;
+  loading?: boolean;
+  pendingUploadCount?: number;
+}> = ({
+  slashCommands = [],
+  initialValue = '/pla',
+  onSend = vi.fn().mockResolvedValue(undefined),
+  onQueue,
+  loading = false,
+  pendingUploadCount = 0,
+}) => {
   const [value, setValue] = React.useState(initialValue);
 
   return (
@@ -183,6 +195,9 @@ const SendBoxHarness: React.FC<{
       onChange={setValue}
       onSend={onSend}
       slashCommands={slashCommands}
+      onQueue={onQueue}
+      loading={loading}
+      pendingUploadCount={pendingUploadCount}
     />
   );
 };
@@ -310,6 +325,48 @@ describe('SendBox command expansion', () => {
     expect(onSend).toHaveBeenCalledWith(
       'Turn the user request into a high-quality image prompt.\n\na cinematic product poster'
     );
+  });
+
+  it('queues the current message on Tab even while a response is running', async () => {
+    const onSend = vi.fn().mockResolvedValue(undefined);
+    const onQueue = vi.fn();
+    const { container } = render(
+      <SendBoxHarness initialValue='Queue this follow-up' onSend={onSend} onQueue={onQueue} loading />
+    );
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.keyDown(textarea, {
+        key: 'Tab',
+      });
+    });
+
+    expect(onQueue).toHaveBeenCalledWith('Queue this follow-up');
+    expect(onSend).not.toHaveBeenCalled();
+    expect(messageWarningMock).not.toHaveBeenCalled();
+    expect(textarea.value).toBe('');
+  });
+
+  it('keeps Tab queue blocked while uploads are still pending', async () => {
+    const onQueue = vi.fn();
+    const { container } = render(
+      <SendBoxHarness initialValue='Queue this follow-up' onQueue={onQueue} loading pendingUploadCount={1} />
+    );
+
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(textarea).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.keyDown(textarea, {
+        key: 'Tab',
+      });
+    });
+
+    expect(onQueue).not.toHaveBeenCalled();
+    expect(messageWarningMock).toHaveBeenCalledWith('messages.conversationInProgress');
+    expect(textarea.value).toBe('Queue this follow-up');
   });
 
   it('opens workspace mention suggestions and inserts the selected file', async () => {

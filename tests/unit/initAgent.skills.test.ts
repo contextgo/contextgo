@@ -13,6 +13,7 @@ const {
   statResults,
   lstatResults,
   existsSyncResults,
+  readdirFailures,
   resetAll,
 } = vi.hoisted(() => {
   const mkdirCalls: string[] = [];
@@ -23,6 +24,7 @@ const {
   const statResults: Record<string, boolean> = {};
   const lstatResults: Record<string, boolean> = {};
   const existsSyncResults: Record<string, boolean> = {};
+  const readdirFailures: Record<string, boolean> = {};
 
   const resetAll = () => {
     mkdirCalls.length = 0;
@@ -33,6 +35,7 @@ const {
     for (const key of Object.keys(statResults)) delete statResults[key];
     for (const key of Object.keys(lstatResults)) delete lstatResults[key];
     for (const key of Object.keys(existsSyncResults)) delete existsSyncResults[key];
+    for (const key of Object.keys(readdirFailures)) delete readdirFailures[key];
   };
 
   return {
@@ -44,6 +47,7 @@ const {
     statResults,
     lstatResults,
     existsSyncResults,
+    readdirFailures,
     resetAll,
   };
 });
@@ -80,6 +84,10 @@ vi.mock('fs/promises', () => ({
 
       if (!existsSyncResults[normalizedDir] && !statResults[normalizedDir] && !lstatResults[normalizedDir]) {
         throw new Error(`ENOENT: ${dir}`);
+      }
+
+      if (readdirFailures[normalizedDir]) {
+        throw new Error(`EIO: ${dir}`);
       }
 
       const childEntries = new Map<string, 'file' | 'directory'>();
@@ -513,6 +521,27 @@ describe('initAgent — skill support', () => {
         target: '/tmp/workspace/.codex/skills',
         type: 'junction',
       });
+      expect(copyFileCalls).toContainEqual({
+        source: `${packagedSkillDir}/SKILL.md`,
+        target: '/tmp/workspace/.contextgo/skills/agent-eval/SKILL.md',
+      });
+    });
+
+    it('falls back to manifest-packaged skill paths when bundled skill roots cannot be enumerated', async () => {
+      const repoRoot = norm(process.cwd());
+      const presetSkillsRoot = `${repoRoot}/src/process/resources/assistant/engineering/everything-in-claude-code/skills`;
+      const packagedSkillDir = `${presetSkillsRoot}/agent-eval`;
+
+      existsSyncResults[presetSkillsRoot] = true;
+      statResults[packagedSkillDir] = true;
+      fileContents[`${packagedSkillDir}/SKILL.md`] = '---\nname: agent-eval\ndescription: mock skill\n---\n';
+      readdirFailures[presetSkillsRoot] = true;
+
+      await setupAssistantWorkspace('/tmp/workspace', {
+        backend: 'codex',
+        presetAssistantId: 'builtin-everything-in-claude-code',
+      });
+
       expect(copyFileCalls).toContainEqual({
         source: `${packagedSkillDir}/SKILL.md`,
         target: '/tmp/workspace/.contextgo/skills/agent-eval/SKILL.md',

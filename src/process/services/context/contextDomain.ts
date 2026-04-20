@@ -130,8 +130,8 @@ export type SessionCompactionArtifact = {
   detail?: string;
   noteTitle?: string;
   relativePath?: string;
-  workingSetTitle?: string;
-  workingSetRelativePath?: string;
+  workingContextTitle?: string;
+  workingContextRelativePath?: string;
   currentTask?: string;
   stableStrategies: readonly string[];
   failureModes: readonly string[];

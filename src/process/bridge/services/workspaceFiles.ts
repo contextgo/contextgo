@@ -225,6 +225,19 @@ export async function listWorkspaceRecentFiles(
   return recentFiles;
 }
 
+export async function initializeWorkspaceGitRepository(targetPath: string): Promise<IGitRepositoryInfo> {
+  const workingDir = await resolveWorkspaceRoot(targetPath);
+  if (!workingDir) {
+    throw new Error('Workspace path is unavailable.');
+  }
+
+  await execFileAsync('git', ['init'], {
+    cwd: workingDir,
+  });
+
+  return getGitRepositoryInfo(workingDir);
+}
+
 const buildUntrackedFileDiff = async (filePath: string, relativePath: string): Promise<string> => {
   const content = await fs.readFile(filePath, 'utf-8').catch(() => '[binary file]');
   const lines = content.split(/\r?\n/);
