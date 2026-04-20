@@ -194,8 +194,11 @@ jobs:
     name: Build Android Shell
     needs: [prepare-matrix, validate-release-context]
     if: >-
-      github.event_name == 'workflow_dispatch' &&
-      inputs.build_android_shell
+      github.event_name == 'push' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        inputs.build_android_shell
+      )
     runs-on: >-
       ${{
         fromJSON(
@@ -466,8 +469,11 @@ jobs:
     name: Build HarmonyOS Shell
     needs: [prepare-matrix, validate-release-context]
     if: >-
-      github.event_name == 'workflow_dispatch' &&
-      inputs.build_harmony_shell
+      github.event_name == 'push' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        inputs.build_harmony_shell
+      )
     runs-on: >-
       ${{
         fromJSON(
