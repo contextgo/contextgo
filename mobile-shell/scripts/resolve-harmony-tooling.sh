@@ -129,13 +129,13 @@ append_discovered_roots "${HOME:-}/Library/DevEcoStudio"
 append_discovered_roots "${HOME:-}/Applications"
 append_discovered_roots "/Applications"
 
-if [[ ${#CANDIDATE_ROOTS[@]} -eq 0 ]]; then
-  append_discovered_roots "${HOME:-}" 8
-fi
-
 if [[ ${#CANDIDATE_ROOTS[@]} -eq 0 && "${CONTEXTGO_HARMONY_ENABLE_GLOBAL_SEARCH:-false}" == 'true' ]]; then
-  append_discovered_roots "/Users" 6
-  append_discovered_roots "/Applications" 8
+  append_discovered_roots "${HOME:-}" 8
+
+  if [[ ${#CANDIDATE_ROOTS[@]} -eq 0 ]]; then
+    append_discovered_roots "/Users" 6
+    append_discovered_roots "/Applications" 8
+  fi
 fi
 
 OHPM_PATH="$(resolve_tool_path 'bin/ohpm' 'ohpm/bin/ohpm' || true)"

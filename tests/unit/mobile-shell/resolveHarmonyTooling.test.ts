@@ -125,7 +125,28 @@ describe('resolve-harmony-tooling.sh', () => {
     });
   });
 
-  it('discovers a non-standard command-line-tools root under HOME when standard locations are absent', async () => {
+  it('does not scan non-standard HOME paths unless global search is enabled', async () => {
+    const { rootDir, scriptPath } = await makeFixture();
+    const toolsRoot = path.join(rootDir, 'vendor', 'deveco', 'command-line-tools');
+
+    await writeExecutable(path.join(toolsRoot, 'bin', 'ohpm'));
+    await writeExecutable(path.join(toolsRoot, 'hvigor', 'bin', 'hvigorw'));
+    await fs.mkdir(path.join(toolsRoot, 'sdk'), { recursive: true });
+
+    await expect(
+      execFileAsync('bash', [scriptPath], {
+        cwd: rootDir,
+        env: {
+          ...process.env,
+          HOME: rootDir,
+        },
+      })
+    ).rejects.toMatchObject({
+      stderr: expect.stringContaining('Unable to resolve HarmonyOS command-line tools'),
+    });
+  });
+
+  it('discovers a non-standard command-line-tools root under HOME when global search is enabled', async () => {
     const { rootDir, scriptPath } = await makeFixture();
     const toolsRoot = path.join(rootDir, 'vendor', 'deveco', 'command-line-tools');
 
@@ -138,6 +159,7 @@ describe('resolve-harmony-tooling.sh', () => {
       env: {
         ...process.env,
         HOME: rootDir,
+        CONTEXTGO_HARMONY_ENABLE_GLOBAL_SEARCH: 'true',
       },
     });
 
