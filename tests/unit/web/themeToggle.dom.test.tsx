@@ -1,3 +1,6 @@
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const THEME_STORAGE_KEY = 'contextgo-theme';
@@ -8,12 +11,13 @@ const dict = {
   dark: 'Dark',
   system: 'System',
 };
+const appsWebRequire = createRequire(path.resolve('apps/web/package.json'));
 
 let ThemeToggle: typeof import('../../../apps/web/src/components/ThemeToggle').default;
-let act: typeof import('../../../apps/web/node_modules/react').act;
-let createElement: typeof import('../../../apps/web/node_modules/react').createElement;
-let hydrateRoot: typeof import('../../../apps/web/node_modules/react-dom/client').hydrateRoot;
-let renderToString: typeof import('../../../apps/web/node_modules/react-dom/server').renderToString;
+let act: typeof import('react').act;
+let createElement: typeof import('react').createElement;
+let hydrateRoot: typeof import('react-dom/client').hydrateRoot;
+let renderToString: typeof import('react-dom/server').renderToString;
 
 const createMatchMedia = (matches: boolean) =>
   vi.fn().mockImplementation((query: string) => ({
@@ -49,9 +53,9 @@ const collectConsoleMessages = (calls: unknown[][]): string => {
 
 describe('ThemeToggle hydration', () => {
   beforeAll(async () => {
-    const webReact = await import('../../../apps/web/node_modules/react');
-    const webReactClient = await import('../../../apps/web/node_modules/react-dom/client');
-    const webReactServer = await import('../../../apps/web/node_modules/react-dom/server');
+    const webReact = await import(pathToFileURL(appsWebRequire.resolve('react')).href);
+    const webReactClient = await import(pathToFileURL(appsWebRequire.resolve('react-dom/client')).href);
+    const webReactServer = await import(pathToFileURL(appsWebRequire.resolve('react-dom/server')).href);
 
     (globalThis as { React?: typeof webReact }).React = webReact;
     act = webReact.act;
