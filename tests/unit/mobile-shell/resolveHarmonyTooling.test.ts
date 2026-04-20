@@ -125,6 +125,30 @@ describe('resolve-harmony-tooling.sh', () => {
     });
   });
 
+  it('discovers a non-standard command-line-tools root under HOME when standard locations are absent', async () => {
+    const { rootDir, scriptPath } = await makeFixture();
+    const toolsRoot = path.join(rootDir, 'vendor', 'deveco', 'command-line-tools');
+
+    await writeExecutable(path.join(toolsRoot, 'bin', 'ohpm'));
+    await writeExecutable(path.join(toolsRoot, 'hvigor', 'bin', 'hvigorw'));
+    await fs.mkdir(path.join(toolsRoot, 'sdk'), { recursive: true });
+
+    const { stdout } = await execFileAsync('bash', [scriptPath], {
+      cwd: rootDir,
+      env: {
+        ...process.env,
+        HOME: rootDir,
+      },
+    });
+
+    expect(parseEnvAssignments(stdout)).toEqual({
+      CONTEXTGO_HARMONY_HVIGORW: path.join(toolsRoot, 'hvigor', 'bin', 'hvigorw'),
+      CONTEXTGO_HARMONY_OHPM: path.join(toolsRoot, 'bin', 'ohpm'),
+      DEVECO_SDK_HOME: path.join(toolsRoot, 'sdk'),
+      HARMONY_TOOLS_ROOT: toolsRoot,
+    });
+  });
+
   it('fails with a clear error when no compatible tooling layout is available', async () => {
     const { rootDir, scriptPath } = await makeFixture();
     const toolsRoot = path.join(rootDir, 'command-line-tools');

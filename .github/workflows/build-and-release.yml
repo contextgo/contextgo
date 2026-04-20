@@ -509,6 +509,7 @@ jobs:
           VERSION="$(node -p "require('./package.json').version")"
           BOOTSTRAP_PARENT="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/contextgo-harmony-tools"
           BOOTSTRAP_ROOT="${BOOTSTRAP_PARENT}/command-line-tools"
+          export CONTEXTGO_HARMONY_ENABLE_GLOBAL_SEARCH='true'
 
           resolve_tooling() {
             local output

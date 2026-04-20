@@ -30,6 +30,7 @@ append_candidate_root() {
 
 append_discovered_roots() {
   local search_root="${1:-}"
+  local max_depth="${2:-6}"
 
   if [[ -z "$search_root" || ! -d "$search_root" ]]; then
     return 0
@@ -42,7 +43,7 @@ append_discovered_roots() {
 
     append_candidate_root "$discovered_root"
   done < <(
-    find "$search_root" -maxdepth 6 -type d -name 'command-line-tools' 2>/dev/null || true
+    find "$search_root" -maxdepth "$max_depth" -type d -name 'command-line-tools' 2>/dev/null || true
   )
 }
 
@@ -127,6 +128,15 @@ append_discovered_roots "${HOME:-}/Library/DevEco-Studio"
 append_discovered_roots "${HOME:-}/Library/DevEcoStudio"
 append_discovered_roots "${HOME:-}/Applications"
 append_discovered_roots "/Applications"
+
+if [[ ${#CANDIDATE_ROOTS[@]} -eq 0 ]]; then
+  append_discovered_roots "${HOME:-}" 8
+fi
+
+if [[ ${#CANDIDATE_ROOTS[@]} -eq 0 && "${CONTEXTGO_HARMONY_ENABLE_GLOBAL_SEARCH:-false}" == 'true' ]]; then
+  append_discovered_roots "/Users" 6
+  append_discovered_roots "/Applications" 8
+fi
 
 OHPM_PATH="$(resolve_tool_path 'bin/ohpm' 'ohpm/bin/ohpm' || true)"
 HVIGORW_PATH="$(resolve_tool_path 'bin/hvigorw' 'hvigor/bin/hvigorw' || true)"
