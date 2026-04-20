@@ -15,8 +15,7 @@ export const zh = {
   hero: {
     title_start: '把文件、文档与对话接进同一个',
     title_end: 'AI 工作台。',
-    description:
-      'ContextGo 连接文件、文档、聊天与运行时，让 Agent 在真实工作流里持续工作，而不是停留在一次对话里。',
+    description: 'ContextGo 连接文件、文档、聊天与运行时，让 Agent 在真实工作流里持续工作，而不是停留在一次对话里。',
     preview_alt: 'ContextGo 桌面工作台',
     download_btn: '下载桌面版',
     docs_btn: '阅读文档',

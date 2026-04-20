@@ -78,8 +78,7 @@ const resourcesContent: Record<SiteLocale, ResourcesSection> = {
   zh: {
     badge: '开始使用',
     title: '先了解产品，再下载，再跟进版本',
-    description:
-      '官网集中提供产品文档、博客、下载入口和更新记录。先判断产品是否适合，再查看安装与版本信息。',
+    description: '官网集中提供产品文档、博客、下载入口和更新记录。先判断产品是否适合，再查看安装与版本信息。',
     cards: [
       {
         eyebrow: '文档',
