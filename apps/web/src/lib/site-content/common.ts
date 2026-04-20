@@ -44,61 +44,61 @@ const changelogContent: Record<SiteLocale, ChangelogSection> = {
 
 const resourcesContent: Record<SiteLocale, ResourcesSection> = {
   en: {
-    badge: 'Resource Hub',
-    title: 'Documentation, blog, and release history belong on the site',
+    badge: 'Get Started',
+    title: 'Learn the product, install it, and keep up with releases',
     description:
-      'Use contextgo.io as the public-facing home for product guidance, editorial updates, and release history. Keep binaries and manifests in the release repository, not mixed into docs.',
+      'The website brings together docs, blog posts, downloads, and release history so customers can evaluate ContextGo, install it, and follow what ships next.',
     cards: [
       {
         eyebrow: 'Docs',
-        title: 'Docs for setup, remote access, and runtime operations',
+        title: 'Start with installation, remote access, and runtime docs',
         summary:
-          'Give customers one place to understand installation, cloud account linking, device status, and remote behavior.',
+          'Use the docs to understand setup, runtime readiness, remote access, and the most common support questions.',
         href: '/docs',
         cta: 'Open docs',
       },
       {
         eyebrow: 'Blog',
-        title: 'Blog for product updates and architecture notes',
+        title: 'Follow product thinking and major updates',
         summary:
-          'Publish product rationale, roadmap notes, and user-facing explanations without overloading release notes.',
+          'Use the blog for product rationale, architecture decisions, and user-facing explanations of new capabilities.',
         href: '/blog',
         cta: 'Read the blog',
       },
       {
         eyebrow: 'Changelog',
-        title: 'Changelog tied to the release repository',
+        title: 'Track releases, downloads, and verification',
         summary:
-          'Keep official version history, manifests, checksums, and download operations aligned around contextgo-releases.',
+          'Check release history, release notes, download links, and checksum status before you install or upgrade.',
         href: '/changelog',
         cta: 'View release history',
       },
     ],
   },
   zh: {
-    badge: '资源中心',
-    title: '文档、博客和发布历史，都应该挂在官网上',
+    badge: '开始使用',
+    title: '先了解产品，再下载，再跟进版本',
     description:
-      '让 contextgo.io 成为对客入口，承载产品文档、编辑内容和版本历史；而二进制与 manifest 保持在 release 仓库里。',
+      '官网集中提供产品文档、博客、下载入口和更新记录。先判断产品是否适合，再查看安装与版本信息。',
     cards: [
       {
         eyebrow: '文档',
-        title: '安装、远程访问与运行时运维文档',
-        summary: '给客户一个统一入口，理解安装、云账号绑定、设备状态和远程访问行为。',
+        title: '快速了解安装、远程访问与运行时',
+        summary: '从产品文档开始，先看安装方式、运行时准备、远程访问和常见问题。',
         href: '/docs',
         cta: '进入文档',
       },
       {
         eyebrow: '博客',
-        title: '产品更新与架构说明博客',
-        summary: '把产品思路、路线说明和对客解释发布出来，不要全部挤进 release notes。',
+        title: '读懂产品思路与更新方向',
+        summary: '通过博客了解产品判断、架构取舍和面向用户的功能解释。',
         href: '/blog',
         cta: '查看博客',
       },
       {
         eyebrow: '更新记录',
-        title: '与 release 仓库绑定的版本历史',
-        summary: '让官方版本历史、manifest、checksum 和下载运维，都围绕 contextgo-releases 收口。',
+        title: '查看版本发布、下载与校验状态',
+        summary: '在更新记录里确认版本历史、release notes、下载入口和校验信息。',
         href: '/changelog',
         cta: '查看更新记录',
       },

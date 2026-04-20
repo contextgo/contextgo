@@ -69,14 +69,14 @@ const content: Record<
     },
     surfaces: {
       home: {
-        eyebrow: 'Answer First',
-        title: 'What ContextGo actually does in one operating model',
+        eyebrow: 'Why ContextGo',
+        title: 'One workbench for files, docs, runtime, and agent work',
         description:
-          'ContextGo is not just another chat surface. It connects working context, routes it into agents, and keeps desktop, remote, and release behavior aligned around one product model.',
+          'ContextGo brings source material, runtime access, and remote use into one working system so agents can keep moving with the job instead of restarting from scratch.',
         points: [
-          'Build an AI workbench around files, tasks, docs, channels, and runtime state.',
-          'Keep the desktop as the real execution host while remote clients reuse the same workspace.',
-          'Let connectors and release operations stay attached to one factual product story.',
+          'Connect files, docs, chats, and tasks before you ask the agent to act.',
+          'Keep the desktop as the real execution host while web and mobile stay aligned.',
+          'Use the same product for setup, execution, remote access, and release follow-up.',
         ],
         intentSlugs: ['ai-workbench', 'remote-ai-workspace', 'context-engine-for-teams'],
         faqTitle: 'Homepage FAQ',
@@ -84,12 +84,12 @@ const content: Record<
           {
             question: 'What is ContextGo in practical terms?',
             answer:
-              'ContextGo is a context-first AI workbench. It connects local files, docs, channels, tasks, and runtime state so agents can work inside the same operating context instead of one isolated chat turn at a time.',
+              'ContextGo is an AI workbench that connects files, docs, chats, tasks, and runtime access so agents can keep working inside a real workflow instead of one isolated chat turn at a time.',
           },
           {
             question: 'Who is ContextGo designed for?',
             answer:
-              'It is aimed at operators, builders, product teams, and administrators who need one system to coordinate knowledge, execution, remote access, and release operations without splitting the workflow across unrelated tools.',
+              'It is designed for teams that want one place to coordinate source material, execution, remote access, and delivery instead of splitting the workflow across disconnected tools.',
           },
           {
             question: 'Where does the actual work run?',
@@ -535,14 +535,14 @@ const content: Record<
     },
     surfaces: {
       home: {
-        eyebrow: '先回答问题',
-        title: '用一套产品模型把 ContextGo 说清楚',
+        eyebrow: '为什么是 ContextGo',
+        title: '把文件、文档、运行时和 Agent 工作放进同一个工作台',
         description:
-          'ContextGo 不是另一个聊天框，而是一套把工作上下文、Agent 执行、远程访问和发布运维收拢到一起的 AI 工作台。',
+          'ContextGo 把来源资料、运行时和远程访问放进同一套工作系统，让 Agent 跟着真实工作持续推进，而不是每次都从空白对话重来。',
         points: [
-          '围绕文件、任务、文档、渠道和运行时状态构建 AI 工作台。',
-          '让桌面端继续作为真实执行主机，远程端复用同一套工作区。',
-          '把 connector、发布和安装路径都挂在同一套产品事实之上。',
+          '先把文件、文档、聊天和任务接进来，再让 Agent 开始工作。',
+          '让桌面主机负责真实执行，同时保持网页和移动端一致接入。',
+          '用同一个产品完成安装、执行、远程访问和版本跟进。',
         ],
         intentSlugs: ['ai-workbench', 'remote-ai-workspace', 'context-engine-for-teams'],
         faqTitle: '首页常见问题',
@@ -550,12 +550,12 @@ const content: Record<
           {
             question: 'ContextGo 实际上是什么产品？',
             answer:
-              'ContextGo 是一个以“上下文”为中心的 AI 工作台。它把本地文件、文档、消息渠道、任务和运行时状态接到一起，让 Agent 在真实工作上下文里持续工作，而不是只做一次性的聊天问答。',
+              'ContextGo 是一套 AI 工作台。它把文件、文档、聊天、任务和运行时接进同一个工作系统，让 Agent 不再只停留在一次对话里。',
           },
           {
             question: 'ContextGo 主要适合谁用？',
             answer:
-              '它适合需要统一管理知识、执行、远程访问和发布运维的团队，包括产品、研发、运营、管理员和需要长期沉淀工作上下文的组织。',
+              '它适合希望把资料、执行、远程访问和交付入口放进同一套系统的团队，而不是继续在多个互不相连的工具之间来回切换。',
           },
           {
             question: '真正的执行到底跑在哪里？',

@@ -55,11 +55,11 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       <HomeClient dict={dict} lang={validLang} resources={siteContent.resources} />
       <AnswerStrip content={surfaceContent} />
       <IntentCardGrid
-        title={validLang === 'zh' ? '从产品入口继续看具体场景' : 'Continue into concrete product scenarios'}
+        title={validLang === 'zh' ? '继续了解 ContextGo 的核心使用场景' : 'Explore the main ways teams use ContextGo'}
         description={
           validLang === 'zh'
-            ? '这些页面把 AI 工作台、远程使用和团队上下文模型拆开讲清楚，方便搜索收录，也方便外部用户快速建立正确认知。'
-            : 'These pages explain the workbench, remote access, and shared-context model in answer-first language that works for both search and real buyer understanding.'
+            ? '这些页面分别解释 AI 工作台、远程访问、团队上下文和版本管理，帮助你更快判断 ContextGo 是否适合你的团队。'
+            : 'These pages explain the workbench, remote access, team context, and release model so visitors can judge quickly whether ContextGo fits their workflow.'
         }
         pages={featuredPages}
         lang={validLang}
