@@ -629,6 +629,8 @@ jobs:
       - name: Resolve release tag and version policy
         id: resolve
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
         run: |
           set -euo pipefail
 
@@ -665,8 +667,13 @@ jobs:
               exit 1
             fi
 
-            git fetch --force --depth=1 origin main
-            if ! git merge-base --is-ancestor "${GITHUB_SHA}" "origin/main"; then
+            AUTH_REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+            git init -q
+            git remote add origin "${AUTH_REMOTE}"
+            git fetch --force --depth=1 origin main "refs/tags/${ACTUAL_TAG}:refs/tags/${ACTUAL_TAG}"
+
+            TAG_COMMIT="$(git rev-list -n1 "refs/tags/${ACTUAL_TAG}")"
+            if ! git merge-base --is-ancestor "${TAG_COMMIT}" "origin/main"; then
               echo "::error::Release tag '${ACTUAL_TAG}' must point to a commit reachable from origin/main."
               exit 1
             fi
