@@ -221,8 +221,66 @@ jobs:
             echo "No preinstalled bun found on self-hosted runner."
           fi
 
+      - name: Bootstrap bun (Windows self-hosted)
+        id: windows_bun
+        if: runner.environment == 'self-hosted' && runner.os == 'Windows' && steps.preinstalled_bun.outputs.available != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $arch = '${{ matrix.arch }}'
+          $asset = if ($arch -eq 'arm64') { 'bun-windows-aarch64.zip' } else { 'bun-windows-x64.zip' }
+          $archiveUrl = "https://github.com/oven-sh/bun/releases/latest/download/$asset"
+          $archivePath = Join-Path $env:RUNNER_TEMP $asset
+          $extractRoot = Join-Path $env:RUNNER_TEMP 'bun-bootstrap'
+
+          Remove-Item -LiteralPath $archivePath -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $extractRoot | Out-Null
+
+          curl.exe --fail --show-error --silent --location --http1.1 `
+            --retry 8 `
+            --retry-all-errors `
+            --retry-delay 5 `
+            --connect-timeout 20 `
+            --max-time 900 `
+            $archiveUrl `
+            -o $archivePath
+
+          tar -xf $archivePath -C $extractRoot
+
+          $bunDir = Get-ChildItem -LiteralPath $extractRoot -Directory | Select-Object -First 1
+          if (-not $bunDir) {
+            Write-Error 'Failed to extract bun bootstrap archive.'
+          }
+
+          $bunExe = Join-Path $bunDir.FullName 'bun.exe'
+          if (-not (Test-Path $bunExe)) {
+            Write-Error "bun.exe not found in $($bunDir.FullName)"
+          }
+
+          $bunxCmd = Join-Path $bunDir.FullName 'bunx.cmd'
+          @'
+          @echo off
+          "%~dp0bun.exe" x %*
+          '@ | Set-Content -Path $bunxCmd -Encoding ascii
+
+          Add-Content -Path $env:GITHUB_PATH -Value $bunDir.FullName
+          "available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "path=$bunExe" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+          & $bunExe --version
+
       - name: Setup bun
-        if: runner.environment != 'self-hosted' || steps.preinstalled_bun.outputs.available != 'true'
+        if: >-
+          runner.environment != 'self-hosted' ||
+          (
+            steps.preinstalled_bun.outputs.available != 'true' &&
+            (
+              runner.os != 'Windows' ||
+              steps.windows_bun.outputs.available != 'true'
+            )
+          )
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
