@@ -69,6 +69,7 @@
     "docs/",
     "config/webpack/",
     "scripts/",
+    "apps/web/next-env.d.ts",
     "src/agent/gemini/cli/",
     "mobile/"
   ]
