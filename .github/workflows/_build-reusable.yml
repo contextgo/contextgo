@@ -91,7 +91,53 @@ jobs:
       matrix: ${{ fromJSON(inputs.matrix) }}
 
     steps:
+      - name: Download source archive (Windows self-hosted)
+        if: runner.environment == 'self-hosted' && runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ inputs.ref != '' && inputs.ref || github.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $workspace = $env:GITHUB_WORKSPACE
+          $archive = Join-Path $env:RUNNER_TEMP 'contextgo-source.zip'
+          $extractDir = Join-Path $env:RUNNER_TEMP 'contextgo-source'
+          $archiveUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/zipball/$env:ARCHIVE_REF"
+
+          New-Item -ItemType Directory -Force -Path $workspace | Out-Null
+
+          Get-ChildItem -LiteralPath $workspace -Force -ErrorAction SilentlyContinue |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+          Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
+
+          curl.exe --fail --show-error --silent --location --http1.1 `
+            --retry 8 `
+            --retry-all-errors `
+            --retry-delay 5 `
+            --connect-timeout 20 `
+            --max-time 900 `
+            -H "Authorization: Bearer $env:GH_TOKEN" `
+            -H "Accept: application/vnd.github+json" `
+            $archiveUrl `
+            -o $archive
+
+          tar -xf $archive -C $extractDir
+
+          $sourceDir = Get-ChildItem -LiteralPath $extractDir -Directory | Select-Object -First 1
+          if (-not $sourceDir) {
+            Write-Error 'Failed to unpack source archive'
+          }
+
+          Get-ChildItem -LiteralPath $sourceDir.FullName -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $workspace -Recurse -Force
+          }
+
       - name: Checkout source
+        if: runner.environment != 'self-hosted' || runner.os != 'Windows'
         uses: actions/checkout@v5
         with:
           clean: true
@@ -867,9 +913,9 @@ jobs:
         shell: pwsh
         run: |
           $targets = @(
-            Join-Path $env:RUNNER_TEMP '.cache\electron',
-            Join-Path $env:RUNNER_TEMP '.cache\electron-builder',
-            Join-Path $env:LOCALAPPDATA 'electron-builder\Cache'
+            (Join-Path $env:RUNNER_TEMP '.cache\electron'),
+            (Join-Path $env:RUNNER_TEMP '.cache\electron-builder'),
+            (Join-Path $env:LOCALAPPDATA 'electron-builder\Cache')
           )
 
           foreach ($target in $targets) {
