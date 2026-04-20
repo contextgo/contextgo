@@ -89,7 +89,7 @@ export default function HomeClient({
           >
             <Image
               src='/demo.png'
-              alt='ContextGo Product Demo'
+              alt='ContextGo Desktop Workbench'
               width={1920}
               height={1080}
               className='h-auto w-full'

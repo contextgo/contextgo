@@ -210,11 +210,11 @@ describe('docs shell config', () => {
     expect(config.seo.metatags['og:image']).toBe('https://docs.contextgo.io/demo.png');
   });
 
-  it('renders a docs-first home shell with the shared product preview image', () => {
+  it('renders a docs-first home shell with the docs-specific product imagery', () => {
     const home = buildShellHome({ language: 'zh', urlPrefix: '' });
 
-    expect(home).toContain('/demo.png');
-    expect(home).toContain('/brand/main-site-banner.png');
+    expect(home).toContain('/brand/docs/workbench-home.png');
+    expect(home).toContain('/brand/docs/start-here-overview.png');
     expect(home).toContain('产品文档系统');
     expect(home).toContain('docs-home-grid');
     expect(home).toContain('href="/start-here"');
