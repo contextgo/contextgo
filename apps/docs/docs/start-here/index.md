@@ -13,6 +13,10 @@ description: Start with ContextGo as a product, not as a list of disconnected fe
 
 它不是功能清单，也不是营销页补充说明。它是整套公开文档的起点。
 
+![ContextGo 产品面总览](/brand/docs/start-here-overview.png)
+
+第一次阅读时，不需要马上理解图里的每个细节，但最好先认出六个稳定面：工作台首页、Connector 接入层、内置 Agent、Context Space、调度执行，以及远程入口。
+
 ## 先用一句话理解它
 
 当前最稳定、最适合对外表达的定义是：

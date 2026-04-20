@@ -8,6 +8,10 @@ description: Publish a working agent into real channels and route it to real aud
 
 ContextGo is not limited to local usage. It can also publish an agent into real channels so that it serves real audiences.
 
+![ContextGo publishing and channel loop](/brand/docs/publishing-flow.png)
+
+The point of this path is not just sending a message outward. It is turning a working local agent into a real channel-facing service and returning the result into the audience's existing workflow.
+
 ## Where Publish sits in the product
 
 Publish is not a side bot feature. It is the layer that lets ContextGo move from private local use to real external service.

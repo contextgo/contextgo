@@ -226,6 +226,20 @@ html[data-theme='dark'] #navigation-items a.nav-anchor[href='https://contextgo.i
   gap: 0.85rem;
 }
 
+.docs-home-wordmark,
+.docs-home-hero-media,
+.docs-home-card-media {
+  border: 0 !important;
+  box-shadow: none !important;
+  display: block;
+  margin: 0 !important;
+}
+
+.docs-home-wordmark {
+  max-width: 20rem;
+  width: 100%;
+}
+
 .docs-home-kicker {
   color: var(--docs-text-tertiary);
   font-size: 0.74rem;
@@ -244,25 +258,25 @@ html[data-theme='dark'] #navigation-items a.nav-anchor[href='https://contextgo.i
   max-width: 42rem;
 }
 
-.docs-brand-callout {
+.docs-home-hero-visual,
+.docs-home-card-frame {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--docs-surface-strong) 94%, transparent),
+    color-mix(in srgb, var(--docs-surface-strong) 95%, transparent),
     var(--docs-page-muted)
   );
   border: 1px solid var(--docs-border);
   border-radius: 22px;
   box-shadow: var(--docs-shadow-soft);
-  display: block;
   overflow: hidden;
-  text-decoration: none;
 }
 
-.docs-brand-callout img {
-  border: 0 !important;
-  box-shadow: none !important;
-  display: block;
-  margin: 0 !important;
+.docs-home-hero-visual {
+  padding: 1rem;
+}
+
+.docs-home-hero-media {
+  border-radius: 18px;
   width: 100%;
 }
 
@@ -297,6 +311,18 @@ html[data-theme='dark'] #navigation-items a.nav-anchor[href='https://contextgo.i
   border-color: var(--docs-border-strong);
   box-shadow: var(--docs-shadow);
   transform: translateY(-2px);
+}
+
+.docs-home-card-frame {
+  padding: 0.75rem;
+}
+
+.docs-home-card-media {
+  aspect-ratio: 16 / 10;
+  border-radius: 16px;
+  object-fit: cover;
+  object-position: top center;
+  width: 100%;
 }
 
 .docs-home-card-label {

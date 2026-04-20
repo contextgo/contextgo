@@ -13,6 +13,10 @@ This section answers two questions:
 
 It is not a feature list. It is the starting point for the public documentation set.
 
+![ContextGo product surface overview](/brand/docs/start-here-overview.png)
+
+On a first read, you do not need to understand every detail in the image. You do need to recognize the stable surfaces: the workbench home, connector entry layer, built-in agents, context space, scheduling, and the remote entry point.
+
 ## One-sentence definition
 
 The most stable public definition today is:

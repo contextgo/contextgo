@@ -8,6 +8,10 @@ description: Publish agents into real channels and route them to real audiences.
 
 ContextGo 不只支持本地使用，也支持把 Agent 发布到真实渠道，让它服务多个入口和多个 audience。
 
+![ContextGo 发布与渠道回流](/brand/docs/publishing-flow.png)
+
+这条链路的重点不是“把消息发出去”，而是把一个已经跑顺的本地 Agent 接到真实渠道，并把结果回到真实 audience 所在的工作流里。
+
 ## Publish 在产品里的位置
 
 Publish 不是一个附属 bot 功能，而是 ContextGo 从“自己用”走向“对外服务”的关键层。

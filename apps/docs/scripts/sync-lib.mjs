@@ -283,7 +283,9 @@ export function rewriteLocaleAbsoluteLinks(body, locale) {
   }
 
   return body
-    .replace(/(\]\()\/(?!\/)/g, `$1${locale.urlPrefix}/`)
+    .replace(/(!?\[[^\]]*\]\()\/(?!\/)/g, (_match, prefix) =>
+      prefix.startsWith('![') ? `${prefix}/` : `${prefix}${locale.urlPrefix}/`
+    )
     .replace(/(href=["'])\/(?!\/)/g, `$1${locale.urlPrefix}/`);
 }
 
@@ -364,37 +366,50 @@ hide_table_of_contents: true
   <div className="docs-home-hero">
     <div className="docs-home-copy">
       <p className="docs-home-kicker">Product Docs</p>
+      <img className="docs-home-wordmark" src="/brand/docs/contextgo-no-bg-black.png" alt="ContextGo" />
       <p className="docs-home-lead">
-        This documentation explains how ContextGo fits together before you scale it into a bigger system.
+        These docs are organized around the real product boundaries: workbench, context, runtimes, remote access,
+        and publication. Start by understanding how those layers fit together, then choose the workflow that matches
+        your actual work.
       </p>
     </div>
-    <img src="/demo.png" alt="ContextGo Workbench" />
+    <div className="docs-home-hero-visual">
+      <img className="docs-home-hero-media" src="/brand/docs/workbench-home.png" alt="ContextGo workbench home" />
+    </div>
   </div>
-
-  <a className="docs-brand-callout" href="https://contextgo.io">
-    <img src="/brand/main-site-banner.png" alt="ContextGo main site brand banner" />
-  </a>
 
   <div className="docs-home-grid">
     <a className="docs-home-card" href="${locale.urlPrefix}/start-here">
+      <div className="docs-home-card-frame">
+        <img className="docs-home-card-media" src="/brand/docs/start-here-overview.png" alt="ContextGo product surface overview" />
+      </div>
       <span className="docs-home-card-label">Start Here</span>
       <strong>Build the right product model first</strong>
-      <p>Understand desktop host, context, remote access, and publication boundaries.</p>
+      <p>See how the workbench, connectors, agents, context system, scheduling, and remote access fit together.</p>
     </a>
     <a className="docs-home-card" href="${locale.urlPrefix}/start-here/quick-start">
+      <div className="docs-home-card-frame">
+        <img className="docs-home-card-media" src="/brand/docs/quick-start-space.png" alt="ContextGo quick start space creation" />
+      </div>
       <span className="docs-home-card-label">Quick Start</span>
       <strong>Run one real workflow end to end</strong>
-      <p>Prepare one host, one runtime, one context, and complete one useful task loop.</p>
+      <p>Start with one host, one runtime, one workspace, and one useful task loop before expanding the system.</p>
     </a>
     <a className="docs-home-card" href="${locale.urlPrefix}/use-cases">
+      <div className="docs-home-card-frame">
+        <img className="docs-home-card-media" src="/brand/docs/agent-library.png" alt="ContextGo built-in agents" />
+      </div>
       <span className="docs-home-card-label">Use Cases</span>
       <strong>Choose an entry that matches real work</strong>
-      <p>Open the product through coding, research, writing, operations, or publishing workflows.</p>
+      <p>Open the product through coding, research, writing, operations, or channel-facing service workflows.</p>
     </a>
     <a className="docs-home-card" href="${locale.urlPrefix}/remote">
+      <div className="docs-home-card-frame">
+        <img className="docs-home-card-media" src="/brand/docs/remote-web-client.png" alt="ContextGo remote web client" />
+      </div>
       <span className="docs-home-card-label">Remote & Devices</span>
       <strong>See how web and mobile fit around the host</strong>
-      <p>Keep the desktop as execution authority while web and mobile stay remote control surfaces.</p>
+      <p>Keep the desktop host as execution authority while web and mobile remain remote work surfaces.</p>
     </a>
   </div>
 
@@ -402,9 +417,9 @@ hide_table_of_contents: true
     <div>
       <span>Use this docs site to:</span>
       <ul>
-        <li>understand the real product model before scaling usage</li>
-        <li>get one desktop host and one real workflow running first</li>
-        <li>understand how context, remote access, and publication fit together</li>
+        <li>understand the product model before treating ContextGo like a generic chat app</li>
+        <li>get one desktop host and one real workflow running before expanding into automation or publication</li>
+        <li>see how context, remote access, connectors, and publish form one connected system</li>
       </ul>
     </div>
   </div>
@@ -422,37 +437,48 @@ hide_table_of_contents: true
   <div className="docs-home-hero">
     <div className="docs-home-copy">
       <p className="docs-home-kicker">Product Docs</p>
+      <img className="docs-home-wordmark" src="/brand/docs/contextgo-no-bg-black.png" alt="ContextGo" />
       <p className="docs-home-lead">
-        这套文档先帮你把 ContextGo 的产品模型理解对，再去扩展桌面、远程、多端和发布链路。
+        这套文档按产品边界来组织，而不是按零散功能罗列。先看懂 workbench、context、runtime、远程访问和发布链路如何接成一个系统，再决定你的起步路径。
       </p>
     </div>
-    <img src="/demo.png" alt="ContextGo Workbench" />
+    <div className="docs-home-hero-visual">
+      <img className="docs-home-hero-media" src="/brand/docs/workbench-home.png" alt="ContextGo Workbench 首页" />
+    </div>
   </div>
-
-  <a className="docs-brand-callout" href="https://contextgo.io">
-    <img src="/brand/main-site-banner.png" alt="ContextGo 主站品牌横幅" />
-  </a>
 
   <div className="docs-home-grid">
     <a className="docs-home-card" href="${locale.urlPrefix}/start-here">
+      <div className="docs-home-card-frame">
+        <img className="docs-home-card-media" src="/brand/docs/start-here-overview.png" alt="ContextGo 产品面总览" />
+      </div>
       <span className="docs-home-card-label">Start Here</span>
       <strong>先建立正确的产品心智</strong>
-      <p>先理解桌面主机、上下文、远程访问和发布渠道之间的边界。</p>
+      <p>先看懂工作台、Connector、Agent、上下文系统、调度执行和远程入口之间的关系。</p>
     </a>
     <a className="docs-home-card" href="${locale.urlPrefix}/start-here/quick-start">
+      <div className="docs-home-card-frame">
+        <img className="docs-home-card-media" src="/brand/docs/quick-start-space.png" alt="ContextGo 快速开始与空间创建" />
+      </div>
       <span className="docs-home-card-label">Quick Start</span>
       <strong>先跑通一条真实任务闭环</strong>
-      <p>准备一台主机、一个 runtime、一份上下文，然后完成一条真正有用的任务。</p>
+      <p>先准备一台主机、一个 runtime、一个空间和一条真实任务，再逐步扩展系统边界。</p>
     </a>
     <a className="docs-home-card" href="${locale.urlPrefix}/use-cases">
+      <div className="docs-home-card-frame">
+        <img className="docs-home-card-media" src="/brand/docs/agent-library.png" alt="ContextGo 内置 Agent" />
+      </div>
       <span className="docs-home-card-label">Use Cases</span>
       <strong>按真实工作场景选择入口</strong>
-      <p>从编码、研究、写作、运营或发布链路里，选一个最贴近你当前工作的入口。</p>
+      <p>从编码、研究、写作、运营或对外服务里，选一个最贴近你当前工作的入口。</p>
     </a>
     <a className="docs-home-card" href="${locale.urlPrefix}/remote">
+      <div className="docs-home-card-frame">
+        <img className="docs-home-card-media" src="/brand/docs/remote-web-client.png" alt="ContextGo 远程网页客户端" />
+      </div>
       <span className="docs-home-card-label">Remote & Devices</span>
       <strong>理解网页和手机如何围绕主机工作</strong>
-      <p>保持桌面端作为执行权威，让网页和手机承担远程查看、继续和控制的角色。</p>
+      <p>保持桌面主机作为执行权威，让网页和手机承担远程查看、继续和控制的角色。</p>
     </a>
   </div>
 
@@ -461,8 +487,8 @@ hide_table_of_contents: true
       <span>这套文档重点解决三件事：</span>
       <ul>
         <li>先把产品模型理解对，而不是把它当成普通聊天工具</li>
-        <li>先跑通一台桌面主机和一条真实任务，再逐步扩展</li>
-        <li>搞清楚上下文、远程访问、发布渠道和多端之间的边界</li>
+        <li>先跑通一台桌面主机和一条真实任务，再逐步扩展自动化和发布</li>
+        <li>搞清楚上下文、Connector、远程访问和发布链路如何接成一个系统</li>
       </ul>
     </div>
   </div>

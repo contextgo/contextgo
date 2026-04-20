@@ -296,6 +296,16 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const openPreview = useCallback(
     (newContent: string, type: PreviewContentType, meta?: PreviewMetadata) => {
+      console.log(
+        `[RemountDiag][PreviewContext] openPreview ${JSON.stringify({
+          type,
+          title: meta?.title ?? null,
+          fileName: meta?.fileName ?? null,
+          filePath: meta?.filePath ?? null,
+          browserContextAssetId: meta?.browserContextAssetId ?? null,
+          contentLength: newContent.length,
+        })}`
+      );
       let nextActiveTabId: string | null = null;
 
       setTabs((prevTabs) => {
@@ -360,11 +370,17 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
   );
 
   const closePreview = useCallback(() => {
+    console.log(
+      `[RemountDiag][PreviewContext] closePreview ${JSON.stringify({
+        activeTabId,
+        tabsCount: tabs.length,
+      })}`
+    );
     setIsOpen(false);
     setTabs([]);
     setActiveTabId(null);
     setDomSnippets([]);
-  }, []);
+  }, [activeTabId, tabs.length]);
 
   // Track last-known mtime per file path for external change detection
   const fileMtimeRef = useRef<Map<string, number>>(new Map());

@@ -1,7 +1,7 @@
 'use client';
 
 import { LaptopMinimal, Moon, SunMedium } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 const STORAGE_KEY = 'contextgo-theme';
 
@@ -15,6 +15,8 @@ type ThemeDict = {
 };
 
 const orderedModes: ThemeMode[] = ['system', 'light', 'dark'];
+
+const subscribeToHydration = () => () => {};
 
 const getInitialMode = (): ThemeMode => {
   if (typeof document !== 'undefined') {
@@ -51,12 +53,22 @@ const applyTheme = (mode: ThemeMode) => {
 };
 
 export default function ThemeToggle({ dict }: { dict: ThemeDict }) {
-  const [mode, setMode] = useState<ThemeMode>(getInitialMode);
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false
+  );
+  const [selectedMode, setSelectedMode] = useState<ThemeMode | null>(null);
+  const mode = selectedMode ?? (isHydrated ? getInitialMode() : 'system');
 
   useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
     localStorage.setItem(STORAGE_KEY, mode);
     applyTheme(mode);
-  }, [mode]);
+  }, [isHydrated, mode]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -94,7 +106,7 @@ export default function ThemeToggle({ dict }: { dict: ThemeDict }) {
 
   const handleToggle = () => {
     const nextMode = orderedModes[(orderedModes.indexOf(mode) + 1) % orderedModes.length];
-    setMode(nextMode);
+    setSelectedMode(nextMode);
     localStorage.setItem(STORAGE_KEY, nextMode);
     applyTheme(nextMode);
   };

@@ -34,6 +34,14 @@ export function usePreviewAutoCollapse({
     }
 
     if (isPreviewOpen && !previousPreviewOpenRef.current) {
+      console.log(
+        `[RemountDiag][PreviewAutoCollapse] preview-open ${JSON.stringify({
+          rightSiderCollapsed,
+          siderCollapsed: siderCollapsed ?? null,
+          workspaceEnabled,
+          isDesktop,
+        })}`
+      );
       if (previousWorkspaceCollapsedRef.current === null) {
         previousWorkspaceCollapsedRef.current = rightSiderCollapsed;
       }
@@ -43,6 +51,14 @@ export function usePreviewAutoCollapse({
       setRightSiderCollapsed(true);
       setSiderCollapsed?.(true);
     } else if (!isPreviewOpen && previousPreviewOpenRef.current) {
+      console.log(
+        `[RemountDiag][PreviewAutoCollapse] preview-close ${JSON.stringify({
+          restoreWorkspaceCollapsed: previousWorkspaceCollapsedRef.current,
+          restoreSiderCollapsed: previousSiderCollapsedRef.current,
+          workspaceEnabled,
+          isDesktop,
+        })}`
+      );
       if (previousWorkspaceCollapsedRef.current !== null) {
         setRightSiderCollapsed(previousWorkspaceCollapsedRef.current);
         previousWorkspaceCollapsedRef.current = null;

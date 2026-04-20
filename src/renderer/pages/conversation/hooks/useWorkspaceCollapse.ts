@@ -102,6 +102,17 @@ export function useWorkspaceCollapse({
         return;
       }
 
+      console.log(
+        `[RemountDiag][WorkspaceCollapse] has-files ${JSON.stringify({
+          conversationId: conversationId ?? null,
+          eventConversationId: convId ?? null,
+          hasFiles: detail.hasFiles,
+          rightSiderCollapsed,
+          isMobile,
+          workspaceEnabled,
+        })}`
+      );
+
       // Update current conversation ID
       currentConversationIdRef.current = convId || conversationId;
 
@@ -130,13 +141,33 @@ export function useWorkspaceCollapse({
       if (userPreference) {
         const shouldCollapse = userPreference === 'collapsed';
         if (shouldCollapse !== rightSiderCollapsed) {
+          console.log(
+            `[RemountDiag][WorkspaceCollapse] apply-user-preference ${JSON.stringify({
+              conversationId: conversationId ?? null,
+              eventConversationId: convId ?? null,
+              userPreference,
+              nextCollapsed: shouldCollapse,
+            })}`
+          );
           setRightSiderCollapsed(shouldCollapse);
         }
       } else {
         // No user preference: expand if has files, collapse if not
         if (detail.hasFiles && rightSiderCollapsed) {
+          console.log(
+            `[RemountDiag][WorkspaceCollapse] auto-expand ${JSON.stringify({
+              conversationId: conversationId ?? null,
+              eventConversationId: convId ?? null,
+            })}`
+          );
           setRightSiderCollapsed(false);
         } else if (!detail.hasFiles && !rightSiderCollapsed) {
+          console.log(
+            `[RemountDiag][WorkspaceCollapse] auto-collapse ${JSON.stringify({
+              conversationId: conversationId ?? null,
+              eventConversationId: convId ?? null,
+            })}`
+          );
           setRightSiderCollapsed(true);
         }
       }

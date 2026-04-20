@@ -10,6 +10,10 @@ ContextGo does not aim to create three unrelated products for desktop, web, and 
 
 It aims to keep one remote product model across all of them.
 
+![ContextGo remote web client](/brand/docs/remote-web-client.png)
+
+The image above shows the same host being reused through the web client. It looks like a browser surface, but execution still resolves back to the host.
+
 ## One-sentence model
 
 Desktop is the host. Web and mobile are remote work surfaces, not separate runtime products.
