@@ -66,7 +66,7 @@ jobs:
         run: bun run postinstall || true
 
       - name: Run ESLint
-        run: bun run lint
+        run: bunx oxlint --quiet
 
       - name: Check Prettier formatting
         run: bun run format:check

@@ -505,6 +505,24 @@ jobs:
           set -euo pipefail
 
           VERSION="$(node -p "require('./package.json').version")"
+          HARMONY_TOOLS_ROOT="${HOME}/Library/Huawei/command-line-tools"
+          EFFECTIVE_DEVECO_SDK_HOME="${DEVECO_SDK_HOME:-${HARMONY_TOOLS_ROOT}/sdk}"
+
+          if [ -d "${HARMONY_TOOLS_ROOT}/bin" ]; then
+            export PATH="${HARMONY_TOOLS_ROOT}/bin:${PATH}"
+          fi
+
+          if [ -d "${HARMONY_TOOLS_ROOT}/ohpm/bin" ]; then
+            export PATH="${HARMONY_TOOLS_ROOT}/ohpm/bin:${PATH}"
+          fi
+
+          EFFECTIVE_BUILD_COMMAND="${CONTEXTGO_HARMONY_RELEASE_COMMAND:-}"
+          if [ -z "${EFFECTIVE_BUILD_COMMAND}" ]; then
+            EFFECTIVE_BUILD_COMMAND='ohpm install && hvigorw assembleApp --debug --stacktrace'
+          fi
+
+          DEVECO_SDK_HOME="${EFFECTIVE_DEVECO_SDK_HOME}" \
+          CONTEXTGO_HARMONY_RELEASE_COMMAND="${EFFECTIVE_BUILD_COMMAND}" \
           bash mobile-shell/scripts/build-harmony-release.sh "${VERSION}" mobile-shell/build/harmony-release
 
       - name: Upload HarmonyOS shell artifacts
