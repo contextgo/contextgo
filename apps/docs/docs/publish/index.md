@@ -12,6 +12,10 @@ ContextGo 不只支持本地使用，也支持把 Agent 发布到真实渠道，
 
 这条链路的重点不是“把消息发出去”，而是把一个已经跑顺的本地 Agent 接到真实渠道，并把结果回到真实 audience 所在的工作流里。
 
+![ContextGo Agent 发布页](/brand/product/publish-agent.png)
+
+发布不是抽象配置，而是在具体 Agent、具体 runtime 和具体项目之上继续展开。
+
 ## Publish 在产品里的位置
 
 Publish 不是一个附属 bot 功能，而是 ContextGo 从“自己用”走向“对外服务”的关键层。

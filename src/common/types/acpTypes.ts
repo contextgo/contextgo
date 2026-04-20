@@ -425,6 +425,7 @@ export type AcpBackend = keyof typeof ACP_BACKENDS_ALL;
 export type AcpBackendId = AcpBackend; // 向后兼容 / Backward compatibility
 
 export const MANAGED_RUNTIME_INSTALLABLE_BACKENDS = [
+  'gemini',
   'claude',
   'codex',
   'opencode',

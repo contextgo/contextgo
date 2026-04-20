@@ -14,6 +14,10 @@ It answers a bigger question:
 
 > How do you bring your real work reality into ContextGo?
 
+![ContextGo connector list and source entry layer](/brand/context/connector-overview.png)
+
+Real sources enter first so the agent can work on actual material instead of guessing from an empty prompt box.
+
 ## Why it matters
 
 Real work already lives in:
@@ -35,6 +39,10 @@ They only need to know:
 - Context Connector brings real sources in
 - those sources feed the context system
 - the agent can then work on real material instead of guessing
+
+![ContextGo space with mirrored external context](/brand/context/obsidian-space-context.png)
+
+Once a source is connected, it should remain visible inside the space and context layer instead of flashing by in only one chat turn.
 
 ## Related Docs
 

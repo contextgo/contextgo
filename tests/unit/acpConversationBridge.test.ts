@@ -442,13 +442,40 @@ describe('acpConversationBridge', () => {
     });
   });
 
-  it('fails fast when managed install is not supported for the backend', async () => {
+  it('supports managed install for gemini', async () => {
     const result = await handlers['installManagedRuntime']({ backend: 'gemini' });
 
-    expect(safeExecMock).not.toHaveBeenCalled();
+    expect(safeExecMock).toHaveBeenCalledWith(
+      'npm install -g @google/gemini-cli',
+      expect.objectContaining({
+        timeout: 15 * 60 * 1000,
+        env: { PATH: '/usr/bin' },
+      })
+    );
+    expect(vi.mocked(acpDetector.refreshDetectedAgents)).toHaveBeenCalled();
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'gemini',
+      command: 'npm install -g @google/gemini-cli',
+      stage: 'starting',
+      message: 'Starting install for gemini',
+    });
+    expect(hoisted.managedRuntimeInstallEventEmit).toHaveBeenCalledWith({
+      backend: 'gemini',
+      command: 'npm install -g @google/gemini-cli',
+      stage: 'completed',
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+      message: 'Install completed for gemini',
+    });
     expect(result).toEqual({
-      success: false,
-      msg: 'No managed install command is configured for gemini',
+      success: true,
+      data: {
+        backend: 'gemini',
+        command: 'npm install -g @google/gemini-cli',
+        stdout: '',
+        stderr: '',
+      },
     });
   });
 

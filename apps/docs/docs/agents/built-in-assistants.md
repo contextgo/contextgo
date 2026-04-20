@@ -10,6 +10,10 @@ ContextGo 适合普通用户的一点，是它不要求你第一天就自己拼�
 
 内置 Assistants 的作用，就是先给你一个已经可以工作的起点。
 
+![ContextGo 内置助手列表](/brand/product/agent-library-screen.png)
+
+这些内置助手更像已经整理好的工作模式入口，而不是一堆等你自己拼装的零件。
+
 ## 它们适合什么时候用
 
 适合：

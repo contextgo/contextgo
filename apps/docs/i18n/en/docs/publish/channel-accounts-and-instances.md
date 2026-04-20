@@ -15,6 +15,10 @@ It is a real ingress boundary:
 - which instance is healthy
 - which published capability it exposes
 
+![ContextGo multi-instance channel account detail](/brand/product/multi-channel-account.png)
+
+Under one platform, the real object is usually not one abstract connected state but multiple concrete instances with their own lifecycle.
+
 ## Related Docs
 
 - [Channels](/publish/channels)

@@ -14,6 +14,10 @@ Different kinds of work should be able to live in different workbenches while sh
 
 The first thing users should feel is not just a chat box. It should be a workbench home that can host multiple work surfaces, agent capabilities, and context entry points.
 
+![ContextGo workbench space and project entry](/brand/onboarding/create-space.png)
+
+The workbench also owns spaces, project entry points, and default workspace switching rather than only one chat frame.
+
 ## Why the product emphasizes workbench
 
 ContextGo is not trying to carry only one-off conversation. It also has to hold:

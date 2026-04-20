@@ -14,6 +14,10 @@ It aims to keep one remote product model across all of them.
 
 The image above shows the same host being reused through the web client. It looks like a browser surface, but execution still resolves back to the host.
 
+![ContextGo remote device list](/brand/remote/host-device-list.png)
+
+The device list makes the model even clearer: the browser shows a remote entry surface, while real availability still depends on the host being online.
+
 ## One-sentence model
 
 Desktop is the host. Web and mobile are remote work surfaces, not separate runtime products.

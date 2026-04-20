@@ -32,6 +32,10 @@ describe('seo helpers', () => {
     expect(metadata.alternates?.languages?.zh?.toString()).toBe('https://contextgo.io/zh/blog');
     expect(metadata.alternates?.languages?.['x-default']?.toString()).toBe('https://contextgo.io/en/blog');
     expect(metadata.openGraph?.locale).toBe('en_US');
+    expect(metadata.openGraph?.images?.[0]).toMatchObject({
+      url: 'https://contextgo.io/site/homepage-preview.png',
+    });
+    expect(metadata.twitter?.images).toEqual(['https://contextgo.io/site/homepage-preview.png']);
   });
 
   it('builds article json-ld with stable canonical url and dates', () => {

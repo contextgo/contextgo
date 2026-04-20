@@ -16,6 +16,10 @@ iPhone、Android、HarmonyOS 都应复用同一套远程产品模型：
 - 手机端负责接入、查看、继续和上传
 - 包装方式可以不同，但产品定义应保持一致
 
+![ContextGo 手机端远程控制入口](/brand/remote/mobile-remote-control.png)
+
+手机端最适合做远程查看和继续，而不是替代主机成为长期执行宿主。
+
 ## 更具体一点
 
 手机端更像是：

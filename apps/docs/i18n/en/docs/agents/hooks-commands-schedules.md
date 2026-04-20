@@ -46,6 +46,10 @@ Use them when work should happen:
 - Commands are triggered by people
 - Schedules are triggered by time
 
+![ContextGo workbench with a running scheduled task](/brand/product/schedule-working.png)
+
+The most reliable schedule is not an abstract rule. It is a real task that can be seen, checked, and continued inside a live workbench.
+
 ## Related Docs
 
 - [Operations And Automation Workflow](/use-cases/operations-and-automation-workflow)

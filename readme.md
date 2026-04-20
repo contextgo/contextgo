@@ -10,7 +10,8 @@
 <p align="center">
   <a href="./README_EN.md">English</a> ·
   <a href="https://github.com/contextgo/contextgo/releases">下载发行版</a> ·
-  <a href="https://contextgo.io">官方网站</a>
+  <a href="https://contextgo.io">官方网站</a> ·
+  <a href="https://discord.gg/6HWsa2jB5w">Discord 社区</a>
 </p>
 
 ---

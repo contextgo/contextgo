@@ -10,7 +10,8 @@
 <p align="center">
   <a href="./readme.md">中文</a> ·
   <a href="https://github.com/contextgo/contextgo/releases">Downloads</a> ·
-  <a href="https://contextgo.io">Website</a>
+  <a href="https://contextgo.io">Website</a> ·
+  <a href="https://discord.gg/6HWsa2jB5w">Discord Community</a>
 </p>
 
 ---

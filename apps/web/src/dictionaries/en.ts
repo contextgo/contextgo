@@ -17,9 +17,11 @@ export const en = {
     title_end: 'Let Agents Work.',
     description:
       'Agents stall for a simple reason: the context never arrives. ContextGo connects knowledge, tasks, conversations, and channels, so AI can keep working inside the flow you already use.',
+    preview_alt: 'ContextGo desktop workbench',
     download_btn: 'Download',
     docs_btn: 'Open Docs',
     connect_btn: 'Learn More',
+    community_btn: 'Join Discord',
   },
   philosophy: {
     title: 'Context comes before agents.',
@@ -63,6 +65,7 @@ export const en = {
     connector_story_title: 'Context should not live across tabs.',
     connector_story_body:
       'Once a source is connected, ContextGo can see the whole picture. The same context can then be organized, searched, published, and passed to the next agent or workflow.',
+    preview_alt: 'ContextGo connector workspace',
     features: [
       {
         title: 'Start from the sources that matter',

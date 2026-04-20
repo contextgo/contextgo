@@ -53,6 +53,7 @@ const localizedPageTitles = {
     'agents/agent-system-overview': 'Agent 系统总览',
     'agents/browser-tools-and-runtime-actions': '浏览器、工具与运行时动作',
     'agents/built-in-assistants': '内置助手',
+    'agents/external-session-takeover': '接管外部 Session',
     'agents/hooks-commands-schedules': 'Hooks、Commands 与 Schedules',
     'agents/index': 'Agents 与能力',
     'agents/installed-signed-in-ready': '已安装、已登录、已就绪',
@@ -165,16 +166,19 @@ export const staticConfig = {
         label: 'Docs',
         href: '/',
       },
+      {
+        label: 'Discord',
+        href: 'https://discord.gg/6HWsa2jB5w',
+      },
+      {
+        label: 'GitHub',
+        href: 'https://github.com/contextgo/contextgo-releases',
+      },
     ],
     primary: {
       type: 'button',
       label: 'Open ContextGo',
       href: 'https://contextgo.io',
-    },
-  },
-  footer: {
-    socials: {
-      github: 'https://github.com/contextgo/contextgo-releases',
     },
   },
 };
@@ -511,11 +515,6 @@ export function buildDocsConfig(sidebarItems) {
             anchor: 'Main Site',
             href: 'https://contextgo.io',
             icon: 'globe',
-          },
-          {
-            anchor: 'GitHub',
-            href: 'https://github.com/contextgo/contextgo-releases',
-            icon: 'github',
           },
         ],
       },

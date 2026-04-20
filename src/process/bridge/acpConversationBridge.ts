@@ -49,6 +49,7 @@ type RuntimeAwareDetectedAgent = ReturnType<typeof acpDetector.getDetectedAgents
 };
 
 const MANAGED_RUNTIME_INSTALL_COMMANDS: Record<(typeof MANAGED_RUNTIME_INSTALLABLE_BACKENDS)[number], string> = {
+  gemini: 'npm install -g @google/gemini-cli',
   claude: 'npm install -g @anthropic-ai/claude-code',
   codex: 'npm install -g @openai/codex',
   opencode: 'npm install -g @opencode-ai/cli',

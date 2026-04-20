@@ -8,6 +8,10 @@ description: Set up your first desktop host, connect a runtime, and complete a r
 
 第一天只做一件事：让 ContextGo 在一条真实任务上跑通。
 
+![ContextGo 第一条任务工作台](/brand/onboarding/init-workspace-1.png)
+
+第一阶段最好从一个已经能发起真实任务的 workbench 开始，而不是停留在空白壳层。
+
 ## 这页解决什么问题
 
 很多用户第一次上手时，会把重点放在“功能都先配好”。  

@@ -12,6 +12,10 @@ ContextGo is not limited to local usage. It can also publish an agent into real 
 
 The point of this path is not just sending a message outward. It is turning a working local agent into a real channel-facing service and returning the result into the audience's existing workflow.
 
+![ContextGo agent publication page](/brand/product/publish-agent.png)
+
+Publication is not an abstract settings surface. It continues from one specific agent, one runtime, and one concrete project context.
+
 ## Where Publish sits in the product
 
 Publish is not a side bot feature. It is the layer that lets ContextGo move from private local use to real external service.

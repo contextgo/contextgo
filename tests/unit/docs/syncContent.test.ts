@@ -210,6 +210,33 @@ describe('docs shell config', () => {
     expect(config.seo.metatags['og:image']).toBe('https://docs.contextgo.io/demo.png');
   });
 
+  it('surfaces community links in the navbar instead of the footer socials', () => {
+    const config = buildDocsConfig([]);
+
+    expect(config.navbar.links).toEqual([
+      {
+        label: 'Docs',
+        href: '/',
+      },
+      {
+        label: 'Discord',
+        href: 'https://discord.gg/6HWsa2jB5w',
+      },
+      {
+        label: 'GitHub',
+        href: 'https://github.com/contextgo/contextgo-releases',
+      },
+    ]);
+    expect(config.footer).toBeUndefined();
+    expect(config.navigation.global.anchors).toEqual([
+      {
+        anchor: 'Main Site',
+        href: 'https://contextgo.io',
+        icon: 'globe',
+      },
+    ]);
+  });
+
   it('renders a docs-first home shell with the docs-specific product imagery', () => {
     const home = buildShellHome({ language: 'zh', urlPrefix: '' });
 

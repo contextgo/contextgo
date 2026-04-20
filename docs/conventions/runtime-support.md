@@ -2,6 +2,8 @@
 
 Runtime-boundary rules are defined in [docs/conventions/runtime-boundary.md](./runtime-boundary.md).
 
+For the current product-level integration model covering detection, managed install, config surfaces, and external session takeover, see [docs/conventions/runtime-integration-and-session-takeover.md](./runtime-integration-and-session-takeover.md).
+
 This document focuses on which runtime surfaces ContextGo recognizes and how they relate to the product-owned workspace model.
 
 ## Active Runtime Set

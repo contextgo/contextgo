@@ -80,11 +80,11 @@ describe('Runtime Settings actions', () => {
     expect(screen.getByText(/downloading package/i)).toBeInTheDocument();
   });
 
-  it('does not show install action for unmanaged runtimes', async () => {
+  it('shows managed install action for gemini', async () => {
     renderRuntimeSettings();
 
     const geminiCard = await screen.findByTestId('runtime-card-gemini');
-    expect(within(geminiCard).queryByRole('button', { name: 'Install locally' })).not.toBeInTheDocument();
+    expect(within(geminiCard).getByRole('button', { name: 'Install locally' })).toBeInTheDocument();
     expect(within(geminiCard).getByRole('button', { name: 'Official page' })).toBeInTheDocument();
   });
 });

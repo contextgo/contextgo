@@ -8,6 +8,10 @@ description: Set up your first desktop host, connect one ready runtime, and comp
 
 On day one, do one thing only: make ContextGo succeed on one real task.
 
+![ContextGo first workbench and first task](/brand/onboarding/init-workspace-1.png)
+
+The best first step is to start from a workbench that can already launch a real task instead of staying inside a blank shell.
+
 ## What this page solves
 
 New users often optimize for "configure every capability first."

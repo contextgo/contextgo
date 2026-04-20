@@ -66,14 +66,15 @@ That is not accurate in ContextGo because:
 - skills and automation can grow over time
 - remote access and publication still belong to the overall product model
 
-## The two most important pages for new users
+## The three most important pages for new users
 
 If you are still getting started, begin with:
 
 - [Runtime Center](./runtime-center)
 - [Installed, Signed In, Ready](./installed-signed-in-ready)
+- [External Session Takeover](./external-session-takeover)
 
-That is the most common place where a setup looks complete but still is not actually usable.
+That is the most common place where a setup looks complete but is still not actually usable, or where useful context already exists in the official CLI but has not been brought into ContextGo yet.
 
 ## Practical recommendation
 
@@ -89,4 +90,5 @@ The safer order is:
 
 - For execution status: [Runtime Center](./runtime-center)
 - For state differences: [Installed, Signed In, Ready](./installed-signed-in-ready)
+- For continuing existing CLI threads inside ContextGo: [External Session Takeover](./external-session-takeover)
 - For a real builder workflow: [Coding And Builder Workflow](../use-cases/coding-and-builder-workflow)

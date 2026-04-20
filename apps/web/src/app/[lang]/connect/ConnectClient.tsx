@@ -128,6 +128,16 @@ export default function ConnectClient({ dict }: { dict: Dictionary }) {
                     ))}
                   </div>
 
+                  <div className='theme-surface-secondary theme-shadow-card theme-border overflow-hidden rounded-[24px] border'>
+                    <Image
+                      src='/site/connectors-overview.png'
+                      alt={dict.connect.preview_alt}
+                      width={3528}
+                      height={2232}
+                      className='h-auto w-full'
+                    />
+                  </div>
+
                   <div className='theme-surface-secondary theme-shadow-card theme-border rounded-[24px] border px-5 py-5'>
                     <div className='theme-text-tertiary text-xs font-semibold uppercase tracking-[0.24em]'>
                       {dict.connect.connector_story_label}

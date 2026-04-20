@@ -85,6 +85,7 @@ const navigation = {
           items: [
             'agents/runtime-center',
             'agents/installed-signed-in-ready',
+            'agents/external-session-takeover',
             'agents/browser-tools-and-runtime-actions',
           ],
         },

@@ -12,6 +12,10 @@ description: Agent Teams represent a longer-term direction for stable multi-role
 
 :::
 
+![ContextGo 协作组创建界面](/brand/product/agent-group-builder.png)
+
+当前公开界面里已经能看到协作组形态的雏形，但对外仍应按 preview 和长期方向来表达。
+
 Agent Teams 的意义，不是再多一个抽象名词，而是让协作从“临时 workflow”走向“长期稳定团队结构”。
 
 ## 这一方向意味着什么

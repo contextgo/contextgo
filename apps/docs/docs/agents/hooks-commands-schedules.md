@@ -60,6 +60,10 @@ Schedules 适合时间驱动场景。
 - Commands：被用户调用
 - Schedules：被时间触发
 
+![ContextGo 定时任务执行中的工作台](/brand/product/schedule-working.png)
+
+最稳的 schedule 不是抽象规则，而是能在真实会话里被看到、被验证、被继续的任务。
+
 ## Related Docs
 
 - [Operations And Automation Workflow](../use-cases/operations-and-automation-workflow)

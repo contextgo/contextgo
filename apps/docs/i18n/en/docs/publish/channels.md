@@ -14,6 +14,10 @@ They are better understood as:
 - the audience routing layer
 - the operations layer for external agent entry points
 
+![ContextGo IM channel list](/brand/product/im-channels.png)
+
+Public docs should show the real external entry surfaces first instead of starting from protocol details.
+
 ## What a channel solves
 
 Once an agent can work reliably locally, you still need to answer:

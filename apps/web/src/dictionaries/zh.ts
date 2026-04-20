@@ -17,9 +17,11 @@ export const zh = {
     title_end: '让 Agent 开始工作。',
     description:
       'Agent 难落地，往往不是模型不够，而是上下文没到位。ContextGo 接通知识、任务、讨论与渠道，让 AI 在你现有的工作流里继续工作。',
+    preview_alt: 'ContextGo 桌面工作台',
     download_btn: '下载体验',
     docs_btn: '查看文档',
     connect_btn: '了解连接',
+    community_btn: '加入 Discord 社区',
   },
   philosophy: {
     title: '上下文，先于 Agent。',
@@ -53,6 +55,7 @@ export const zh = {
     connector_story_title: '上下文不该散在标签页里。',
     connector_story_body:
       '来源一旦接通，ContextGo 就能看见全局。同一份上下文，随后可被整理、检索、发布，再交给下一个 Agent 或流程。',
+    preview_alt: 'ContextGo connector 工作区',
     features: [
       {
         title: '从重要来源开始',

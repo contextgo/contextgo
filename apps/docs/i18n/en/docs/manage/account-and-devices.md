@@ -15,6 +15,10 @@ In ContextGo, the account mainly exists for:
 
 It is not meant to replace the desktop host as the execution authority.
 
+![ContextGo account binding and host sign-in](/brand/onboarding/login.png)
+
+This screen is about account binding and device discovery. It is not a cloud execution handoff.
+
 ## What this page clarifies
 
 Account, device, host, and session are easy to blur together.

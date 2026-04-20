@@ -72,6 +72,14 @@ export default function HomeClient({
             >
               {dict.hero.connect_btn}
             </Link>
+            <a
+              href='https://discord.gg/6HWsa2jB5w'
+              target='_blank'
+              rel='noopener noreferrer'
+              className='theme-button-secondary theme-shadow-card inline-flex rounded-full px-8 py-3 font-medium transition-all'
+            >
+              {dict.hero.community_btn}
+            </a>
           </div>
         </motion.div>
 
@@ -88,10 +96,10 @@ export default function HomeClient({
             className='theme-surface-primary theme-shadow-soft theme-border group relative overflow-hidden rounded-xl border'
           >
             <Image
-              src='/demo.png'
-              alt='ContextGo Desktop Workbench'
-              width={1920}
-              height={1080}
+              src='/site/desktop-workbench.png'
+              alt={dict.hero.preview_alt}
+              width={2628}
+              height={1728}
               className='h-auto w-full'
               priority
             />

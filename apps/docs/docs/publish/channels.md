@@ -14,6 +14,10 @@ description: Channels are the publication and routing layer for exposing agents 
 - audience 路由层
 - 渠道运营层
 
+![ContextGo IM 渠道列表](/brand/product/im-channels.png)
+
+公开文档里先把“有哪些真实入口可被接入”讲清楚，比先讲底层协议更重要。
+
 ## Channel 解决什么问题
 
 当一个 Agent 已经在本地能稳定工作后，你还需要决定：

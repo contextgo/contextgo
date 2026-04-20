@@ -46,9 +46,9 @@ export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lan
             <Image
               src='/logo.png'
               alt='ContextGo Logo'
-              width={128}
-              height={40}
-              className='theme-logo object-contain object-left'
+              width={3172}
+              height={879}
+              className='theme-logo h-10 w-auto object-contain object-left'
               priority
             />
           </div>

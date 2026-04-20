@@ -17,6 +17,10 @@ description: A channel account is the real ingress boundary that receives messag
 - 这个实例当前是否健康
 - 它现在为哪个 published agent 提供入口
 
+![ContextGo 多实例渠道账号详情](/brand/product/multi-channel-account.png)
+
+一个平台下面通常不是一个抽象“已接入”状态，而是多个真实实例和各自生命周期。
+
 ## 为什么用户需要理解它
 
 因为一旦进入发布场景，你面对的就不再只是“我选了 Telegram”。

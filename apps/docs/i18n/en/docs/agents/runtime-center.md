@@ -1,97 +1,196 @@
 ---
 title: Runtime Center
 slug: /agents/runtime-center
-description: Manage supported runtimes and understand the difference between installed, signed in, and ready.
+description: See installation, sign-in, config, health, and external-session status for Gemini, Claude Code, Codex, and OpenCode.
 ---
 
 # Runtime Center
 
-ContextGo supports multiple runtimes, but the most important thing for users is not the protocol name.
+Runtime Center is the main place to understand runtime status inside ContextGo.
 
-It is understanding:
+It does not only answer "which runtimes are supported."  
+It separates the states that actually matter in practice:
 
-- what is installed
-- what is signed in or configured
-- what is actually ready
+- whether the CLI was discovered
+- whether auth or config exists
+- whether the runtime can really start
+- whether there are external sessions ready to be taken over
 
-## Why this page matters
+## What Runtime Center is checking
 
-Many failures are not caused by weak models.  
-They come from users assuming:
+The current product-visible runtime set is:
 
-- installed means usable
-- sign-in somewhere means the current project is ready
-- a runtime working in another terminal means it is ready inside ContextGo
+- Gemini
+- Claude Code
+- Codex
+- OpenCode
 
-Runtime Center exists to separate those states clearly.
+ContextGo does not move these runtimes into the project, and it does not treat `.contextgo/` as a runtime-owned home.
 
-## The three key states
+The more accurate model is:
 
-### Installed
+- ContextGo reads runtime-native global state
+- ContextGo projects only the runtime workspace surfaces it actually needs
+- ContextGo keeps its own workspace metadata inside `.contextgo/`
 
-This means the runtime or CLI exists on the host machine.
+## Runtime detection flow
 
-It answers:
+Today the product effectively evaluates runtime availability in four layers.
 
-- is the backend present here
+### 1. Discover the CLI
 
-It does **not** answer:
+ContextGo first tries to find the executable:
 
-- whether authentication is complete
-- whether configuration is complete
-- whether the current project can actually run
+- on macOS and Linux it prefers `which`
+- on Windows it prefers `where`, then falls back to PowerShell `Get-Command`
+- it merges login-shell environment data so PATH works even when the desktop app was launched outside a terminal
+- any saved manual path override is also considered
 
-### Signed In / Configured
+This layer answers:
 
-This means the required auth or configuration exists.
+- does this host have a runnable entrypoint for the runtime
 
-It answers:
+### 2. Inspect config and auth locations
 
-- whether credentials or required configuration are present
+ContextGo also knows the common config and auth locations for each runtime, so it can show:
 
-It still does **not** guarantee:
+- where config probably lives
+- where auth troubleshooting should start
 
-- that the runtime is ready for the current host and workspace
+This still does not mean the runtime is ready.  
+It only exposes the right debugging surface.
 
-### Ready
+### 3. Run a real health check
 
-This is the most important state.
+Ready does not mean "it looks installed."
 
-Ready should mean:
+The health check in Runtime Center performs an actual start or handshake attempt.  
+That is much closer to the real question:
 
-- the runtime is installed
-- auth or config is complete
-- the current host and workspace can actually execute tasks now
+- can this host launch the runtime now
+- are auth and config good enough for execution
 
-Only Ready should be treated as truly usable.
+### 4. Discover external sessions
 
-## What to do in the first stage
+If a runtime already has native sessions on the machine, ContextGo also scans for those session signals to answer:
 
-The safest strategy is simple:
+- are there existing sessions available for takeover
+- can the current workspace continue with existing context instead of starting from zero
 
-1. choose one runtime that matches your real work
-2. make it truly ready
-3. complete one real task
-4. then consider a second runtime
+## Installed, signed in, and ready are different states
 
-## Common false positives
+The most important thing Runtime Center does is prevent these states from collapsing into one vague "connected" badge.
 
-- the CLI exists, but the environment is incomplete
-- login happened before, but the current workspace cannot use it correctly
-- the runtime works somewhere else, but not in the current product path
+- Installed / Detected
+  - the executable was found
+- Signed In / Configured
+  - credentials or config are present
+- Ready
+  - the current host and workspace can actually execute now
 
-## Stronger public wording
+There is a dedicated page for this distinction:
 
-In external docs, it is usually better to emphasize:
+- [Installed, Signed In, Ready](./installed-signed-in-ready)
 
-- how to confirm state
-- how to decide whether a host is ready
-- which layer to troubleshoot first
+## Managed install inside ContextGo
 
-not only how many runtimes the product supports.
+The current "install locally" action follows one shared product path:
+
+- click install in the product
+- let the desktop host run `npm install -g ...`
+- refresh runtime detection immediately after installation
+
+That path currently works the same way across macOS, Linux, and Windows, with explicit boundaries:
+
+- it depends on Node.js and npm already existing on the host
+- it does not yet switch to `brew`, `apt`, `winget`, or `choco`
+- it installs the CLI, but it does not replace later sign-in, config, or model-selection work
+
+Managed install is currently available for:
+
+- Gemini
+- Claude Code
+- Codex
+- OpenCode
+
+## How each runtime appears in ContextGo
+
+### Gemini
+
+- CLI command: `gemini`
+- Common user config: `~/.gemini/settings.json`
+- External session discovery signal: `~/.gemini/tmp/.../chats/session-*.json`
+- Managed install in ContextGo: supported
+- Official docs:
+  - [Gemini CLI Docs](https://geminicli.com/docs/)
+  - [Installation](https://geminicli.com/docs/get-started/installation/)
+  - [Authentication](https://geminicli.com/docs/get-started/authentication/)
+  - [GitHub Repository](https://github.com/google-gemini/gemini-cli)
+
+### Claude Code
+
+- CLI command: `claude`
+- Common user config: `~/.claude/settings.json`
+- External session discovery signal: `~/.claude/projects/**/*.jsonl`
+- Managed install in ContextGo: supported
+- Official docs:
+  - [Claude Code Quickstart](https://code.claude.com/docs/en/quickstart)
+  - [Claude Code Settings](https://code.claude.com/docs/en/settings)
+  - [Claude Code Common Workflows](https://code.claude.com/docs/en/common-workflows)
+
+### Codex
+
+- CLI command: `codex`
+- Common user config: `~/.codex/config.toml`
+- Common auth file: `~/.codex/auth.json`
+- External session discovery signal: `~/.codex/state_*.sqlite`
+- Managed install in ContextGo: supported
+- Official docs:
+  - [OpenAI Codex CLI](https://developers.openai.com/codex/cli)
+  - [Codex GitHub Repository](https://github.com/openai/codex)
+
+### OpenCode
+
+- CLI command: `opencode`
+- Common config and state roots:
+  - `~/.config/opencode/`
+  - `~/.local/share/opencode/`
+- External session discovery signal: native `opencode.db`
+- Managed install in ContextGo: supported
+- Official docs:
+  - [OpenCode CLI Docs](https://opencode.ai/docs/cli/)
+
+## How ContextGo differs from the official runtimes
+
+If you read only the vendor docs, you will mostly see each runtime's own CLI, config, sessions, and native workflow.
+
+ContextGo adds a product layer above that:
+
+- **External session takeover**
+  - discover and import existing runtime sessions without requiring a manual export step
+- **Context Engine**
+  - manage context through session, project, space, memory, and governance models instead of only one CLI's local history
+- **Context Connector**
+  - bring in external context from files, the web, collaboration tools, knowledge systems, and business systems
+- **IM publishing**
+  - publish Agents to Telegram, Slack, Lark, Discord, and similar surfaces while keeping the same context and capability package
+- **Agent Packages / Skills / Hooks / Commands / Schedules**
+  - provide product-owned capability layers on top of runtimes instead of treating third-party workspace layout as the product boundary
+
+## When to open the external-session page
+
+If your real question is not "how do I install this," but rather:
+
+- I already have sessions in the official CLI
+- I want to continue them in ContextGo
+- I do not want to manually export and restart everything
+
+then the next page is:
+
+- [External Session Takeover](./external-session-takeover)
 
 ## Next
 
-- For overall capability structure: [Agents & Capabilities](./index)
 - For state differences: [Installed, Signed In, Ready](./installed-signed-in-ready)
+- For session continuation and import: [External Session Takeover](./external-session-takeover)
 - For the builder workflow: [Coding And Builder Workflow](../use-cases/coding-and-builder-workflow)

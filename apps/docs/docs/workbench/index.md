@@ -14,6 +14,10 @@ ContextGo 的产品主对象不是单一会话页，而是工作台。
 
 当前最先被用户感知到的，不应该只是一个聊天输入框，而是一个能承载多种工作面、Agent 能力和上下文入口的工作台首页。
 
+![ContextGo 工作台中的 Space 与项目入口](/brand/onboarding/create-space.png)
+
+Workbench 也承接 Space、项目入口和默认工作空间，而不只是单一对话框。
+
 ## 为什么要强调 workbench
 
 因为 ContextGo 最终承接的，不只是一次性对话，还包括：

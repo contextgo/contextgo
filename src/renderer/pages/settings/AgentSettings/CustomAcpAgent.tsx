@@ -104,7 +104,7 @@ const CONFIGURABLE_RUNTIME_BACKENDS = new Set<ManagedRuntimeBackend>(['gemini', 
 const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   gemini: {
     backend: 'gemini',
-    docsUrl: 'https://github.com/google-gemini/gemini-cli',
+    docsUrl: 'https://geminicli.com/docs/get-started/installation/',
     sessionProvider: 'gemini',
     descriptionKey: 'settings.runtimeManager.runtime.gemini.description',
     descriptionDefault: 'Google Gemini CLI runtime.',
@@ -118,14 +118,14 @@ const RUNTIME_META: Record<ManagedRuntimeBackend, RuntimeMeta> = {
   },
   codex: {
     backend: 'codex',
-    docsUrl: 'https://github.com/openai/codex',
+    docsUrl: 'https://developers.openai.com/codex/cli',
     sessionProvider: 'codex',
     descriptionKey: 'settings.runtimeManager.runtime.codex.description',
     descriptionDefault: 'OpenAI Codex CLI runtime for local coding sessions.',
   },
   opencode: {
     backend: 'opencode',
-    docsUrl: 'https://opencode.ai',
+    docsUrl: 'https://opencode.ai/docs/cli/',
     sessionProvider: 'opencode',
     descriptionKey: 'settings.runtimeManager.runtime.opencode.description',
     descriptionDefault: 'OpenCode CLI runtime.',

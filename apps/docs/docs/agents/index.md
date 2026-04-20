@@ -68,14 +68,15 @@ Assistant / Agent 是用户在产品里感知到的工作入口。
 - 技能和自动化可以继续叠加
 - 远程访问和发布模型仍然属于产品整体，而不是 runtime 单独拥有
 
-## 第一阶段最重要的两页
+## 第一阶段最重要的三页
 
 如果你正在起步，优先看：
 
 - [Runtime Center](./runtime-center)
 - [Installed, Signed In, Ready](./installed-signed-in-ready)
+- [External Session Takeover](./external-session-takeover)
 
-这是最容易让系统“看起来配好了，但实际上还没跑起来”的地方。
+这是最容易让系统“看起来配好了，但实际上还没跑起来”，或者“官方 CLI 里已经有上下文，但还没进入 ContextGo 产品工作面”的地方。
 
 ## 对大多数用户的建议
 
@@ -91,4 +92,5 @@ Assistant / Agent 是用户在产品里感知到的工作入口。
 
 - 想先确认执行状态：看 [Runtime Center](./runtime-center)
 - 想理解状态区别：看 [Installed, Signed In, Ready](./installed-signed-in-ready)
+- 想把已有 CLI 会话带进来：看 [External Session Takeover](./external-session-takeover)
 - 想从代码场景进入：看 [Coding And Builder Workflow](../use-cases/coding-and-builder-workflow)

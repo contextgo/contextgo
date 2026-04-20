@@ -16,6 +16,10 @@ iPhone, Android, and HarmonyOS should all follow the same remote model:
 - the phone is for checking, controlling, continuing work, and uploading files
 - packaging may differ, but the product model should not split
 
+![ContextGo mobile remote control entry](/brand/remote/mobile-remote-control.png)
+
+Mobile fits best as a remote control and continuation surface rather than as a replacement long-running host.
+
 ## More concretely
 
 Mobile is better understood as:
