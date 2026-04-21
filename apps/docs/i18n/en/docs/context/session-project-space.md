@@ -38,6 +38,16 @@ It is suitable for:
 - multiple project relationships
 - longer-lived docs, sources, artifacts, and governance
 
+It should not be reduced to "another name for one physical project."
+
+More precisely, Space is a logical `context space`:
+
+- it can hold durable background shared across projects
+- it can hold longer-term patterns that should not be written directly into one project truth
+- it can organize docs, materials, and governance work into a more stable long-term container
+
+That is why it is closer to a document-native, vault-style context space than to an invisible black-box memory bucket.
+
 ## Why the separation matters
 
 Without these layers, everything collapses into one conversation stream.

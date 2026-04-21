@@ -14,6 +14,12 @@ The most stable public definition today is:
 
 More broadly, it is a work system that is expanding around durable context, remote access, and publication.
 
+In more agent-native language, it can also be understood as:
+
+- a work system that gives frontier models a `project harness`
+- a product layer where Context Engine, Context Connector, and the Host / Client boundary work together
+- an execution system where the agent does not stop at code and can enter real workflows
+
 ## What it is not
 
 To avoid confusion, start with three "not this" boundaries:
@@ -50,6 +56,7 @@ Most AI tools emphasize:
 ContextGo emphasizes:
 
 - the workbench
+- the project harness
 - long-running context
 - multiple runtimes
 - automation

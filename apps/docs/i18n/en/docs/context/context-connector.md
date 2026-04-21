@@ -44,6 +44,31 @@ They only need to know:
 
 Once a source is connected, it should remain visible inside the space and context layer instead of flashing by in only one chat turn.
 
+## It is not only about bringing sources in
+
+If sources can enter but results cannot flow back into the original workflow, the system is still incomplete.
+
+A more complete loop looks like this:
+
+1. docs, pages, files, external systems, and channel history enter ContextGo
+2. the agent works on top of those real sources
+3. the result flows back into the original workflow, for example:
+   - publication into IM channels
+   - updates to docs or artifacts
+   - handoff into later tasks or operational flows
+
+So Context Connector is not only a one-way integration surface. It is part of the loop that brings work reality in and sends useful output back out.
+
+## Why this changes the product experience
+
+Once both ingress and return flow exist, ContextGo stops feeling like another AI tool that requires copy-paste between surfaces.
+
+It starts feeling more like:
+
+- one unified workbench
+- a control layer for real workflows
+- a software layer that can replace repeated switching and manual handoff
+
 ## Related Docs
 
 - [Context System Overview](/context/context-system-overview)

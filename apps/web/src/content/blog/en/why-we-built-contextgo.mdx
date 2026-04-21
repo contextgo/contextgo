@@ -41,17 +41,50 @@ Models can already reason, write code, and call tools. But once a task gets long
 
 That tells us the problem is not only the model. It is the absence of a stable harness that keeps long-running agent work constrained, disclosed, and governable.
 
+That harness is not just a slogan.
+
+In practice it usually has to land on real project objects:
+
+- `project`
+- `AGENTS.md`
+- `docs/`
+- `skills`
+- `hooks / commands / schedules`
+
+The model reasons, the runtime executes, and the harness keeps that work bound to the real project boundary. That is why we keep insisting that the agent problem cannot be understood only as a model problem.
+
 ### 2. Context exists, but it is not truly organized
 
 Files, docs, prior decisions, preferences, success patterns, and failure patterns should all become part of long-term work. In many products, they either remain scattered across tools or get packed into one temporary prompt.
 
 That creates a very direct problem: the user keeps re-explaining the background, and the agent keeps restarting from zero.
 
+That is also why Context Engine should not be understood as "yet another memory database."
+
+It is closer to a context stabilizer:
+
+- it distills high-value signals from the flow of work
+- it turns durable material into memory, profile, and context packs
+- it handles contextual entropy by reducing polluted material, stale constraints, and repeated clues
+
+That is why we also need an idea like `context space`. Not every long-lived signal should attach directly to one physical project. Many of the patterns that matter most naturally span projects.
+
+For us, a good Space is closer to a document-native, vault-style long-term context surface than to a hidden black-box memory bucket.
+
 ### 3. AI is still disconnected from the real software stack
 
 Most actual work happens inside browsers, docs, IM channels, local files, project directories, and business systems.
 
 If an agent can only exist inside its own assistant surface, it cannot really enter your workflow, and it cannot reliably send results back into that workflow either.
+
+That is why we keep saying Context Connector is not "just more integrations."
+
+It really has to solve two things:
+
+1. bring the work reality you already use into ContextGo
+2. send the agent's results back into that same work reality
+
+If only the first half exists and the second half does not, the user is still trapped in copy-paste and manual handoff. That is not a complete work system.
 
 ### 4. Multi-device access is often only superficially available
 
@@ -75,6 +108,10 @@ That sentence carries at least four implications:
 That is why the README keeps returning to the same objects: `project`, `AGENTS.md`, `docs/`, `skills/`, `hooks`, `commands`, `schedules`, along with Context Engine, Context Connector, and the Host / Client model.
 
 Those are not edge features. Together they define the boundary that makes agent work actually usable.
+
+Put more directly, we believe this:
+
+> A code agent should not stop at code. Once it has a stable harness, context, and connectors, it can enter a much fuller working reality.
 
 ## Why we stay desktop-first and local-first
 
@@ -109,6 +146,12 @@ That means the product needs to satisfy both ends:
 
 If only people who understand prompts, runtimes, and directory structure can make the product work, then the mission has not actually succeeded.
 
+That is also why we care about the product surface, not only the backend architecture.
+
+Many complex workflows are not well served forever by one plain message stream. Over time, more advanced agent collaboration should gain more structured human-in-the-loop UI, such as plugin-rendered cards, step surfaces, and task-state panels.
+
+We do not present that as a fully mature main feature today, but it points to something important: UI should also start being designed for agents participating in work, not only for displaying messages.
+
 ## Our mission and long-term vision
 
 If we state it directly, our mission is not “build a more conversational AI app.”
@@ -139,6 +182,7 @@ The most important thing for us now is not to stack more features that merely lo
 - high-value context can be accumulated and governed
 - connectors can truly bring outside workflows in and send results back out
 - remote access, multi-device use, and publication can share one product model
+- the product surface can evolve beyond one message stream into a better human-agent working interface
 
 If those things keep becoming true, ContextGo will stop being a concept bundle and become a real working system.
 

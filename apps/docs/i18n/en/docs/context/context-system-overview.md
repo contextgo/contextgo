@@ -25,6 +25,10 @@ That is not the model here.
 - Session / Project / Space
 - Memory / Profile / Context Pack
 
+There is one more important point that is easy to miss:
+
+- the purpose of this system is context governance, not unlimited context accumulation
+
 ## A stable four-layer view
 
 You can treat the system as four layers.
@@ -59,6 +63,17 @@ What the agent finally receives is a task-specific Context Pack.
 
 It should be selected, shaped, and assembled, not dumped in as raw history.
 
+### 5. Governance layer
+
+The context system should not work only once right before something is sent to the agent.
+
+It should also keep asking:
+
+- which signals deserve promotion
+- which materials are already stale
+- which constraints are polluting later work
+- which lessons should survive across sessions or across projects
+
 ## Why this layer matters most
 
 Without this layer, the agent keeps restarting from weak context.
@@ -68,6 +83,7 @@ With it:
 - work becomes more continuous
 - project knowledge becomes reusable
 - longer-running workflows become possible
+- project context becomes less likely to decay into noise over time
 
 ## Common misunderstandings
 

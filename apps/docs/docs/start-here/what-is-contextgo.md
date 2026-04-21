@@ -14,6 +14,12 @@ ContextGo 不是普通 AI 聊天工具，也不是某一个代码 Agent 的手�
 
 如果要说得更完整一些，它还是一个正在持续扩展长期上下文、远程访问和发布能力的工作系统。
 
+如果换成更贴近 Agent 设计语言的说法，它也可以被理解成：
+
+- 给顶尖模型加上 `project harness` 的工作系统
+- 让 Context Engine、Context Connector 和 Host / Client 边界协同工作的产品层
+- 让 Agent 不只停留在 code，而是继续进入真实工作现实的执行系统
+
 ## 它不是什么
 
 为了避免误解，先明确三个“不是”：
@@ -50,6 +56,7 @@ ContextGo 的价值，是把这些上下文和执行面组织进同一套工作�
 ContextGo 的重心更偏向：
 
 - 工作台
+- project harness
 - 长期上下文
 - 多 runtime 协同
 - 自动化能力
