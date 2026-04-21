@@ -10,5 +10,20 @@ describe('docs navbar brand icon styling', () => {
     expect(docsStyleSource).toContain('/logo/social/discord.svg');
     expect(docsStyleSource).toContain('/logo/social/github.svg');
     expect(docsStyleSource).toContain('mask-image');
+    expect(docsStyleSource).toContain('--docs-brand-discord');
+    expect(docsStyleSource).toContain('--docs-brand-github');
+    expect(docsStyleSource).toContain('opacity: 0.72;');
+    expect(docsStyleSource).toContain('align-self: center;');
+    expect(docsStyleSource).toContain('height: 2rem;');
+    expect(docsStyleSource).toContain('width: 2rem;');
+    expect(docsStyleSource).toContain('vertical-align: middle;');
+    expect(docsStyleSource).toContain('margin-right: -0.25rem;');
+  });
+
+  it('does not keep the docs social links inside the old outlined button shell', () => {
+    expect(docsStyleSource).not.toContain(`background: var(--docs-surface-strong);
+  border: 1px solid var(--docs-border);
+  border-radius: 999px;
+  box-shadow: var(--docs-shadow-soft);`);
   });
 });

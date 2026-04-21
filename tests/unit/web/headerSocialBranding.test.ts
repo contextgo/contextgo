@@ -12,6 +12,22 @@ describe('web header social branding', () => {
     expect(navbarSource).toContain("const DEFAULT_GITHUB_URL = 'https://github.com/contextgo/contextgo';");
     expect(navbarSource).toContain('/social/discord.svg');
     expect(navbarSource).toContain('/social/github.svg');
+    expect(navbarSource).toContain("className='theme-social-link'");
+    expect(navbarSource).toContain('theme-social-link-icon-github');
+    expect(navbarSource).toContain('theme-social-link-icon-discord');
+  });
+
+  it('does not wrap header social links in the generic secondary button shell', () => {
+    expect(navbarSource).not.toContain('theme-button-secondary theme-shadow-card theme-border');
+  });
+
+  it('keeps header social links on a fixed 32px alignment box', () => {
+    const globalsSource = readFileSync('apps/web/src/app/globals.css', 'utf8');
+    expect(globalsSource).toContain('.theme-social-link {');
+    expect(globalsSource).toContain('height: 2rem;');
+    expect(globalsSource).toContain('width: 2rem;');
+    expect(globalsSource).toContain('align-self: center;');
+    expect(globalsSource).toContain('vertical-align: middle;');
   });
 
   it('removes the duplicate Discord community CTA from the homepage hero', () => {

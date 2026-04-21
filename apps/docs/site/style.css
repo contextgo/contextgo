@@ -10,6 +10,8 @@
   --docs-text-tertiary: #8b95a7;
   --docs-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
   --docs-shadow-soft: 0 10px 24px rgba(15, 23, 42, 0.05);
+  --docs-brand-discord: #5865f2;
+  --docs-brand-github: #111111;
 }
 
 html.dark,
@@ -25,6 +27,8 @@ html[data-theme='dark'] {
   --docs-text-tertiary: #8c97a8;
   --docs-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
   --docs-shadow-soft: 0 10px 24px rgba(0, 0, 0, 0.18);
+  --docs-brand-discord: #7c89ff;
+  --docs-brand-github: #f5f7fb;
 }
 
 body {
@@ -72,29 +76,40 @@ html[data-theme='dark'] #topbar-cta-button a div svg {
 #navbar a[href='https://discord.gg/6HWsa2jB5w'],
 #navbar a[href='https://github.com/contextgo/contextgo'] {
   align-items: center;
-  background: var(--docs-surface-strong);
-  border: 1px solid var(--docs-border);
+  align-self: center;
+  background: transparent;
+  border: 0;
   border-radius: 999px;
-  box-shadow: var(--docs-shadow-soft);
-  color: var(--docs-text-primary);
+  box-shadow: none;
   display: inline-flex;
+  flex: none;
   font-size: 0;
-  height: 2.5rem;
+  height: 2rem;
   justify-content: center;
   line-height: 0;
-  min-width: 2.5rem;
+  min-width: 2rem;
   overflow: hidden;
   padding: 0;
   transition:
     transform 160ms ease,
-    border-color 160ms ease,
-    background-color 160ms ease;
-  width: 2.5rem;
+    opacity 160ms ease;
+  vertical-align: middle;
+  width: 2rem;
+}
+
+#navbar a[href='https://discord.gg/6HWsa2jB5w'] {
+  color: var(--docs-brand-discord);
+  /* Tighten the pair optically because the Discord mark reads narrower than GitHub. */
+  margin-right: -0.25rem;
+}
+
+#navbar a[href='https://github.com/contextgo/contextgo'] {
+  color: var(--docs-brand-github);
 }
 
 #navbar a[href='https://discord.gg/6HWsa2jB5w']:hover,
 #navbar a[href='https://github.com/contextgo/contextgo']:hover {
-  border-color: var(--docs-border-strong);
+  opacity: 0.72;
   transform: translateY(-1px);
 }
 
@@ -103,18 +118,21 @@ html[data-theme='dark'] #topbar-cta-button a div svg {
   background-color: currentColor;
   content: '';
   display: block;
-  height: 1.1rem;
+  flex: none;
+  height: 1.08rem;
   mask-position: center;
   mask-repeat: no-repeat;
   mask-size: contain;
   -webkit-mask-position: center;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size: contain;
-  width: 1.1rem;
+  width: 1.08rem;
 }
 
 #navbar a[href='https://discord.gg/6HWsa2jB5w']::before {
+  height: 0.95rem;
   mask-image: url('/logo/social/discord.svg');
+  width: 1.25rem;
   -webkit-mask-image: url('/logo/social/discord.svg');
 }
 
