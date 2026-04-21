@@ -172,14 +172,17 @@ vi.mock('@/renderer/pages/settings/AgentSettings/AssistantManagement/AssistantLi
     onCreate,
     onEdit,
     presentation,
+    showSystemAssistants,
   }: {
     assistants: AssistantListItem[];
     onCreate: () => void;
     onEdit: (assistant: AssistantListItem) => void;
     presentation?: 'auto' | 'embedded';
+    showSystemAssistants?: boolean;
   }) => (
     <div>
       <div>{assistants[0]?.name}</div>
+      <div data-testid='show-system-assistants'>{String(showSystemAssistants)}</div>
       {presentation !== 'embedded' ? (
         <button type='button' onClick={() => onCreate()}>
           Create Assistant
@@ -220,6 +223,7 @@ describe('Agent workspace list route', () => {
 
     expect(screen.getByText('Research Agent')).toBeInTheDocument();
     expect(screen.getByTestId('location')).toHaveTextContent('/agents');
+    expect(screen.getByTestId('show-system-assistants')).toHaveTextContent('false');
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Assistant' }));
     expect(handleEditMock).toHaveBeenCalledWith(assistantFixture, { openEditor: false });

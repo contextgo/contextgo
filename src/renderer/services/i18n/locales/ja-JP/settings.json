@@ -1800,7 +1800,7 @@
   "webui.officialRemoteStatusShort.preparing": "準備中",
   "webui.officialRemoteStatusShort.connecting": "接続中",
   "webui.officialRemoteStatusShort.unavailable": "利用不可",
-  "assistantsPageDescription": "ここで Agent の作成と編集を行いながら、Context Engine が管理するシステム Agent も確認できます。",
+  "assistantsPageDescription": "このワークスペースで直接使う Agent をここで作成・編集します。",
   "assistantsWorkbenchPublish": "Agent を公開",
   "assistantsWorkbenchOpenSkillMarket": "Skill Market を開く",
   "assistantsWorkbenchProductAgents": "利用可能な Agent",

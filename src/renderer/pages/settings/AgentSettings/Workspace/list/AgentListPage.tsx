@@ -42,8 +42,7 @@ const AgentListPage: React.FC<AgentListPageProps> = ({
             <h1 className={styles.pageTitle}>{t('settings.assistants', { defaultValue: 'Assistants' })}</h1>
             <p className={styles.pageDescription}>
               {t('settings.assistantsPageDescription', {
-                defaultValue:
-                  'Create and edit agents here, alongside the system-managed Context Engine agents that keep project memory flowing.',
+                defaultValue: 'Create and edit agents here for direct work in this workspace.',
               })}
             </p>
           </div>
@@ -58,6 +57,7 @@ const AgentListPage: React.FC<AgentListPageProps> = ({
       <AssistantListPanel
         assistants={assistants}
         systemAssistants={systemAssistants}
+        showSystemAssistants={false}
         activeAssistantId={activeAssistantId}
         localeKey={localeKey}
         avatarImageMap={avatarImageMap}

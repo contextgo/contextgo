@@ -1795,7 +1795,7 @@
   "channels.publication.objectKind.telegram.thread": "Topic",
   "channels.publication.objectKind.dingtalk.dm": "Private chat",
   "channels.publication.objectKind.dingtalk.group": "Group",
-  "assistantsPageDescription": "Create and edit agents here, alongside the system-managed Context Engine agents that keep project memory flowing.",
+  "assistantsPageDescription": "Create and edit agents here for direct work in this workspace.",
   "assistantsWorkbenchPublish": "Publish Agent",
   "assistantsWorkbenchOpenSkillMarket": "Open Skill Market",
   "assistantsWorkbenchProductAgents": "Product agents",

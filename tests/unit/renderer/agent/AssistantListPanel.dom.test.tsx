@@ -30,8 +30,7 @@ vi.mock('react-i18next', () => ({
           'settings.systemAgentsDescription':
             'Engine-managed agents run automatically in the background to compact session context and promote stable project knowledge.',
           'settings.systemAgentViewRuns': 'View Runs',
-          'settings.assistantsPageDescription':
-            'Create and edit agents here, alongside the system-managed Context Engine agents that keep project memory flowing.',
+          'settings.assistantsPageDescription': 'Create and edit agents here for direct work in this workspace.',
           'agent.contextEngine.idleCount': `${String(options?.count ?? '0')} maintenance agents watching`,
           'agent.contextEngine.activeCount': `${String(options?.count ?? '0')} maintenance runs active`,
           'agent.contextEngine.empty': 'Waiting for the first maintenance run.',
@@ -97,7 +96,7 @@ vi.mock('@/renderer/pages/settings/AgentSettings/AssistantManagement/AssistantAv
 import AssistantListPanel from '@/renderer/pages/settings/AgentSettings/AssistantManagement/AssistantListPanel';
 
 describe('AssistantListPanel', () => {
-  it('keeps the page hero focused on agent creation and list browsing', () => {
+  it('hides system agents from the page by default', () => {
     navigateMock.mockReset();
     onCreateMock.mockReset();
 
@@ -136,14 +135,12 @@ describe('AssistantListPanel', () => {
       />
     );
 
-    expect(
-      screen.getByText(
-        'Create and edit agents here, alongside the system-managed Context Engine agents that keep project memory flowing.'
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByText('Create and edit agents here for direct work in this workspace.')).toBeInTheDocument();
     expect(screen.getByText('Product agents')).toBeInTheDocument();
-    expect(screen.getByText('System agents')).toBeInTheDocument();
-    expect(screen.getByText('Active runs')).toBeInTheDocument();
+    expect(screen.queryByText('System agents')).not.toBeInTheDocument();
+    expect(screen.queryByText('Active runs')).not.toBeInTheDocument();
+    expect(screen.queryByText('System Agents')).not.toBeInTheDocument();
+    expect(screen.queryByText('Session Context Keeper')).not.toBeInTheDocument();
     expect(screen.queryByText('How this workspace works')).not.toBeInTheDocument();
     expect(
       screen.queryByText(
@@ -190,10 +187,50 @@ describe('AssistantListPanel', () => {
 
     expect(screen.getByText('Available assistants')).toBeInTheDocument();
     expect(
-      screen.queryByText(
-        'Create and edit agents here, alongside the system-managed Context Engine agents that keep project memory flowing.'
-      )
+      screen.queryByText('Create and edit agents here for direct work in this workspace.')
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Create Assistant' })).not.toBeInTheDocument();
+  });
+
+  it('can still render system agents when explicitly enabled', () => {
+    const assistants = [
+      {
+        id: 'assistant-1',
+        name: 'Research Agent',
+        description: 'Summarize and draft',
+        enabled: true,
+      },
+    ] as unknown as AssistantListItem[];
+
+    const systemAssistants = [
+      {
+        id: 'system-1',
+        name: 'Session Context Keeper',
+        description: 'System-managed',
+        systemRole: 'context-engine-session-compactor',
+        triggerKinds: [],
+      },
+    ] as unknown as AssistantListItem[];
+
+    render(
+      <AssistantListPanel
+        assistants={assistants}
+        systemAssistants={systemAssistants}
+        showSystemAssistants
+        activeAssistantId={null}
+        localeKey='en-US'
+        avatarImageMap={{}}
+        isExtensionAssistant={() => false}
+        onEdit={vi.fn()}
+        onDuplicate={vi.fn()}
+        onCreate={vi.fn()}
+        onToggleEnabled={vi.fn()}
+        setActiveAssistantId={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('System agents')).toBeInTheDocument();
+    expect(screen.getByText('Active runs')).toBeInTheDocument();
+    expect(screen.getAllByText('Session Context Keeper').length).toBeGreaterThan(0);
   });
 });

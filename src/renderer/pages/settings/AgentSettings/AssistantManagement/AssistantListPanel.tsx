@@ -19,6 +19,7 @@ import styles from '../AgentSettingsPage.module.css';
 type AssistantListPanelProps = {
   assistants: AssistantListItem[];
   systemAssistants: AssistantListItem[];
+  showSystemAssistants?: boolean;
   activeAssistantId: string | null;
   localeKey: string;
   avatarImageMap: Record<string, string>;
@@ -74,6 +75,7 @@ function resolveExecutionBoundaryLabel(
 const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
   assistants,
   systemAssistants,
+  showSystemAssistants = false,
   activeAssistantId,
   localeKey,
   avatarImageMap,
@@ -91,7 +93,8 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
   const isPageMode = viewMode === 'page';
   const isEmbeddedPresentation = presentation === 'embedded';
   const { maintenanceAgents, activeMaintenanceCount, status } = useContextEngineActivity();
-  const totalAssistantCount = assistants.length + systemAssistants.length;
+  const visibleSystemAssistants = showSystemAssistants ? systemAssistants : [];
+  const totalAssistantCount = assistants.length + visibleSystemAssistants.length;
 
   const maintenanceAgentsByRole = useMemo(() => {
     const nextMap = new Map<string, (typeof maintenanceAgents)[number]>();
@@ -203,19 +206,19 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
               count: activeMaintenanceCount,
               defaultValue: `${activeMaintenanceCount} maintenance runs active`,
             })
-          : systemAssistants.length > 0
+          : visibleSystemAssistants.length > 0
             ? t('agent.contextEngine.idleCount', {
-                count: systemAssistants.length,
-                defaultValue: `${systemAssistants.length} maintenance agents watching`,
+                count: visibleSystemAssistants.length,
+                defaultValue: `${visibleSystemAssistants.length} maintenance agents watching`,
               })
             : t('agent.contextEngine.empty', {
                 defaultValue: 'Waiting for the first maintenance run.',
               });
 
   const systemListContent =
-    systemAssistants.length > 0 ? (
+    visibleSystemAssistants.length > 0 ? (
       <div className={styles.assistantList}>
-        {systemAssistants.map((assistant) => {
+        {visibleSystemAssistants.map((assistant) => {
           const definition = findContextEngineSystemAssistantByRole(assistant.systemRole);
           const deliveryStatus = definition?.deliveryStatus;
           const activity = assistant.systemRole ? maintenanceAgentsByRole.get(assistant.systemRole) : undefined;
@@ -375,7 +378,7 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
           </div>
         </div>
         <div className={styles.sectionHeaderActions}>
-          <span className={styles.sectionMeta}>{systemAssistants.length}</span>
+          <span className={styles.sectionMeta}>{visibleSystemAssistants.length}</span>
           <Button
             type='outline'
             size='small'
@@ -412,8 +415,7 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
               </div>
               <p className={styles.pageDescription}>
                 {t('settings.assistantsPageDescription', {
-                  defaultValue:
-                    'Create and edit agents here, alongside the system-managed Context Engine agents that keep project memory flowing.',
+                  defaultValue: 'Create and edit agents here for direct work in this workspace.',
                 })}
               </p>
             </div>
@@ -441,28 +443,32 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
                   })}
                 </div>
               </div>
-              <div className={styles.statCard}>
-                <div className={styles.statLabel}>
-                  {t('settings.assistantsWorkbenchSystemAgents', { defaultValue: 'System agents' })}
+              {showSystemAssistants ? (
+                <div className={styles.statCard}>
+                  <div className={styles.statLabel}>
+                    {t('settings.assistantsWorkbenchSystemAgents', { defaultValue: 'System agents' })}
+                  </div>
+                  <div className={styles.statValue}>{visibleSystemAssistants.length}</div>
+                  <div className={styles.statDescription}>
+                    {t('settings.assistantsWorkbenchSystemAgentsHint', {
+                      defaultValue: 'Background agents managed by Context Engine.',
+                    })}
+                  </div>
                 </div>
-                <div className={styles.statValue}>{systemAssistants.length}</div>
-                <div className={styles.statDescription}>
-                  {t('settings.assistantsWorkbenchSystemAgentsHint', {
-                    defaultValue: 'Background agents managed by Context Engine.',
-                  })}
+              ) : null}
+              {showSystemAssistants ? (
+                <div className={styles.statCard}>
+                  <div className={styles.statLabel}>
+                    {t('settings.assistantsWorkbenchActiveRuns', { defaultValue: 'Active runs' })}
+                  </div>
+                  <div className={styles.statValue}>{activeMaintenanceCount}</div>
+                  <div className={styles.statDescription}>
+                    {t('settings.assistantsWorkbenchActiveRunsHint', {
+                      defaultValue: 'Maintenance executions currently in progress.',
+                    })}
+                  </div>
                 </div>
-              </div>
-              <div className={styles.statCard}>
-                <div className={styles.statLabel}>
-                  {t('settings.assistantsWorkbenchActiveRuns', { defaultValue: 'Active runs' })}
-                </div>
-                <div className={styles.statValue}>{activeMaintenanceCount}</div>
-                <div className={styles.statDescription}>
-                  {t('settings.assistantsWorkbenchActiveRunsHint', {
-                    defaultValue: 'Maintenance executions currently in progress.',
-                  })}
-                </div>
-              </div>
+              ) : null}
             </div>
           </div>
         </div>

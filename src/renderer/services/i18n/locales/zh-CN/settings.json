@@ -1796,7 +1796,7 @@
   "channels.publication.objectKind.telegram.thread": "话题",
   "channels.publication.objectKind.dingtalk.dm": "私聊",
   "channels.publication.objectKind.dingtalk.group": "群聊",
-  "assistantsPageDescription": "在这里完成 Agent 的创建与编辑，同时查看由 Context Engine 托管的系统 Agent。",
+  "assistantsPageDescription": "在这里创建和编辑可直接使用的 Agent。",
   "assistantsWorkbenchPublish": "发布 Agent",
   "assistantsWorkbenchOpenSkillMarket": "进入技能市场",
   "assistantsWorkbenchProductAgents": "可用 Agent",

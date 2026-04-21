@@ -1798,7 +1798,7 @@
   "webui.officialRemoteStatusShort.preparing": "Hazırlanıyor",
   "webui.officialRemoteStatusShort.connecting": "Bağlanıyor",
   "webui.officialRemoteStatusShort.unavailable": "Kullanılamıyor",
-  "assistantsPageDescription": "Agent'ları burada oluşturup düzenleyin; ayrıca Context Engine tarafından yönetilen sistem Agent'larını da görün.",
+  "assistantsPageDescription": "Bu çalışma alanında doğrudan kullanacağınız Agent'ları burada oluşturup düzenleyin.",
   "assistantsWorkbenchPublish": "Agent Yayınla",
   "assistantsWorkbenchOpenSkillMarket": "Skill Market'i Aç",
   "assistantsWorkbenchProductAgents": "Kullanılabilir Agent'lar",

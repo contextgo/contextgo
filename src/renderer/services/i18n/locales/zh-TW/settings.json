@@ -1800,7 +1800,7 @@
   "webui.officialRemoteStatusShort.preparing": "準備中",
   "webui.officialRemoteStatusShort.connecting": "連線中",
   "webui.officialRemoteStatusShort.unavailable": "暫不可用",
-  "assistantsPageDescription": "在這裡完成 Agent 的建立與編輯，同時查看由 Context Engine 託管的系統 Agent。",
+  "assistantsPageDescription": "在這裡建立與編輯可直接使用的 Agent。",
   "assistantsWorkbenchPublish": "發佈 Agent",
   "assistantsWorkbenchOpenSkillMarket": "進入技能市場",
   "assistantsWorkbenchProductAgents": "可用 Agent",
