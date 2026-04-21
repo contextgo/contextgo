@@ -65,6 +65,25 @@ function normalizeCloudUser(user: CloudUser): AuthUser {
   };
 }
 
+function areAuthUsersEqual(left: AuthUser | null, right: AuthUser | null): boolean {
+  if (left === right) {
+    return true;
+  }
+
+  if (!left || !right) {
+    return left === right;
+  }
+
+  return (
+    left.id === right.id &&
+    left.username === right.username &&
+    left.displayName === right.displayName &&
+    left.email === right.email &&
+    left.avatarUrl === right.avatarUrl &&
+    left.authSource === right.authSource
+  );
+}
+
 async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> {
   try {
     const response = await fetch(AUTH_USER_ENDPOINT, {
@@ -111,12 +130,16 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [ready, setReady] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  const commitDesktopAuthState = useCallback((nextUser: AuthUser | null) => {
+    setUser((previousUser) => (areAuthUsersEqual(previousUser, nextUser) ? previousUser : nextUser));
+    setStatus((previousStatus) => (previousStatus === 'authenticated' ? previousStatus : 'authenticated'));
+    setReady((previousReady) => (previousReady ? previousReady : true));
+  }, []);
+
   const refresh = useCallback(async () => {
     if (isDesktopRuntime) {
       const currentUser = await fetchDesktopCloudUser();
-      setStatus('authenticated');
-      setUser(currentUser);
-      setReady(true);
+      commitDesktopAuthState(currentUser);
       return;
     }
 
@@ -134,7 +157,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       setStatus('unauthenticated');
     }
     setReady(true);
-  }, []);
+  }, [commitDesktopAuthState]);
 
   useEffect(() => {
     if (!isDesktopRuntime) {
@@ -142,15 +165,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     }
 
     const unsubscribe = ipcBridge.cloud.statusChanged.on((nextStatus: CloudStatus) => {
-      setUser(nextStatus.user ? normalizeCloudUser(nextStatus.user) : null);
-      setStatus('authenticated');
-      setReady(true);
+      commitDesktopAuthState(nextStatus.authenticated && nextStatus.user ? normalizeCloudUser(nextStatus.user) : null);
     });
 
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [commitDesktopAuthState]);
 
   useEffect(() => {
     void refresh();
