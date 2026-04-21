@@ -4,14 +4,27 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
-import { Github } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import type { Dictionary } from '@/app/types';
 import ThemeToggle from '@/components/ThemeToggle';
 
+const DEFAULT_DISCORD_URL = 'https://discord.gg/6HWsa2jB5w';
 const DEFAULT_GITHUB_URL = 'https://github.com/contextgo';
+
+const buildMaskStyle = (iconPath: string): CSSProperties => ({
+  WebkitMaskImage: `url(${iconPath})`,
+  maskImage: `url(${iconPath})`,
+  WebkitMaskPosition: 'center',
+  maskPosition: 'center',
+  WebkitMaskRepeat: 'no-repeat',
+  maskRepeat: 'no-repeat',
+  WebkitMaskSize: 'contain',
+  maskSize: 'contain',
+});
 
 export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lang: string }) {
   const pathname = usePathname();
+  const discordUrl = process.env.NEXT_PUBLIC_CONTEXTGO_DISCORD_URL || DEFAULT_DISCORD_URL;
   const githubUrl = process.env.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL || DEFAULT_GITHUB_URL;
   const isActivePath = (href: string) => pathname === href || pathname?.startsWith(`${href}/`);
 
@@ -32,6 +45,19 @@ export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lan
     segments[1] = newLocale;
     return segments.join('/');
   };
+
+  const socialLinks = [
+    {
+      href: discordUrl,
+      label: 'Discord',
+      iconPath: '/social/discord.svg',
+    },
+    {
+      href: githubUrl,
+      label: 'GitHub',
+      iconPath: '/social/github.svg',
+    },
+  ];
 
   return (
     <motion.nav
@@ -95,15 +121,19 @@ export default function Navbar({ dict, lang }: { dict: Dictionary['navbar']; lan
           </div>
 
           <ThemeToggle dict={dict.theme} />
-          <a
-            href={githubUrl}
-            target='_blank'
-            rel='noopener noreferrer'
-            className='theme-button-secondary inline-flex items-center justify-center rounded-full p-2 transition-colors'
-            title='GitHub'
-          >
-            <Github size={20} />
-          </a>
+          {socialLinks.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='theme-button-secondary theme-shadow-card theme-border theme-text-primary inline-flex h-10 w-10 items-center justify-center rounded-full border p-0 transition-transform duration-200 hover:-translate-y-px'
+              title={link.label}
+              aria-label={link.label}
+            >
+              <span aria-hidden className='block h-5 w-5 bg-current' style={buildMaskStyle(link.iconPath)} />
+            </a>
+          ))}
         </div>
       </div>
     </motion.nav>

@@ -21,7 +21,6 @@ export const en = {
     download_btn: 'Download for desktop',
     docs_btn: 'Read docs',
     connect_btn: 'See connectors',
-    community_btn: 'Join the community',
   },
   philosophy: {
     title: 'Not another chat box. A workbench for real work.',

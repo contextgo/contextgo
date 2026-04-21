@@ -69,6 +69,60 @@ html[data-theme='dark'] #topbar-cta-button a div svg {
   color: #0c1015;
 }
 
+#navbar a[href='https://discord.gg/6HWsa2jB5w'],
+#navbar a[href='https://github.com/contextgo/contextgo-releases'] {
+  align-items: center;
+  background: var(--docs-surface-strong);
+  border: 1px solid var(--docs-border);
+  border-radius: 999px;
+  box-shadow: var(--docs-shadow-soft);
+  color: var(--docs-text-primary);
+  display: inline-flex;
+  font-size: 0;
+  height: 2.5rem;
+  justify-content: center;
+  line-height: 0;
+  min-width: 2.5rem;
+  overflow: hidden;
+  padding: 0;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+  width: 2.5rem;
+}
+
+#navbar a[href='https://discord.gg/6HWsa2jB5w']:hover,
+#navbar a[href='https://github.com/contextgo/contextgo-releases']:hover {
+  border-color: var(--docs-border-strong);
+  transform: translateY(-1px);
+}
+
+#navbar a[href='https://discord.gg/6HWsa2jB5w']::before,
+#navbar a[href='https://github.com/contextgo/contextgo-releases']::before {
+  background-color: currentColor;
+  content: '';
+  display: block;
+  height: 1.1rem;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  width: 1.1rem;
+}
+
+#navbar a[href='https://discord.gg/6HWsa2jB5w']::before {
+  mask-image: url('/logo/social/discord.svg');
+  -webkit-mask-image: url('/logo/social/discord.svg');
+}
+
+#navbar a[href='https://github.com/contextgo/contextgo-releases']::before {
+  mask-image: url('/logo/social/github.svg');
+  -webkit-mask-image: url('/logo/social/github.svg');
+}
+
 #search-bar-entry,
 #search-bar-entry-mobile {
   border-radius: 999px;

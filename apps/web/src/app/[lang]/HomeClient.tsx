@@ -72,14 +72,6 @@ export default function HomeClient({
             >
               {dict.hero.connect_btn}
             </Link>
-            <a
-              href='https://discord.gg/6HWsa2jB5w'
-              target='_blank'
-              rel='noopener noreferrer'
-              className='theme-button-secondary theme-shadow-card inline-flex rounded-full px-8 py-3 font-medium transition-all'
-            >
-              {dict.hero.community_btn}
-            </a>
           </div>
         </motion.div>
 

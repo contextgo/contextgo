@@ -20,7 +20,6 @@ export const zh = {
     download_btn: '下载桌面版',
     docs_btn: '阅读文档',
     connect_btn: '查看连接能力',
-    community_btn: '加入社区',
   },
   philosophy: {
     title: '不是另一个聊天框，而是一套可运行的工作台。',
