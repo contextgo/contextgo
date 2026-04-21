@@ -9,6 +9,7 @@ const chineseDictionarySource = readFileSync('apps/web/src/dictionaries/zh.ts', 
 describe('web header social branding', () => {
   it('renders Discord and GitHub as branded header icons', () => {
     expect(navbarSource).toContain("const DEFAULT_DISCORD_URL = 'https://discord.gg/6HWsa2jB5w';");
+    expect(navbarSource).toContain("const DEFAULT_GITHUB_URL = 'https://github.com/contextgo/contextgo';");
     expect(navbarSource).toContain('/social/discord.svg');
     expect(navbarSource).toContain('/social/github.svg');
   });

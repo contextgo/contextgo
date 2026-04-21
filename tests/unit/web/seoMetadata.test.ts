@@ -72,7 +72,7 @@ describe('seo helpers', () => {
 
     expect(jsonLd.url).toBe('https://contextgo.io');
     expect(jsonLd.logo).toBe('https://contextgo.io/logo.png');
-    expect(jsonLd.sameAs).toEqual(['https://docs.contextgo.io', 'https://github.com/contextgo/contextgo-releases']);
+    expect(jsonLd.sameAs).toEqual(['https://docs.contextgo.io', 'https://github.com/contextgo/contextgo']);
   });
 
   it('builds webpage json-ld for product landing pages', () => {

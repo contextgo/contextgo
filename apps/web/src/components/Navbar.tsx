@@ -9,7 +9,7 @@ import type { Dictionary } from '@/app/types';
 import ThemeToggle from '@/components/ThemeToggle';
 
 const DEFAULT_DISCORD_URL = 'https://discord.gg/6HWsa2jB5w';
-const DEFAULT_GITHUB_URL = 'https://github.com/contextgo';
+const DEFAULT_GITHUB_URL = 'https://github.com/contextgo/contextgo';
 
 const buildMaskStyle = (iconPath: string): CSSProperties => ({
   WebkitMaskImage: `url(${iconPath})`,

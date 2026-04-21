@@ -224,7 +224,7 @@ describe('docs shell config', () => {
       },
       {
         label: 'GitHub',
-        href: 'https://github.com/contextgo/contextgo-releases',
+        href: 'https://github.com/contextgo/contextgo',
       },
     ]);
     expect(config.footer).toBeUndefined();

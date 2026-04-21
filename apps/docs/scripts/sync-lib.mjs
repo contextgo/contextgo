@@ -172,7 +172,7 @@ export const staticConfig = {
       },
       {
         label: 'GitHub',
-        href: 'https://github.com/contextgo/contextgo-releases',
+        href: 'https://github.com/contextgo/contextgo',
       },
     ],
     primary: {

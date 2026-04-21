@@ -70,7 +70,7 @@ html[data-theme='dark'] #topbar-cta-button a div svg {
 }
 
 #navbar a[href='https://discord.gg/6HWsa2jB5w'],
-#navbar a[href='https://github.com/contextgo/contextgo-releases'] {
+#navbar a[href='https://github.com/contextgo/contextgo'] {
   align-items: center;
   background: var(--docs-surface-strong);
   border: 1px solid var(--docs-border);
@@ -93,13 +93,13 @@ html[data-theme='dark'] #topbar-cta-button a div svg {
 }
 
 #navbar a[href='https://discord.gg/6HWsa2jB5w']:hover,
-#navbar a[href='https://github.com/contextgo/contextgo-releases']:hover {
+#navbar a[href='https://github.com/contextgo/contextgo']:hover {
   border-color: var(--docs-border-strong);
   transform: translateY(-1px);
 }
 
 #navbar a[href='https://discord.gg/6HWsa2jB5w']::before,
-#navbar a[href='https://github.com/contextgo/contextgo-releases']::before {
+#navbar a[href='https://github.com/contextgo/contextgo']::before {
   background-color: currentColor;
   content: '';
   display: block;
@@ -118,7 +118,7 @@ html[data-theme='dark'] #topbar-cta-button a div svg {
   -webkit-mask-image: url('/logo/social/discord.svg');
 }
 
-#navbar a[href='https://github.com/contextgo/contextgo-releases']::before {
+#navbar a[href='https://github.com/contextgo/contextgo']::before {
   mask-image: url('/logo/social/github.svg');
   -webkit-mask-image: url('/logo/social/github.svg');
 }

@@ -4,7 +4,7 @@ import type { PublicArticle, SiteLocale } from './public-content/types';
 const SITE_NAME = 'ContextGo';
 const SITE_URL = 'https://contextgo.io';
 const DOCS_SITE_URL = 'https://docs.contextgo.io';
-const GITHUB_REPOSITORY_URL = 'https://github.com/contextgo/contextgo-releases';
+const GITHUB_REPOSITORY_URL = 'https://github.com/contextgo/contextgo';
 const DEFAULT_OG_IMAGE_PATH = '/site/homepage-preview.png';
 const DEFAULT_DESCRIPTION =
   'ContextGo connects knowledge, tasks, conversations, and channels so agents can work inside real workflows.';
