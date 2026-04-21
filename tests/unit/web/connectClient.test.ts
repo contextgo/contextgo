@@ -11,6 +11,6 @@ describe('ConnectClient source', () => {
   });
 
   it('does not reference the deprecated connectors overview image asset', () => {
-    expect(connectClientSource).not.toContain("/site/connectors-overview.png");
+    expect(connectClientSource).not.toContain('/site/connectors-overview.png');
   });
 });
