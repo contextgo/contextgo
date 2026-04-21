@@ -238,7 +238,7 @@ const ContextGoModal: React.FC<ContextGoModalProps> = ({
   };
 
   const bodyInlineStyle = React.useMemo<CSSProperties>(() => {
-    const style: CSSProperties = {
+    const bodyStyle: CSSProperties = {
       background: contentBg,
       padding: paddingVal,
       overflow: contentOverflow,
@@ -247,11 +247,11 @@ const ContextGoModal: React.FC<ContextGoModalProps> = ({
     (['height', 'minHeight', 'maxHeight'] as const).forEach((key) => {
       const value = contentStyle?.[key];
       if (value !== undefined) {
-        style[key] = formatDimensionValue(value);
+        bodyStyle[key] = formatDimensionValue(value);
       }
     });
 
-    return style;
+    return bodyStyle;
   }, [contentBg, paddingVal, contentOverflow, contentStyle?.height, contentStyle?.maxHeight, contentStyle?.minHeight]);
 
   // 处理 Header 配置（向后兼容）
@@ -358,10 +358,15 @@ const ContextGoModal: React.FC<ContextGoModalProps> = ({
     }
 
     if (footerConfig.render) {
+      const footerContent = footerConfig.render();
+      if (footerContent === null || footerContent === undefined || footerContent === false) {
+        return null;
+      }
+
       const footerClassName = classNames(FOOTER_BASE_CLASS, footerConfig.className);
       return (
         <div className={footerClassName} style={footerConfig.style}>
-          {footerConfig.render()}
+          {footerContent}
         </div>
       );
     }

@@ -21,6 +21,20 @@ type UpdateInfo = UpdateReleaseInfo;
 
 const UPDATE_MODAL_HEADER_CLASS = 'px-24px pt-20px';
 
+const formatSpeed = (bytesPerSecond: number) => {
+  if (bytesPerSecond > 1024 * 1024) {
+    return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
+  }
+  return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
+};
+
+const formatSize = (bytes: number) => {
+  if (bytes > 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  return `${(bytes / 1024).toFixed(1)} KB`;
+};
+
 const UpdateModal: React.FC = () => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
@@ -187,20 +201,6 @@ const UpdateModal: React.FC = () => {
       console.error('Install failed:', err);
       Message.error(msg);
     }
-  };
-
-  const formatSpeed = (bytesPerSecond: number) => {
-    if (bytesPerSecond > 1024 * 1024) {
-      return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
-    }
-    return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
-  };
-
-  const formatSize = (bytes: number) => {
-    if (bytes > 1024 * 1024) {
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    }
-    return `${(bytes / 1024).toFixed(1)} KB`;
   };
 
   const handleOpenUpdateModal = () => {
@@ -514,14 +514,14 @@ const UpdateModal: React.FC = () => {
         showClose: true,
         className: UPDATE_MODAL_HEADER_CLASS,
       }}
-      footer={{ render: () => null }}
+      footer={null}
       contentStyle={{
-        height: '100%',
+        background: 'transparent',
         padding: 0,
         overflow: 'hidden',
       }}
     >
-      <div className='flex flex-col h-full min-h-0 w-full'>{renderContent()}</div>
+      <div className='flex flex-1 flex-col min-h-0 w-full'>{renderContent()}</div>
     </ContextGoModal>
   );
 };
