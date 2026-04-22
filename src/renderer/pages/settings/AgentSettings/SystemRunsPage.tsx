@@ -13,6 +13,8 @@ import {
   findContextEngineSystemAssistantByRole,
 } from '@/common/config/presets/systemAssistants';
 import { useContextEngineActivity } from '@/renderer/hooks/agent/useContextEngineActivity';
+import { CUSTOM_AVATAR_IMAGE_MAP } from '@/renderer/pages/guid/constants';
+import { resolveAvatarImageSrc } from '@/renderer/pages/settings/AgentSettings/AssistantManagement/assistantUtils';
 import SettingsPageWrapper from '../components/SettingsPageWrapper';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -286,6 +288,7 @@ const SystemRunsPage: React.FC = () => {
                   const name = assistant.nameI18n[i18n.language] || assistant.nameI18n['en-US'] || assistant.id;
                   const description =
                     assistant.descriptionI18n[i18n.language] || assistant.descriptionI18n['en-US'] || assistant.id;
+                  const avatarImage = resolveAvatarImageSrc(assistant.avatar, CUSTOM_AVATAR_IMAGE_MAP);
                   const triggerKinds = assistant.runtimeSpec.triggerKinds.map((kind) =>
                     resolveTriggerKindLabel(kind, t)
                   );
@@ -304,7 +307,11 @@ const SystemRunsPage: React.FC = () => {
                     <div key={assistant.id} className={classNames(styles.assistantCard, styles.systemAssistantCard)}>
                       <div className={styles.assistantCardMain}>
                         <div className={styles.systemRunsDefinitionIcon}>
-                          <Robot theme='outline' size={18} strokeWidth={3} />
+                          {avatarImage ? (
+                            <img src={avatarImage} alt='' width={22} height={22} style={{ objectFit: 'contain' }} />
+                          ) : (
+                            <Robot theme='outline' size={18} strokeWidth={3} />
+                          )}
                         </div>
                         <div className={styles.assistantMeta}>
                           <div className={styles.assistantTitleRow}>

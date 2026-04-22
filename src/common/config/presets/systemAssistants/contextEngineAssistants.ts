@@ -29,6 +29,7 @@ export type ContextEngineSystemAssistantDefinition = {
   systemRole: BuiltinAssistantSystemRole;
   jobType: ContextEngineAssistantJobType;
   profileId: string;
+  avatar: string;
   deliveryStatus: ContextEngineAssistantDeliveryStatus;
   nameI18n: Record<string, string>;
   descriptionI18n: Record<string, string>;
@@ -79,6 +80,7 @@ export const CONTEXT_ENGINE_SYSTEM_ASSISTANTS: readonly ContextEngineSystemAssis
     systemRole: 'context-engine-session-compactor',
     jobType: 'session_compaction',
     profileId: 'agent_profile_context_engine_session_compactor',
+    avatar: 'context-engine-session-keeper.svg',
     deliveryStatus: 'live',
     nameI18n: {
       'en-US': 'Session Context Keeper',
@@ -102,6 +104,7 @@ export const CONTEXT_ENGINE_SYSTEM_ASSISTANTS: readonly ContextEngineSystemAssis
     systemRole: 'context-engine-session-pattern-detector',
     jobType: 'session_pattern_detection',
     profileId: 'agent_profile_context_engine_session_pattern_detector',
+    avatar: 'context-engine-session-pattern.svg',
     deliveryStatus: 'planned',
     nameI18n: {
       'en-US': 'Session Pattern Watcher',
@@ -125,6 +128,7 @@ export const CONTEXT_ENGINE_SYSTEM_ASSISTANTS: readonly ContextEngineSystemAssis
     systemRole: 'context-engine-project-promoter',
     jobType: 'project_promotion',
     profileId: 'agent_profile_context_engine_project_promoter',
+    avatar: 'context-engine-project-promoter.svg',
     deliveryStatus: 'live',
     nameI18n: {
       'en-US': 'Project Knowledge Promoter',
@@ -148,6 +152,7 @@ export const CONTEXT_ENGINE_SYSTEM_ASSISTANTS: readonly ContextEngineSystemAssis
     systemRole: 'context-engine-space-memory-distiller',
     jobType: 'space_memory_distillation',
     profileId: 'agent_profile_context_engine_space_memory_distiller',
+    avatar: 'context-engine-space-distiller.svg',
     deliveryStatus: 'live',
     nameI18n: {
       'en-US': 'Space Memory Distiller',
@@ -171,6 +176,7 @@ export const CONTEXT_ENGINE_SYSTEM_ASSISTANTS: readonly ContextEngineSystemAssis
     systemRole: 'context-engine-connector-digester',
     jobType: 'connector_digest',
     profileId: 'agent_profile_context_engine_connector_digester',
+    avatar: 'context-engine-connector-digest.svg',
     deliveryStatus: 'live',
     nameI18n: {
       'en-US': 'Connector Digest Curator',
@@ -194,6 +200,7 @@ export const CONTEXT_ENGINE_SYSTEM_ASSISTANTS: readonly ContextEngineSystemAssis
     systemRole: 'context-engine-project-capability-curator',
     jobType: 'project_capability_curation',
     profileId: 'agent_profile_context_engine_project_capability_curator',
+    avatar: 'context-engine-project-capability.svg',
     deliveryStatus: 'live',
     nameI18n: {
       'en-US': 'Project Capability Curator',

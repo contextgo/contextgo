@@ -121,6 +121,7 @@ export const buildContextEngineSystemAssistants = (): AcpBackendConfig[] => {
     nameI18n: assistant.nameI18n,
     description: assistant.descriptionI18n['en-US'] ?? '',
     descriptionI18n: assistant.descriptionI18n,
+    avatar: assistant.avatar,
     enabled: true,
     isPreset: false,
     isBuiltin: true,

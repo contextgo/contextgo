@@ -398,6 +398,7 @@ describe('builtinAssistantDefaults', () => {
     expect(systemAssistants).toHaveLength(6);
     expect(sessionCompactor).toEqual(
       expect.objectContaining({
+        avatar: 'context-engine-session-keeper.svg',
         builtinTier: 'system',
         builtinVisibility: 'featured',
         systemOwner: 'context-engine',
@@ -412,6 +413,7 @@ describe('builtinAssistantDefaults', () => {
     );
     expect(projectPromoter).toEqual(
       expect.objectContaining({
+        avatar: 'context-engine-project-promoter.svg',
         builtinTier: 'system',
         builtinVisibility: 'featured',
         systemOwner: 'context-engine',
@@ -422,6 +424,7 @@ describe('builtinAssistantDefaults', () => {
     );
     expect(projectCapabilityCurator).toEqual(
       expect.objectContaining({
+        avatar: 'context-engine-project-capability.svg',
         builtinTier: 'system',
         builtinVisibility: 'featured',
         systemOwner: 'context-engine',
@@ -434,14 +437,22 @@ describe('builtinAssistantDefaults', () => {
         }),
       })
     );
-    expect(spaceMemoryDistiller).toEqual(expect.objectContaining({ triggerKinds: ['timer', 'manual'] }));
+    expect(spaceMemoryDistiller).toEqual(
+      expect.objectContaining({
+        avatar: 'context-engine-space-distiller.svg',
+        triggerKinds: ['timer', 'manual'],
+      })
+    );
     expect(connectorDigester).toEqual(
       expect.objectContaining({
+        avatar: 'context-engine-connector-digest.svg',
         triggerKinds: ['connector', 'timer', 'manual'],
       })
     );
     expect(
-      CONTEXT_ENGINE_SYSTEM_ASSISTANTS.find((assistant) => assistant.id === 'system-context-engine-space-memory-distiller')
+      CONTEXT_ENGINE_SYSTEM_ASSISTANTS.find(
+        (assistant) => assistant.id === 'system-context-engine-space-memory-distiller'
+      )
     ).toEqual(expect.objectContaining({ deliveryStatus: 'live' }));
     expect(
       CONTEXT_ENGINE_SYSTEM_ASSISTANTS.find((assistant) => assistant.id === 'system-context-engine-connector-digester')
