@@ -176,6 +176,7 @@ export type ProjectCapabilityCurationArtifact = {
 export type ContextJobArtifact =
   | SessionCompactionArtifact
   | ProjectPromotionArtifact
+  | ContextRunArtifact
   | SpaceMemoryDistillationArtifact
   | ConnectorDigestArtifact
   | ProjectCapabilityCurationArtifact;

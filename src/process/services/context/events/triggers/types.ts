@@ -16,7 +16,13 @@ export type ContextTriggerKind = 'hook' | 'lifecycle' | 'timer' | 'manual' | 'co
 
 export type ContextTriggerScopeKind = 'conversation' | 'project' | 'space';
 
-export type ContextTriggerBuilder = 'session_compaction' | 'project_promotion' | 'planned';
+export type ContextTriggerBuilder =
+  | 'session_compaction'
+  | 'session_pattern_detection'
+  | 'project_promotion'
+  | 'space_memory_distillation'
+  | 'connector_digest'
+  | 'project_capability_curation';
 
 export type ContextTriggerSource = Extract<ContextJobSource, ContextTriggerKind>;
 

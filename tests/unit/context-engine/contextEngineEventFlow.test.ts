@@ -1049,6 +1049,58 @@ describe('context engine event flow', () => {
     expect(seen).toEqual(['context.job.started:running', 'context.job.completed:completed']);
   });
 
+  it('routes session pattern detection jobs to the dedicated handler instead of connector digestion', async () => {
+    const queue = new ContextJobQueue();
+    queue.enqueue(
+      makeJob({
+        id: 'job-session-pattern-1',
+        type: 'session_pattern_detection',
+        governanceIdentity: 'session_steward',
+        source: 'timer',
+        reason: 'Inspect recurring session patterns.',
+        payload: {
+          summary: 'Detected repeated interruption signals.',
+        },
+      })
+    );
+
+    const bus = new ContextEventBus();
+    const sessionPatternHandler = {
+      run: vi.fn(async () => ({
+        title: 'Session Pattern Detection',
+        relativePath: 'System/Context Engine/Runs/job-session-pattern-1.md',
+        summary: 'Detected repeated interruption signals.',
+      })),
+    };
+    const connectorDigestHandler = {
+      run: vi.fn(async () => ({
+        title: 'Connector Digest',
+        relativePath: 'System/Context Engine/Connector Digest.md',
+        summary: 'Digested connector updates.',
+        spaceId: 'space-1',
+      })),
+    };
+
+    const runner = new ContextJobRunner(
+      queue,
+      bus,
+      {
+        run: vi.fn(async () => undefined),
+      } as never,
+      {
+        run: vi.fn(async () => undefined),
+      } as never,
+      undefined,
+      connectorDigestHandler as never,
+      sessionPatternHandler as never
+    );
+
+    await runner.kick();
+
+    expect(sessionPatternHandler.run).toHaveBeenCalledWith(expect.objectContaining({ type: 'session_pattern_detection' }));
+    expect(connectorDigestHandler.run).not.toHaveBeenCalled();
+  });
+
   it('runs queued session compaction jobs and persists completion logs', async () => {
     const queue = new ContextJobQueue();
     queue.enqueue(makeJob());

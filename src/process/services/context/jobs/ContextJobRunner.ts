@@ -78,7 +78,7 @@ export class ContextJobRunner {
       return this.connectorDigestHandler;
     }
     if (job.type === 'session_pattern_detection') {
-      return this.sessionPatternDetectionHandler ?? this.connectorDigestHandler;
+      return this.sessionPatternDetectionHandler;
     }
     if (job.type === 'project_capability_curation') {
       return this.projectCapabilityCurationHandler;

@@ -148,7 +148,7 @@ export const CONTEXT_ENGINE_SYSTEM_ASSISTANTS: readonly ContextEngineSystemAssis
     systemRole: 'context-engine-space-memory-distiller',
     jobType: 'space_memory_distillation',
     profileId: 'agent_profile_context_engine_space_memory_distiller',
-    deliveryStatus: 'planned',
+    deliveryStatus: 'live',
     nameI18n: {
       'en-US': 'Space Memory Distiller',
       'zh-CN': '空间记忆提炼员',
@@ -171,7 +171,7 @@ export const CONTEXT_ENGINE_SYSTEM_ASSISTANTS: readonly ContextEngineSystemAssis
     systemRole: 'context-engine-connector-digester',
     jobType: 'connector_digest',
     profileId: 'agent_profile_context_engine_connector_digester',
-    deliveryStatus: 'planned',
+    deliveryStatus: 'live',
     nameI18n: {
       'en-US': 'Connector Digest Curator',
       'zh-CN': '连接器摘要整理员',

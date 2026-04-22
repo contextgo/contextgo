@@ -11,6 +11,7 @@ import {
   resolveBuiltinAssistantEnabledHooks,
   resolveBuiltinAssistantEnabledSkills,
 } from '@/common/config/presets/builtinAssistantDefaults';
+import { CONTEXT_ENGINE_SYSTEM_ASSISTANTS } from '@/common/config/presets/systemAssistants';
 import {
   getBundledAgentPackageDefaultEnabledHookNames,
   getBundledAgentPackageDefaultEnabledSkillNames,
@@ -387,6 +388,12 @@ describe('builtinAssistantDefaults', () => {
     const projectCapabilityCurator = systemAssistants.find(
       (assistant) => assistant.id === 'system-context-engine-project-capability-curator'
     );
+    const spaceMemoryDistiller = systemAssistants.find(
+      (assistant) => assistant.id === 'system-context-engine-space-memory-distiller'
+    );
+    const connectorDigester = systemAssistants.find(
+      (assistant) => assistant.id === 'system-context-engine-connector-digester'
+    );
 
     expect(systemAssistants).toHaveLength(6);
     expect(sessionCompactor).toEqual(
@@ -427,6 +434,18 @@ describe('builtinAssistantDefaults', () => {
         }),
       })
     );
+    expect(spaceMemoryDistiller).toEqual(expect.objectContaining({ triggerKinds: ['timer', 'manual'] }));
+    expect(connectorDigester).toEqual(
+      expect.objectContaining({
+        triggerKinds: ['connector', 'timer', 'manual'],
+      })
+    );
+    expect(
+      CONTEXT_ENGINE_SYSTEM_ASSISTANTS.find((assistant) => assistant.id === 'system-context-engine-space-memory-distiller')
+    ).toEqual(expect.objectContaining({ deliveryStatus: 'live' }));
+    expect(
+      CONTEXT_ENGINE_SYSTEM_ASSISTANTS.find((assistant) => assistant.id === 'system-context-engine-connector-digester')
+    ).toEqual(expect.objectContaining({ deliveryStatus: 'live' }));
   });
 
   it('falls back to preset defaults only when enabled hooks are missing', () => {
