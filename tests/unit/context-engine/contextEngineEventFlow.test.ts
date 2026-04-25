@@ -447,6 +447,16 @@ describe('context engine event flow', () => {
         relativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
         title: 'Release Session Working Context',
       })),
+      writeSessionArchive: vi.fn(async () => ({
+        title: 'Session archive',
+        overviewRelativePath:
+          'Projects/workspace/_context/sessions/thread-1/archives/2026-04-08T00-03-00Z-session-compaction/overview.md',
+        extractionRelativePath:
+          'Projects/workspace/_context/sessions/thread-1/archives/2026-04-08T00-03-00Z-session-compaction/extraction.md',
+        statusRelativePath:
+          'Projects/workspace/_context/sessions/thread-1/archives/2026-04-08T00-03-00Z-session-compaction/status.json',
+        summary: 'Current task: Ship the release safely.',
+      })),
     };
     const summarizer = {
       summarize: vi.fn(async () => ({
@@ -477,6 +487,9 @@ describe('context engine event flow', () => {
           'Projects/workspace/_context/sessions/thread-1/checkpoints/2026-04-08T00-03-00Z-session-compaction.md',
         workingContextTitle: 'Release Session Working Context',
         workingContextRelativePath: 'Projects/workspace/_context/sessions/thread-1/working-context.md',
+        archiveTitle: 'Session archive',
+        archiveOverviewRelativePath:
+          'Projects/workspace/_context/sessions/thread-1/archives/2026-04-08T00-03-00Z-session-compaction/overview.md',
         pressure: 58,
         promotedCount: 1,
         pendingReviewCount: 1,
@@ -506,6 +519,13 @@ describe('context engine event flow', () => {
       expect.objectContaining({
         title: 'Session checkpoint',
         kind: 'session-compaction',
+      })
+    );
+    expect(vaultSyncService.writeSessionArchive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        archiveId: expect.stringMatching(/session-compaction$/),
+        title: 'Session archive',
+        sourceProfileKey: 'session.compaction.thread-1',
       })
     );
     expect(vaultSyncService.appendSessionTimelineEvent).toHaveBeenCalledWith(
@@ -1097,7 +1117,9 @@ describe('context engine event flow', () => {
 
     await runner.kick();
 
-    expect(sessionPatternHandler.run).toHaveBeenCalledWith(expect.objectContaining({ type: 'session_pattern_detection' }));
+    expect(sessionPatternHandler.run).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'session_pattern_detection' })
+    );
     expect(connectorDigestHandler.run).not.toHaveBeenCalled();
   });
 

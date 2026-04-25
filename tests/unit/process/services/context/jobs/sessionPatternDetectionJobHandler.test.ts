@@ -3,18 +3,14 @@ import { SessionPatternDetectionJobHandler } from '../../../../../../src/process
 
 describe('SessionPatternDetectionJobHandler', () => {
   it('writes a dedicated run artifact for detected session patterns', async () => {
-    const writeContextRunArtifact = vi.fn(async (input: {
-      spaceId: string;
-      runId: string;
-      title: string;
-      summary: string;
-      detail?: string;
-    }) => ({
-      spaceId: input.spaceId,
-      title: input.title,
-      relativePath: `System/Context Engine/Runs/${input.runId}.md`,
-      summary: input.summary,
-    }));
+    const writeContextRunArtifact = vi.fn(
+      async (input: { spaceId: string; runId: string; title: string; summary: string; detail?: string }) => ({
+        spaceId: input.spaceId,
+        title: input.title,
+        relativePath: `System/Context Engine/Runs/${input.runId}.md`,
+        summary: input.summary,
+      })
+    );
 
     const handler = new SessionPatternDetectionJobHandler({
       writeContextRunArtifact,
@@ -50,6 +46,8 @@ describe('SessionPatternDetectionJobHandler', () => {
       })
     );
     expect(writeContextRunArtifact.mock.calls[0]?.[0]?.detail).toContain('Thread ID: `thread-1`');
-    expect(writeContextRunArtifact.mock.calls[0]?.[0]?.detail).toContain('Repeated user interruption after long tool runs.');
+    expect(writeContextRunArtifact.mock.calls[0]?.[0]?.detail).toContain(
+      'Repeated user interruption after long tool runs.'
+    );
   });
 });
