@@ -3,7 +3,7 @@ plugins {
   kotlin("android")
 }
 
-val releaseVersionName = providers.environmentVariable("CONTEXTGO_RELEASE_VERSION").orNull ?: "1.0.0"
+val releaseVersionName = providers.environmentVariable("CONTEXTGO_RELEASE_VERSION").orNull ?: "1.0.1"
 val releaseVersionCode = providers.environmentVariable("CONTEXTGO_RELEASE_VERSION_CODE").orNull?.toIntOrNull() ?: 1
 val releaseKeystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH").orNull
 val releaseKeystorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
