@@ -316,10 +316,50 @@ describe('SpaceVaultContextSyncService', () => {
     expect(homeContent).toContain('spaceId: space-bootstrap');
     expect(homeContent).toContain('spaceName: Bootstrap Space');
     expect(homeContent).toContain('# Bootstrap Space Space');
+    expect(homeContent).toContain('## Abstract');
+    expect(homeContent).toContain('Created before any conversation exists.');
+    expect(homeContent).toContain('## Overview');
     expect(homeContent).toContain('- Space ID: `space-bootstrap`');
     expect(homeContent).toContain('- Engine: `vault`');
-    expect(homeContent).toContain('- Description: Created before any conversation exists.');
+    expect(homeContent).toContain('[[Space Console|Space Console]]');
     expect(homeContent).toContain('- No projects synced yet.');
+
+    const consoleContent = await fs.readFile(path.join(vaultPath, 'Space Console.md'), 'utf8');
+    expect(consoleContent).toContain('contextgoType: space-console');
+    expect(consoleContent).toContain('contextgoProjection: governance-trace');
+    expect(consoleContent).toContain('# Space Console');
+    expect(consoleContent).toContain('## Current Situation');
+    expect(consoleContent).toContain('- Active projects: 0');
+    expect(consoleContent).toContain('[[System/Context Engine/Connector Digest|Connector Digest]]');
+    expect(consoleContent).toContain('[[System/Agent Desk/Active Agents|Active Agents]]');
+    expect(consoleContent).toContain('[[System/Workbench/Context Flow Workbench|Context Flow Workbench]]');
+
+    const operationalPages = [
+      ['System', 'Agent Desk', 'Active Agents.md'],
+      ['System', 'Agent Desk', 'Decision Inbox.md'],
+      ['System', 'Agent Desk', 'Artifact Ledger.md'],
+      ['System', 'Workbench', 'Context Flow Workbench.md'],
+      ['System', 'Workbench', 'Attention Queue.md'],
+      ['System', 'Workbench', 'Signal Matrix.md'],
+      ['System', 'Workbench', 'Handoff Bus.md'],
+    ];
+    await expect(
+      Promise.all(operationalPages.map((segments) => fs.access(path.join(vaultPath, ...segments))))
+    ).resolves.toHaveLength(operationalPages.length);
+
+    const activeAgentsContent = await fs.readFile(
+      path.join(vaultPath, 'System', 'Agent Desk', 'Active Agents.md'),
+      'utf8'
+    );
+    expect(activeAgentsContent).toContain('## Agent Status');
+    expect(activeAgentsContent).toContain('Session Steward');
+
+    const workbenchContent = await fs.readFile(
+      path.join(vaultPath, 'System', 'Workbench', 'Context Flow Workbench.md'),
+      'utf8'
+    );
+    expect(workbenchContent).toContain('## Flow Map');
+    expect(workbenchContent).toContain('flowchart LR');
 
     const canvas = JSON.parse(await fs.readFile(path.join(vaultPath, 'Canvas', 'Space Overview.canvas'), 'utf8'));
     expect(canvas.nodes.some((node: { file?: string }) => node.file === '../Home.md')).toBe(true);
@@ -551,6 +591,170 @@ describe('SpaceVaultContextSyncService', () => {
     expect(checkpointContent).toContain(
       '- Session working context: [[Projects/workspace/_context/sessions/conv-1/working-context|Release Session Working Context]]'
     );
+  });
+
+  it('materializes session archives with overview, extraction, and status files', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextgo-vault-sync-'));
+    tempDirs.push(root);
+
+    const vaultPath = path.join(root, 'vault');
+    const workspacePath = path.join(root, 'workspace');
+    await fs.mkdir(vaultPath, { recursive: true });
+    await fs.mkdir(workspacePath, { recursive: true });
+    await fs.writeFile(path.join(workspacePath, 'AGENTS.md'), '# Project Router\n', 'utf8');
+
+    const space = {
+      id: 'space-1',
+      name: 'My Space',
+      engine: 'vault',
+      providerRef: {
+        kind: 'obsidian-vault',
+        vaultPath,
+        vaultName: 'My-Space-space-1',
+        landingNotePath: 'Home.md',
+      },
+      createTime: 1,
+      modifyTime: 1,
+    } as const;
+
+    const service = new SpaceVaultContextSyncService({ getSpace: vi.fn(async () => space) } as any);
+    const conversation = makeConversation(space.id, workspacePath);
+
+    await service.ensureConversationContext({ conversation: conversation as any });
+    const archive = await service.writeSessionArchive({
+      conversation: conversation as any,
+      archiveId: '2026-04-23T13-12-00Z-session-compaction',
+      timestamp: '2026-04-23T13:12:00.000Z',
+      title: 'Session archive',
+      summary: 'Current task: stabilize release verification flow.',
+      detail: 'Compaction summary body.',
+      currentTask: 'Stabilize release verification flow.',
+      stableStrategies: ['Keep the patch minimal.'],
+      failureModes: ['Long sessions lose constraints.'],
+      pendingConstraints: ['Do not broaden scope without approval.'],
+      signalKinds: ['context_window_prepared'],
+      pressure: 57,
+      promotedCount: 2,
+      pendingReviewCount: 1,
+      sourceProfileKey: 'session.compaction.conv-1',
+      compactionJobId: 'context-job-1',
+      lifecycleSummary: 'Compaction triggered after repeated interruptions.',
+      artifactTargets: ['session_timeline', 'session_working_context', 'session_checkpoint'],
+      workingContextRelativePath: 'Projects/workspace/_context/sessions/conv-1/working-context.md',
+      workingContextTitle: 'Release Session Working Context',
+      checkpointRelativePath: 'Projects/workspace/_context/sessions/conv-1/checkpoints/checkpoint.md',
+      checkpointTitle: 'Session checkpoint',
+    });
+
+    expect(archive).toBeDefined();
+    expect(archive!.overviewRelativePath).toBe(
+      'Projects/workspace/_context/sessions/conv-1/archives/2026-04-23T13-12-00Z-session-compaction/overview.md'
+    );
+    expect(archive!.extractionRelativePath).toBe(
+      'Projects/workspace/_context/sessions/conv-1/archives/2026-04-23T13-12-00Z-session-compaction/extraction.md'
+    );
+    expect(archive!.statusRelativePath).toBe(
+      'Projects/workspace/_context/sessions/conv-1/archives/2026-04-23T13-12-00Z-session-compaction/status.json'
+    );
+
+    const overviewContent = await fs.readFile(path.join(vaultPath, archive!.overviewRelativePath), 'utf8');
+    expect(overviewContent).toContain('contextgoType: session-archive');
+    expect(overviewContent).toContain('archivePart: overview');
+    expect(overviewContent).toContain('## Archive State');
+    expect(overviewContent).toContain('- Pressure: 57');
+    expect(overviewContent).toContain('- Promoted takeaways: 2');
+    expect(overviewContent).toContain(
+      '- Session checkpoint: [[Projects/workspace/_context/sessions/conv-1/checkpoints/checkpoint|Session checkpoint]]'
+    );
+
+    const extractionContent = await fs.readFile(path.join(vaultPath, archive!.extractionRelativePath), 'utf8');
+    expect(extractionContent).toContain('archivePart: extraction');
+    expect(extractionContent).toContain('## Stable Strategies');
+    expect(extractionContent).toContain('- Keep the patch minimal.');
+    expect(extractionContent).toContain('## Full Compaction Detail');
+    expect(extractionContent).toContain('Compaction summary body.');
+
+    const status = JSON.parse(await fs.readFile(path.join(vaultPath, archive!.statusRelativePath), 'utf8'));
+    expect(status.contextgoType).toBe('session-archive-status');
+    expect(status.state).toBe('materialized');
+    expect(status.artifacts.overview).toBe(archive!.overviewRelativePath);
+    expect(status.artifacts.extraction).toBe(archive!.extractionRelativePath);
+
+    const relationLines = (
+      await fs.readFile(path.join(vaultPath, 'System', 'Context Engine', 'Relations', 'relations.jsonl'), 'utf8')
+    )
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line));
+    expect(relationLines).toHaveLength(7);
+    expect(
+      relationLines.some(
+        (relation) =>
+          relation.type === 'summarizes' &&
+          relation.from === archive!.overviewRelativePath &&
+          relation.to === 'Projects/workspace/_context/sessions/conv-1/working-context.md'
+      )
+    ).toBe(true);
+    expect(
+      relationLines.some(
+        (relation) =>
+          relation.type === 'derived_from' &&
+          relation.from === archive!.extractionRelativePath &&
+          relation.to === archive!.overviewRelativePath
+      )
+    ).toBe(true);
+    expect(
+      relationLines.some(
+        (relation) =>
+          relation.type === 'derived_from' &&
+          relation.from === 'System/Context Engine/Memory/Workflows/Release-Session-Stable-Strategies.md' &&
+          relation.to === archive!.overviewRelativePath
+      )
+    ).toBe(true);
+    expect(
+      relationLines.every(
+        (relation) =>
+          relation.id &&
+          relation.spaceId === 'space-1' &&
+          relation.conversationId === 'conv-1' &&
+          relation.metadata.archiveId === '2026-04-23T13-12-00Z-session-compaction'
+      )
+    ).toBe(true);
+
+    const workflowMemory = await fs.readFile(
+      path.join(vaultPath, 'System', 'Context Engine', 'Memory', 'Workflows', 'Release-Session-Stable-Strategies.md'),
+      'utf8'
+    );
+    expect(workflowMemory).toContain('contextgoType: schema-memory');
+    expect(workflowMemory).toContain('contextgoNamespace: memory');
+    expect(workflowMemory).toContain('contextgoProjection: schema-memory');
+    expect(workflowMemory).toContain('memoryKind: Workflows');
+    expect(workflowMemory).toContain('## Memory Items');
+    expect(workflowMemory).toContain('- Keep the patch minimal.');
+    expect(workflowMemory).toContain(
+      `- Source: [[${archive!.overviewRelativePath.replace(/\.md$/, '')}|Session archive]]`
+    );
+
+    const patternMemory = await fs.readFile(
+      path.join(vaultPath, 'System', 'Context Engine', 'Memory', 'Patterns', 'Release-Session-Failure-Modes.md'),
+      'utf8'
+    );
+    expect(patternMemory).toContain('memoryKind: Patterns');
+    expect(patternMemory).toContain('- Long sessions lose constraints.');
+
+    const preferenceMemory = await fs.readFile(
+      path.join(
+        vaultPath,
+        'System',
+        'Context Engine',
+        'Memory',
+        'Preferences',
+        'Release-Session-Pending-Constraints.md'
+      ),
+      'utf8'
+    );
+    expect(preferenceMemory).toContain('memoryKind: Preferences');
+    expect(preferenceMemory).toContain('- Do not broaden scope without approval.');
   });
 
   it('skips vault sync when the target space is not bound to an obsidian vault', async () => {

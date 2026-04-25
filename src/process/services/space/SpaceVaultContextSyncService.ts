@@ -15,22 +15,40 @@ import {
   CONTEXT_ENGINE_SYSTEM_DIR,
   type ContextgoNamespace,
   type ContextgoProjection,
+  type VaultRelationType,
+  type VaultSchemaMemoryKind,
   DEFAULT_SPACE_CANVAS_PATH,
   LEGACY_PROJECT_CAPABILITIES_DIR_NAME,
   LEGACY_PROJECT_CAPABILITIES_FILE_NAME,
   getConversationDocumentPaths,
   getOperationLogDailyRelativePath,
   getConnectorDigestRelativePath,
+  getConnectorImportIndexRelativePath,
   getContextRunRelativePath,
+  getActiveAgentsRelativePath,
+  getArtifactLedgerRelativePath,
+  getAttentionQueueRelativePath,
+  getContextFlowWorkbenchRelativePath,
+  getDecisionInboxRelativePath,
+  getHandoffBusRelativePath,
+  getProfileMemoryRelativePath,
   getProjectAutomationItemRelativePath,
   getProjectAutomationRelativePath,
   getProjectBaselineRelativePath,
   getProjectGraphRelativePath,
   getProjectInsightsRelativePath,
   getProjectRelativePath,
+  getSessionArchiveExtractionRelativePath,
+  getSessionArchiveOverviewRelativePath,
+  getSessionArchiveStatusRelativePath,
+  getSessionArchivesRelativeDir,
+  getSessionCheckpointsRelativeDir,
   getProjectSessionStateRelativeDir,
   getProjectSessionsRelativeDir,
   getProjectSourceRelativePath,
+  getRelationsManifestRelativePath,
+  getSchemaMemoryRelativePath,
+  getSignalMatrixRelativePath,
   getSpaceMemoryRelativePath,
   OPERATIONS_DIR,
   PROJECT_CAPABILITY_COMMANDS_DIR_NAME,
@@ -222,6 +240,48 @@ type SessionWorkingContextWriteInput = {
   pressure: number;
 } & SessionCompactionProvenanceInput;
 
+type SchemaMemoryWriteInput = {
+  conversation?: TChatConversation;
+  spaceId?: string;
+  kind: VaultSchemaMemoryKind;
+  title: string;
+  summary: string;
+  bullets: readonly string[];
+  sourceRelativePath?: string;
+  sourceTitle?: string;
+  reason?: string;
+  createdAt: string;
+  metadata?: Readonly<Record<string, string | number | boolean | undefined>>;
+};
+
+type VaultRelationWriteInput = {
+  conversation?: TChatConversation;
+  spaceId?: string;
+  from: string;
+  to: string;
+  type: VaultRelationType;
+  reason?: string;
+  createdAt: string;
+  metadata?: Readonly<Record<string, string | number | boolean | undefined>>;
+};
+
+type SessionArchiveWriteInput = {
+  conversation: TChatConversation;
+  archiveId: string;
+  timestamp: string;
+  title: string;
+  summary: string;
+  detail?: string;
+  currentTask?: string;
+  stableStrategies: readonly string[];
+  failureModes: readonly string[];
+  pendingConstraints: readonly string[];
+  signalKinds: readonly string[];
+  pressure: number;
+  promotedCount: number;
+  pendingReviewCount: number;
+} & SessionCompactionProvenanceInput;
+
 type SessionCompactionProvenanceInput = {
   sourceProfileKey?: string;
   compactionJobId?: string;
@@ -320,6 +380,33 @@ type SessionCheckpointArtifact = {
   summary: string;
 };
 
+type SchemaMemoryArtifact = {
+  title: string;
+  kind: VaultSchemaMemoryKind;
+  relativePath: string;
+  summary: string;
+};
+
+type VaultRelationRecord = {
+  id: string;
+  from: string;
+  to: string;
+  type: VaultRelationType;
+  reason?: string;
+  createdAt: string;
+  spaceId?: string;
+  conversationId?: string;
+  metadata?: Readonly<Record<string, string | number | boolean>>;
+};
+
+type SessionArchiveArtifact = {
+  title: string;
+  overviewRelativePath: string;
+  extractionRelativePath: string;
+  statusRelativePath: string;
+  summary: string;
+};
+
 const nowIso = (timestamp = Date.now()): string => new Date(timestamp).toISOString();
 
 const toPosixRelativePath = (value: string): string => value.split(path.sep).join(path.posix.sep);
@@ -327,6 +414,15 @@ const toPosixRelativePath = (value: string): string => value.split(path.sep).joi
 const trimTrailingSlash = (value: string): string => value.replace(/[\\/]+$/g, '');
 
 const stableHash = (value: string): string => crypto.createHash('sha1').update(value).digest('hex').slice(0, 8);
+
+const createVaultRelationId = (input: {
+  from: string;
+  to: string;
+  type: VaultRelationType;
+  createdAt: string;
+}): string => {
+  return `rel-${stableHash(`${input.type}:${input.from}:${input.to}:${input.createdAt}`)}`;
+};
 
 const createProjectSlug = (workspacePath: string): string => {
   const baseName = sanitizeVaultPathSegment(path.basename(trimTrailingSlash(workspacePath)) || 'project').toLowerCase();
@@ -342,6 +438,7 @@ export const createWorkspaceProjectSlug = (workspacePath: string): string => cre
 const stripMarkdownExtension = (value: string): string => value.replace(/\.(md|canvas)$/i, '');
 
 const HOME_RELATIVE_PATH = 'Home.md';
+const SPACE_CONSOLE_RELATIVE_PATH = 'Space Console.md';
 
 const getSpaceNoteTitle = (spaceName: string): string => `${spaceName} Space`;
 
@@ -367,6 +464,8 @@ const getCapabilitySectionTitle = (kind: ProjectCapabilityRecord['kind']): strin
 };
 const getSessionTimelineTitle = (conversationTitle: string): string => `${conversationTitle} Timeline`;
 const getSessionWorkingContextTitle = (conversationTitle: string): string => `${conversationTitle} Working Context`;
+const getSessionArchiveTitle = (conversationTitle: string, archiveId: string): string =>
+  `${conversationTitle} Archive ${archiveId}`;
 
 const getSessionNoteTitle = (conversationTitle: string, conversationId: string): string => {
   return `${conversationTitle.replace(/\s+Session$/i, '')} Session (${conversationId.slice(0, 8)})`;
@@ -605,6 +704,11 @@ const ensureDirectory = async (absolutePath: string): Promise<void> => {
 const ensureFile = async (absolutePath: string, content: string): Promise<void> => {
   await ensureDirectory(path.dirname(absolutePath));
   await fs.writeFile(absolutePath, content, 'utf8');
+};
+
+const appendUtf8 = async (absolutePath: string, content: string): Promise<void> => {
+  await ensureDirectory(path.dirname(absolutePath));
+  await fs.appendFile(absolutePath, content, 'utf8');
 };
 
 const fileExists = async (absolutePath: string): Promise<boolean> => {
@@ -995,6 +1099,89 @@ const buildHomeFrontmatter = (space: TSpace, updatedAt: string): string => {
         updatedAt,
       },
       { namespace: 'space', projection: 'semantic-context' }
+    )
+  );
+};
+
+const buildSpaceConsoleFrontmatter = (space: TSpace, updatedAt: string): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'space-console',
+        title: 'Space Console',
+        spaceId: space.id,
+        spaceName: space.name,
+        updatedAt,
+      },
+      { namespace: 'space', projection: 'governance-trace' }
+    )
+  );
+};
+
+const buildSpaceOperationalFrontmatter = (input: {
+  space: TSpace;
+  updatedAt: string;
+  contextgoType: string;
+  title: string;
+}): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: input.contextgoType,
+        title: input.title,
+        spaceId: input.space.id,
+        spaceName: input.space.name,
+        updatedAt: input.updatedAt,
+      },
+      { namespace: 'space', projection: 'governance-trace' }
+    )
+  );
+};
+
+const buildSchemaMemoryFrontmatter = (input: {
+  spaceId: string;
+  kind: VaultSchemaMemoryKind;
+  title: string;
+  updatedAt: string;
+  sourceRelativePath?: string;
+}): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'schema-memory',
+        title: input.title,
+        spaceId: input.spaceId,
+        memoryKind: input.kind,
+        sourceRelativePath: input.sourceRelativePath,
+        updatedAt: input.updatedAt,
+      },
+      { namespace: 'memory', projection: 'schema-memory' }
+    )
+  );
+};
+
+const buildSessionArchiveFrontmatter = (input: {
+  conversation: TChatConversation;
+  project: ProjectContext | undefined;
+  updatedAt: string;
+  title: string;
+  archiveId: string;
+  archivePart: 'overview' | 'extraction';
+}): string => {
+  return frontmatter(
+    withContextProjectionMetadata(
+      {
+        contextgoType: 'session-archive',
+        title: input.title,
+        conversationId: input.conversation.id,
+        spaceId: input.conversation.extra?.spaceId,
+        projectSlug: input.project?.slug,
+        workspace: input.conversation.extra?.workingDirectory || input.conversation.extra?.workspace,
+        archiveId: input.archiveId,
+        archivePart: input.archivePart,
+        updatedAt: input.updatedAt,
+      },
+      { namespace: 'session', projection: 'semantic-context' }
     )
   );
 };
@@ -1422,6 +1609,12 @@ const buildProjectDocument = (
     GENERATED_MARKER,
     `# ${getProjectNoteTitle(project.name)}`,
     '',
+    '## Abstract',
+    '',
+    `${project.name} is a project-scoped ContextGo vault projection for source mirrors, active sessions, project baseline, insights, and automation inventory.`,
+    '',
+    '## Overview',
+    '',
     `- Space: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(space.name))}`,
     `- Workspace: \`${project.workspacePath}\``,
     `- Project slug: \`${project.slug}\``,
@@ -1429,6 +1622,13 @@ const buildProjectDocument = (
     agentsDoc
       ? `- Primary instructions: ${toWikiLink(getProjectSourceRelativePath(project.folderName, agentsDoc.relativePath), agentsDoc.noteTitle)}`
       : '',
+    '',
+    '## Review Snapshot',
+    '',
+    `- Source docs: ${project.sourceDocs.length}`,
+    `- Reference edges: ${graphEdgeCount}`,
+    `- Related sessions: ${sessionRelativePaths.length}`,
+    `- Automation items: ${capabilityRecords.length}`,
     '',
     '## Entry Points',
     '',
@@ -1442,6 +1642,7 @@ const buildProjectDocument = (
     '## Promoted Context',
     '',
     `- Insights doc: ${toWikiLink(getProjectInsightsRelativePath(project.folderName), getProjectInsightsTitle(project.name))}`,
+    `- Baseline doc: ${toWikiLink(getProjectBaselineRelativePath(project.folderName), getProjectBaselineTitle(project.name))}`,
     '',
     '## Related Sessions',
     '',
@@ -1491,6 +1692,11 @@ const buildProjectDocument = (
     '- Project-local .contextgo automation is mirrored into the vault so it can be linked and graphed.',
     '- AGENTS.md is treated as the project entry document when present.',
     '',
+    '## Provenance',
+    '',
+    '- Generated from the bound workspace, mirrored markdown source docs, project sessions, and project-local automation snapshot.',
+    '- Source facts remain under `Sources/`; durable promoted conclusions should land in Project Insights or proposals.',
+    '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -1508,11 +1714,19 @@ const buildSessionDocument = (
   const normalizedTimelineBody = timelineBody.trim();
   const sessionTitle = getSessionNoteTitle(sanitizeSessionTitle(conversation.name, conversation.id), conversation.id);
   const workingContextRelativePath = getSessionWorkingContextRelativePath(conversation.id, project?.folderName);
+  const checkpointRelativeDir = getSessionCheckpointsRelativeDir(conversation.id, project?.folderName);
+  const archiveRelativeDir = getSessionArchivesRelativeDir(conversation.id, project?.folderName);
 
   return [
     buildSessionFrontmatter(conversation, project, updatedAt),
     GENERATED_MARKER,
     `# ${sessionTitle}`,
+    '',
+    '## Abstract',
+    '',
+    `This session page is the human-readable entry for conversation \`${conversation.id}\`; use the working context for continuation and the timeline for evidence.`,
+    '',
+    '## Overview',
     '',
     `- Conversation ID: \`${conversation.id}\``,
     `- Space doc: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(space.name))}`,
@@ -1522,14 +1736,35 @@ const buildSessionDocument = (
     `- Updated at: ${updatedAt}`,
     `- Working context: ${toWikiLink(workingContextRelativePath, getSessionWorkingContextTitle(sanitizeSessionTitle(conversation.name, conversation.id)))}`,
     '',
+    '## Current Goal',
+    '',
+    summaryLines.find((line) => line.startsWith('- Latest user goal:')) ?? '- No current goal captured yet.',
+    '',
     '## Rolling Summary',
     '',
     ...summaryLines,
+    '',
+    '## Working Context',
+    '',
+    `- Continue from: ${toWikiLink(workingContextRelativePath, getSessionWorkingContextTitle(sanitizeSessionTitle(conversation.name, conversation.id)))}`,
+    '',
+    '## Checkpoints',
+    '',
+    `- Checkpoint directory: \`${checkpointRelativeDir}\``,
+    '',
+    '## Archives',
+    '',
+    `- Archive directory: \`${archiveRelativeDir}\``,
+    '- Archive projection will hold compressed historical segments, extraction summaries, and done / failed state.',
     '',
     '## Timeline',
     '',
     normalizedTimelineBody,
     normalizedTimelineBody ? '' : '- No session activity yet.',
+    '',
+    '## Provenance',
+    '',
+    '- Generated from conversation lifecycle events, context checkpoints, session compaction output, and future archive projections.',
   ].join('\n');
 };
 
@@ -1668,6 +1903,12 @@ const buildSessionWorkingContextDocument = (
     GENERATED_MARKER,
     `# ${getSessionWorkingContextTitle(sessionTitle)}`,
     '',
+    '## Abstract',
+    '',
+    `This working context is the compact, mountable continuation state for session \`${input.conversation.id}\`.`,
+    '',
+    '## Overview',
+    '',
     `- Session doc: ${toWikiLink(paths.sessionRelativePath, sessionNoteTitle)}`,
     `- Space doc: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(input.space.name))}`,
     `- Project doc: ${input.project ? toWikiLink(input.project.relativePath, getProjectNoteTitle(input.project.name)) : 'Unbound'}`,
@@ -1703,6 +1944,15 @@ const buildSessionWorkingContextDocument = (
       ? input.signalKinds.map((kind) => `- ${kind}`)
       : ['- No durable session signals yet.']),
     '',
+    '## Mounted Inputs',
+    '',
+    `- Session timeline: ${toWikiLink(sessionTimelineRelativePath, sessionTimelineTitle)}`,
+    input.project
+      ? `- Project baseline: ${toWikiLink(getProjectBaselineRelativePath(input.project.folderName), getProjectBaselineTitle(input.project.name))}`
+      : '- Project baseline: Unbound',
+    `- Space memory: ${toWikiLink(getSpaceMemoryRelativePath(), 'Space Memory')}`,
+    `- Profile memory: ${toWikiLink(getProfileMemoryRelativePath(), 'Profile Memory')}`,
+    '',
     '## Compaction State',
     '',
     `- Pressure: ${input.pressure}`,
@@ -1710,6 +1960,224 @@ const buildSessionWorkingContextDocument = (
     `- Failure modes: ${input.failureModes.length}`,
     `- Pending constraints: ${input.pendingConstraints.length}`,
     '',
+    '## Provenance',
+    '',
+    ...(shouldRenderProvenance
+      ? provenanceLines
+      : ['- Generated from the latest session compaction snapshot and lifecycle signals.']),
+    '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+};
+
+const buildSchemaMemoryDocument = (input: {
+  space: TSpace;
+  kind: VaultSchemaMemoryKind;
+  title: string;
+  summary: string;
+  bullets: readonly string[];
+  sourceRelativePath?: string;
+  sourceTitle?: string;
+  reason?: string;
+  createdAt: string;
+  metadata?: Readonly<Record<string, string | number | boolean | undefined>>;
+}): string => {
+  const metadataLines = Object.entries(input.metadata ?? {})
+    .filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined)
+    .map(([key, value]) => `- ${key}: \`${String(value)}\``);
+
+  return [
+    buildSchemaMemoryFrontmatter({
+      spaceId: input.space.id,
+      kind: input.kind,
+      title: input.title,
+      updatedAt: input.createdAt,
+      sourceRelativePath: input.sourceRelativePath,
+    }),
+    GENERATED_MARKER,
+    `# ${input.title}`,
+    '',
+    '## Abstract',
+    '',
+    `This ${input.kind} memory captures durable context promoted into the Space memory graph.`,
+    '',
+    '## Overview',
+    '',
+    `- Space doc: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(input.space.name))}`,
+    `- Memory kind: \`${input.kind}\``,
+    `- Created at: ${input.createdAt}`,
+    input.sourceRelativePath
+      ? `- Source: ${toWikiLink(input.sourceRelativePath, input.sourceTitle ?? 'Source')}`
+      : '- Source: Not linked yet.',
+    input.reason ? `- Reason: ${input.reason}` : '',
+    '',
+    '## Summary',
+    '',
+    input.summary,
+    '',
+    '## Memory Items',
+    '',
+    ...(input.bullets.length > 0 ? input.bullets.map((item) => `- ${item}`) : ['- No structured items captured yet.']),
+    '',
+    ...(metadataLines.length > 0 ? ['## Metadata', '', ...metadataLines, ''] : []),
+  ]
+    .filter(Boolean)
+    .join('\n');
+};
+
+const buildSessionArchiveOverviewDocument = (
+  input: {
+    conversation: TChatConversation;
+    project: ProjectContext | undefined;
+    space: TSpace;
+    archiveId: string;
+    title: string;
+    updatedAt: string;
+    summary: string;
+    currentTask?: string;
+    stableStrategies: readonly string[];
+    failureModes: readonly string[];
+    pendingConstraints: readonly string[];
+    signalKinds: readonly string[];
+    pressure: number;
+    promotedCount: number;
+    pendingReviewCount: number;
+    extractionRelativePath: string;
+    statusRelativePath: string;
+  } & SessionCompactionProvenanceInput
+): string => {
+  const sessionTitle = sanitizeSessionTitle(input.conversation.name, input.conversation.id);
+  const sessionNoteTitle = getSessionNoteTitle(sessionTitle, input.conversation.id);
+  const paths = getConversationDocumentPaths(input.conversation.id, input.project?.folderName);
+  const sessionTimelineRelativePath =
+    input.sessionTimelineRelativePath ??
+    getSessionTimelineRelativePath(input.conversation.id, input.project?.folderName);
+  const sessionTimelineTitle = input.sessionTimelineTitle ?? getSessionTimelineTitle(sessionTitle);
+  const provenance = {
+    sourceProfileKey: input.sourceProfileKey,
+    compactionJobId: input.compactionJobId,
+    lifecycleSummary: input.lifecycleSummary,
+    artifactTargets: input.artifactTargets,
+    sessionTimelineRelativePath,
+    sessionTimelineTitle,
+    workingContextRelativePath: input.workingContextRelativePath,
+    workingContextTitle: input.workingContextTitle,
+    checkpointRelativePath: input.checkpointRelativePath,
+    checkpointTitle: input.checkpointTitle,
+  };
+  const provenanceLines = buildCompactionProvenanceLines(provenance);
+
+  return [
+    buildSessionArchiveFrontmatter({
+      conversation: input.conversation,
+      project: input.project,
+      updatedAt: input.updatedAt,
+      title: input.title,
+      archiveId: input.archiveId,
+      archivePart: 'overview',
+    }),
+    GENERATED_MARKER,
+    `# ${input.title}`,
+    '',
+    '## Abstract',
+    '',
+    `This archive is the durable compaction bundle for session \`${input.conversation.id}\` at ${input.updatedAt}.`,
+    '',
+    '## Overview',
+    '',
+    `- Session doc: ${toWikiLink(paths.sessionRelativePath, sessionNoteTitle)}`,
+    `- Space doc: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(input.space.name))}`,
+    `- Project doc: ${input.project ? toWikiLink(input.project.relativePath, getProjectNoteTitle(input.project.name)) : 'Unbound'}`,
+    `- Extraction: ${toWikiLink(input.extractionRelativePath, 'Extraction')}`,
+    `- Status: \`${input.statusRelativePath}\``,
+    `- Updated at: ${input.updatedAt}`,
+    '',
+    '## Current Goal',
+    '',
+    input.currentTask || 'No active task distilled yet.',
+    '',
+    '## Summary',
+    '',
+    input.summary,
+    '',
+    '## Archive State',
+    '',
+    `- Pressure: ${input.pressure}`,
+    `- Signals: ${input.signalKinds.length}`,
+    `- Promoted takeaways: ${input.promotedCount}`,
+    `- Pending review: ${input.pendingReviewCount}`,
+    '',
+    '## Compaction Provenance',
+    '',
+    ...provenanceLines,
+    '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+};
+
+const buildSessionArchiveExtractionDocument = (
+  input: {
+    conversation: TChatConversation;
+    project: ProjectContext | undefined;
+    archiveId: string;
+    title: string;
+    updatedAt: string;
+    summary: string;
+    detail?: string;
+    currentTask?: string;
+    stableStrategies: readonly string[];
+    failureModes: readonly string[];
+    pendingConstraints: readonly string[];
+    signalKinds: readonly string[];
+  } & SessionCompactionProvenanceInput
+): string => {
+  return [
+    buildSessionArchiveFrontmatter({
+      conversation: input.conversation,
+      project: input.project,
+      updatedAt: input.updatedAt,
+      title: input.title,
+      archiveId: input.archiveId,
+      archivePart: 'extraction',
+    }),
+    GENERATED_MARKER,
+    `# ${input.title} Extraction`,
+    '',
+    '## Summary',
+    '',
+    input.summary,
+    '',
+    '## Current Task',
+    '',
+    input.currentTask || 'No active task distilled yet.',
+    '',
+    '## Stable Strategies',
+    '',
+    ...(input.stableStrategies.length > 0
+      ? input.stableStrategies.map((item) => `- ${item}`)
+      : ['- No durable strategy extracted yet.']),
+    '',
+    '## Failure Modes',
+    '',
+    ...(input.failureModes.length > 0
+      ? input.failureModes.map((item) => `- ${item}`)
+      : ['- No recurring failure pattern detected yet.']),
+    '',
+    '## Pending Constraints',
+    '',
+    ...(input.pendingConstraints.length > 0
+      ? input.pendingConstraints.map((item) => `- ${item}`)
+      : ['- No unresolved constraints tracked yet.']),
+    '',
+    '## Signals',
+    '',
+    ...(input.signalKinds.length > 0
+      ? input.signalKinds.map((kind) => `- ${kind}`)
+      : ['- No durable session signals yet.']),
+    '',
+    ...(input.detail ? ['## Full Compaction Detail', '', input.detail, ''] : []),
   ]
     .filter(Boolean)
     .join('\n');
@@ -1792,34 +2260,411 @@ const buildHomeDocument = (
   const projectLines = projects.length
     ? projects.map((project) => `- ${toWikiLink(project.relativePath, project.noteTitle)}`)
     : ['- No projects synced yet.'];
-  const sessionLines = sessions.length
-    ? sessions.slice(0, 12).map((session) => `- ${toWikiLink(session.relativePath, session.title)}`)
+  const continueLines = sessions.length
+    ? sessions
+        .slice(0, 5)
+        .map(
+          (session) =>
+            `- ${toWikiLink(session.relativePath, session.title)}${session.projectSlug ? ` · project: \`${session.projectSlug}\`` : ''}`
+        )
     : ['- No sessions synced yet.'];
+  const recentJobLinks = [
+    `- Space memory: ${toWikiLink(getSpaceMemoryRelativePath(), 'Space Memory')}`,
+    `- Profile memory: ${toWikiLink(getProfileMemoryRelativePath(), 'Profile Memory')}`,
+    `- Connector digest: ${toWikiLink(getConnectorDigestRelativePath(), 'Connector Digest')}`,
+  ];
 
   return [
     buildHomeFrontmatter(space, updatedAt),
     GENERATED_MARKER,
     `# ${getSpaceNoteTitle(space.name)}`,
     '',
+    '## Abstract',
+    '',
+    description ||
+      'This Space vault is the readable ContextGo projection for active work, durable memory, and governance evidence.',
+    '',
+    '## Overview',
+    '',
     `- Space ID: \`${space.id}\``,
     `- Engine: \`${space.engine}\``,
-    description ? `- Description: ${description}` : '',
-    `- Open canvas: ${toWikiLink(DEFAULT_SPACE_CANVAS_PATH, 'Space Overview Canvas')}`,
     `- Updated at: ${updatedAt}`,
+    `- Console: ${toWikiLink(SPACE_CONSOLE_RELATIVE_PATH, 'Space Console')}`,
+    `- Canvas: ${toWikiLink(DEFAULT_SPACE_CANVAS_PATH, 'Space Overview Canvas')}`,
     '',
-    '## Projects',
+    '## Continue Working',
+    '',
+    ...continueLines,
+    '',
+    '## Active Projects',
     '',
     ...projectLines,
     '',
-    '## Sessions',
+    '## Durable Context',
     '',
-    ...sessionLines,
+    ...recentJobLinks,
+    '',
+    '## Open Console / Workbench',
+    '',
+    `- Control surface: ${toWikiLink(SPACE_CONSOLE_RELATIVE_PATH, 'Space Console')}`,
+    `- Review board: ${toWikiLink(DEFAULT_SPACE_CANVAS_PATH, 'Space Overview Canvas')}`,
     '',
     '## Context Layers',
     '',
     '- Space docs hold durable memory, profile, and shared context entry points.',
     '- Project docs hold wiki structure derived from AGENTS.md and nearby markdown files.',
-    '- Session docs keep append-only timeline events plus a rolling summary layer for compression-ready context.',
+    '- Session docs separate human-readable progress from engine working state, timeline, checkpoints, and future archives.',
+    '- System docs preserve runs, operations, relations, imports, and connector governance evidence.',
+    '',
+    '## Vault Map',
+    '',
+    '- `Projects/` keeps project-scoped docs, sessions, source mirrors, automation, and proposals.',
+    '- `Sources/Connectors/` keeps connector import overviews, import runs, normalized docs, and raw snapshots.',
+    '- `System/Context Engine/` keeps memory indexes, connector digest, runs, operations, relations, and import indexes.',
+    '',
+  ].join('\n');
+};
+
+const buildSpaceConsoleDocument = (
+  space: TSpace,
+  projects: ProjectMeta[],
+  sessions: SessionMeta[],
+  updatedAt: string
+): string => {
+  const activeProjectLines = projects.length
+    ? projects.slice(0, 8).map((project) => `- ${toWikiLink(project.relativePath, project.noteTitle)}`)
+    : ['- No active projects synced yet.'];
+  const decisionLines = [
+    '- Review whether new session working context should be promoted to project insights.',
+    '- Review connector imports before treating external context as durable memory.',
+    '- Review schema memory candidates before they become default mounted context.',
+  ];
+  const artifactLines = [
+    `- Home: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(space.name))}`,
+    `- Active Agents: ${toWikiLink(getActiveAgentsRelativePath(), 'Active Agents')}`,
+    `- Decision Inbox: ${toWikiLink(getDecisionInboxRelativePath(), 'Decision Inbox')}`,
+    `- Artifact Ledger: ${toWikiLink(getArtifactLedgerRelativePath(), 'Artifact Ledger')}`,
+    `- Space Memory: ${toWikiLink(getSpaceMemoryRelativePath(), 'Space Memory')}`,
+    `- Profile Memory: ${toWikiLink(getProfileMemoryRelativePath(), 'Profile Memory')}`,
+    `- Connector Digest: ${toWikiLink(getConnectorDigestRelativePath(), 'Connector Digest')}`,
+    `- Connector Import Index: ${toWikiLink(getConnectorImportIndexRelativePath(), 'Connector Import Index')}`,
+    `- Relations Manifest: ${toWikiLink(getRelationsManifestRelativePath(), 'Relations Manifest')}`,
+  ];
+  const flowSessionLines = sessions.length
+    ? sessions.slice(0, 6).map((session) => `- ${toWikiLink(session.relativePath, session.title)}`)
+    : ['- No session flow captured yet.'];
+
+  return [
+    buildSpaceConsoleFrontmatter(space, updatedAt),
+    GENERATED_MARKER,
+    '# Space Console',
+    '',
+    '## Abstract',
+    '',
+    'This console is the operational reading surface for Context Engine workstreams, pending decisions, and recent vault artifacts.',
+    '',
+    '## Current Situation',
+    '',
+    `- Space: ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(space.name))}`,
+    `- Active projects: ${projects.length}`,
+    `- Recent sessions: ${sessions.length}`,
+    `- Last refresh: ${updatedAt}`,
+    '',
+    '## Agent Workstreams',
+    '',
+    '- Session Steward: keeps working context, timeline, checkpoints, and future archives fresh.',
+    '- Project Curator: promotes stable session outcomes into project docs, insights, automation, and proposals.',
+    '- Space Curator: distills cross-project memory, profile signals, connector digests, and governance state.',
+    '',
+    '## Pending Decisions',
+    '',
+    ...decisionLines,
+    '',
+    '## Recent Artifacts',
+    '',
+    ...artifactLines,
+    '',
+    '## Context Flow',
+    '',
+    `- Workbench: ${toWikiLink(getContextFlowWorkbenchRelativePath(), 'Context Flow Workbench')}`,
+    `- Attention Queue: ${toWikiLink(getAttentionQueueRelativePath(), 'Attention Queue')}`,
+    `- Signal Matrix: ${toWikiLink(getSignalMatrixRelativePath(), 'Signal Matrix')}`,
+    `- Handoff Bus: ${toWikiLink(getHandoffBusRelativePath(), 'Handoff Bus')}`,
+    ...flowSessionLines,
+    '',
+    '## Active Projects',
+    '',
+    ...activeProjectLines,
+    '',
+    '## Recommended Navigation',
+    '',
+    `1. Start at ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(space.name))}.`,
+    '2. Open the most recent session under Context Flow.',
+    `3. Review durable memory through ${toWikiLink(getSpaceMemoryRelativePath(), 'Space Memory')}.`,
+    `4. Audit external context through ${toWikiLink(getConnectorDigestRelativePath(), 'Connector Digest')}.`,
+    '',
+  ].join('\n');
+};
+
+const buildActiveAgentsDocument = (space: TSpace, updatedAt: string): string => {
+  return [
+    buildSpaceOperationalFrontmatter({
+      space,
+      updatedAt,
+      contextgoType: 'active-agents',
+      title: 'Active Agents',
+    }),
+    GENERATED_MARKER,
+    '# Active Agents',
+    '',
+    '## Abstract',
+    '',
+    'This page summarizes the fixed Context Engine governance identities and their current vault responsibilities.',
+    '',
+    '## Agent Status',
+    '',
+    '| Agent | Scope | Primary Outputs | Status |',
+    '| --- | --- | --- | --- |',
+    '| Session Steward | Session continuity | working context, timeline, checkpoints, archives | Active when sessions change |',
+    '| Project Curator | Project backflow | Project Insights, baseline, automation, proposals | Active when project signals stabilize |',
+    '| Space Curator | Cross-project memory | Space Memory, Profile Memory, Connector Digest | Active on manual, timer, or connector triggers |',
+    '',
+    '## Related Surfaces',
+    '',
+    `- Space Console: ${toWikiLink(SPACE_CONSOLE_RELATIVE_PATH, 'Space Console')}`,
+    `- Decision Inbox: ${toWikiLink(getDecisionInboxRelativePath(), 'Decision Inbox')}`,
+    `- Artifact Ledger: ${toWikiLink(getArtifactLedgerRelativePath(), 'Artifact Ledger')}`,
+    '',
+  ].join('\n');
+};
+
+const buildDecisionInboxDocument = (space: TSpace, updatedAt: string): string => {
+  return [
+    buildSpaceOperationalFrontmatter({
+      space,
+      updatedAt,
+      contextgoType: 'decision-inbox',
+      title: 'Decision Inbox',
+    }),
+    GENERATED_MARKER,
+    '# Decision Inbox',
+    '',
+    '## Abstract',
+    '',
+    'This page collects decisions that should be reviewed before context becomes durable default behavior.',
+    '',
+    '## Pending Decisions',
+    '',
+    '- Review session working context before promoting it into project insights.',
+    '- Review connector import results before treating external content as durable memory.',
+    '- Review schema memory candidates before mounting them by default.',
+    '',
+    '## Decision Classes',
+    '',
+    '- `promote`: move stable context into project or space memory.',
+    '- `defer`: keep context in session or checkpoint evidence only.',
+    '- `reject`: mark candidate as not durable or not trustworthy.',
+    '',
+    '## Related Surfaces',
+    '',
+    `- Active Agents: ${toWikiLink(getActiveAgentsRelativePath(), 'Active Agents')}`,
+    `- Artifact Ledger: ${toWikiLink(getArtifactLedgerRelativePath(), 'Artifact Ledger')}`,
+    '',
+  ].join('\n');
+};
+
+const buildArtifactLedgerDocument = (
+  space: TSpace,
+  projects: ProjectMeta[],
+  sessions: SessionMeta[],
+  updatedAt: string
+): string => {
+  const projectLines = projects.length
+    ? projects.slice(0, 8).map((project) => `- ${toWikiLink(project.relativePath, project.noteTitle)}`)
+    : ['- No project artifacts synced yet.'];
+  const sessionLines = sessions.length
+    ? sessions.slice(0, 8).map((session) => `- ${toWikiLink(session.relativePath, session.title)}`)
+    : ['- No session artifacts synced yet.'];
+
+  return [
+    buildSpaceOperationalFrontmatter({
+      space,
+      updatedAt,
+      contextgoType: 'artifact-ledger',
+      title: 'Artifact Ledger',
+    }),
+    GENERATED_MARKER,
+    '# Artifact Ledger',
+    '',
+    '## Abstract',
+    '',
+    'This page indexes recent human-readable vault artifacts produced by Context Engine projection.',
+    '',
+    '## Project Artifacts',
+    '',
+    ...projectLines,
+    '',
+    '## Session Artifacts',
+    '',
+    ...sessionLines,
+    '',
+    '## System Artifacts',
+    '',
+    `- Space Memory: ${toWikiLink(getSpaceMemoryRelativePath(), 'Space Memory')}`,
+    `- Profile Memory: ${toWikiLink(getProfileMemoryRelativePath(), 'Profile Memory')}`,
+    `- Connector Digest: ${toWikiLink(getConnectorDigestRelativePath(), 'Connector Digest')}`,
+    `- Connector Import Index: ${toWikiLink(getConnectorImportIndexRelativePath(), 'Connector Import Index')}`,
+    `- Relations Manifest: ${toWikiLink(getRelationsManifestRelativePath(), 'Relations Manifest')}`,
+    '',
+  ].join('\n');
+};
+
+const buildContextFlowWorkbenchDocument = (
+  space: TSpace,
+  projects: ProjectMeta[],
+  sessions: SessionMeta[],
+  updatedAt: string
+): string => {
+  const flowLines = sessions.length
+    ? sessions.slice(0, 6).map((session) => `- Session input: ${toWikiLink(session.relativePath, session.title)}`)
+    : ['- No session flow captured yet.'];
+
+  return [
+    buildSpaceOperationalFrontmatter({
+      space,
+      updatedAt,
+      contextgoType: 'context-flow-workbench',
+      title: 'Context Flow Workbench',
+    }),
+    GENERATED_MARKER,
+    '# Context Flow Workbench',
+    '',
+    '## Abstract',
+    '',
+    'This workbench explains how context moves from sessions into project backflow, space memory, and connector governance.',
+    '',
+    '## Flow Map',
+    '',
+    '```mermaid',
+    'flowchart LR',
+    '  A[Session Turn] --> B[Working Context]',
+    '  B --> C[Session Checkpoint]',
+    '  C --> D[Project Promotion]',
+    '  D --> E[Project Insights]',
+    '  E --> F[Space Memory]',
+    '  G[Connector Source] --> H[Connector Digest]',
+    '  H --> F',
+    '```',
+    '',
+    '## Current Flow Status',
+    '',
+    `- Active projects: ${projects.length}`,
+    `- Recent sessions: ${sessions.length}`,
+    `- Space memory: ${toWikiLink(getSpaceMemoryRelativePath(), 'Space Memory')}`,
+    `- Connector digest: ${toWikiLink(getConnectorDigestRelativePath(), 'Connector Digest')}`,
+    '',
+    '## Tracked Sessions',
+    '',
+    ...flowLines,
+    '',
+  ].join('\n');
+};
+
+const buildAttentionQueueDocument = (space: TSpace, sessions: SessionMeta[], updatedAt: string): string => {
+  const queueLines = sessions.length
+    ? sessions.slice(0, 5).map((session) => `- Continue or review: ${toWikiLink(session.relativePath, session.title)}`)
+    : ['- No active attention items yet.'];
+
+  return [
+    buildSpaceOperationalFrontmatter({
+      space,
+      updatedAt,
+      contextgoType: 'attention-queue',
+      title: 'Attention Queue',
+    }),
+    GENERATED_MARKER,
+    '# Attention Queue',
+    '',
+    '## Abstract',
+    '',
+    'This queue highlights the next contexts that deserve human attention.',
+    '',
+    '## Queue',
+    '',
+    ...queueLines,
+    '',
+    '## Review Rules',
+    '',
+    '- Prioritize active session working context before raw timeline review.',
+    '- Promote only stable, reusable outcomes into project or space memory.',
+    '- Treat connector imports as pending review until their source scope is clear.',
+    '',
+  ].join('\n');
+};
+
+const buildSignalMatrixDocument = (
+  space: TSpace,
+  projects: ProjectMeta[],
+  sessions: SessionMeta[],
+  updatedAt: string
+): string => {
+  return [
+    buildSpaceOperationalFrontmatter({
+      space,
+      updatedAt,
+      contextgoType: 'signal-matrix',
+      title: 'Signal Matrix',
+    }),
+    GENERATED_MARKER,
+    '# Signal Matrix',
+    '',
+    '## Abstract',
+    '',
+    'This matrix summarizes which context signals are currently visible in the vault projection.',
+    '',
+    '## Signals',
+    '',
+    '| Signal | Count | Reading Surface |',
+    '| --- | ---: | --- |',
+    `| Active projects | ${projects.length} | ${toWikiLink(HOME_RELATIVE_PATH, getSpaceNoteTitle(space.name))} |`,
+    `| Recent sessions | ${sessions.length} | ${toWikiLink(getAttentionQueueRelativePath(), 'Attention Queue')} |`,
+    `| Durable memory surfaces | 3 | ${toWikiLink(getSpaceMemoryRelativePath(), 'Space Memory')} |`,
+    '',
+    '## Notes',
+    '',
+    '- Future Context Engine traces should append signal kinds, omitted candidates, and confidence here.',
+    '',
+  ].join('\n');
+};
+
+const buildHandoffBusDocument = (space: TSpace, sessions: SessionMeta[], updatedAt: string): string => {
+  const handoffLines = sessions.length
+    ? sessions.slice(0, 6).map((session) => `- ${toWikiLink(session.relativePath, session.title)}`)
+    : ['- No handoff-ready sessions yet.'];
+
+  return [
+    buildSpaceOperationalFrontmatter({
+      space,
+      updatedAt,
+      contextgoType: 'handoff-bus',
+      title: 'Handoff Bus',
+    }),
+    GENERATED_MARKER,
+    '# Handoff Bus',
+    '',
+    '## Abstract',
+    '',
+    'This page lists context that can be handed from one run, agent identity, or reading surface into the next.',
+    '',
+    '## Handoff Candidates',
+    '',
+    ...handoffLines,
+    '',
+    '## Handoff Rules',
+    '',
+    '- Use working context for continuation.',
+    '- Use checkpoints for evidence.',
+    '- Use Project Insights or Space Memory only after promotion.',
     '',
   ].join('\n');
 };
@@ -2296,6 +3141,83 @@ export class SpaceVaultContextSyncService {
     private readonly projectCapabilityService: ProjectCapabilityService = new ProjectCapabilityService()
   ) {}
 
+  async writeSchemaMemory(input: SchemaMemoryWriteInput): Promise<SchemaMemoryArtifact | undefined> {
+    const spaceId = input.spaceId ?? input.conversation?.extra?.spaceId;
+    if (!spaceId) {
+      return undefined;
+    }
+
+    const space = await this.spaceService.getSpace(spaceId);
+    if (!space || !isSpaceVaultProviderRef(space.providerRef)) {
+      return undefined;
+    }
+
+    const relativePath = getSchemaMemoryRelativePath(input.kind, input.title);
+    const document = buildSchemaMemoryDocument({
+      space,
+      kind: input.kind,
+      title: input.title,
+      summary: input.summary,
+      bullets: input.bullets,
+      sourceRelativePath: input.sourceRelativePath,
+      sourceTitle: input.sourceTitle,
+      reason: input.reason,
+      createdAt: input.createdAt,
+      metadata: input.metadata,
+    });
+    await ensureFile(path.join(space.providerRef.vaultPath, relativePath), document);
+
+    if (input.sourceRelativePath) {
+      await this.appendVaultRelation({
+        conversation: input.conversation,
+        spaceId,
+        from: relativePath,
+        to: input.sourceRelativePath,
+        type: 'derived_from',
+        reason: input.reason ?? 'schema memory is derived from source context evidence',
+        createdAt: input.createdAt,
+        metadata: input.metadata,
+      });
+    }
+
+    return {
+      title: input.title,
+      kind: input.kind,
+      relativePath,
+      summary: input.summary,
+    };
+  }
+
+  async appendVaultRelation(input: VaultRelationWriteInput): Promise<VaultRelationRecord | undefined> {
+    const spaceId = input.spaceId ?? input.conversation?.extra?.spaceId;
+    if (!spaceId) {
+      return undefined;
+    }
+
+    const space = await this.spaceService.getSpace(spaceId);
+    if (!space || !isSpaceVaultProviderRef(space.providerRef)) {
+      return undefined;
+    }
+
+    const metadataEntries = Object.entries(input.metadata ?? {}).filter(
+      (entry): entry is [string, string | number | boolean] => entry[1] !== undefined
+    );
+    const record: VaultRelationRecord = {
+      id: createVaultRelationId(input),
+      from: toPosixRelativePath(input.from),
+      to: toPosixRelativePath(input.to),
+      type: input.type,
+      reason: input.reason,
+      createdAt: input.createdAt,
+      spaceId,
+      conversationId: input.conversation?.id,
+      metadata: metadataEntries.length > 0 ? Object.fromEntries(metadataEntries) : undefined,
+    };
+    const relativePath = getRelationsManifestRelativePath();
+    await appendUtf8(path.join(space.providerRef.vaultPath, relativePath), `${JSON.stringify(record)}\n`);
+    return record;
+  }
+
   async syncSpaceOverviewForSpace(space: TSpace): Promise<void> {
     if (!isSpaceVaultProviderRef(space.providerRef)) {
       return;
@@ -2486,6 +3408,207 @@ export class SpaceVaultContextSyncService {
     return {
       relativePath,
       title: getSessionWorkingContextTitle(sanitizeSessionTitle(input.conversation.name, input.conversation.id)),
+    };
+  }
+
+  async writeSessionArchive(input: SessionArchiveWriteInput): Promise<SessionArchiveArtifact | undefined> {
+    const target = await this.resolveConversationTarget(input.conversation);
+    if (!target) {
+      return undefined;
+    }
+
+    await this.ensureConversationContext({ conversation: input.conversation });
+    const overviewRelativePath = getSessionArchiveOverviewRelativePath(
+      input.conversation.id,
+      input.archiveId,
+      target.project?.folderName
+    );
+    const extractionRelativePath = getSessionArchiveExtractionRelativePath(
+      input.conversation.id,
+      input.archiveId,
+      target.project?.folderName
+    );
+    const statusRelativePath = getSessionArchiveStatusRelativePath(
+      input.conversation.id,
+      input.archiveId,
+      target.project?.folderName
+    );
+    const sessionTitle = sanitizeSessionTitle(input.conversation.name, input.conversation.id);
+    const title = input.title || getSessionArchiveTitle(sessionTitle, input.archiveId);
+    const sessionTimelineRelativePath =
+      input.sessionTimelineRelativePath ??
+      getSessionTimelineRelativePath(input.conversation.id, target.project?.folderName);
+    const sessionTimelineTitle = input.sessionTimelineTitle ?? getSessionTimelineTitle(sessionTitle);
+    const provenance = {
+      sourceProfileKey: input.sourceProfileKey,
+      compactionJobId: input.compactionJobId,
+      lifecycleSummary: input.lifecycleSummary,
+      artifactTargets: input.artifactTargets,
+      sessionTimelineRelativePath,
+      sessionTimelineTitle,
+      workingContextRelativePath: input.workingContextRelativePath,
+      workingContextTitle: input.workingContextTitle,
+      checkpointRelativePath: input.checkpointRelativePath,
+      checkpointTitle: input.checkpointTitle,
+    };
+    const overviewDocument = buildSessionArchiveOverviewDocument({
+      conversation: input.conversation,
+      project: target.project,
+      space: target.space,
+      archiveId: input.archiveId,
+      title,
+      updatedAt: input.timestamp,
+      summary: input.summary,
+      currentTask: input.currentTask,
+      stableStrategies: input.stableStrategies,
+      failureModes: input.failureModes,
+      pendingConstraints: input.pendingConstraints,
+      signalKinds: input.signalKinds,
+      pressure: input.pressure,
+      promotedCount: input.promotedCount,
+      pendingReviewCount: input.pendingReviewCount,
+      extractionRelativePath,
+      statusRelativePath,
+      ...provenance,
+    });
+    const extractionDocument = buildSessionArchiveExtractionDocument({
+      conversation: input.conversation,
+      project: target.project,
+      archiveId: input.archiveId,
+      title,
+      updatedAt: input.timestamp,
+      summary: input.summary,
+      detail: input.detail,
+      currentTask: input.currentTask,
+      stableStrategies: input.stableStrategies,
+      failureModes: input.failureModes,
+      pendingConstraints: input.pendingConstraints,
+      signalKinds: input.signalKinds,
+      ...provenance,
+    });
+    const statusDocument = JSON.stringify(
+      {
+        contextgoType: 'session-archive-status',
+        archiveId: input.archiveId,
+        conversationId: input.conversation.id,
+        projectSlug: target.project?.slug,
+        updatedAt: input.timestamp,
+        state: 'materialized',
+        pressure: input.pressure,
+        promotedCount: input.promotedCount,
+        pendingReviewCount: input.pendingReviewCount,
+        signalKinds: input.signalKinds,
+        sourceProfileKey: input.sourceProfileKey,
+        compactionJobId: input.compactionJobId,
+        artifacts: {
+          overview: overviewRelativePath,
+          extraction: extractionRelativePath,
+          status: statusRelativePath,
+          workingContext: input.workingContextRelativePath,
+          checkpoint: input.checkpointRelativePath,
+          timeline: sessionTimelineRelativePath,
+        },
+      },
+      null,
+      2
+    );
+
+    await ensureFile(path.join(target.vaultPath, overviewRelativePath), overviewDocument);
+    await ensureFile(path.join(target.vaultPath, extractionRelativePath), extractionDocument);
+    await ensureFile(path.join(target.vaultPath, statusRelativePath), `${statusDocument}\n`);
+    await Promise.all(
+      [
+        input.stableStrategies.length > 0
+          ? this.writeSchemaMemory({
+              conversation: input.conversation,
+              kind: 'Workflows',
+              title: `${sessionTitle} Stable Strategies`,
+              summary: input.currentTask ?? input.summary,
+              bullets: input.stableStrategies,
+              sourceRelativePath: overviewRelativePath,
+              sourceTitle: title,
+              reason: 'stable strategies promoted from session archive compaction',
+              createdAt: input.timestamp,
+              metadata: { archiveId: input.archiveId, compactionJobId: input.compactionJobId },
+            })
+          : undefined,
+        input.failureModes.length > 0
+          ? this.writeSchemaMemory({
+              conversation: input.conversation,
+              kind: 'Patterns',
+              title: `${sessionTitle} Failure Modes`,
+              summary: 'Recurring failure patterns detected during session compaction.',
+              bullets: input.failureModes,
+              sourceRelativePath: overviewRelativePath,
+              sourceTitle: title,
+              reason: 'failure patterns promoted from session archive compaction',
+              createdAt: input.timestamp,
+              metadata: { archiveId: input.archiveId, compactionJobId: input.compactionJobId },
+            })
+          : undefined,
+        input.pendingConstraints.length > 0
+          ? this.writeSchemaMemory({
+              conversation: input.conversation,
+              kind: 'Preferences',
+              title: `${sessionTitle} Pending Constraints`,
+              summary: 'Pending constraints and guardrails that should shape future context assembly.',
+              bullets: input.pendingConstraints,
+              sourceRelativePath: overviewRelativePath,
+              sourceTitle: title,
+              reason: 'pending constraints promoted from session archive compaction',
+              createdAt: input.timestamp,
+              metadata: { archiveId: input.archiveId, compactionJobId: input.compactionJobId },
+            })
+          : undefined,
+        input.workingContextRelativePath
+          ? this.appendVaultRelation({
+              conversation: input.conversation,
+              from: overviewRelativePath,
+              to: input.workingContextRelativePath,
+              type: 'summarizes',
+              reason: 'session archive overview summarizes the latest mountable working context',
+              createdAt: input.timestamp,
+              metadata: { archiveId: input.archiveId, compactionJobId: input.compactionJobId },
+            })
+          : undefined,
+        input.checkpointRelativePath
+          ? this.appendVaultRelation({
+              conversation: input.conversation,
+              from: overviewRelativePath,
+              to: input.checkpointRelativePath,
+              type: 'derived_from',
+              reason: 'session archive is materialized from the compaction checkpoint',
+              createdAt: input.timestamp,
+              metadata: { archiveId: input.archiveId, compactionJobId: input.compactionJobId },
+            })
+          : undefined,
+        this.appendVaultRelation({
+          conversation: input.conversation,
+          from: extractionRelativePath,
+          to: overviewRelativePath,
+          type: 'derived_from',
+          reason: 'archive extraction is the detailed payload behind the archive overview',
+          createdAt: input.timestamp,
+          metadata: { archiveId: input.archiveId, compactionJobId: input.compactionJobId },
+        }),
+        this.appendVaultRelation({
+          conversation: input.conversation,
+          from: overviewRelativePath,
+          to: sessionTimelineRelativePath,
+          type: 'mounted_into',
+          reason: 'session archive is referenced by the session timeline for handoff replay',
+          createdAt: input.timestamp,
+          metadata: { archiveId: input.archiveId, compactionJobId: input.compactionJobId },
+        }),
+      ].filter((promise): promise is NonNullable<typeof promise> => Boolean(promise))
+    );
+
+    return {
+      title,
+      overviewRelativePath,
+      extractionRelativePath,
+      statusRelativePath,
+      summary: input.summary,
     };
   }
 
@@ -3157,6 +4280,34 @@ export class SpaceVaultContextSyncService {
     const updatedAt = nowIso();
     const homeContent = buildHomeDocument(space, projects, sessions, updatedAt);
     await ensureFile(path.join(vaultPath, 'Home.md'), homeContent);
+    await ensureFile(
+      path.join(vaultPath, SPACE_CONSOLE_RELATIVE_PATH),
+      buildSpaceConsoleDocument(space, projects, sessions, updatedAt)
+    );
+    await Promise.all([
+      ensureFile(path.join(vaultPath, getActiveAgentsRelativePath()), buildActiveAgentsDocument(space, updatedAt)),
+      ensureFile(path.join(vaultPath, getDecisionInboxRelativePath()), buildDecisionInboxDocument(space, updatedAt)),
+      ensureFile(
+        path.join(vaultPath, getArtifactLedgerRelativePath()),
+        buildArtifactLedgerDocument(space, projects, sessions, updatedAt)
+      ),
+      ensureFile(
+        path.join(vaultPath, getContextFlowWorkbenchRelativePath()),
+        buildContextFlowWorkbenchDocument(space, projects, sessions, updatedAt)
+      ),
+      ensureFile(
+        path.join(vaultPath, getAttentionQueueRelativePath()),
+        buildAttentionQueueDocument(space, sessions, updatedAt)
+      ),
+      ensureFile(
+        path.join(vaultPath, getSignalMatrixRelativePath()),
+        buildSignalMatrixDocument(space, projects, sessions, updatedAt)
+      ),
+      ensureFile(
+        path.join(vaultPath, getHandoffBusRelativePath()),
+        buildHandoffBusDocument(space, sessions, updatedAt)
+      ),
+    ]);
 
     const canvas = buildSpaceCanvas(projects, sessions);
     await ensureFile(path.join(vaultPath, DEFAULT_SPACE_CANVAS_PATH), JSON.stringify(canvas, null, 2) + '\n');

@@ -27,7 +27,11 @@ type SupportedContextService = Pick<
 
 type SupportedVaultSyncService = Pick<
   SpaceVaultContextSyncService,
-  'appendContextCheckpoint' | 'appendSessionCheckpoint' | 'appendSessionTimelineEvent' | 'writeSessionWorkingContext'
+  | 'appendContextCheckpoint'
+  | 'appendSessionCheckpoint'
+  | 'appendSessionTimelineEvent'
+  | 'writeSessionArchive'
+  | 'writeSessionWorkingContext'
 >;
 
 const SESSIONS_DIR = 'Sessions';
@@ -44,6 +48,10 @@ function sanitizeSessionPathSegment(value: string): string {
 
 function getSessionArtifactRelativePath(threadId: string): string {
   return path.posix.join(SESSIONS_DIR, `${sanitizeSessionPathSegment(threadId)}.md`);
+}
+
+function getSessionArchiveId(timestamp: string): string {
+  return `${timestamp.replace(/[:]/g, '-').replace(/\.\d{3}Z$/, 'Z')}-session-compaction`;
 }
 
 function estimateTokenCount(value: string | undefined): number {
@@ -422,6 +430,33 @@ export class SessionCompactionJobHandler {
             workingContextTitle: workingContextArtifact?.title,
           })
         : undefined;
+    const sessionArchiveArtifact =
+      conversationResult.success && conversationResult.data
+        ? await this.vaultSyncService.writeSessionArchive({
+            conversation: conversationResult.data,
+            archiveId: getSessionArchiveId(now),
+            timestamp: now,
+            title: 'Session archive',
+            summary,
+            detail,
+            currentTask: structured.currentTask,
+            stableStrategies: structured.stableStrategies,
+            failureModes: structured.failureModes,
+            pendingConstraints: structured.pendingConstraints,
+            signalKinds,
+            pressure: decision.pressure,
+            promotedCount: promotedSummaries.length,
+            pendingReviewCount: pendingSummaries.length,
+            sourceProfileKey: profile.key,
+            compactionJobId: job.id,
+            lifecycleSummary,
+            artifactTargets,
+            workingContextRelativePath: workingContextArtifact?.relativePath,
+            workingContextTitle: workingContextArtifact?.title,
+            checkpointRelativePath: sessionCheckpointArtifact?.relativePath,
+            checkpointTitle: sessionCheckpointArtifact?.title,
+          })
+        : undefined;
     if (conversationResult.success && conversationResult.data) {
       await this.vaultSyncService.appendContextCheckpoint({
         conversation: conversationResult.data,
@@ -437,6 +472,9 @@ export class SessionCompactionJobHandler {
             : undefined,
           sessionCheckpointArtifact?.relativePath
             ? `Checkpoint: \`${sessionCheckpointArtifact.relativePath}\``
+            : undefined,
+          sessionArchiveArtifact?.overviewRelativePath
+            ? `Archive: \`${sessionArchiveArtifact.overviewRelativePath}\``
             : undefined,
           `Promoted takeaways: ${promotedSummaries.length}`,
           `Pending review: ${pendingSummaries.length}`,
@@ -455,6 +493,9 @@ export class SessionCompactionJobHandler {
           `Signals ${signalKinds.length}`,
           `Promoted ${promotedSummaries.length}`,
           `Pending review ${pendingSummaries.length}`,
+          sessionArchiveArtifact?.overviewRelativePath
+            ? `Archive ${sessionArchiveArtifact.overviewRelativePath}`
+            : undefined,
         ]
           .filter((value): value is string => Boolean(value))
           .join(' · '),
@@ -471,6 +512,10 @@ export class SessionCompactionJobHandler {
       relativePath: sessionCheckpointArtifact?.relativePath ?? sessionRelativePath,
       workingContextTitle: workingContextArtifact?.title,
       workingContextRelativePath: workingContextArtifact?.relativePath,
+      archiveTitle: sessionArchiveArtifact?.title,
+      archiveOverviewRelativePath: sessionArchiveArtifact?.overviewRelativePath,
+      archiveExtractionRelativePath: sessionArchiveArtifact?.extractionRelativePath,
+      archiveStatusRelativePath: sessionArchiveArtifact?.statusRelativePath,
       currentTask: structured.currentTask,
       stableStrategies: structured.stableStrategies,
       failureModes: structured.failureModes,

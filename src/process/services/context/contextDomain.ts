@@ -132,6 +132,10 @@ export type SessionCompactionArtifact = {
   relativePath?: string;
   workingContextTitle?: string;
   workingContextRelativePath?: string;
+  archiveTitle?: string;
+  archiveOverviewRelativePath?: string;
+  archiveExtractionRelativePath?: string;
+  archiveStatusRelativePath?: string;
   currentTask?: string;
   stableStrategies: readonly string[];
   failureModes: readonly string[];
