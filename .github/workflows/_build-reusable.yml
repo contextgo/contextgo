@@ -164,7 +164,25 @@ jobs:
           Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force -Path $extractRoot | Out-Null
 
-          $downloadSucceeded = $false
+          function Install-BunWithNpm {
+            Write-Warning 'Falling back to npm install -g bun for Windows self-hosted runner.'
+            $npmPrefix = Join-Path $env:RUNNER_TEMP 'bun-npm-prefix'
+            Remove-Item -LiteralPath $npmPrefix -Recurse -Force -ErrorAction SilentlyContinue
+            New-Item -ItemType Directory -Force -Path $npmPrefix | Out-Null
+            npm.cmd install --global --prefix $npmPrefix bun
+
+            $candidate = Join-Path $npmPrefix 'bun.exe'
+            if (-not (Test-Path $candidate)) {
+              $candidate = Join-Path $npmPrefix 'node_modules\bun\bin\bun.exe'
+            }
+            if (-not (Test-Path $candidate)) {
+              Write-Error "bun.exe not found after npm fallback at $candidate"
+            }
+
+            return Get-Item -LiteralPath $candidate
+          }
+
+          $bunExeItem = $null
           try {
             curl.exe --fail --show-error --silent --location --http1.1 `
               --retry 8 `
@@ -174,33 +192,34 @@ jobs:
               --max-time 900 `
               $archiveUrl `
               -o $archivePath
-            $downloadSucceeded = Test-Path $archivePath
+
+            $archiveItem = Get-Item -LiteralPath $archivePath -ErrorAction Stop
+            if ($archiveItem.Length -lt 1048576) {
+              throw "Downloaded bun archive is unexpectedly small: $($archiveItem.Length) bytes"
+            }
+
+            try {
+              tar -xf $archivePath -C $extractRoot
+              $bunDir = Get-ChildItem -LiteralPath $extractRoot -Directory | Select-Object -First 1
+              if (-not $bunDir) {
+                throw 'Failed to extract bun bootstrap archive.'
+              }
+              $candidate = Join-Path $bunDir.FullName 'bun.exe'
+              if (-not (Test-Path $candidate)) {
+                throw "bun.exe not found in $($bunDir.FullName)"
+              }
+              $bunExeItem = Get-Item -LiteralPath $candidate
+            } catch {
+              Write-Warning "Direct bun archive extraction failed: $($_.Exception.Message)"
+              $bunExeItem = Install-BunWithNpm
+            }
           } catch {
             Write-Warning "Direct bun archive download failed: $($_.Exception.Message)"
+            $bunExeItem = Install-BunWithNpm
           }
 
-          if ($downloadSucceeded) {
-            tar -xf $archivePath -C $extractRoot
-            $bunDir = Get-ChildItem -LiteralPath $extractRoot -Directory | Select-Object -First 1
-            if (-not $bunDir) {
-              Write-Error 'Failed to extract bun bootstrap archive.'
-            }
-            $bunExe = Join-Path $bunDir.FullName 'bun.exe'
-          } else {
-            Write-Warning 'Falling back to npm install -g bun for Windows self-hosted runner.'
-            $npmPrefix = Join-Path $env:RUNNER_TEMP 'bun-npm-prefix'
-            New-Item -ItemType Directory -Force -Path $npmPrefix | Out-Null
-            npm.cmd install --global --prefix $npmPrefix bun
-            $bunExe = Join-Path $npmPrefix 'bun.exe'
-            if (-not (Test-Path $bunExe)) {
-              $bunExe = Join-Path $npmPrefix 'node_modules\bun\bin\bun.exe'
-            }
-            $bunDir = Get-Item -LiteralPath (Split-Path -Parent $bunExe)
-          }
-
-          if (-not (Test-Path $bunExe)) {
-            Write-Error "bun.exe not found after bootstrap at $bunExe"
-          }
+          $bunExe = $bunExeItem.FullName
+          $bunDir = $bunExeItem.Directory
 
           $bunxCmd = Join-Path $bunDir.FullName 'bunx.cmd'
           @'
