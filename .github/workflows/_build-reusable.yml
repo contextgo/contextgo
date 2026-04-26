@@ -308,14 +308,24 @@ jobs:
           Write-Warning 'No preinstalled Python 3.11 found on Windows self-hosted runner.'
 
       - name: Prepare Python tool cache
-        if: runner.environment != 'self-hosted' || steps.preinstalled_python_windows.outputs.available != 'true'
+        if: >-
+          runner.environment != 'self-hosted' ||
+          (
+            runner.os == 'Windows' &&
+            steps.preinstalled_python_windows.outputs.available != 'true'
+          )
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "${RUNNER_TEMP}/hostedtoolcache"
 
       - name: Setup Python
-        if: runner.environment != 'self-hosted' || steps.preinstalled_python_windows.outputs.available != 'true'
+        if: >-
+          runner.environment != 'self-hosted' ||
+          (
+            runner.os == 'Windows' &&
+            steps.preinstalled_python_windows.outputs.available != 'true'
+          )
         uses: actions/setup-python@v5
         with:
           # Hosted runners can download Python; self-hosted Windows does so only as fallback.
