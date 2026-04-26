@@ -986,6 +986,7 @@ jobs:
         uses: actions/upload-artifact@v6
         if: >-
           success() &&
+          !startsWith(matrix.platform, 'macos') &&
           (!startsWith(matrix.platform, 'windows') || steps.windows-build.outputs.result == 'success')
         with:
           name: ${{ inputs.append_commit_hash && format('{0}-{1}', matrix.artifact-name, steps.commit.outputs.short) || matrix.artifact-name }}
@@ -1002,6 +1003,75 @@ jobs:
             out/*.yml
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Upload macOS build artifacts (attempt 1)
+        id: upload_macos_artifacts_1
+        uses: actions/upload-artifact@v6
+        if: success() && startsWith(matrix.platform, 'macos')
+        continue-on-error: true
+        with:
+          name: ${{ inputs.append_commit_hash && format('{0}-{1}', matrix.artifact-name, steps.commit.outputs.short) || matrix.artifact-name }}
+          compression-level: 0
+          path: |
+            out/*.dmg
+            out/ContextGo-*-mac-*.zip
+            out/ContextGo-*-macos-*.zip
+            out/*.yml
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload macOS build artifacts (attempt 2)
+        id: upload_macos_artifacts_2
+        uses: actions/upload-artifact@v6
+        if: >-
+          success() &&
+          startsWith(matrix.platform, 'macos') &&
+          steps.upload_macos_artifacts_1.outcome != 'success'
+        continue-on-error: true
+        with:
+          name: ${{ inputs.append_commit_hash && format('{0}-{1}', matrix.artifact-name, steps.commit.outputs.short) || matrix.artifact-name }}
+          overwrite: true
+          compression-level: 0
+          path: |
+            out/*.dmg
+            out/ContextGo-*-mac-*.zip
+            out/ContextGo-*-macos-*.zip
+            out/*.yml
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload macOS build artifacts (attempt 3)
+        id: upload_macos_artifacts_3
+        uses: actions/upload-artifact@v6
+        if: >-
+          success() &&
+          startsWith(matrix.platform, 'macos') &&
+          steps.upload_macos_artifacts_1.outcome != 'success' &&
+          steps.upload_macos_artifacts_2.outcome != 'success'
+        continue-on-error: true
+        with:
+          name: ${{ inputs.append_commit_hash && format('{0}-{1}', matrix.artifact-name, steps.commit.outputs.short) || matrix.artifact-name }}
+          overwrite: true
+          compression-level: 0
+          path: |
+            out/*.dmg
+            out/ContextGo-*-mac-*.zip
+            out/ContextGo-*-macos-*.zip
+            out/*.yml
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Verify macOS artifact upload
+        if: >-
+          success() &&
+          startsWith(matrix.platform, 'macos') &&
+          steps.upload_macos_artifacts_1.outcome != 'success' &&
+          steps.upload_macos_artifacts_2.outcome != 'success' &&
+          steps.upload_macos_artifacts_3.outcome != 'success'
+        shell: bash
+        run: |
+          echo "::error::macOS artifact upload failed after 3 attempts."
+          exit 1
 
       - name: Prune self-hosted runner caches (non-Windows)
         if: runner.environment == 'self-hosted' && always() && !startsWith(matrix.platform, 'windows')
