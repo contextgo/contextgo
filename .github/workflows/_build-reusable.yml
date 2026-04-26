@@ -247,18 +247,78 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Detect preinstalled Python (Windows self-hosted)
+        id: preinstalled_python_windows
+        if: runner.environment == 'self-hosted' && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          function Use-PythonCommand {
+            param(
+              [string] $Command,
+              [string[]] $Arguments = @()
+            )
+
+            try {
+              $versionOutput = & $Command @Arguments --version 2>&1
+              if ($LASTEXITCODE -ne 0) {
+                return $false
+              }
+
+              if ($versionOutput -notmatch 'Python 3\.11\.') {
+                return $false
+              }
+
+              if ($Arguments.Count -eq 0) {
+                $resolved = (Get-Command $Command -ErrorAction Stop).Source
+                Add-Content -Path $env:GITHUB_PATH -Value (Split-Path -Parent $resolved)
+                "PYTHON=$resolved" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+                "path=$resolved" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+              } else {
+                $wrapperDir = Join-Path $env:RUNNER_TEMP 'python-wrapper'
+                New-Item -ItemType Directory -Force -Path $wrapperDir | Out-Null
+                $wrapperPath = Join-Path $wrapperDir 'python.cmd'
+                '@echo off' | Set-Content -Path $wrapperPath -Encoding ascii
+                ('"{0}" {1} %*' -f $Command, ($Arguments -join ' ')) | Add-Content -Path $wrapperPath -Encoding ascii
+                Add-Content -Path $env:GITHUB_PATH -Value $wrapperDir
+                "PYTHON=$wrapperPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+                "path=$wrapperPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+              }
+
+              "available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+              Write-Host "Using preinstalled Python: $versionOutput"
+              return $true
+            } catch {
+              return $false
+            }
+          }
+
+          if (Use-PythonCommand -Command 'python') {
+            exit 0
+          }
+          if (Use-PythonCommand -Command 'py' -Arguments @('-3.11')) {
+            exit 0
+          }
+          if (Use-PythonCommand -Command 'py' -Arguments @('-3')) {
+            exit 0
+          }
+
+          "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Warning 'No preinstalled Python 3.11 found on Windows self-hosted runner.'
+
       - name: Prepare Python tool cache
-        if: runner.environment != 'self-hosted' || runner.os == 'Windows'
+        if: runner.environment != 'self-hosted' || steps.preinstalled_python_windows.outputs.available != 'true'
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p "${RUNNER_TEMP}/hostedtoolcache"
 
       - name: Setup Python
-        if: runner.environment != 'self-hosted' || runner.os == 'Windows'
+        if: runner.environment != 'self-hosted' || steps.preinstalled_python_windows.outputs.available != 'true'
         uses: actions/setup-python@v5
         with:
-          # Hosted runners and Windows self-hosted runners can use setup-python.
+          # Hosted runners can download Python; self-hosted Windows does so only as fallback.
           python-version: '3.11'
         env:
           AGENT_TOOLSDIRECTORY: ${{ runner.temp }}/hostedtoolcache
