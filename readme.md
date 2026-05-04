@@ -90,17 +90,17 @@ Context Engine 是 ContextGo 的上下文稳定器。
 - 支持跨 session、跨 project 的逻辑上下文空间 `context space`
 - 在你不工作时继续整理和压缩上下文，反哺后续 Agent 工作
 
-### 4. Context Connector
+### 4. Context Connector 与 IM Bot Channel
 
-真正聪明的 Agent，不只是“会回答”，而是**能接入你的现有工作流，也能回到你的现有工作流。**
+真正聪明的 Agent，不只是“会回答”，而是**能接入你的现有工作上下文，也能把结果发布回你实际使用的协作渠道。**
 
-Context Connector 就是这层打通能力：
+这里有两个需要分清的产品边界：
 
-- 接入知识来源、文档、浏览器、本地文件和外部产品
-- 连接 Feishu、Telegram、Slack、微信、钉钉等工作渠道
-- 让 Agent 既能消费上下文，也能把结果重新发布回原有流程
+- `Context Connector` 负责把知识来源、文档、浏览器、本地文件和外部产品上下文带进 ContextGo
+- `IM Bot Channel` 负责把 Agent 发布到 Telegram、Slack、Discord、Lark、钉钉、微信等消息渠道
+- Feishu/Lark 需要按边界拆开理解：`Context Connector > Feishu` 是上下文访问能力，`IM Channels > Lark` 是机器人发布通道
 
-它解决的是“上下文打通”和“软件能力打通”，让你的工作台尽量收敛到 ContextGo，而不是在多个产品之间来回复制粘贴。
+这让 Agent 既能消费真实上下文，也能把结果回流到原有流程，同时避免把“上下文连接器”和“消息发布通道”混成同一个概念。
 
 ### 5. Host / Client
 

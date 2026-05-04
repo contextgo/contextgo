@@ -70,27 +70,12 @@
         {
           "kind": "repo-relative",
           "root": "src/process/resources/skills/office-analyst-pack"
-        },
-        {
-          "kind": "repo-relative",
-          "root": "removed-office-skill"
-        },
-        {
-          "kind": "repo-relative",
-          "root": "removed-office-skill"
-        },
-        {
-          "kind": "repo-relative",
-          "root": "removed-office-skill"
         }
       ],
       "installSurface": ".contextgo/skills",
       "runtimeProjection": "native-skills-only",
       "bootstrapStrategy": "enabled-skills",
       "defaultEnabledSkillNames": [
-        "xlsx",
-        "docx",
-        "pdf",
         "office-document-operations",
         "office-duckdb-read-file",
         "office-duckdb-query",

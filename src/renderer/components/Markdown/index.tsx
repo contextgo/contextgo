@@ -73,7 +73,8 @@ const extractStandaloneLocalImagePath = (line: string): { imagePath: string; suf
     return { imagePath: value, suffix: '' };
   }
 
-  const leadingPathMatch = /^(.+?\.(?:avif|bmp|gif|ico|jpe?g|png|svg|tiff?|webp)(?:[?#][^\s:：,，;；、]*)?)([\s:：,，;；、-].*)$/i.exec(value);
+  const leadingPathMatch =
+    /^(.+?\.(?:avif|bmp|gif|ico|jpe?g|png|svg|tiff?|webp)(?:[?#][^\s:：,，;；、]*)?)([\s:：,，;；、-].*)$/i.exec(value);
   const imagePath = leadingPathMatch?.[1]?.trim();
   if (!imagePath || /\s/.test(imagePath) || !hasLocalImagePathPrefix(imagePath)) {
     return null;

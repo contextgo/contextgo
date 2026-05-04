@@ -8,7 +8,7 @@
 ContextGo already has the technical foundations for:
 
 - multiple runtime backends (`gemini`, ACP-backed assistants, `codex`, `openclaw-gateway`)
-- channel connectors for IM ingress
+- IM bot channels for message ingress
 - durable conversations and task execution
 - assistant definitions, hooks, skills, and workspace-aware runtimes
 

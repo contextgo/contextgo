@@ -26,7 +26,7 @@ toward:
 ContextGo already has several strong foundations:
 
 - multiple runtime backends (`gemini`, ACP-routed agents, `codex`, `openclaw-gateway`)
-- channel connectors for Telegram, Feishu/Lark, DingTalk, WeChat, and future platforms
+- IM bot channels for Telegram, Feishu/Lark, DingTalk, WeChat, and future platforms
 - durable conversations and task execution
 - assistant definitions with hooks, skills, prompt context, and workspace-aware runtime behavior
 

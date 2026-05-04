@@ -90,17 +90,17 @@ It is responsible for:
 - supporting cross-session and cross-project logical spaces through `context space`
 - refining and compressing context while the user is away, then feeding it back into later work
 
-### 4. Context Connector
+### 4. Context Connector And IM Bot Channel
 
-An actually useful agent does not just answer well. It **connects into your existing workflow and can publish back into that workflow.**
+An actually useful agent does not just answer well. It **connects into your working context and can publish results back into the collaboration channels you already use.**
 
-Context Connector is the layer that makes that possible:
+These are two separate product boundaries:
 
-- it connects knowledge sources, documents, browsers, local files, and external products
-- it bridges work channels such as Feishu, Telegram, Slack, WeChat, and DingTalk
-- it lets the agent both consume context and return results to the original flow
+- `Context Connector` brings knowledge sources, documents, browser context, local files, and external product context into ContextGo
+- `IM Bot Channel` publishes agents into message transports such as Telegram, Slack, Discord, Lark, DingTalk, and WeChat
+- Feishu/Lark should be read as two boundaries: `Context Connector > Feishu` for context access, and `IM Channels > Lark` for bot publication
 
-This is how ContextGo reduces the copy-paste gap between AI and the rest of the software stack.
+This lets agents consume real context and return results to existing workflows without mixing context connectors and message publication channels into one concept.
 
 ### 5. Host / Client
 

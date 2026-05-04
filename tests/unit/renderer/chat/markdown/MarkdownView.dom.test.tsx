@@ -75,18 +75,13 @@ describe('MarkdownView', () => {
   it('renders leading workspace-relative image paths before descriptions as images', () => {
     render(
       <MarkdownView>
-        {
-          'outputs/visuals/ai-native-workbench-launch/cg-aiw-xhs-cover-001.png：小红书中文封面，1080x1440。'
-        }
+        {'outputs/visuals/ai-native-workbench-launch/cg-aiw-xhs-cover-001.png：小红书中文封面，1080x1440。'}
       </MarkdownView>
     );
 
     const image = screen.getByAltText('cg-aiw-xhs-cover-001.png');
     expect(image).toBeInTheDocument();
-    expect(image).toHaveAttribute(
-      'data-src',
-      'outputs/visuals/ai-native-workbench-launch/cg-aiw-xhs-cover-001.png'
-    );
+    expect(image).toHaveAttribute('data-src', 'outputs/visuals/ai-native-workbench-launch/cg-aiw-xhs-cover-001.png');
     expect(screen.getByText('：小红书中文封面，1080x1440。')).toBeInTheDocument();
   });
 
