@@ -311,6 +311,10 @@ const createWindow = (): void => {
     });
   };
 
+  const logAppLifecycle = (scope: string, payload: Record<string, unknown> = {}) => {
+    console.log(`[LifecycleDiag][App] ${scope}`, payload);
+  };
+
   mainWindow.on('show', () => {
     logMainWindowLifecycle('show');
   });
@@ -334,6 +338,12 @@ const createWindow = (): void => {
   });
   mainWindow.on('unmaximize', () => {
     logMainWindowLifecycle('unmaximize');
+  });
+  mainWindow.on('close', () => {
+    logMainWindowLifecycle('close', {
+      closeToTrayEnabled: getCloseToTrayEnabled(),
+      isQuitting: getIsQuitting(),
+    });
   });
 
   mainWindow.webContents.on('did-start-loading', () => {
@@ -571,6 +581,37 @@ const createWindow = (): void => {
     console.log('[ContextGo] Main window closed');
   });
 
+  app.on('activate', () => {
+    logAppLifecycle('activate', {
+      closeToTrayEnabled: getCloseToTrayEnabled(),
+      isQuitting: getIsQuitting(),
+    });
+  });
+  app.on('browser-window-focus', () => {
+    logAppLifecycle('browser-window-focus', {
+      closeToTrayEnabled: getCloseToTrayEnabled(),
+      isQuitting: getIsQuitting(),
+    });
+  });
+  app.on('browser-window-blur', () => {
+    logAppLifecycle('browser-window-blur', {
+      closeToTrayEnabled: getCloseToTrayEnabled(),
+      isQuitting: getIsQuitting(),
+    });
+  });
+  app.on('before-quit', () => {
+    logAppLifecycle('before-quit', {
+      closeToTrayEnabled: getCloseToTrayEnabled(),
+      isQuitting: getIsQuitting(),
+    });
+  });
+  app.on('will-quit', () => {
+    logAppLifecycle('will-quit', {
+      closeToTrayEnabled: getCloseToTrayEnabled(),
+      isQuitting: getIsQuitting(),
+    });
+  });
+
   // DevTools is no longer auto-opened at startup.
   // Use the DevTools toggle in Settings > System (dev mode only) to open it.
 
@@ -587,6 +628,10 @@ const createWindow = (): void => {
   // Close interception: hide window instead of closing when "close to tray" is enabled
   mainWindow.on('close', (event) => {
     if (getCloseToTrayEnabled() && !getIsQuitting()) {
+      console.log('[LifecycleDiag][MainWindow] close intercepted to tray', {
+        closeToTrayEnabled: getCloseToTrayEnabled(),
+        isQuitting: getIsQuitting(),
+      });
       event.preventDefault();
       mainWindow.hide();
     }

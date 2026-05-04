@@ -199,7 +199,7 @@ describe('Layout mobile sider gestures', () => {
 
     vi.doMock('@/renderer/hooks/context/RemoteAccessContext', () => ({
       createDefaultRemoteAccessTarget: () => ({
-        mode: 'remote-device',
+        mode: 'remote-host-shell',
         currentUrl: 'https://remote.contextgo.io/device/device-1',
         entryUrl: 'https://remote.contextgo.io/remote/devices',
       }),
@@ -220,8 +220,122 @@ describe('Layout mobile sider gestures', () => {
     expect(container.querySelector('.layout-sider')).toBeNull();
     expect(screen.queryByTestId('desktop-sider')).not.toBeInTheDocument();
     expect(screen.getByTestId('titlebar')).toBeInTheDocument();
+    expect(container.querySelector('.layout-content')?.className).toContain('layout-content--desktop-remote-device');
     expect(container.querySelector('.desktop-remote-session-bar')).toBeNull();
     expect(dispatchEventSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps a hidden non-string desktop sider mounted so remote-session switch events still have a host', async () => {
+    vi.resetModules();
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    });
+
+    vi.doMock('@renderer/utils/platform', () => ({
+      isElectronDesktop: () => true,
+      isMacOS: () => false,
+      isMobileShellWebView: () => false,
+    }));
+
+    vi.doMock('@/renderer/components/layout/Titlebar', () => ({
+      default: () => <div data-testid='titlebar'>Desktop Titlebar</div>,
+    }));
+
+    vi.doMock('@/renderer/hooks/context/RemoteAccessContext', () => ({
+      createDefaultRemoteAccessTarget: () => ({
+        mode: 'remote-host-shell',
+        currentUrl: 'https://remote.contextgo.io/device/device-1',
+        entryUrl: 'https://remote.contextgo.io/remote/devices',
+      }),
+      RemoteAccessContext: {
+        Provider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+      },
+    }));
+
+    const { default: Layout } = await import('@/renderer/components/layout/Layout');
+    const switcherSpy = vi.fn();
+    const HiddenAwareSider = () => {
+      React.useEffect(() => {
+        window.addEventListener('official-remote:switcher', switcherSpy as EventListener);
+        return () => {
+          window.removeEventListener('official-remote:switcher', switcherSpy as EventListener);
+        };
+      }, []);
+
+      return <div data-testid='desktop-sider-manager'>Sider Manager</div>;
+    };
+
+    const { container } = render(
+      <MemoryRouter initialEntries={['/conversation/test-conversation']}>
+        <Layout sider={<HiddenAwareSider />} />
+      </MemoryRouter>
+    );
+
+    expect(container.querySelector('.layout-sider')).toBeNull();
+    expect(screen.getByTestId('desktop-sider-manager')).toBeInTheDocument();
+
+    window.dispatchEvent(new CustomEvent('official-remote:switcher'));
+
+    expect(switcherSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the desktop sider available for hosted /device/:id runtime pages', async () => {
+    vi.resetModules();
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      writable: true,
+      value: 1280,
+    });
+    Object.defineProperty(navigator, 'maxTouchPoints', {
+      configurable: true,
+      value: 0,
+    });
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const originalUrl = window.location.href;
+    window.history.replaceState({}, '', '/device/device-1#/conversation/test-conversation');
+
+    vi.doMock('@renderer/utils/platform', () => ({
+      isElectronDesktop: () => true,
+      isMacOS: () => false,
+      isMobileShellWebView: () => false,
+    }));
+    vi.doMock('@/renderer/components/layout/Titlebar', () => ({
+      default: () => <div data-testid='titlebar'>Desktop Titlebar</div>,
+    }));
+    vi.doMock('@/renderer/hooks/context/RemoteAccessContext', async () => {
+      return await vi.importActual('@/renderer/hooks/context/RemoteAccessContext');
+    });
+
+    try {
+      const { default: Layout } = await import('@/renderer/components/layout/Layout');
+
+      const { container } = render(
+        <MemoryRouter initialEntries={['/conversation/test-conversation']}>
+          <Layout sider={<div data-testid='desktop-sider'>Sider Content</div>} />
+        </MemoryRouter>
+      );
+
+      expect(container.querySelector('.layout-sider')).toBeTruthy();
+      expect(screen.getByTestId('desktop-sider')).toBeInTheDocument();
+      expect(screen.getByTestId('titlebar')).toBeInTheDocument();
+      expect(container.querySelector('.layout-content')?.className).not.toContain(
+        'layout-content--desktop-remote-device'
+      );
+    } finally {
+      window.history.replaceState({}, '', originalUrl);
+    }
   });
 
   it('starts with the desktop sider collapsed by default on non-settings routes', async () => {

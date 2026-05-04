@@ -96,9 +96,9 @@ const Diff2Html = ({
   const fileTypeInfo = useMemo(() => getFileTypeInfo(fileName), [fileName]);
 
   const handlePreviewClick = useCallback(
-    (e: React.MouseEvent<HTMLElement>) => {
+    (e: Pick<Event, 'preventDefault' | 'stopPropagation'>) => {
       e.stopPropagation();
-      if (e.preventDefault) e.preventDefault();
+      e.preventDefault();
       const { contentType, editable, language } = fileTypeInfo;
       void launchPreview({
         relativePath,
@@ -140,10 +140,8 @@ const Diff2Html = ({
 
       const name = header.querySelector('.d2h-file-name') as HTMLDivElement;
       if (name && title) {
-        name.innerHTML = title;
+        name.textContent = title;
       }
-    } else {
-      console.warn('[Diff2Html] Header or operatorRef missing', { hasHeader: !!header, hasRef: !!operatorRef.current });
     }
   });
 
@@ -152,6 +150,7 @@ const Diff2Html = ({
       <div className='relative w-full max-w-full overflow-x-auto' style={{ WebkitOverflowScrolling: 'touch' }}>
         <div
           className={classNames(
+            'contextgo-diff-renderer',
             '![&_.line-num1]:hidden ![&_.line-num2]:w-30px [&_td:first-child]:w-40px ![&_td:nth-child(2)>div]:pl-45px min-w-0 max-w-full [&_div.d2f-file-wrapper]:rd-[0.3rem_0.3rem_0px_0px]  [&_div.d2h-file-header]:items-center [&_div.d2h-file-header]:bg-bg-3',
             {
               '[&_.d2h-file-diff]:hidden [&_.d2h-files-diff]:hidden': collapse,
@@ -175,7 +174,7 @@ const Diff2Html = ({
                 <Button
                   type='text'
                   size='mini'
-                  onClick={handlePreviewClick as any}
+                  onClick={(event) => handlePreviewClick(event)}
                   disabled={previewLoading}
                   icon={<PreviewOpen theme='outline' size='14' fill={iconColors.secondary} />}
                 >

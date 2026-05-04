@@ -188,6 +188,130 @@ const bridgeMocks = vi.hoisted(() => ({
         notes: [],
         runtime: {},
       },
+      xiaohongshu: {
+        connector: 'xiaohongshu',
+        kind: 'managed_runtime',
+        enabled: true,
+        summary: 'Xiaohongshu MCP service process is running; authorize an account to use user actions.',
+        runtime_dir: '/Users/bytedance/.contextgo/spaces/main/connectors/xiaohongshu',
+        config_path: '/Users/bytedance/.contextgo/spaces/main/connectors/xiaohongshu/config.json',
+        platform_access: 'Managed local `xiaohongshu-mcp` service dependency through REST and MCP Streamable HTTP',
+        runtime_boundary:
+          'The active space owns account registry, cookies, service metadata, logs, datasource/profile projection, and HTTP invocation state.',
+        native_surface: ['accounts', 'feeds', 'search', 'note detail', 'comments', 'publish', 'interactions'],
+        implemented_workflows: [
+          {
+            id: 'xiaohongshu-managed-service',
+            label: 'Managed service and account control plane',
+            surface: 'runtime',
+            status: 'ready',
+            native_objects: ['managed accounts', 'cookies', 'service process', 'REST API', 'MCP tools'],
+            entrypoints: ['cgo xiaohongshu service-status', 'cgo xiaohongshu login-browser'],
+            writes_store: false,
+            notes: ['The upstream service is an external process dependency.'],
+          },
+        ],
+        capabilities: {
+          version: 1,
+          extraction_mode: 'manual-curation',
+          discovery_commands: ['cgo xiaohongshu capabilities --json'],
+          notes: ['Capabilities are executed through the Space Connector managed Xiaohongshu MCP service.'],
+          groups: [
+            {
+              id: 'account-runtime',
+              label: 'Account and runtime',
+              summary: 'Manage the local service process, account registry, login state, and current user profile.',
+              native_objects: ['account registry', 'cookies', 'login QR code'],
+              discovery_commands: ['cgo xiaohongshu service-status --json'],
+              sources: [{ kind: 'manual-curation', ref: 'xiaohongshu-mcp REST and MCP tool surface' }],
+              actions: [
+                {
+                  id: 'login',
+                  label: 'Authorize account',
+                  summary: 'Check login state, display a QR code, or use the headed browser login flow.',
+                  entrypoints: ['cgo xiaohongshu login-status --json', 'cgo xiaohongshu login-browser'],
+                  auth_modes: ['user'],
+                  sources: [{ kind: 'manual-curation', ref: 'xiaohongshu-mcp REST and MCP tool surface' }],
+                },
+                {
+                  id: 'current-user',
+                  label: 'Read current user',
+                  summary: 'Fetch the profile for the currently authorized Xiaohongshu account.',
+                  entrypoints: ['cgo xiaohongshu me --json'],
+                  auth_modes: ['user'],
+                  sources: [{ kind: 'manual-curation', ref: 'xiaohongshu-mcp REST and MCP tool surface' }],
+                },
+              ],
+            },
+            {
+              id: 'content-discovery',
+              label: 'Content discovery',
+              summary: 'Read home feeds and search notes using Xiaohongshu native content surfaces.',
+              native_objects: ['home feed', 'search results', 'notes'],
+              discovery_commands: ['cgo xiaohongshu feeds-list --json', 'cgo xiaohongshu search <keyword> --json'],
+              sources: [{ kind: 'manual-curation', ref: 'xiaohongshu-mcp REST and MCP tool surface' }],
+              actions: [
+                {
+                  id: 'feeds-list',
+                  label: 'Read feed list',
+                  summary: 'Fetch the logged-in account feed list from the managed local service.',
+                  entrypoints: ['cgo xiaohongshu feeds-list --json'],
+                  auth_modes: ['user'],
+                  sources: [{ kind: 'manual-curation', ref: 'xiaohongshu-mcp REST and MCP tool surface' }],
+                },
+                {
+                  id: 'search',
+                  label: 'Search notes',
+                  summary: 'Search Xiaohongshu notes by keyword and optional filter JSON.',
+                  entrypoints: ['cgo xiaohongshu search <keyword> --json'],
+                  auth_modes: ['user'],
+                  sources: [{ kind: 'manual-curation', ref: 'xiaohongshu-mcp REST and MCP tool surface' }],
+                },
+              ],
+            },
+            {
+              id: 'publishing-interactions',
+              label: 'Publishing and interactions',
+              summary: 'Publish content and perform authenticated note interactions.',
+              native_objects: ['image posts', 'video posts', 'comments', 'likes', 'favorites'],
+              discovery_commands: ['cgo xiaohongshu publish --help', 'cgo xiaohongshu publish-video --help'],
+              sources: [{ kind: 'manual-curation', ref: 'xiaohongshu-mcp REST and MCP tool surface' }],
+              actions: [
+                {
+                  id: 'publish-image',
+                  label: 'Publish image note',
+                  summary: 'Publish an image/text note using local image paths.',
+                  entrypoints: ['cgo xiaohongshu publish --title <title> --content <text> --image <path>'],
+                  auth_modes: ['user'],
+                  sources: [{ kind: 'manual-curation', ref: 'xiaohongshu-mcp REST and MCP tool surface' }],
+                },
+                {
+                  id: 'like-favorite',
+                  label: 'Like and favorite',
+                  summary: 'Use the MCP tool surface to like/unlike or favorite/unfavorite a note.',
+                  entrypoints: ['cgo xiaohongshu like --feed-id <id> --xsec-token <token>'],
+                  auth_modes: ['user'],
+                  sources: [{ kind: 'manual-curation', ref: 'xiaohongshu-mcp REST and MCP tool surface' }],
+                },
+              ],
+            },
+          ],
+        },
+        notes: [],
+        runtime: {
+          pid_running: true,
+          health_reachable: true,
+          logged_in: false,
+          active_account_id: 'default',
+          account_count: 1,
+          base_url: 'http://127.0.0.1:18060',
+          headless: true,
+          capabilities: ['feeds-list', 'search', 'publish', 'like'],
+          cookies_path: '/Users/bytedance/.contextgo/spaces/main/connectors/xiaohongshu/cookies.json',
+          service_repo_path: '/Users/bytedance/project/xiaohongshu-mcp',
+          state_dir: '/Users/bytedance/.contextgo/spaces/main/connectors/xiaohongshu',
+        },
+      },
       feishu: {
         connector: 'feishu',
         kind: 'connector',
@@ -343,6 +467,9 @@ vi.mock('react-i18next', () => ({
           'This connector is currently integrated through an external connector runtime. Its capabilities are shown here and can be used by ContextGo after integration.',
         'settings.connectors.externalCatalog.platformAccess': 'Platform Access',
         'settings.connectors.externalCatalog.runtimeBoundary': 'Runtime Boundary',
+        'settings.connectors.externalCatalog.runtimeStatus': 'Runtime Status',
+        'settings.connectors.externalCatalog.runtimeStatusSummary':
+          'Live connector state reported by the active Space runtime.',
         'settings.connectors.externalCatalog.nativeSurface': 'Native Surface',
         'settings.connectors.externalCatalog.commandEntrypoints': 'Command Entrypoints',
         'settings.connectors.externalCatalog.capabilities': 'Capability Tree',
@@ -359,6 +486,22 @@ vi.mock('react-i18next', () => ({
         'settings.connectors.externalCatalog.entrypoints': 'Entrypoints',
         'settings.connectors.externalCatalog.writesStore': 'Results persist automatically',
         'settings.connectors.externalCatalog.noStoreWrite': 'Results do not persist yet',
+        'settings.connectors.externalCatalog.runtimeFields.serviceStatus': 'Service',
+        'settings.connectors.externalCatalog.runtimeFields.loginStatus': 'Login',
+        'settings.connectors.externalCatalog.runtimeFields.activeAccount': 'Active account',
+        'settings.connectors.externalCatalog.runtimeFields.accounts': 'Accounts',
+        'settings.connectors.externalCatalog.runtimeFields.baseUrl': 'Base URL',
+        'settings.connectors.externalCatalog.runtimeFields.headlessMode': 'Headless',
+        'settings.connectors.externalCatalog.runtimeFields.capabilityCount': 'Capabilities',
+        'settings.connectors.externalCatalog.runtimeFields.cookiesPath': 'Cookies path',
+        'settings.connectors.externalCatalog.runtimeFields.serviceRepo': 'Service repo',
+        'settings.connectors.externalCatalog.runtimeFields.runtimeDir': 'Runtime dir',
+        'settings.connectors.externalCatalog.runtimeValues.running': 'Running',
+        'settings.connectors.externalCatalog.runtimeValues.stopped': 'Stopped',
+        'settings.connectors.externalCatalog.runtimeValues.loggedIn': 'Logged in',
+        'settings.connectors.externalCatalog.runtimeValues.loggedOut': 'Not logged in',
+        'settings.connectors.externalCatalog.runtimeValues.true': 'Yes',
+        'settings.connectors.externalCatalog.runtimeValues.false': 'No',
         'settings.connectors.externalCatalog.unavailableTitle': 'Connector details unavailable',
         'settings.connectors.externalCatalog.extractionModes.manual-curation': 'Manual Curation',
         'settings.connectors.externalCatalog.extractionModes.help-derived': 'Help Derived',
@@ -633,6 +776,46 @@ describe('ConnectorsPage', () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText('None yet').length).toBeGreaterThan(0);
     expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'google-drive' });
+  });
+
+  it('renders Xiaohongshu runtime status and capability actions from the Space connector catalog', async () => {
+    render(
+      <MemoryRouter initialEntries={['/connectors/xiaohongshu']}>
+        <Routes>
+          <Route path='/connectors' element={<ConnectorsPage />} />
+          <Route path='/connectors/:connectorId' element={<ConnectorsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Xiaohongshu' })).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Managed service and account control plane')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'Configure' })).not.toBeInTheDocument();
+    expect(screen.getByText('Runtime Status')).toBeInTheDocument();
+    expect(screen.getByText('Service')).toBeInTheDocument();
+    expect(screen.getByText('Running')).toBeInTheDocument();
+    expect(screen.getByText('Login')).toBeInTheDocument();
+    expect(screen.getByText('Not logged in')).toBeInTheDocument();
+    expect(screen.getByText('Active account')).toBeInTheDocument();
+    expect(screen.getByText('default')).toBeInTheDocument();
+    expect(screen.getByText('http://127.0.0.1:18060')).toBeInTheDocument();
+    expect(screen.getByText('/Users/bytedance/project/xiaohongshu-mcp')).toBeInTheDocument();
+    expect(
+      screen.getAllByText('/Users/bytedance/.contextgo/spaces/main/connectors/xiaohongshu').length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText('Account and runtime').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Content discovery').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Publishing and interactions').length).toBeGreaterThan(0);
+    expect(screen.getByText('Search notes')).toBeInTheDocument();
+    expect(screen.getByText('Publish image note')).toBeInTheDocument();
+    expect(screen.getAllByText('cgo xiaohongshu login-browser').length).toBeGreaterThan(0);
+    expect(bridgeMocks.externalConnectorCatalogGetDetailsInvoke).toHaveBeenCalledWith({ connector: 'xiaohongshu' });
   });
 
   it('keeps the connector list stable when category sections collapse', async () => {

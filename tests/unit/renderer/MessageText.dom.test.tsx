@@ -33,6 +33,14 @@ vi.mock('@arco-design/web-react', () => ({
   Message: {
     error: vi.fn(),
   },
+  Drawer: ({ visible, title, children }: { visible?: boolean; title?: React.ReactNode; children?: React.ReactNode }) =>
+    visible ? (
+      <div role='dialog'>
+        <div>{title}</div>
+        {children}
+      </div>
+    ) : null,
+  Tag: ({ children }: { children?: React.ReactNode }) => <span>{children}</span>,
   Tooltip: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 
@@ -81,6 +89,39 @@ const createMessage = (content: string, position: 'left' | 'right' = 'right'): I
   type: 'text',
   position,
   content: { content },
+});
+
+const createContextPreview = () => ({
+  searchMode: 'hybrid' as const,
+  queryTerms: ['alpha', 'beta'],
+  budgetTokens: 2400,
+  spentTokens: 680,
+  sectionCount: 3,
+  omittedCount: 1,
+  memoryRefCount: 2,
+  sourceRefCount: 1,
+  profileRefCount: 1,
+  artifactRefCount: 0,
+  threadSummaryIncluded: true,
+  mountedSectionCount: 2,
+  mountedProfileCount: 1,
+  pinnedInstructionCount: 1,
+  sections: [
+    {
+      id: 'section-1',
+      kind: 'thread-state' as const,
+      source: 'mounted' as const,
+      summary: 'Thread snapshot',
+      tokenCount: 120,
+    },
+    {
+      id: 'section-2',
+      kind: 'memory' as const,
+      source: 'retrieved' as const,
+      summary: 'Recovered memory',
+      tokenCount: 88,
+    },
+  ],
 });
 
 const renderMessage = (message: IMessageText, isMobile = false) =>
@@ -248,5 +289,26 @@ describe('MessageText', () => {
     });
 
     expect(copyTextMock).not.toHaveBeenCalled();
+  });
+
+  it('opens the context preview drawer with the structured context summary cards', () => {
+    renderMessage({
+      ...createMessage('User prompt with context'),
+      content: {
+        content: 'User prompt with context',
+        contextPreview: createContextPreview(),
+      },
+    });
+
+    fireEvent.click(screen.getByText('messages.contextPreview.pill').closest('button') as HTMLButtonElement);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('messages.contextPreview.subtitle')).toBeInTheDocument();
+    expect(screen.getByText('messages.contextPreview.mountedTitle')).toBeInTheDocument();
+    expect(screen.getByText('messages.contextPreview.queryTermsTitle')).toBeInTheDocument();
+    expect(screen.getByText('messages.contextPreview.sectionsTitle')).toBeInTheDocument();
+    expect(screen.getByText('messages.contextPreview.searchMode.hybrid')).toBeInTheDocument();
+    expect(screen.getByText('Thread snapshot')).toBeInTheDocument();
+    expect(screen.getByText('Recovered memory')).toBeInTheDocument();
   });
 });

@@ -600,6 +600,14 @@
   "webui.openOfficialRemote": "호스트 목록 열기",
   "webui.remoteDevicesNav": "원격 호스트",
   "webui.switchDevice": "호스트 전환",
+  "webui.remoteSession": "원격 세션",
+  "webui.switchDeviceRemoteGuardDescription": "원격 제어는 단일 레이어로 유지됩니다. 다른 호스트로 전환하기 전에 현재 원격 세션에서 먼저 돌아가세요.",
+  "webui.switchDeviceReturnLocal": "이 장치로 돌아가기",
+  "webui.switchDeviceReturnList": "호스트 목록으로 돌아가기",
+  "webui.switchDeviceReturnCurrentDesktop": "이 장치의 데스크톱으로 돌아가기",
+  "webui.switchDeviceReturnCurrentDescription": "현재 원격 장치 안에 머물면서 그 장치의 데스크톱 홈으로 돌아갑니다.",
+  "webui.switchDeviceReturnHost": "로컬 호스트로 돌아가기",
+  "webui.switchDeviceReturnHostDescription": "이 원격 세션을 종료하고, 이를 연 로컬 데스크톱으로 돌아갑니다.",
   "webui.officialRemoteSignedOut": "공식 호스트 목록이 아직 연결되지 않았습니다.",
   "webui.officialRemoteHint": "여기서 한 번만 로그인하면 됩니다. ContextGo가 이 Host Runtime을 자동으로 연결해 호스팅된 호스트 목록에 표시합니다.",
   "webui.officialRemoteRuntimeHint": "Official Remote가 Host Runtime 경로를 자동으로 준비하므로 아래에서 로컬 / 셀프호스트 접근을 따로 켤 필요가 없습니다.",
@@ -1533,6 +1541,8 @@
     "externalCatalog": {
       "platformAccess": "현재 연결 방식",
       "runtimeBoundary": "실행 안내",
+      "runtimeStatus": "런타임 상태",
+      "runtimeStatusSummary": "현재 Space 런타임이 보고한 connector 실시간 상태입니다.",
       "nativeSurface": "대상 범위",
       "commandEntrypoints": "CLI 명령",
       "capabilities": "기능 트리",
@@ -1572,6 +1582,26 @@
       "entrypoints": "진입 명령",
       "writesStore": "결과가 자동으로 반영됩니다",
       "noStoreWrite": "결과가 아직 자동 반영되지 않습니다",
+      "runtimeFields": {
+        "serviceStatus": "서비스",
+        "loginStatus": "로그인",
+        "activeAccount": "활성 계정",
+        "accounts": "계정 수",
+        "baseUrl": "Base URL",
+        "headlessMode": "헤드리스",
+        "capabilityCount": "기능 수",
+        "cookiesPath": "Cookies 경로",
+        "serviceRepo": "서비스 저장소",
+        "runtimeDir": "런타임 디렉터리"
+      },
+      "runtimeValues": {
+        "running": "실행 중",
+        "stopped": "중지됨",
+        "loggedIn": "로그인됨",
+        "loggedOut": "로그인 안 됨",
+        "true": "예",
+        "false": "아니요"
+      },
       "unavailableTitle": "connector 상세를 불러올 수 없습니다"
     },
     "catalogPlaceholderDesc": "이 connector는 현재 카탈로그 자리표시자만 존재합니다. ContextGo는 아직 이 런타임이나 수집 출력을 소비하지 않습니다.",
@@ -1844,5 +1874,8 @@
   "webui.deviceModeLocal": "로컬 호스트",
   "webui.deviceModeRemote": "원격 데스크톱",
   "webui.switchDeviceUnknown": "현재 호스트",
-  "webui.backToLocal": "로컬로 돌아가기"
+  "webui.backToLocal": "로컬로 돌아가기",
+  "webui.remoteDeviceLoadFailedTitle": "원격 장치를 열 수 없습니다",
+  "webui.remoteDeviceLoadFailedDescription": "데스크톱 클라이언트가 호스팅된 원격 페이지를 불러오지 못했습니다. 다시 시도하거나 로컬 호스트로 돌아가세요.",
+  "webui.remoteDeviceLoadFailedReason": "로드 실패: {{reason}}"
 }

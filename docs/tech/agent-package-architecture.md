@@ -162,6 +162,7 @@ After workspace bootstrap, the product-owned state must live under:
 ```text
 .contextgo/
   connectors/
+  requirements/
   skills/
   hooks/
   hooks.json
@@ -300,6 +301,7 @@ Packages may also include:
 - workspace scaffold templates
 - `skills/`
 - `connectors/` source material or manifest-declared connector requirement metadata
+- `requirements` metadata for tools, credentials, connector bindings, and runtime projections
 - `hooks/`
 - command-source material
 - schedule seed material
@@ -308,6 +310,7 @@ The exact source representation may vary while the product is still absorbing le
 
 - workspace scaffold templates install into the workspace root, typically as runtime entry docs plus starter files under `docs/`
 - connector metadata installs into `.contextgo/connectors/`
+- requirement binding metadata installs into `.contextgo/requirements/`
 - commands install into `.contextgo/commands.json`
 - hooks install into `.contextgo/hooks/` and `.contextgo/hooks.json`
 - schedules install into `.contextgo/schedules.json`
@@ -324,6 +327,7 @@ The ownership model should stay explicit:
 | Workspace scaffold docs | `workspaceScaffold` templates                                                   | workspace root such as `AGENTS.md`, `CLAUDE.md`, `docs/` | runtime may read directly from workspace root                  | Agent Package + workspace bootstrap             |
 | Skills                  | package `skills/` sources                                                       | `.contextgo/skills/`                                     | yes, skill-only projection into runtime-native skill dirs      | Agent Package + runtime compatibility layer     |
 | Connectors              | package connector requirement metadata and optional connector docs              | `.contextgo/connectors/`                                 | no                                                             | Agent Package + Space / Project connector model |
+| Requirements            | package tool, credential, and connector requirement metadata                    | `.contextgo/requirements/`                               | no                                                             | Agent Package + Project requirement binding     |
 | Hooks                   | package `hooks/` sources                                                        | `.contextgo/hooks/` + `.contextgo/hooks.json`            | no product-level runtime ownership change                      | ContextGo automation                            |
 | Commands                | package command seeds / profiles                                                | `.contextgo/commands.json`                               | no                                                             | ContextGo automation                            |
 | Schedules               | package schedule seeds / profiles                                               | `.contextgo/schedules.json`                              | no                                                             | ContextGo automation                            |
@@ -336,6 +340,13 @@ Connector constraint:
 - connector declarations identify connector **types**, not authenticated instances
 - authenticated instances stay Space-scoped
 - project-visible connector selection and mount metadata live under `.contextgo/connectors/`
+
+Requirement constraint:
+
+- `requirements` declares what a package or skill needs in order to run: tools, MCP servers, credential kinds, connector types, local commands, and environment references
+- `requirements` does not store raw secrets
+- project requirement bindings may reference Space credentials, Space connector bindings, local environment variables, or runtime config entries
+- runtime projections are generated from those bindings at execution time and must not become the source of truth
 
 ### External Memory Strategy Adapter boundary
 

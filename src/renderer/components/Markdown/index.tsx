@@ -35,6 +35,104 @@ type MarkdownViewProps = {
   allowHtml?: boolean;
 };
 
+const LOCAL_IMAGE_EXT_PATTERN = /\.(?:avif|bmp|gif|ico|jpe?g|png|svg|tiff?|webp)(?:[?#].*)?$/i;
+
+const hasLocalImagePathPrefix = (value: string): boolean =>
+  value.startsWith('/') ||
+  value.startsWith('./') ||
+  value.startsWith('../') ||
+  value.startsWith('~/') ||
+  value.startsWith('file://') ||
+  /^[A-Za-z]:[\\/]/.test(value) ||
+  /^[^:]+\//.test(value) ||
+  /^[^:]+\\/.test(value);
+
+const unwrapStandalonePath = (value: string): string => {
+  const wrappers: Array<[string, string]> = [
+    ['`', '`'],
+    ['"', '"'],
+    ["'", "'"],
+  ];
+
+  for (const [start, end] of wrappers) {
+    if (value.startsWith(start) && value.endsWith(end) && value.length > start.length + end.length) {
+      return value.slice(start.length, -end.length).trim();
+    }
+  }
+
+  return value;
+};
+
+const extractStandaloneLocalImagePath = (line: string): { imagePath: string; suffix: string } | null => {
+  const value = unwrapStandalonePath(line.trim());
+  if (!value || value.startsWith('![') || /^(?:https?:|data:|blob:)/i.test(value)) {
+    return null;
+  }
+
+  if (hasLocalImagePathPrefix(value) && LOCAL_IMAGE_EXT_PATTERN.test(value)) {
+    return { imagePath: value, suffix: '' };
+  }
+
+  const leadingPathMatch = /^(.+?\.(?:avif|bmp|gif|ico|jpe?g|png|svg|tiff?|webp)(?:[?#][^\s:：,，;；、]*)?)([\s:：,，;；、-].*)$/i.exec(value);
+  const imagePath = leadingPathMatch?.[1]?.trim();
+  if (!imagePath || /\s/.test(imagePath) || !hasLocalImagePathPrefix(imagePath)) {
+    return null;
+  }
+
+  return {
+    imagePath,
+    suffix: leadingPathMatch?.[2]?.trimStart() ?? '',
+  };
+};
+
+const escapeMarkdownAlt = (value: string): string => value.replace(/[[\]\\]/g, '');
+
+const getImageAltFromPath = (value: string): string => {
+  const pathWithoutQuery = value.split(/[?#]/, 1)[0] || value;
+  return escapeMarkdownAlt(pathWithoutQuery.split(/[\\/]/).pop() || 'image');
+};
+
+const encodeMarkdownImageDestination = (value: string): string =>
+  value.replace(/%/g, '%25').replace(/ /g, '%20').replace(/</g, '%3C').replace(/>/g, '%3E');
+
+export const renderStandaloneLocalImagePaths = (content: string): string => {
+  let inFence = false;
+
+  return content
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim();
+      if (/^(```|~~~)/.test(trimmed)) {
+        inFence = !inFence;
+        return line;
+      }
+
+      if (inFence) {
+        return line;
+      }
+
+      const match = extractStandaloneLocalImagePath(line);
+      if (!match) {
+        return line;
+      }
+
+      return `![${getImageAltFromPath(match.imagePath)}](<${encodeMarkdownImageDestination(match.imagePath)}>)${
+        match.suffix ? `\n${match.suffix}` : ''
+      }`;
+    })
+    .join('\n');
+};
+
+const isLocalFilePath = (src: string): boolean => {
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return false;
+  }
+  if (src.startsWith('data:')) {
+    return false;
+  }
+  return true;
+};
+
 const MarkdownView: React.FC<MarkdownViewProps> = ({
   hiddenCodeCopyButton,
   codeStyle,
@@ -50,20 +148,11 @@ const MarkdownView: React.FC<MarkdownViewProps> = ({
     if (typeof childrenProp === 'string') {
       let text = childrenProp.replace(/file:\/\//g, '');
       text = convertLatexDelimiters(text);
+      text = renderStandaloneLocalImagePaths(text);
       return text;
     }
     return childrenProp;
   }, [childrenProp]);
-
-  const isLocalFilePath = (src: string): boolean => {
-    if (src.startsWith('http://') || src.startsWith('https://')) {
-      return false;
-    }
-    if (src.startsWith('data:')) {
-      return false;
-    }
-    return true;
-  };
 
   return (
     <div className={classNames('relative w-full', className)}>
@@ -73,9 +162,9 @@ const MarkdownView: React.FC<MarkdownViewProps> = ({
             remarkPlugins={[remarkGfm, remarkMath, remarkBreaks]}
             rehypePlugins={allowHtml ? [rehypeRaw, rehypeKatex] : [rehypeKatex]}
             components={{
-              span: ({ node: _node, className, children, ...props }) => {
+              span: ({ node: _node, className: spanClassName, children, ...props }) => {
                 return (
-                  <span {...props} className={className}>
+                  <span {...props} className={spanClassName}>
                     {children}
                   </span>
                 );
@@ -128,7 +217,12 @@ const MarkdownView: React.FC<MarkdownViewProps> = ({
               ),
               img: ({ node: _node, ...props }) => {
                 if (isLocalFilePath(props.src || '')) {
-                  const src = decodeURIComponent(props.src || '');
+                  let src = props.src || '';
+                  try {
+                    src = decodeURIComponent(src);
+                  } catch {
+                    src = props.src || '';
+                  }
                   return <LocalImageView src={src} alt={props.alt || ''} className={props.className} />;
                 }
                 return <img {...props} />;

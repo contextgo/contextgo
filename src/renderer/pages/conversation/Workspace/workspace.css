@@ -224,24 +224,34 @@
 .chat-workspace .workspace-changes-list {
   display: flex;
   min-height: 0;
+  min-width: 0;
   flex: 1;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
   overflow-y: auto;
   padding-right: 4px;
 }
 
 .chat-workspace .workspace-changes-item {
   display: flex !important;
+  min-width: 0 !important;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box !important;
   align-items: flex-start;
   gap: 10px;
   justify-content: flex-start !important;
+  overflow: hidden;
   padding: 11px 12px !important;
   border: 1px solid color-mix(in srgb, var(--border-base) 84%, transparent) !important;
   border-radius: 14px !important;
   background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%) !important;
   text-align: left !important;
+  white-space: normal !important;
   box-shadow: 0 8px 18px color-mix(in srgb, var(--fill-4) 8%, transparent);
 }
 

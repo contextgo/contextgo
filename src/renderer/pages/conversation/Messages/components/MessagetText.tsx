@@ -7,8 +7,9 @@
 import type { IMessageText } from '@/common/chat/chatLib';
 import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
 import { formatWorkflowRoleLabel, isBuiltInWorkflowRole } from '@/common/config/group';
+import { ContextPreviewDrawer } from '@/renderer/components/chat/SendContextPreview';
 import { iconColors } from '@/renderer/styles/colors';
-import { Alert, Message } from '@arco-design/web-react';
+import { Alert, Button, Message } from '@arco-design/web-react';
 import { DeleteOne, FileText, PreviewOpen, Write } from '@icon-park/react';
 import classNames from 'classnames';
 import type { TFunction } from 'i18next';
@@ -191,10 +192,12 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const [showCopyAlert, setShowCopyAlert] = useState(false);
+  const [contextPreviewVisible, setContextPreviewVisible] = useState(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressReadyRef = useRef(false);
   const isUserMessage = message.position === 'right';
   const hasTextBody = json || Boolean(text.trim());
+  const contextPreview = message.content.contextPreview;
   const fileOperation = useMemo(() => parseFileOperationMessage(text), [text]);
   const jsonObjectSections = useMemo<JsonDisplaySection | null>(() => {
     if (!jsonObject || !isJsonRecord(data)) {
@@ -409,6 +412,36 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
                 ))}
               </HorizontalFileList>
             )}
+          </div>
+        )}
+        {isUserMessage && contextPreview && (
+          <div className='mb-6px flex max-w-full items-center gap-6px self-end'>
+            <Button
+              type='secondary'
+              size='mini'
+              shape='round'
+              icon={<PreviewOpen theme='outline' size='14' className='app-icon' />}
+              onClick={() => setContextPreviewVisible(true)}
+            >
+              {t('messages.contextPreview.pill', { count: contextPreview.sectionCount })}
+            </Button>
+            <div className='flex min-w-0 flex-wrap items-center gap-4px text-11px leading-16px text-t-secondary'>
+              {contextPreview.memoryRefCount > 0 && (
+                <span className='rounded-full bg-bg-2 px-7px py-2px'>
+                  {t('messages.contextPreview.short.memoryRefs', { count: contextPreview.memoryRefCount })}
+                </span>
+              )}
+              {contextPreview.sourceRefCount > 0 && (
+                <span className='rounded-full bg-bg-2 px-7px py-2px'>
+                  {t('messages.contextPreview.short.sourceRefs', { count: contextPreview.sourceRefCount })}
+                </span>
+              )}
+              {contextPreview.profileRefCount > 0 && (
+                <span className='rounded-full bg-bg-2 px-7px py-2px'>
+                  {t('messages.contextPreview.short.profileRefs', { count: contextPreview.profileRefCount })}
+                </span>
+              )}
+            </div>
           </div>
         )}
         {hasTextBody && (
@@ -681,6 +714,11 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
           </div>
         )}
       </div>
+      <ContextPreviewDrawer
+        preview={contextPreview}
+        visible={contextPreviewVisible}
+        onClose={() => setContextPreviewVisible(false)}
+      />
       {showCopyAlert && (
         <Alert
           type='success'

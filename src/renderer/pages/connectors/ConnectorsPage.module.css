@@ -676,6 +676,44 @@
   gap: 6px;
 }
 
+.runtimeStatusGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.runtimeStatusItem {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-2) 94%, var(--fill-1) 6%);
+}
+
+.runtimeStatusLabel {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.runtimeStatusValue {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.runtimeStatusValueMono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 .chipWrap {
   display: flex;
   flex-wrap: wrap;
@@ -878,6 +916,10 @@
   }
 
   .capabilityMetaGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .runtimeStatusGrid {
     grid-template-columns: minmax(0, 1fr);
   }
 

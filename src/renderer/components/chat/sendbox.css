@@ -150,6 +150,44 @@
   min-width: 0;
 }
 
+.sendbox-context-preview-button,
+.sendbox-context-preview-button:hover,
+.sendbox-context-preview-button:active,
+.sendbox-context-preview-button:focus,
+.sendbox-context-preview-button:focus-visible {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  width: auto !important;
+  min-width: 34px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 6px !important;
+  border-radius: 999px !important;
+  color: var(--text-secondary) !important;
+}
+
+.sendbox-context-preview-button:hover,
+.sendbox-context-preview-button:focus-visible {
+  background: var(--color-fill-2) !important;
+  color: var(--text-primary) !important;
+}
+
+.sendbox-context-preview-button .arco-btn-icon,
+.sendbox-context-preview-button .arco-btn-content {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+.sendbox-context-preview-button__count {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+}
+
 .conversation-run-status-stack {
   display: flex;
   flex-direction: column;
@@ -158,20 +196,12 @@
   transition: min-height 180ms ease;
 }
 
-.conversation-run-status-stack--single.conversation-run-status-stack--active {
-  min-height: 40px;
-}
-
-.conversation-run-status-stack--double.conversation-run-status-stack--active {
-  min-height: 96px;
-}
-
-.conversation-run-status-stack--triple.conversation-run-status-stack--active {
-  min-height: 144px;
-}
-
 /* Mobile: allow horizontal scrolling for sendbox tools (model/permission pills) */
 @media (max-width: 767px) {
+  .conversation-run-status-stack {
+    justify-content: flex-start;
+  }
+
   .sendbox-tools-scroll-mobile {
     display: block;
     min-width: 0;

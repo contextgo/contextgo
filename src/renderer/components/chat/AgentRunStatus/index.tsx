@@ -12,6 +12,7 @@ import type { AgentRunPhase, AgentRunTrace } from './types';
 interface AgentRunStatusProps {
   trace: AgentRunTrace | null;
   running?: boolean;
+  actions?: React.ReactNode;
 }
 
 const LONG_RUNNING_SECONDS = 60;
@@ -63,7 +64,7 @@ const summarizeText = (value?: string): string => {
   return normalized.length > 110 ? `${normalized.slice(0, 107)}...` : normalized;
 };
 
-const AgentRunStatus: React.FC<AgentRunStatusProps> = ({ trace, running = false }) => {
+const AgentRunStatus: React.FC<AgentRunStatusProps> = ({ trace, running = false, actions }) => {
   const { t } = useTranslation();
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -174,6 +175,7 @@ const AgentRunStatus: React.FC<AgentRunStatusProps> = ({ trace, running = false 
           >
             {elapsed}
           </span>
+          {actions ? <div className='shrink-0'>{actions}</div> : null}
         </div>
       </div>
     </div>

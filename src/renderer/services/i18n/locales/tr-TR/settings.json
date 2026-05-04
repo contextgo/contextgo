@@ -600,6 +600,14 @@
   "webui.openOfficialRemote": "Host Listesini Aç",
   "webui.remoteDevicesNav": "Uzak Hostlar",
   "webui.switchDevice": "Host Değiştir",
+  "webui.remoteSession": "Uzak Oturum",
+  "webui.switchDeviceRemoteGuardDescription": "Uzaktan erişim tek katmanlı kalır. Başka bir hosta geçmeden önce mevcut uzak oturumdan geri dönün.",
+  "webui.switchDeviceReturnLocal": "Bu Cihaza Dön",
+  "webui.switchDeviceReturnList": "Host Listesine Dön",
+  "webui.switchDeviceReturnCurrentDesktop": "Bu Cihazın Masaüstüne Dön",
+  "webui.switchDeviceReturnCurrentDescription": "Bu uzak cihazda kalın ve onun kendi masaüstü ana ekranına geri dönün.",
+  "webui.switchDeviceReturnHost": "Yerel Host'a Dön",
+  "webui.switchDeviceReturnHostDescription": "Bu uzak oturumdan çıkın ve onu açan yerel masaüstüne geri dönün.",
   "webui.officialRemoteSignedOut": "Resmi host listesi henüz bağlı değil.",
   "webui.officialRemoteHint": "Burada bir kez giriş yapmanız yeterli. ContextGo bu Host Runtime'ı otomatik bağlar ve barındırılan host listesinde gösterir.",
   "webui.officialRemoteRuntimeHint": "Official Remote Host Runtime yolunu otomatik olarak hazırlar; aşağıda Local & Self-Hosted Access'i ayrıca açmanız gerekmez.",
@@ -1531,6 +1539,8 @@
     "externalCatalog": {
       "platformAccess": "Guncel Baglanti",
       "runtimeBoundary": "Calisma Notlari",
+      "runtimeStatus": "Runtime Durumu",
+      "runtimeStatusSummary": "Etkin Space runtime tarafindan bildirilen canli connector durumu.",
       "nativeSurface": "Kapsam",
       "commandEntrypoints": "CLI Komutlari",
       "capabilities": "Yetenek Agaci",
@@ -1570,6 +1580,26 @@
       "entrypoints": "Giris Komutlari",
       "writesStore": "Sonuclar otomatik olarak kalicilasir",
       "noStoreWrite": "Sonuclar henuz otomatik olarak kalicilasmiyor",
+      "runtimeFields": {
+        "serviceStatus": "Servis",
+        "loginStatus": "Giris",
+        "activeAccount": "Etkin hesap",
+        "accounts": "Hesaplar",
+        "baseUrl": "Base URL",
+        "headlessMode": "Headless",
+        "capabilityCount": "Yetenekler",
+        "cookiesPath": "Cookies yolu",
+        "serviceRepo": "Servis deposu",
+        "runtimeDir": "Runtime dizini"
+      },
+      "runtimeValues": {
+        "running": "Calisiyor",
+        "stopped": "Durdu",
+        "loggedIn": "Giris yapildi",
+        "loggedOut": "Giris yok",
+        "true": "Evet",
+        "false": "Hayir"
+      },
       "unavailableTitle": "connector detaylari alinamiyor"
     },
     "catalogPlaceholderDesc": "Bu connector su an yalnizca katalog yer tutucusudur. ContextGo henuz bunun calisma zamani veya toplanmis ciktisini tuketmez.",
@@ -1842,5 +1872,8 @@
   "webui.deviceModeLocal": "Yerel ana makine",
   "webui.deviceModeRemote": "Uzak masaüstü",
   "webui.switchDeviceUnknown": "Geçerli host",
-  "webui.backToLocal": "Yerele dön"
+  "webui.backToLocal": "Yerele dön",
+  "webui.remoteDeviceLoadFailedTitle": "Uzak cihaz açılamadı",
+  "webui.remoteDeviceLoadFailedDescription": "Masaüstü istemcisi barındırılan uzak sayfayı yükleyemedi. Yeniden deneyebilir veya yerel ana bilgisayara dönebilirsiniz.",
+  "webui.remoteDeviceLoadFailedReason": "Yükleme başarısız oldu: {{reason}}"
 }

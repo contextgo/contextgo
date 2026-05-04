@@ -1326,11 +1326,35 @@ def push_obsidian_batch(
 ) -> dict[str, Any]:
     now = utc_now_iso()
     with get_connection(settings) as connection:
+        replica_row = connection.execute(
+            """
+            SELECT replica_id
+            FROM obsidian_replicas
+            WHERE user_id = ? AND vault_binding_id = ? AND replica_id = ?
+            """,
+            (user_id, vault_binding_id, replica_id),
+        ).fetchone()
+        if replica_row is None:
+            raise ValueError("Unknown Obsidian replica for this vault binding")
+
+        binding_row = connection.execute(
+            """
+            SELECT last_global_cursor
+            FROM obsidian_vault_bindings
+            WHERE user_id = ? AND vault_binding_id = ?
+            """,
+            (user_id, vault_binding_id),
+        ).fetchone()
+        if binding_row is None:
+            raise ValueError("Unknown Obsidian vault binding")
+        current_cursor = int(binding_row["last_global_cursor"])
+
         latest_cursor_row = connection.execute(
-            "SELECT COALESCE(MAX(assigned_cursor), 0) AS cursor FROM obsidian_batches WHERE user_id = ?",
-            (user_id,),
+            "SELECT COALESCE(MAX(assigned_cursor), 0) AS cursor FROM obsidian_batches WHERE user_id = ? AND vault_binding_id = ?",
+            (user_id, vault_binding_id),
         ).fetchone()
         assigned_cursor = int(latest_cursor_row["cursor"]) + 1 if latest_cursor_row is not None else 1
+        risk_level = "drift_suspected" if base_cursor < current_cursor else "normal"
 
         connection.execute(
             """
@@ -1344,10 +1368,10 @@ def push_obsidian_batch(
         connection.execute(
             """
             UPDATE obsidian_vault_bindings
-            SET last_global_cursor = ?, updated_at = ?
+            SET last_global_cursor = ?, risk_level = ?, updated_at = ?
             WHERE vault_binding_id = ? AND user_id = ?
             """,
-            (assigned_cursor, now, vault_binding_id, user_id),
+            (assigned_cursor, risk_level, now, vault_binding_id, user_id),
         )
         connection.execute(
             """
@@ -1370,6 +1394,17 @@ def pull_obsidian_batches(
     after_cursor: int,
 ) -> dict[str, Any]:
     with get_connection(settings) as connection:
+        replica_row = connection.execute(
+            """
+            SELECT replica_id
+            FROM obsidian_replicas
+            WHERE user_id = ? AND vault_binding_id = ? AND replica_id = ?
+            """,
+            (user_id, vault_binding_id, replica_id),
+        ).fetchone()
+        if replica_row is None:
+            raise ValueError("Unknown Obsidian replica for this vault binding")
+
         rows = connection.execute(
             """
             SELECT assigned_cursor, entries_json, base_cursor, replica_id, vault_binding_id
@@ -1421,7 +1456,7 @@ def get_obsidian_binding_status(settings: Settings, *, user_id: str, space_id: s
 
         replica_rows = connection.execute(
             """
-            SELECT replica_id, platform, applied_cursor, updated_at, local_ready_state, root_tree_uri, local_directory_uri, landing_note_path
+            SELECT replica_id, platform, vault_fingerprint, applied_cursor, last_push_cursor, last_pull_cursor, updated_at, local_ready_state, root_tree_uri, local_directory_uri, landing_note_path
             FROM obsidian_replicas
             WHERE user_id = ? AND vault_binding_id = ?
             ORDER BY replica_id ASC
@@ -1439,6 +1474,10 @@ def get_obsidian_binding_status(settings: Settings, *, user_id: str, space_id: s
                 "platform": row["platform"],
                 "healthStatus": "warn" if row["local_ready_state"] == "prepared-directory" else "ok",
                 "lastSyncedAt": row["updated_at"],
+                "appliedCursor": row["applied_cursor"],
+                "lastPushCursor": row["last_push_cursor"],
+                "lastPullCursor": row["last_pull_cursor"],
+                "vaultFingerprint": row["vault_fingerprint"],
                 "localReadyState": row["local_ready_state"],
                 "rootTreeUri": row["root_tree_uri"],
                 "localDirectoryUri": row["local_directory_uri"],

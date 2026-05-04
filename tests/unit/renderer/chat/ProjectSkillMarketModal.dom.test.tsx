@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const searchSkillMarketInvokeMock = vi.fn();
 const installSkillMarketSkillToWorkspaceInvokeMock = vi.fn();
 const listAvailableSkillsInvokeMock = vi.fn();
+const getProjectCapabilitySnapshotInvokeMock = vi.fn();
 const messageApiMock = {
   success: vi.fn(),
   error: vi.fn(),
@@ -34,6 +35,11 @@ vi.mock('@/common', () => ({
       },
       listAvailableSkills: {
         invoke: (...args: unknown[]) => listAvailableSkillsInvokeMock(...args),
+      },
+    },
+    conversation: {
+      getProjectCapabilitySnapshot: {
+        invoke: (...args: unknown[]) => getProjectCapabilitySnapshotInvokeMock(...args),
       },
     },
     shell: {
@@ -101,7 +107,9 @@ vi.mock('@icon-park/react', () => ({
   Search: () => <span data-testid='icon-search' />,
 }));
 
-import ProjectSkillMarketModal from '@/renderer/pages/conversation/ProjectSkillMarketModal';
+import ProjectSkillMarketModal, {
+  clearProjectSkillMarketCacheForTests,
+} from '@/renderer/pages/conversation/ProjectSkillMarketModal';
 
 describe('ProjectSkillMarketModal', () => {
   beforeEach(() => {
@@ -110,12 +118,73 @@ describe('ProjectSkillMarketModal', () => {
     messageApiMock.success.mockReset();
     messageApiMock.error.mockReset();
     messageApiMock.warning.mockReset();
+    clearProjectSkillMarketCacheForTests();
+    getProjectCapabilitySnapshotInvokeMock.mockResolvedValue(undefined);
     searchSkillMarketInvokeMock.mockResolvedValue({
       success: true,
       data: {
         brandName: 'ContextGo',
         total: 1,
         siteUrl: 'https://www.skillmarket.com.cn',
+        industryIndex: [
+          {
+            id: 'design',
+            label: 'Design',
+            summary: 'Design workflow skills',
+            problems: [],
+            useCases: [],
+            outcomes: [],
+            workflow: [],
+            count: 1,
+            topThemes: [],
+            bundleIds: ['design-starter'],
+            recommendedSkills: [],
+          },
+        ],
+        bundles: [
+          {
+            id: 'design-starter',
+            title: 'Design Starter',
+            summary: 'A focused set of skills for design delivery.',
+            industries: ['Design'],
+            forTeams: 'Design teams',
+            deliverables: [],
+            valuePoints: [],
+            steps: [
+              {
+                label: 'Prepare',
+                themes: ['delivery'],
+                skillIds: ['bundle-skill::1.0.0::tester'],
+                skills: [],
+              },
+            ],
+            skills: [
+              {
+                id: 'bundle-skill::1.0.0::tester',
+                name: 'bundle-skill',
+                displayName: 'Bundle Skill',
+                version: '1.0.0',
+                author: 'tester',
+                description: 'A skill included through a scenario bundle.',
+                categories: [],
+                tags: [],
+                themes: ['delivery'],
+                industries: ['Design'],
+                archives: [
+                  {
+                    source: 'skillhub',
+                    relativePath: 'bundle-skill/1.0.0.zip',
+                    label: 'Default package',
+                  },
+                ],
+                popularity: 5,
+                qualityScore: 8.2,
+                installs: 2,
+                stars: 1,
+              },
+            ],
+          },
+        ],
         items: [
           {
             id: 'market-skill::1.0.0::tester',
@@ -172,6 +241,176 @@ describe('ProjectSkillMarketModal', () => {
     expect(screen.getByText(/\/tmp\/workspace\/\.contextgo\/skills/)).toBeInTheDocument();
   });
 
+  it('uses project path and capability signals for the default recommendations', async () => {
+    getProjectCapabilitySnapshotInvokeMock.mockResolvedValue({
+      workspacePath: '/Users/me/design-system',
+      automationRootRelativePath: '.contextgo',
+      counts: { skill: 1, hook: 0, command: 0, schedule: 0 },
+      skills: [
+        {
+          kind: 'skill',
+          id: 'figma-export',
+          name: 'figma-export',
+          description: 'Export Figma assets for frontend implementation',
+          docKey: 'skill:figma-export',
+          workspaceRelativePath: '.contextgo/skills/figma-export/SKILL.md',
+          skillDocumentRelativePath: '.contextgo/skills/figma-export/SKILL.md',
+          compatibility: [],
+          dependencyHints: [],
+          implicitInvocation: false,
+          openAIDisplayName: 'Figma Export',
+          openAIShortDescription: 'Prepare design assets for implementation',
+        },
+      ],
+      hooks: [],
+      commands: [],
+      schedules: [],
+    });
+
+    render(
+      <ProjectSkillMarketModal visible={true} workspacePath='/Users/me/design-system' onClose={() => undefined} />
+    );
+
+    await waitFor(() => {
+      expect(searchSkillMarketInvokeMock).toHaveBeenCalledWith({
+        query: 'design system figma export prepare assets implementation',
+        limit: 12,
+        offset: 0,
+        forceRefresh: false,
+        view: 'curated',
+      });
+    });
+
+    expect(
+      await screen.findByText('Project signals: design system figma export prepare assets implementation')
+    ).toBeInTheDocument();
+  });
+
+  it('falls back to curated skills when project recommendations are too narrow', async () => {
+    getProjectCapabilitySnapshotInvokeMock.mockResolvedValue({
+      workspacePath: '/Users/me/contextgo-master',
+      automationRootRelativePath: '.contextgo',
+      counts: { skill: 0, hook: 0, command: 0, schedule: 0 },
+      skills: [],
+      hooks: [],
+      commands: [],
+      schedules: [],
+    });
+    searchSkillMarketInvokeMock.mockImplementation(async (params: { query?: string }) => {
+      if (params.query?.trim()) {
+        return {
+          success: true,
+          data: {
+            brandName: 'ContextGo',
+            total: 0,
+            totalAvailable: 3043,
+            siteUrl: 'https://www.skillmarket.com.cn',
+            industryIndex: [],
+            bundles: [],
+            items: [],
+          },
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          brandName: 'ContextGo',
+          total: 1,
+          totalAvailable: 3043,
+          siteUrl: 'https://www.skillmarket.com.cn',
+          industryIndex: [],
+          bundles: [],
+          items: [
+            {
+              id: 'market-skill::1.0.0::tester',
+              name: 'market-skill',
+              displayName: 'Market Skill',
+              version: '1.0.0',
+              author: 'tester',
+              description: 'Project-ready skill from the public catalog.',
+              categories: [],
+              tags: [],
+              themes: ['delivery'],
+              industries: [],
+              archives: [],
+              popularity: 10,
+              qualityScore: 8.8,
+              installs: 5,
+              stars: 2,
+            },
+          ],
+        },
+      };
+    });
+
+    render(
+      <ProjectSkillMarketModal visible={true} workspacePath='/Users/me/contextgo-master' onClose={() => undefined} />
+    );
+
+    await waitFor(() => {
+      expect(searchSkillMarketInvokeMock).toHaveBeenCalledWith({
+        query: 'contextgo master',
+        limit: 12,
+        offset: 0,
+        forceRefresh: false,
+        view: 'curated',
+      });
+    });
+    await waitFor(() => {
+      expect(searchSkillMarketInvokeMock).toHaveBeenCalledWith({
+        query: '',
+        limit: 12,
+        offset: 0,
+        forceRefresh: false,
+        view: 'curated',
+      });
+    });
+    expect(await screen.findByText('Market Skill')).toBeInTheDocument();
+  });
+
+  it('reuses cached market results when the same project opens again', async () => {
+    const { unmount } = render(
+      <ProjectSkillMarketModal visible={true} workspacePath='/Users/me/design-system' onClose={() => undefined} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Market Skill')).toBeInTheDocument();
+    });
+    expect(searchSkillMarketInvokeMock).toHaveBeenCalledTimes(1);
+
+    unmount();
+    render(
+      <ProjectSkillMarketModal visible={true} workspacePath='/Users/me/design-system' onClose={() => undefined} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Market Skill')).toBeInTheDocument();
+    });
+    expect(searchSkillMarketInvokeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('filters market results by industry without changing the market catalog rules', async () => {
+    render(<ProjectSkillMarketModal visible={true} workspacePath='/tmp/workspace' onClose={() => undefined} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Design (1)' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Design (1)' }));
+
+    await waitFor(() => {
+      expect(searchSkillMarketInvokeMock).toHaveBeenLastCalledWith({
+        query: '',
+        limit: 12,
+        offset: 0,
+        forceRefresh: false,
+        view: 'curated',
+        industryId: 'design',
+      });
+    });
+  });
+
   it('installs a remote skill into the workspace and refreshes installed skill state', async () => {
     installSkillMarketSkillToWorkspaceInvokeMock.mockImplementation(async () => {
       listAvailableSkillsInvokeMock.mockResolvedValue([
@@ -217,6 +456,28 @@ describe('ProjectSkillMarketModal', () => {
     await waitFor(() => {
       expect(listAvailableSkillsInvokeMock).toHaveBeenCalledTimes(2);
       expect(screen.getAllByText('Installed').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('installs a scenario bundle into the workspace skill directory', async () => {
+    render(<ProjectSkillMarketModal visible={true} workspacePath='/tmp/workspace' onClose={() => undefined} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Design Starter')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Bundle' }));
+
+    await waitFor(() => {
+      expect(installSkillMarketSkillToWorkspaceInvokeMock).toHaveBeenCalledWith({
+        workspacePath: '/tmp/workspace',
+        skillId: 'bundle-skill::1.0.0::tester',
+        archive: {
+          source: 'skillhub',
+          relativePath: 'bundle-skill/1.0.0.zip',
+          label: 'Default package',
+        },
+      });
     });
   });
 

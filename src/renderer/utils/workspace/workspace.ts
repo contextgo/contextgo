@@ -23,6 +23,8 @@ const WORKSPACE_AUTOMATION_DIR = '.contextgo';
 const WORKSPACE_HOOKS_FILE_NAME = 'hooks.json';
 const WORKSPACE_COMMANDS_FILE_NAME = 'commands.json';
 const WORKSPACE_SCHEDULES_FILE_NAME = 'schedules.json';
+const WORKSPACE_REQUIREMENTS_DIR_NAME = 'requirements';
+const WORKSPACE_REQUIREMENT_BINDINGS_FILE_NAME = 'bindings.json';
 
 const joinWorkspacePath = (basePath: string, childPath: string): string => {
   const separator = basePath.includes('\\') ? '\\' : '/';
@@ -98,6 +100,8 @@ export type WorkspaceAutomationPaths = {
   rootDir: string;
   skillsDir: string;
   hooksDir: string;
+  requirementsDir: string;
+  requirementBindingsFile: string;
   hooksFile: string;
   commandsFile: string;
   schedulesFile: string;
@@ -110,6 +114,11 @@ export const getWorkspaceAutomationPaths = (workspacePath: string): WorkspaceAut
     rootDir,
     skillsDir: joinWorkspacePath(rootDir, 'skills'),
     hooksDir: joinWorkspacePath(rootDir, 'hooks'),
+    requirementsDir: joinWorkspacePath(rootDir, WORKSPACE_REQUIREMENTS_DIR_NAME),
+    requirementBindingsFile: joinWorkspacePath(
+      joinWorkspacePath(rootDir, WORKSPACE_REQUIREMENTS_DIR_NAME),
+      WORKSPACE_REQUIREMENT_BINDINGS_FILE_NAME
+    ),
     hooksFile: joinWorkspacePath(rootDir, WORKSPACE_HOOKS_FILE_NAME),
     commandsFile: joinWorkspacePath(rootDir, WORKSPACE_COMMANDS_FILE_NAME),
     schedulesFile: joinWorkspacePath(rootDir, WORKSPACE_SCHEDULES_FILE_NAME),

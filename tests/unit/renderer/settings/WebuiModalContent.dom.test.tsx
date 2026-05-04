@@ -12,6 +12,9 @@ const openExternalInvoke = vi.fn();
 const webuiUpdatePreferencesInvoke = vi.fn();
 const shellOpenExternalMock = vi.fn();
 const dispatchOfficialRemoteSwitcherEventMock = vi.fn();
+let isElectronDesktopMock = true;
+let isMacOSMock = true;
+let isWindowsMock = false;
 
 const translations: Record<string, string> = {
   'common.cancel': 'Cancel',
@@ -76,6 +79,9 @@ vi.mock('@/renderer/utils/platform', async () => {
   const actual = await vi.importActual<typeof import('@/renderer/utils/platform')>('@/renderer/utils/platform');
   return {
     ...actual,
+    isElectronDesktop: () => isElectronDesktopMock,
+    isMacOS: () => isMacOSMock,
+    isWindows: () => isWindowsMock,
     openExternalUrl: (...args: unknown[]) => openExternalUrlMock(...args),
   };
 });
@@ -268,6 +274,9 @@ describe('WebuiModalContent', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    isElectronDesktopMock = true;
+    isMacOSMock = true;
+    isWindowsMock = false;
     webuiStatusChangedOn.mockImplementation(() => () => undefined);
     webuiResetPasswordResultOn.mockImplementation(() => () => undefined);
     cloudStatusChangedOn.mockImplementation(() => () => undefined);
@@ -403,6 +412,68 @@ describe('WebuiModalContent', () => {
     expect(openExternalUrlMock).not.toHaveBeenCalled();
     expect(shellOpenExternalMock).not.toHaveBeenCalled();
     expect(openExternalInvoke).not.toHaveBeenCalled();
+  });
+
+  it('hides the desktop device-switcher action on Linux hosts', async () => {
+    isMacOSMock = false;
+    isWindowsMock = false;
+    cloudGetStatusInvoke.mockResolvedValueOnce({
+      success: true,
+      data: {
+        authenticated: true,
+        browserSessionExpired: false,
+        user: {
+          id: 'user-1',
+          email: 'dev@example.com',
+          username: 'dev-user',
+          displayName: 'Dev User',
+        },
+        device: {
+          id: 'device-1',
+          userId: 'user-1',
+          deviceName: 'ContextGo on linux-host',
+          platform: 'linux',
+          status: 'active',
+          createdAt: '2026-04-01T00:00:00Z',
+          updatedAt: '2026-04-01T00:00:00Z',
+        },
+        deviceTokenAvailable: true,
+        officialRemote: {
+          desired: false,
+          running: false,
+          browserEntryReady: false,
+          transport: 'cloud-relay',
+        },
+        hostRuntime: {
+          authority: 'host-runtime',
+          defaultRemoteAccess: 'official-remote',
+          exposure: 'loopback',
+          lifecycle: 'running',
+          mode: 'gui-host',
+          platform: 'linux',
+          running: true,
+          supportedClients: ['desktop-client', 'mobile-client', 'browser-client'],
+          officialRemoteDesired: true,
+          officialRemoteReady: true,
+          localUrl: 'http://localhost:25809',
+        },
+        providers: ['github', 'google'],
+        authBaseUrl: 'https://auth.contextgo.io',
+        apiBaseUrl: 'https://api.contextgo.io',
+      },
+    });
+
+    const { default: WebuiModalContent } =
+      await import('@/renderer/components/settings/SettingsModal/contents/WebuiModalContent');
+
+    render(<WebuiModalContent />);
+
+    await waitFor(() => {
+      expect(screen.getByText('This host runtime is linked and ready through Official Remote.')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: 'settings.webui.switchDevice' })).not.toBeInTheDocument();
+    expect(dispatchOfficialRemoteSwitcherEventMock).not.toHaveBeenCalled();
   });
 
   it('does not expose local access URL when only official remote runtime is active', async () => {

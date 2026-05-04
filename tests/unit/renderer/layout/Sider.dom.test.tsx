@@ -110,7 +110,7 @@ const hoisted = vi.hoisted(() => {
     remoteAccessRef: {
       current: null as {
         target: {
-          mode: 'local' | 'device-list' | 'remote-device';
+          mode: 'local' | 'device-list' | 'remote-host-shell' | 'remote-device';
           currentUrl: string;
           entryUrl: string;
         };
@@ -483,6 +483,10 @@ const renderSider = (
   );
 };
 
+const openDeviceSwitcher = () => {
+  window.dispatchEvent(new CustomEvent('official-remote:switcher'));
+};
+
 describe('Sider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -575,18 +579,30 @@ describe('Sider', () => {
 
     expect(screen.getAllByText('Team Space').length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
-
-    await waitFor(() => {
-      expect(screen.getAllByText('settings.webui.switchDevice').length).toBeGreaterThan(0);
-    });
-
     fireEvent.click(screen.getByRole('button', { name: 'guid.vault.affordance' }));
 
     await waitFor(() => {
       expect(hoisted.openVaultInvokeMock).toHaveBeenCalledWith({ id: 'space-2' });
     });
     expect(hoisted.ensureDefaultSpaceInvokeMock).not.toHaveBeenCalled();
+  });
+
+  it('does not expose a switch-host entry in the sider user menu', async () => {
+    renderSider('/guid');
+
+    expect(screen.queryByTestId('menu-item-device-switch')).not.toBeInTheDocument();
+    expect(screen.queryByText('settings.webui.switchDevice')).not.toBeInTheDocument();
+  });
+
+  it('hides the switch-host entry on mobile because mobile uses the dedicated device list page', async () => {
+    renderSider('/guid', {
+      layoutValue: {
+        isMobile: true,
+      },
+    });
+
+    expect(screen.queryByTestId('menu-item-device-switch')).not.toBeInTheDocument();
+    expect(screen.queryByText('settings.webui.switchDevice')).not.toBeInTheDocument();
   });
 
   it('keeps a single space card while exposing an internal obsidian action target', async () => {
@@ -699,59 +715,12 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
 
     await waitFor(() => {
       expect(screen.getAllByText('Local Mac').length).toBeGreaterThan(0);
     });
     expect(screen.getByText('settings.webui.officialRemoteStatusShort.ready')).toBeInTheDocument();
-  });
-
-  it('renders compact platform indicators for the device switch menu item instead of the inline device name', async () => {
-    hoisted.cloudGetStatusInvokeMock.mockResolvedValue({
-      success: true,
-      data: {
-        authenticated: true,
-        browserSessionExpired: false,
-        user: {
-          id: 'cloud-user-1',
-          email: 'dev@example.com',
-          username: 'dev-user',
-          displayName: 'Dev User',
-        },
-        device: {
-          id: 'device-local',
-          userId: 'cloud-user-1',
-          deviceName: 'Local Mac',
-          platform: 'macos',
-          status: 'active',
-          createdAt: '2026-04-01T00:00:00Z',
-          updatedAt: '2026-04-01T00:00:00Z',
-        },
-        deviceTokenAvailable: true,
-        officialRemoteReady: true,
-        officialRemote: {
-          desired: true,
-          running: true,
-          browserEntryReady: true,
-        },
-        providers: ['github', 'google'],
-        authBaseUrl: 'https://remote.contextgo.test',
-        apiBaseUrl: 'https://api.contextgo.test',
-      },
-    });
-
-    renderSider('/guid');
-
-    const menuItem = await screen.findByTestId('menu-item-device-switch');
-
-    expect(menuItem).not.toHaveTextContent('Local Mac');
-    expect(screen.getByAltText('macOS')).toBeInTheDocument();
-    expect(screen.getByTestId('device-switch-local-indicator')).toBeInTheDocument();
-    expect(screen.getByTestId('device-switch-indicators')).toHaveAttribute(
-      'title',
-      expect.stringContaining('Local Mac')
-    );
   });
 
   it('ensures current desktop official remote readiness before loading devices when needed', async () => {
@@ -860,7 +829,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
 
     await waitFor(() => {
       expect(ensureOfficialRemoteReadyInvokeMock).toHaveBeenCalledTimes(1);
@@ -922,7 +891,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
 
     await waitFor(() => {
       expect(screen.getAllByText('Local Mac').length).toBeGreaterThan(0);
@@ -1010,7 +979,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
 
     await waitFor(() => {
       expect(screen.getAllByText('Office Mac mini').length).toBeGreaterThan(0);
@@ -1022,10 +991,10 @@ describe('Sider', () => {
     expect(screen.queryByText('settings.webui.switchDeviceDescription')).toBeInTheDocument();
   });
 
-  it('opens another device directly from a remote-device view without bouncing through the picker', async () => {
+  it('lets the desktop remote host shell switch directly to another device from the switcher', async () => {
     hoisted.remoteAccessRef.current = {
       target: {
-        mode: 'remote-device',
+        mode: 'remote-host-shell',
         currentUrl: 'https://remote.contextgo.test/device/device-remote-1',
         entryUrl: 'https://remote.contextgo.test/remote/devices',
       },
@@ -1110,7 +1079,189 @@ describe('Sider', () => {
 
     renderSider('/remote/devices?deviceId=device-remote-1');
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
+
+    await waitFor(() => {
+      expect(screen.getByText('Office Mac mini')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText('settings.webui.switchDevice').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('settings.webui.switchDeviceReturnHost').length).toBeGreaterThan(0);
+    expect(hoisted.remoteAccessRef.current.resetToDeviceList).not.toHaveBeenCalled();
+    expect(hoisted.cloudListRemoteDevicesInvokeMock).toHaveBeenCalled();
+    expect(hoisted.navigateMock).not.toHaveBeenCalledWith('/guid');
+    expect(hoisted.navigateMock).not.toHaveBeenCalledWith('/remote/devices?view=list');
+    expect(screen.queryByText('settings.webui.switchDeviceRemoteGuardDescription')).not.toBeInTheDocument();
+    expect(screen.queryByText('settings.webui.switchDeviceReturnCurrentDesktop')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'settings.webui.switchDeviceOpen' }));
+
+    expect(hoisted.remoteAccessRef.current.setTarget).toHaveBeenCalledWith({
+      mode: 'remote-host-shell',
+      currentUrl: 'https://remote.contextgo.test/device/device-remote-2?client=desktop-host',
+      entryUrl: 'https://remote.contextgo.test/remote/devices',
+    });
+    expect(hoisted.navigateMock).toHaveBeenCalledWith('/remote/devices?deviceId=device-remote-2');
+  });
+
+  it('lets the desktop remote host shell return to the local host from the switcher', async () => {
+    hoisted.remoteAccessRef.current = {
+      target: {
+        mode: 'remote-host-shell',
+        currentUrl: 'https://remote.contextgo.test/device/device-remote-1',
+        entryUrl: 'https://remote.contextgo.test/remote/devices',
+      },
+      setTarget: vi.fn(),
+      resetToDeviceList: vi.fn(),
+    };
+    hoisted.cloudGetStatusInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        authenticated: true,
+        browserSessionExpired: false,
+        user: {
+          id: 'cloud-user-1',
+          email: 'dev@example.com',
+          username: 'dev-user',
+          displayName: 'Dev User',
+        },
+        device: {
+          id: 'device-local',
+          userId: 'cloud-user-1',
+          deviceName: 'Local Mac',
+          platform: 'macos',
+          status: 'active',
+          createdAt: '2026-04-01T00:00:00Z',
+          updatedAt: '2026-04-01T00:00:00Z',
+        },
+        deviceTokenAvailable: true,
+        officialRemoteReady: true,
+        officialRemote: {
+          desired: true,
+          running: true,
+          browserEntryReady: true,
+        },
+        providers: ['github', 'google'],
+        authBaseUrl: 'https://remote.contextgo.test',
+        apiBaseUrl: 'https://api.contextgo.test',
+      },
+    });
+    hoisted.cloudListRemoteDevicesInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        devices: [],
+        selection: {
+          preferredDeviceId: null,
+          autoOpenDeviceId: null,
+          openableDeviceCount: 0,
+          forcePicker: false,
+        },
+      },
+    });
+
+    renderSider('/remote/devices?deviceId=device-remote-1');
+
+    openDeviceSwitcher();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('settings.webui.switchDeviceReturnHost').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'settings.webui.switchDeviceReturnHost' }));
+
+    expect(hoisted.navigateMock).toHaveBeenCalledWith('/guid');
+  });
+
+  it('eagerly switches desktop chrome into remote host shell mode before navigating to another device', async () => {
+    const setTargetMock = vi.fn();
+    hoisted.remoteAccessRef.current = {
+      target: {
+        mode: 'local',
+        currentUrl: '',
+        entryUrl: '',
+      },
+      setTarget: setTargetMock,
+      resetToDeviceList: vi.fn(),
+    };
+    hoisted.cloudGetStatusInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        authenticated: true,
+        browserSessionExpired: false,
+        user: {
+          id: 'cloud-user-1',
+          email: 'dev@example.com',
+          username: 'dev-user',
+          displayName: 'Dev User',
+        },
+        device: {
+          id: 'device-local',
+          userId: 'cloud-user-1',
+          deviceName: 'Local Mac',
+          platform: 'macos',
+          status: 'active',
+          createdAt: '2026-04-01T00:00:00Z',
+          updatedAt: '2026-04-01T00:00:00Z',
+        },
+        deviceTokenAvailable: true,
+        officialRemoteReady: true,
+        officialRemote: {
+          desired: true,
+          running: true,
+          browserEntryReady: true,
+        },
+        providers: ['github', 'google'],
+        authBaseUrl: 'https://remote.contextgo.test',
+        apiBaseUrl: 'https://api.contextgo.test',
+      },
+    });
+    hoisted.cloudListRemoteDevicesInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        devices: [
+          {
+            id: 'device-local',
+            userId: 'cloud-user-1',
+            deviceName: 'Local Mac',
+            platform: 'macos',
+            status: 'active',
+            createdAt: '2026-04-01T00:00:00Z',
+            updatedAt: '2026-04-01T00:00:00Z',
+            lastSeenAt: '2026-04-01T02:00:00Z',
+            remoteStatus: {
+              connected: true,
+              clientConnected: true,
+              browserEntryReady: true,
+            },
+          },
+          {
+            id: 'device-remote-1',
+            userId: 'cloud-user-1',
+            deviceName: 'Office Mac mini',
+            platform: 'macos',
+            status: 'active',
+            createdAt: '2026-04-01T00:00:00Z',
+            updatedAt: '2026-04-01T00:00:00Z',
+            lastSeenAt: '2026-04-01T01:00:00Z',
+            remoteStatus: {
+              connected: true,
+              clientConnected: false,
+              browserEntryReady: true,
+            },
+          },
+        ],
+        selection: {
+          preferredDeviceId: 'device-remote-1',
+          autoOpenDeviceId: null,
+          openableDeviceCount: 1,
+          forcePicker: false,
+        },
+      },
+    });
+
+    renderSider('/guid');
+
+    openDeviceSwitcher();
 
     await waitFor(() => {
       expect(screen.getByText('Office Mac mini')).toBeInTheDocument();
@@ -1118,9 +1269,212 @@ describe('Sider', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'settings.webui.switchDeviceOpen' }));
 
-    expect(hoisted.remoteAccessRef.current.resetToDeviceList).not.toHaveBeenCalled();
-    expect(hoisted.navigateMock).toHaveBeenCalledWith('/remote/devices?deviceId=device-remote-2');
-    expect(hoisted.navigateMock).not.toHaveBeenCalledWith('/remote/devices?view=list');
+    expect(setTargetMock).toHaveBeenCalledWith({
+      mode: 'remote-host-shell',
+      currentUrl: 'https://remote.contextgo.test/device/device-remote-1?client=desktop-host',
+      entryUrl: 'https://remote.contextgo.test/remote/devices',
+    });
+    expect(hoisted.navigateMock).toHaveBeenCalledWith('/remote/devices?deviceId=device-remote-1');
+  });
+
+  it('returns hosted remote runtime pages to #/guid directly instead of using host navigation', async () => {
+    const originalHash = window.location.hash;
+    const originalPathname = window.location.pathname;
+    const originalSearch = window.location.search;
+    window.history.replaceState({}, '', '/device/device-remote-1?client=desktop-host#/conversation/conv-1');
+
+    hoisted.remoteAccessRef.current = {
+      target: {
+        mode: 'remote-device',
+        currentUrl: 'https://remote.contextgo.test/device/device-remote-1',
+        entryUrl: 'https://remote.contextgo.test/remote/devices',
+      },
+      setTarget: vi.fn(),
+      resetToDeviceList: vi.fn(),
+    };
+    hoisted.cloudGetStatusInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        authenticated: true,
+        browserSessionExpired: false,
+        user: {
+          id: 'cloud-user-1',
+          email: 'dev@example.com',
+          username: 'dev-user',
+          displayName: 'Dev User',
+        },
+        device: {
+          id: 'device-local',
+          userId: 'cloud-user-1',
+          deviceName: 'Local Mac',
+          platform: 'macos',
+          status: 'active',
+          createdAt: '2026-04-01T00:00:00Z',
+          updatedAt: '2026-04-01T00:00:00Z',
+        },
+        deviceTokenAvailable: true,
+        officialRemoteReady: true,
+        officialRemote: {
+          desired: true,
+          running: true,
+          browserEntryReady: true,
+        },
+        providers: ['github', 'google'],
+        authBaseUrl: 'https://remote.contextgo.test',
+        apiBaseUrl: 'https://api.contextgo.test',
+      },
+    });
+
+    try {
+      renderSider('/conversation/conv-1');
+
+      openDeviceSwitcher();
+
+      await waitFor(() => {
+        expect(screen.getByText('settings.webui.switchDeviceRemoteGuardDescription')).toBeInTheDocument();
+      });
+
+      expect(screen.getAllByText('settings.webui.switchDeviceReturnCurrentDesktop').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('settings.webui.switchDeviceReturnHost').length).toBeGreaterThan(0);
+
+      fireEvent.click(screen.getByRole('button', { name: 'settings.webui.switchDeviceReturnCurrentDesktop' }));
+
+      expect(window.location.hash).toBe('#/guid');
+      expect(hoisted.navigateMock).not.toHaveBeenCalledWith('/guid');
+      expect(hoisted.remoteAccessRef.current.resetToDeviceList).not.toHaveBeenCalled();
+    } finally {
+      window.history.replaceState({}, '', `${originalPathname}${originalSearch}${originalHash}`);
+    }
+  });
+
+  it('lets hosted remote runtime pages exit back to the local desktop host', async () => {
+    const originalHash = window.location.hash;
+    const originalPathname = window.location.pathname;
+    const originalSearch = window.location.search;
+    window.history.replaceState({}, '', '/device/device-remote-1?client=desktop-host#/conversation/conv-1');
+
+    hoisted.remoteAccessRef.current = {
+      target: {
+        mode: 'remote-device',
+        currentUrl: 'https://remote.contextgo.test/device/device-remote-1',
+        entryUrl: 'https://remote.contextgo.test/remote/devices',
+      },
+      setTarget: vi.fn(),
+      resetToDeviceList: vi.fn(),
+    };
+    hoisted.cloudGetStatusInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        authenticated: true,
+        browserSessionExpired: false,
+        user: {
+          id: 'cloud-user-1',
+          email: 'dev@example.com',
+          username: 'dev-user',
+          displayName: 'Dev User',
+        },
+        device: {
+          id: 'device-local',
+          userId: 'cloud-user-1',
+          deviceName: 'Local Mac',
+          platform: 'macos',
+          status: 'active',
+          createdAt: '2026-04-01T00:00:00Z',
+          updatedAt: '2026-04-01T00:00:00Z',
+        },
+        deviceTokenAvailable: true,
+        officialRemoteReady: true,
+        officialRemote: {
+          desired: true,
+          running: true,
+          browserEntryReady: true,
+        },
+        providers: ['github', 'google'],
+        authBaseUrl: 'https://remote.contextgo.test',
+        apiBaseUrl: 'https://api.contextgo.test',
+      },
+    });
+
+    try {
+      renderSider('/conversation/conv-1');
+
+      openDeviceSwitcher();
+
+      await waitFor(() => {
+        expect(screen.getByText('settings.webui.switchDeviceReturnHostDescription')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'settings.webui.switchDeviceReturnHost' }));
+
+      expect(window.location.hash).toBe('#/remote/devices?remoteNotice=return_local_host');
+      expect(hoisted.navigateMock).not.toHaveBeenCalledWith('/guid');
+    } finally {
+      window.history.replaceState({}, '', `${originalPathname}${originalSearch}${originalHash}`);
+    }
+  });
+
+  it('hides the current-device-desktop action when the hosted remote runtime is already on its desktop home', async () => {
+    const originalHash = window.location.hash;
+    const originalPathname = window.location.pathname;
+    const originalSearch = window.location.search;
+    window.history.replaceState({}, '', '/device/device-remote-1?client=desktop-host#/guid');
+
+    hoisted.remoteAccessRef.current = {
+      target: {
+        mode: 'remote-device',
+        currentUrl: 'https://remote.contextgo.test/device/device-remote-1',
+        entryUrl: 'https://remote.contextgo.test/remote/devices',
+      },
+      setTarget: vi.fn(),
+      resetToDeviceList: vi.fn(),
+    };
+    hoisted.cloudGetStatusInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        authenticated: true,
+        browserSessionExpired: false,
+        user: {
+          id: 'cloud-user-1',
+          email: 'dev@example.com',
+          username: 'dev-user',
+          displayName: 'Dev User',
+        },
+        device: {
+          id: 'device-local',
+          userId: 'cloud-user-1',
+          deviceName: 'Local Mac',
+          platform: 'macos',
+          status: 'active',
+          createdAt: '2026-04-01T00:00:00Z',
+          updatedAt: '2026-04-01T00:00:00Z',
+        },
+        deviceTokenAvailable: true,
+        officialRemoteReady: true,
+        officialRemote: {
+          desired: true,
+          running: true,
+          browserEntryReady: true,
+        },
+        providers: ['github', 'google'],
+        authBaseUrl: 'https://remote.contextgo.test',
+        apiBaseUrl: 'https://api.contextgo.test',
+      },
+    });
+
+    try {
+      renderSider('/guid');
+
+      openDeviceSwitcher();
+
+      await waitFor(() => {
+        expect(screen.getByText('settings.webui.switchDeviceReturnHostDescription')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('settings.webui.switchDeviceReturnCurrentDesktop')).not.toBeInTheDocument();
+      expect(screen.getAllByText('settings.webui.switchDeviceReturnHost').length).toBeGreaterThan(0);
+    } finally {
+      window.history.replaceState({}, '', `${originalPathname}${originalSearch}${originalHash}`);
+    }
   });
 
   it('falls back out of loading when cloud status lookup times out', async () => {
@@ -1128,7 +1482,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
 
     await waitFor(
       () => {
@@ -1141,7 +1495,7 @@ describe('Sider', () => {
   it('shows cloud login actions in the device switcher when desktop cloud auth is missing', async () => {
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
 
     await waitFor(() => {
       expect(screen.getAllByText('settings.cloud.notConnected').length).toBeGreaterThan(0);
@@ -1174,7 +1528,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
 
     expect(screen.getByText('guid.vault.mobileAffordance')).toBeInTheDocument();
 
@@ -1200,7 +1554,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
 
     expect(screen.getByText('guid.vault.mobileSetupAffordance')).toBeInTheDocument();
 
@@ -1277,7 +1631,7 @@ describe('Sider', () => {
 
     renderSider('/guid');
 
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
     fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));
 
     await waitFor(() => {
@@ -1343,7 +1697,7 @@ describe('Sider', () => {
     renderSider('/guid');
 
     expect(screen.getAllByText('guid.vault.androidStatusRegistered').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByTestId('menu-item-device-switch'));
+    openDeviceSwitcher();
     expect(screen.getByText('guid.vault.mobileSetupAffordance')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('menu-item-space:open-vault'));

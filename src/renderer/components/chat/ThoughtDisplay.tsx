@@ -20,6 +20,7 @@ interface ThoughtDisplayProps {
   style?: 'default' | 'compact';
   running?: boolean;
   onStop?: () => void;
+  actions?: React.ReactNode;
 }
 
 // 格式化时间 Format elapsed time
@@ -32,7 +33,13 @@ const formatElapsedTime = (seconds: number): string => {
   return `${minutes}m ${remainingSeconds}s`;
 };
 
-const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({ thought, style = 'default', running = false, onStop }) => {
+const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({
+  thought,
+  style = 'default',
+  running = false,
+  onStop,
+  actions,
+}) => {
   const summarizedDescription = useMemo(() => {
     const normalized = thought.description.replace(/\s+/g, ' ').trim();
     if (!normalized) {
@@ -97,10 +104,11 @@ const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({ thought, style = 'defau
     return (
       <div className={`${containerClassName} flex items-center gap-8px`} style={containerStyle}>
         <Spin size={14} />
-        <span className='text-12px text-t-secondary'>
+        <span className='min-w-0 flex-1 text-12px text-t-secondary'>
           {t('conversation.chat.processing')}
           <span className='ml-8px text-11px opacity-60'>({formatElapsedTime(elapsedTime)})</span>
         </span>
+        {actions ? <div className='shrink-0'>{actions}</div> : null}
       </div>
     );
   }
@@ -127,6 +135,7 @@ const ThoughtDisplay: React.FC<ThoughtDisplayProps> = ({ thought, style = 'defau
         </span>
       )}
       <span className='shrink-0 text-11px text-t-tertiary whitespace-nowrap'>({formatElapsedTime(elapsedTime)})</span>
+      {actions ? <div className='shrink-0'>{actions}</div> : null}
       {onStop ? (
         <Button
           size='mini'

@@ -187,6 +187,10 @@ const authSessionFetch = vi.fn(async (url: string, init?: RequestInit) => {
               localDirectoryUri: 'content://space/team-space',
               landingNotePath: 'Home.md',
               lastSyncedAt: '2026-04-16T00:00:00Z',
+              appliedCursor: 4,
+              lastPushCursor: 2,
+              lastPullCursor: 4,
+              vaultFingerprint: 'vault_hash_android_1',
             },
           ],
         },
@@ -843,6 +847,10 @@ describe('CloudService desktop loopback login', () => {
     );
     expect(payload?.replicas[0]?.localReadyState).toBe('prepared-directory');
     expect(payload?.replicas[0]?.localDirectoryUri).toBe('content://space/team-space');
+    expect(payload?.replicas[0]?.appliedCursor).toBe(4);
+    expect(payload?.replicas[0]?.lastPushCursor).toBe(2);
+    expect(payload?.replicas[0]?.lastPullCursor).toBe(4);
+    expect(payload?.replicas[0]?.vaultFingerprint).toBe('vault_hash_android_1');
   });
 
   it('normalizes sparse remote device payloads from the primary api origin', async () => {

@@ -504,8 +504,11 @@ const Layout: React.FC<{
         Math.min(MOBILE_SIDER_MAX_WIDTH, Math.round(viewportWidth * MOBILE_SIDER_WIDTH_RATIO))
       )
     : DEFAULT_SIDER_WIDTH;
-  const isDesktopRemoteDeviceShell = !isMobile && remoteAccessTarget.mode === 'remote-device';
-  const showPrimarySider = !isDesktopRemoteDeviceShell;
+  const isDesktopRemoteHostShell = !isMobile && remoteAccessTarget.mode === 'remote-host-shell';
+  // Desktop remote host shells should not nest the local primary sider outside the hosted remote UI.
+  const showPrimarySider = !isDesktopRemoteHostShell;
+  const shouldMountBackgroundSiderHost =
+    isDesktopRemoteHostShell && React.isValidElement<LayoutSiderElementProps>(sider) && typeof sider.type !== 'string';
   const desktopExpandedSiderWidth = siderWidth;
   const desktopCollapsedSiderWidth = 0;
   const resolvedMobileSiderTranslateX = isMobile ? (mobileSiderTranslateX ?? (collapsed ? -siderWidth : 0)) : 0;
@@ -746,6 +749,7 @@ const Layout: React.FC<{
             <ArcoLayout.Content
               className={classNames(
                 'bg-1 layout-content flex flex-col min-h-0',
+                isDesktopRemoteHostShell && 'layout-content--desktop-remote-device',
                 isMobile && `layout-content--mobile-${mobileTopChromeMode}`
               )}
               onClick={() => {
@@ -768,6 +772,14 @@ const Layout: React.FC<{
               </Suspense>
             </ArcoLayout.Content>
           </ArcoLayout>
+          {shouldMountBackgroundSiderHost ? (
+            <div className='hidden' aria-hidden='true'>
+              {React.cloneElement(sider, {
+                onSessionClick: undefined,
+                collapsed: true,
+              })}
+            </div>
+          ) : null}
         </div>
       </LayoutContext.Provider>
     </RemoteAccessContext.Provider>

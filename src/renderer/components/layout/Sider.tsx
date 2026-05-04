@@ -11,7 +11,6 @@ import { useThemeContext } from '@/renderer/hooks/context/ThemeContext';
 import { changeLanguage } from '@/renderer/services/i18n';
 import type { Theme } from '@/renderer/hooks/system/useTheme';
 import {
-  CheckSmall,
   Computer,
   ConnectionPoint,
   Down,
@@ -43,6 +42,7 @@ import MicrosoftDashboardLogo from '@renderer/assets/logos/tools/microsoft-dashb
 import { usePreviewActions } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useLayoutContext } from '@renderer/hooks/context/LayoutContext';
+import { useRemoteAccessContext } from '@renderer/hooks/context/RemoteAccessContext';
 import { blurActiveElement } from '@renderer/utils/ui/focus';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
 import { useSelectedSpace } from '@renderer/hooks/context/useSelectedSpace';
@@ -63,9 +63,15 @@ import {
   updateAndroidObsidianVaultSetupState,
 } from '@renderer/utils/platform';
 import {
+  buildOfficialDeviceListUrl,
+  buildOfficialDeviceUrl,
+  buildOfficialRemoteDisconnectRoute,
   buildOfficialRemoteDevicesRoute,
   getCurrentHostRuntimeStatusKey,
   isCurrentHostRuntimeReady,
+  OFFICIAL_REMOTE_CLIENT_DESKTOP_HOST,
+  OFFICIAL_REMOTE_CLIENT_QUERY_KEY,
+  OFFICIAL_REMOTE_NOTICE_RETURN_LOCAL_HOST,
   OFFICIAL_REMOTE_SWITCHER_EVENT,
   shouldEnsureCurrentHostRuntime,
 } from '@renderer/utils/officialRemote';
@@ -248,9 +254,18 @@ const buildCurrentDeviceFallback = (
 
 const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const layout = useLayoutContext();
+  const remoteAccess = useRemoteAccessContext();
   const isMobile = layout?.isMobile ?? false;
   const location = useLocation();
   const { pathname } = location;
+  const remoteClient = useMemo(() => {
+    const currentSearch =
+      typeof window !== 'undefined' && remoteAccess?.target.mode === 'remote-device'
+        ? window.location.search
+        : location.search;
+    const client = new URLSearchParams(currentSearch).get(OFFICIAL_REMOTE_CLIENT_QUERY_KEY)?.trim();
+    return client ? client : null;
+  }, [location.search, remoteAccess?.target.mode]);
 
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useThemeContext();
@@ -278,6 +293,23 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const isSettings = pathname.startsWith('/settings');
   const isConversationRoute = pathname.startsWith('/conversation/');
   const isDesktopRuntime = isElectronDesktop();
+  const isHostedRemoteDevicePage = remoteAccess?.target.mode === 'remote-device';
+  const isRemoteHostShell = remoteAccess?.target.mode === 'remote-host-shell';
+  const isRemoteDeviceShell = isHostedRemoteDevicePage || isRemoteHostShell;
+  const isHostedByDesktopRemoteHost = isHostedRemoteDevicePage && remoteClient === OFFICIAL_REMOTE_CLIENT_DESKTOP_HOST;
+  const isHostedRemoteDesktopHomeRoute = isHostedRemoteDevicePage && pathname === '/guid';
+  const shouldShowCurrentDeviceDesktopAction = !isHostedRemoteDesktopHomeRoute;
+  const shouldReturnToLocalDevice = isDesktopRuntime || isHostedRemoteDevicePage;
+  const deviceSwitcherEntryLabel =
+    isHostedRemoteDevicePage && !isMobile ? t('settings.webui.remoteSession') : t('settings.webui.switchDevice');
+  const remoteDeviceReturnRoute = shouldReturnToLocalDevice
+    ? '/guid'
+    : buildOfficialRemoteDevicesRoute({ forcePicker: true });
+  const remoteDeviceReturnActionLabel = isHostedRemoteDevicePage
+    ? t('settings.webui.switchDeviceReturnCurrentDesktop')
+    : shouldReturnToLocalDevice
+      ? t('settings.webui.switchDeviceReturnHost')
+      : t('settings.webui.switchDeviceReturnList');
 
   const showDesktopChromeOverlayInset = !isMobile && !isConversationRoute && (!isDesktopRuntime || isMacOS());
   const { cliAgents, presetAssistants } = useConversationAgents();
@@ -794,6 +826,10 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     setDeviceSwitchVisible(true);
     setRemoteDevicesError(null);
 
+    if (isHostedRemoteDevicePage) {
+      return;
+    }
+
     if (cloudStatus?.authenticated) {
       void prepareRemoteDevicesForSwitcher(cloudStatus);
       return;
@@ -839,8 +875,56 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
 
     setOpeningRemoteDeviceId(normalizedDeviceId);
     setDeviceSwitchVisible(false);
+    remoteAccess?.setTarget({
+      mode: 'remote-host-shell',
+      currentUrl: buildOfficialDeviceUrl(cloudStatus?.authBaseUrl, normalizedDeviceId, {
+        client: OFFICIAL_REMOTE_CLIENT_DESKTOP_HOST,
+      }),
+      entryUrl: buildOfficialDeviceListUrl(cloudStatus?.authBaseUrl),
+    });
     handleNavigate(buildOfficialRemoteDevicesRoute({ preferredDeviceId: normalizedDeviceId }));
     setOpeningRemoteDeviceId(null);
+  };
+
+  const handleReturnFromRemoteDeviceSwitcher = () => {
+    setDeviceSwitchVisible(false);
+    setRemoteDevicesError(null);
+
+    if (isHostedRemoteDevicePage && typeof window !== 'undefined') {
+      if (window.location.hash !== '#/guid') {
+        window.location.hash = '/guid';
+      }
+      return;
+    }
+
+    if (isDesktopRuntime && typeof window !== 'undefined' && window.location.hash !== '#/guid') {
+      window.location.hash = '/guid';
+    }
+
+    if (!shouldReturnToLocalDevice) {
+      remoteAccess?.resetToDeviceList();
+    }
+
+    handleNavigate(remoteDeviceReturnRoute);
+  };
+
+  const handleReturnToLocalHostFromRemoteDeviceSwitcher = () => {
+    setDeviceSwitchVisible(false);
+    setRemoteDevicesError(null);
+
+    if (isHostedRemoteDevicePage && typeof window !== 'undefined') {
+      const returnToLocalHostRoute = buildOfficialRemoteDisconnectRoute(OFFICIAL_REMOTE_NOTICE_RETURN_LOCAL_HOST);
+      if (window.location.hash !== `#${returnToLocalHostRoute}`) {
+        window.location.hash = returnToLocalHostRoute;
+      }
+      return;
+    }
+
+    if (isDesktopRuntime && typeof window !== 'undefined' && window.location.hash !== '#/guid') {
+      window.location.hash = '/guid';
+    }
+
+    handleNavigate('/guid');
   };
 
   const workspaceHistoryProps = {
@@ -868,7 +952,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const cloudSignedOutLabel = t('settings.webui.officialRemoteStatusShort.signedOut');
   const isCloudAuthenticated = cloudStatus?.authenticated === true;
   const userDisplayName = user?.displayName || user?.username || desktopUsername || t('common.localUser');
-  const currentDeviceName = cloudStatus?.device?.deviceName || t('settings.webui.switchDeviceUnknown');
   const remoteDevices = remoteDevicesPayload?.devices ?? [];
   const currentDeviceFallback = useMemo(
     () => buildCurrentDeviceFallback(cloudStatus, remoteDevices),
@@ -915,55 +998,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     return `${currentLanguageLabel} · ${currentThemeLabel}`;
   }, [cloudSignedOutLabel, currentLanguageLabel, currentThemeLabel, isCloudAuthenticated, user?.email, user?.username]);
   const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
-  const currentDevicePlatform = useMemo(
-    () => resolveDevicePlatformVisual(cloudStatus?.device?.platform),
-    [cloudStatus?.device?.platform]
-  );
-  const currentDeviceSummary = isCloudAuthenticated ? (
-    <span
-      className='sider-user-menu__status-icons'
-      data-testid='device-switch-indicators'
-      title={
-        cloudStatus?.device
-          ? `${currentDeviceName} · ${currentDevicePlatform?.label || t('settings.cloud.deviceName')} · ${t('settings.webui.switchDeviceCurrent')}`
-          : currentDeviceName
-      }
-      aria-label={
-        cloudStatus?.device
-          ? `${currentDeviceName} · ${currentDevicePlatform?.label || t('settings.cloud.deviceName')} · ${t('settings.webui.switchDeviceCurrent')}`
-          : currentDeviceName
-      }
-    >
-      {currentDevicePlatform ? (
-        <img
-          src={currentDevicePlatform.iconSrc}
-          alt={currentDevicePlatform.label}
-          className='sider-user-menu__status-icon'
-          data-testid='device-switch-platform-icon'
-        />
-      ) : (
-        <Computer
-          theme='outline'
-          size='14'
-          fill={iconColors.secondary}
-          className='app-icon shrink-0'
-          data-testid='device-switch-platform-fallback'
-        />
-      )}
-      {cloudStatus?.device ? (
-        <span
-          className='sider-user-menu__status-badge'
-          data-testid='device-switch-local-indicator'
-          title={t('settings.webui.switchDeviceCurrent')}
-          aria-label={t('settings.webui.switchDeviceCurrent')}
-        >
-          <CheckSmall theme='outline' size='12' fill='currentColor' className='app-icon shrink-0' />
-        </span>
-      ) : null}
-    </span>
-  ) : (
-    cloudSignedOutLabel
-  );
   const createEntryDropdownTriggerProps = {
     autoAlignPopupWidth: true,
     autoFitPosition: true,
@@ -1126,11 +1160,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           return;
         }
 
-        if (key === 'device-switch') {
-          handleOpenDeviceSwitcher();
-          return;
-        }
-
         if (key === 'devtools') {
           handleToggleDevTools();
           return;
@@ -1154,13 +1183,6 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
         }
       }}
     >
-      <Menu.Item key='device-switch'>
-        {renderUserMenuLabel(
-          <Computer theme='outline' size='16' fill={iconColors.primary} className='app-icon shrink-0' />,
-          t('settings.webui.switchDevice'),
-          currentDeviceSummary
-        )}
-      </Menu.Item>
       {cloudStatus?.user ? (
         <>
           <Menu.Item key='cloud:infermesh'>
@@ -1495,7 +1517,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
           onCancel={handleCloseDeviceSwitcher}
           className='device-switch-modal'
           header={{
-            title: t('settings.webui.switchDevice'),
+            title: deviceSwitcherEntryLabel,
             showClose: true,
             className: 'px-20px pt-16px',
           }}
@@ -1572,91 +1594,148 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               </div>
             ) : (
               <div className='flex flex-col gap-12px py-4px'>
-                <div className='text-13px leading-relaxed text-t-secondary'>
-                  {t('settings.webui.switchDeviceDescription')}
-                </div>
-                {remoteDevicesError ? (
-                  <div className='rounded-12px border border-danger/25 bg-danger/6 px-12px py-10px text-12px text-danger'>
-                    {remoteDevicesError}
-                  </div>
-                ) : null}
-                {remoteDevicesLoading && orderedRemoteDevices.length === 0 ? (
-                  <div className='rounded-14px border border-line bg-fill-1 px-14px py-16px text-13px text-t-secondary'>
-                    {t('settings.cloud.loading')}
-                  </div>
-                ) : null}
-                {!remoteDevicesLoading && orderedRemoteDevices.length === 0 ? (
-                  <div className='rounded-14px border border-line bg-fill-1 px-14px py-16px text-13px leading-relaxed text-t-secondary'>
-                    {t('settings.webui.switchDeviceEmpty')}
-                  </div>
-                ) : null}
-                {orderedRemoteDevices.length > 0 ? (
-                  <div className='flex flex-col gap-10px'>
-                    {orderedRemoteDevices.map((device) => {
-                      const canOpenDevice = isOpenableRemoteDevice(device);
-                      const isCurrentDevice = currentCloudDeviceId === device.id;
-                      const statusKey = getRemoteDeviceStatusKey(device, cloudStatus, isCurrentDevice);
-                      const lastSeen =
-                        formatRemoteDeviceLastSeen(device.lastSeenAt, i18n.language) ||
-                        t('settings.cloud.notAvailable');
-                      const isHighlighted = preferredRemoteDeviceId === device.id && !isCurrentDevice;
-
-                      return (
-                        <div
-                          key={device.id}
-                          className={classNames(
-                            'flex items-center gap-12px rounded-16px border px-14px py-12px transition-colors',
-                            isHighlighted
-                              ? 'border-[rgba(var(--primary-6),0.24)] bg-[rgba(var(--primary-6),0.06)]'
-                              : 'border-line bg-fill-1'
-                          )}
-                        >
-                          <div className='flex h-38px w-38px shrink-0 items-center justify-center rounded-12px bg-bg-2'>
-                            <Computer
-                              theme='outline'
-                              size='18'
-                              fill={iconColors.primary}
-                              className='app-icon shrink-0'
-                            />
-                          </div>
-                          <div className='min-w-0 flex-1'>
-                            <div className='flex flex-wrap items-center gap-8px'>
-                              <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
-                                {device.deviceName}
-                              </span>
-                              {isCurrentDevice ? (
-                                <span className='rounded-full bg-fill-2 px-8px py-2px text-11px font-600 text-t-secondary'>
-                                  {t('settings.webui.switchDeviceCurrent')}
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className='mt-4px flex flex-wrap items-center gap-6px text-12px text-t-secondary'>
-                              <span className='uppercase tracking-[0.08em]'>{device.platform}</span>
-                              <span>·</span>
-                              <span>{t('settings.webui.switchDeviceLastSeen', { time: lastSeen })}</span>
+                {isHostedRemoteDevicePage ? (
+                  <div className='flex flex-col gap-12px'>
+                    <div className='rounded-14px border border-line bg-fill-1 px-14px py-16px text-13px leading-relaxed text-t-secondary'>
+                      {t('settings.webui.switchDeviceRemoteGuardDescription')}
+                    </div>
+                    <div className='flex flex-col gap-10px'>
+                      {shouldShowCurrentDeviceDesktopAction ? (
+                        <div className='flex items-center justify-between gap-12px rounded-16px border border-line bg-fill-1 px-14px py-14px'>
+                          <div className='min-w-0'>
+                            <div className='text-14px font-600 text-t-primary'>{remoteDeviceReturnActionLabel}</div>
+                            <div className='mt-4px text-12px leading-relaxed text-t-secondary'>
+                              {isHostedRemoteDevicePage
+                                ? t('settings.webui.switchDeviceReturnCurrentDescription')
+                                : isDesktopRuntime
+                                  ? t('settings.webui.deviceModeLocal')
+                                  : t('settings.webui.remoteDevicesNav')}
                             </div>
                           </div>
-                          <div className='flex shrink-0 items-center gap-10px'>
-                            <span className='rounded-full bg-fill-2 px-8px py-2px text-11px font-600 text-t-secondary'>
-                              {t(statusKey)}
-                            </span>
-                            {!isCurrentDevice && canOpenDevice ? (
-                              <Button
-                                type='primary'
-                                size='small'
-                                loading={openingRemoteDeviceId === device.id}
-                                disabled={Boolean(openingRemoteDeviceId)}
-                                onClick={() => handleOpenRemoteDevice(device.id)}
-                              >
-                                {t('settings.webui.switchDeviceOpen')}
-                              </Button>
-                            ) : null}
+                          <Button type='primary' onClick={handleReturnFromRemoteDeviceSwitcher}>
+                            {remoteDeviceReturnActionLabel}
+                          </Button>
+                        </div>
+                      ) : null}
+                      {isHostedByDesktopRemoteHost ? (
+                        <div className='flex items-center justify-between gap-12px rounded-16px border border-line bg-fill-1 px-14px py-14px'>
+                          <div className='min-w-0'>
+                            <div className='text-14px font-600 text-t-primary'>
+                              {t('settings.webui.switchDeviceReturnHost')}
+                            </div>
+                            <div className='mt-4px text-12px leading-relaxed text-t-secondary'>
+                              {t('settings.webui.switchDeviceReturnHostDescription')}
+                            </div>
+                          </div>
+                          <Button onClick={handleReturnToLocalHostFromRemoteDeviceSwitcher}>
+                            {t('settings.webui.switchDeviceReturnHost')}
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className='text-13px leading-relaxed text-t-secondary'>
+                      {t('settings.webui.switchDeviceDescription')}
+                    </div>
+                    {isRemoteHostShell && shouldShowCurrentDeviceDesktopAction ? (
+                      <div className='flex items-center justify-between gap-12px rounded-16px border border-line bg-fill-1 px-14px py-14px'>
+                        <div className='min-w-0'>
+                          <div className='text-14px font-600 text-t-primary'>{remoteDeviceReturnActionLabel}</div>
+                          <div className='mt-4px text-12px leading-relaxed text-t-secondary'>
+                            {t('settings.webui.deviceModeLocal')}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
+                        <Button type='primary' onClick={handleReturnFromRemoteDeviceSwitcher}>
+                          {remoteDeviceReturnActionLabel}
+                        </Button>
+                      </div>
+                    ) : null}
+                    {remoteDevicesError ? (
+                      <div className='rounded-12px border border-danger/25 bg-danger/6 px-12px py-10px text-12px text-danger'>
+                        {remoteDevicesError}
+                      </div>
+                    ) : null}
+                    {remoteDevicesLoading && orderedRemoteDevices.length === 0 ? (
+                      <div className='rounded-14px border border-line bg-fill-1 px-14px py-16px text-13px text-t-secondary'>
+                        {t('settings.cloud.loading')}
+                      </div>
+                    ) : null}
+                    {!remoteDevicesLoading && orderedRemoteDevices.length === 0 ? (
+                      <div className='rounded-14px border border-line bg-fill-1 px-14px py-16px text-13px leading-relaxed text-t-secondary'>
+                        {t('settings.webui.switchDeviceEmpty')}
+                      </div>
+                    ) : null}
+                    {orderedRemoteDevices.length > 0 ? (
+                      <div className='flex flex-col gap-10px'>
+                        {orderedRemoteDevices.map((device) => {
+                          const canOpenDevice = isOpenableRemoteDevice(device);
+                          const isCurrentDevice = currentCloudDeviceId === device.id;
+                          const statusKey = getRemoteDeviceStatusKey(device, cloudStatus, isCurrentDevice);
+                          const lastSeen =
+                            formatRemoteDeviceLastSeen(device.lastSeenAt, i18n.language) ||
+                            t('settings.cloud.notAvailable');
+                          const isHighlighted = preferredRemoteDeviceId === device.id && !isCurrentDevice;
+
+                          return (
+                            <div
+                              key={device.id}
+                              className={classNames(
+                                'flex items-center gap-12px rounded-16px border px-14px py-12px transition-colors',
+                                isHighlighted
+                                  ? 'border-[rgba(var(--primary-6),0.24)] bg-[rgba(var(--primary-6),0.06)]'
+                                  : 'border-line bg-fill-1'
+                              )}
+                            >
+                              <div className='flex h-38px w-38px shrink-0 items-center justify-center rounded-12px bg-bg-2'>
+                                <Computer
+                                  theme='outline'
+                                  size='18'
+                                  fill={iconColors.primary}
+                                  className='app-icon shrink-0'
+                                />
+                              </div>
+                              <div className='min-w-0 flex-1'>
+                                <div className='flex flex-wrap items-center gap-8px'>
+                                  <span className='min-w-0 truncate text-14px font-600 text-t-primary'>
+                                    {device.deviceName}
+                                  </span>
+                                  {isCurrentDevice ? (
+                                    <span className='rounded-full bg-fill-2 px-8px py-2px text-11px font-600 text-t-secondary'>
+                                      {t('settings.webui.switchDeviceCurrent')}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className='mt-4px flex flex-wrap items-center gap-6px text-12px text-t-secondary'>
+                                  <span className='uppercase tracking-[0.08em]'>{device.platform}</span>
+                                  <span>·</span>
+                                  <span>{t('settings.webui.switchDeviceLastSeen', { time: lastSeen })}</span>
+                                </div>
+                              </div>
+                              <div className='flex shrink-0 items-center gap-10px'>
+                                <span className='rounded-full bg-fill-2 px-8px py-2px text-11px font-600 text-t-secondary'>
+                                  {t(statusKey)}
+                                </span>
+                                {!isCurrentDevice && canOpenDevice ? (
+                                  <Button
+                                    type='primary'
+                                    size='small'
+                                    loading={openingRemoteDeviceId === device.id}
+                                    disabled={Boolean(openingRemoteDeviceId)}
+                                    onClick={() => handleOpenRemoteDevice(device.id)}
+                                  >
+                                    {t('settings.webui.switchDeviceOpen')}
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -56,6 +56,61 @@
     "tools": "도구 {{count}}개",
     "tools_other": "도구 {{count}}개"
   },
+  "contextPreview": {
+    "pill": "컨텍스트 · {{count}}",
+    "composerTag": "전송 컨텍스트",
+    "composerSummary": "이번 턴에는 컨텍스트 {{count}}개가 함께 전송됩니다",
+    "composerSummary_other": "이번 턴에는 컨텍스트 {{count}}개가 함께 전송됩니다",
+    "title": "이번 턴에 실제로 사용된 컨텍스트",
+    "subtitle": "이 내용은 사용자 질의가 에이전트로 전송되기 전에 실제로 첨부된 컨텍스트 패키지입니다.",
+    "mountedTitle": "마운트된 컨텍스트",
+    "queryTermsTitle": "검색어",
+    "sectionsTitle": "포함된 섹션",
+    "sectionTokens": "{{count}} 토큰",
+    "boolean": {
+      "yes": "예",
+      "no": "아니요"
+    },
+    "short": {
+      "memoryRefs": "메모리 {{count}}개",
+      "memoryRefs_other": "메모리 {{count}}개",
+      "sourceRefs": "소스 {{count}}개",
+      "sourceRefs_other": "소스 {{count}}개",
+      "profileRefs": "프로필 {{count}}개",
+      "profileRefs_other": "프로필 {{count}}개"
+    },
+    "metrics": {
+      "sections": "섹션 수",
+      "memoryRefs": "메모리 참조",
+      "sourceRefs": "소스 참조",
+      "profileRefs": "프로필 참조",
+      "omitted": "생략됨",
+      "tokenBudget": "토큰 예산",
+      "threadSummary": "스레드 요약",
+      "mountedSections": "마운트된 섹션",
+      "mountedProfiles": "마운트된 프로필",
+      "pinnedInstructions": "고정 지시"
+    },
+    "searchMode": {
+      "lexical": "어휘",
+      "vector": "벡터",
+      "hybrid": "하이브리드"
+    },
+    "sectionSource": {
+      "mounted": "마운트됨",
+      "retrieved": "검색됨",
+      "instruction": "고정"
+    },
+    "sectionKind": {
+      "threadState": "스레드 상태",
+      "source": "소스",
+      "artifact": "산출물",
+      "memory": "메모리",
+      "profile": "프로필",
+      "instruction": "지시",
+      "compaction": "압축 요약"
+    }
+  },
   "confirmation": {
     "applyChange": "이 변경 사항을 적용하시겠습니까?",
     "allowExecution": "실행을 허용하시겠습니까?",

@@ -62,6 +62,10 @@ export type CloudObsidianReplica = {
   platform: 'desktop' | 'mobile';
   healthStatus: 'ok' | 'warn' | 'error';
   lastSyncedAt?: string | null;
+  appliedCursor?: number;
+  lastPushCursor?: number;
+  lastPullCursor?: number;
+  vaultFingerprint?: string | null;
   localReadyState?: 'prepared-directory' | 'registered-mobile-replica' | 'unprepared' | null;
   rootTreeUri?: string | null;
   localDirectoryUri?: string | null;
@@ -71,7 +75,7 @@ export type CloudObsidianReplica = {
 export type CloudObsidianVaultBinding = {
   vaultBindingId: string;
   spaceId: string;
-  riskLevel?: 'normal' | 'external-sync-risk' | 'high-drift';
+  riskLevel?: 'normal' | 'external-sync-risk' | 'high-drift' | 'drift_suspected';
   replicas: CloudObsidianReplica[];
 };
 

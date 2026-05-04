@@ -24,10 +24,10 @@ const GroupChat: React.FC<{
   return (
     <ConversationMessageStateProvider conversationId={conversationId}>
       <ConversationProvider value={{ conversationId, workspace, type: 'group' }}>
-        <div className='flex-1 flex flex-col px-12px md:px-20px min-h-0'>
+        <div className='conversation-mobile-chat-page flex-1 flex flex-col px-12px md:px-20px min-h-0'>
           <GroupOverviewCard conversation={conversation} running={running} />
           <FlexFullContainer>
-            <MessageList className='flex-1' />
+            <MessageList className='conversation-mobile-message-list flex-1' />
           </FlexFullContainer>
           <GroupSendBox conversationId={conversationId} running={running} setRunning={setRunning} />
         </div>

@@ -4,7 +4,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import MarkdownView from '../../../../../src/renderer/components/Markdown';
+import MarkdownView, { renderStandaloneLocalImagePaths } from '../../../../../src/renderer/components/Markdown';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -52,7 +52,7 @@ vi.mock('@/renderer/utils/platform', () => ({
 }));
 
 vi.mock('@renderer/components/media/LocalImageView', () => ({
-  default: ({ alt }: { alt?: string }) => <img alt={alt || ''} />,
+  default: ({ alt, src }: { alt?: string; src?: string }) => <img alt={alt || ''} data-src={src} />,
 }));
 
 vi.mock('../../../../../src/renderer/components/Markdown/ShadowView', () => ({
@@ -64,6 +64,38 @@ vi.mock('@renderer/utils/chat/latexDelimiters', () => ({
 }));
 
 describe('MarkdownView', () => {
+  it('renders standalone local image paths as images', () => {
+    render(<MarkdownView>{'/tmp/generated image.png'}</MarkdownView>);
+
+    const image = screen.getByAltText('generated image.png');
+    expect(image).toBeInTheDocument();
+    expect(image).toHaveAttribute('data-src', '/tmp/generated image.png');
+  });
+
+  it('renders leading workspace-relative image paths before descriptions as images', () => {
+    render(
+      <MarkdownView>
+        {
+          'outputs/visuals/ai-native-workbench-launch/cg-aiw-xhs-cover-001.png：小红书中文封面，1080x1440。'
+        }
+      </MarkdownView>
+    );
+
+    const image = screen.getByAltText('cg-aiw-xhs-cover-001.png');
+    expect(image).toBeInTheDocument();
+    expect(image).toHaveAttribute(
+      'data-src',
+      'outputs/visuals/ai-native-workbench-launch/cg-aiw-xhs-cover-001.png'
+    );
+    expect(screen.getByText('：小红书中文封面，1080x1440。')).toBeInTheDocument();
+  });
+
+  it('keeps standalone local image paths inside fenced code blocks as text', () => {
+    const content = '```text\n/tmp/generated.png\n```';
+
+    expect(renderStandaloneLocalImagePaths(content)).toBe(content);
+  });
+
   it('renders single-line fenced code blocks from skill markdown with full block chrome', () => {
     render(<MarkdownView>{'# Workflow\n\n```bash\nnpm run ops -- auth cloudflare newapi\n```\n'}</MarkdownView>);
 

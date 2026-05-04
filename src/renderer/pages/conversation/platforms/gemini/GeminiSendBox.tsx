@@ -5,6 +5,7 @@ import ContextUsageIndicator from '@/renderer/components/agent/ContextUsageIndic
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
 import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
+import SendContextPreview from '@/renderer/components/chat/SendContextPreview';
 import SendBox from '@/renderer/components/chat/sendbox';
 import { useAgentReadinessCheck } from '@/renderer/hooks/agent/useAgentReadinessCheck';
 import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
@@ -14,7 +15,7 @@ import FileAttachButton from '@/renderer/components/media/FileAttachButton';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile, useSendBoxFiles } from '@/renderer/hooks/chat/useSendBoxFiles';
 import { useSlashCommands } from '@/renderer/hooks/chat/useSlashCommands';
-import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
+import { useAddOrUpdateMessage, useMessageList } from '@/renderer/pages/conversation/Messages/hooks';
 import {
   usePendingConversationMessages,
   type PendingConversationMessage,
@@ -176,6 +177,16 @@ const GeminiSendBox: React.FC<{
   const slashCommands = useSlashCommands(conversation_id);
 
   const addOrUpdateMessage = useAddOrUpdateMessage();
+  const messages = useMessageList();
+  const activeContextPreview = React.useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index];
+      if (message.type === 'text' && message.position === 'right') {
+        return message.content.contextPreview;
+      }
+    }
+    return undefined;
+  }, [messages]);
 
   // Use useLatestRef to keep latest setters for long-lived event listeners
   const setContentRef = useLatestRef(setContent);
@@ -340,7 +351,7 @@ const GeminiSendBox: React.FC<{
   };
 
   return (
-    <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
+    <div className='conversation-mobile-sendbox max-w-800px w-full mx-auto flex flex-col mt-auto mb-8px md:mb-16px'>
       {/* Agent Setup Card - only show for new conversation + no auth, auto-switch to available agent */}
       {showSetupCard && isNewConversation && hasNoAuth && (
         <AgentSetupCard
@@ -358,12 +369,13 @@ const GeminiSendBox: React.FC<{
         />
       )}
 
-      <div
-        className={`conversation-run-status-stack conversation-run-status-stack--single ${
-          running ? 'conversation-run-status-stack--active' : ''
-        }`}
-      >
-        <ThoughtDisplay thought={thought} running={running} onStop={handleStop} />
+      <div className='conversation-run-status-stack'>
+        <ThoughtDisplay
+          thought={thought}
+          running={running}
+          onStop={handleStop}
+          actions={<SendContextPreview preview={activeContextPreview} active={running} />}
+        />
       </div>
 
       <SendBox

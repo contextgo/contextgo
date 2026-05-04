@@ -157,6 +157,7 @@ final class WebViewStore: NSObject, ObservableObject {
   private var recoveryHandler: ((String?) -> Void)?
   private var requestedURL: String?
   private var overlayFallbackTask: Task<Void, Never>?
+  private var keyboardWillShowObserver: NSObjectProtocol?
 
   override init() {
     let configuration = WKWebViewConfiguration()
@@ -185,6 +186,20 @@ final class WebViewStore: NSObject, ObservableObject {
     )
     webView.navigationDelegate = self
     webView.uiDelegate = self
+    keyboardWillShowObserver = NotificationCenter.default.addObserver(
+      forName: UIResponder.keyboardWillShowNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      self?.scheduleInputAssistantSuppression()
+    }
+    scheduleInputAssistantSuppression()
+  }
+
+  deinit {
+    if let keyboardWillShowObserver {
+      NotificationCenter.default.removeObserver(keyboardWillShowObserver)
+    }
   }
 
   func load(url: URL, force: Bool = false, headers: [String: String] = [:]) {
@@ -251,6 +266,28 @@ final class WebViewStore: NSObject, ObservableObject {
   func goBack() {
     guard webView.canGoBack else { return }
     webView.goBack()
+  }
+
+  private func scheduleInputAssistantSuppression() {
+    clearInputAssistantBar()
+    DispatchQueue.main.async { [weak self] in
+      self?.clearInputAssistantBar()
+    }
+  }
+
+  private func clearInputAssistantBar() {
+    clearInputAssistantItem(for: webView)
+    clearInputAssistantItem(for: webView.scrollView)
+
+    if let firstResponder = webView.findFirstResponder() {
+      clearInputAssistantItem(for: firstResponder)
+    }
+  }
+
+  private func clearInputAssistantItem(for responder: UIResponder) {
+    let assistantItem = responder.inputAssistantItem
+    assistantItem.leadingBarButtonGroups = []
+    assistantItem.trailingBarButtonGroups = []
   }
 
   private func updateChromeColor(_ cssColor: String?) {
@@ -370,6 +407,7 @@ extension WebViewStore: WKNavigationDelegate {
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
     isPageLoading = true
     hasCommittedNavigation = false
+    scheduleInputAssistantSuppression()
   }
 
   func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
@@ -381,6 +419,7 @@ extension WebViewStore: WKNavigationDelegate {
     hasCommittedNavigation = true
     hasFinishedNavigation = true
     isPageLoading = false
+    scheduleInputAssistantSuppression()
     dismissLaunchOverlayIfReady()
     scheduleLaunchOverlayFallbackDismissal()
   }
@@ -508,6 +547,22 @@ extension WebViewStore: UIDocumentPickerDelegate {
   func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
     openPanelCompletionHandler?(nil)
     openPanelCompletionHandler = nil
+  }
+}
+
+private extension UIView {
+  func findFirstResponder() -> UIResponder? {
+    if isFirstResponder {
+      return self
+    }
+
+    for subview in subviews {
+      if let firstResponder = subview.findFirstResponder() {
+        return firstResponder
+      }
+    }
+
+    return nil
   }
 }
 

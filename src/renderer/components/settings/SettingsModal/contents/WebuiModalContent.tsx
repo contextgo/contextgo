@@ -14,7 +14,7 @@ import {
   dispatchOfficialRemoteSwitcherEvent,
   getCurrentHostRuntimeDetailStatusKey,
 } from '@/renderer/utils/officialRemote';
-import { openExternalUrl } from '@/renderer/utils/platform';
+import { isElectronDesktop, isMacOS, isWindows, openExternalUrl } from '@/renderer/utils/platform';
 import { Button, Form, Input, Message, Switch, Tooltip } from '@arco-design/web-react';
 import { CheckOne, Copy, Earth, EditTwo, LinkCloud, Refresh } from '@icon-park/react';
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
@@ -88,6 +88,7 @@ const WebuiModalContent: React.FC = () => {
   const [cloudStatus, setCloudStatus] = useState<CloudStatus | null>(null);
   const [cloudLoading, setCloudLoading] = useState(true);
   const [cloudAuthLoadingProvider, setCloudAuthLoadingProvider] = useState<CloudAuthProviderId | null>(null);
+  const supportsDesktopHostSwitcher = isElectronDesktop() && (isMacOS() || isWindows());
   const webuiEnabled = status?.localAccessEnabled ?? false;
   const allowRemotePreference = status?.localAccessAllowRemote ?? false;
   const showLocalBrowserEntrySurface = false;
@@ -689,11 +690,13 @@ const WebuiModalContent: React.FC = () => {
                 </div>
                 <div className='text-12px text-t-tertiary'>{t('settings.webui.officialRemoteRuntimeHint')}</div>
                 <div className='text-12px text-t-secondary'>{officialRemoteStatusText}</div>
-                <div className='flex flex-wrap gap-8px'>
-                  <Button type='primary' onClick={() => void handleOpenOfficialRemote()}>
-                    {t('settings.webui.switchDevice')}
-                  </Button>
-                </div>
+                {supportsDesktopHostSwitcher ? (
+                  <div className='flex flex-wrap gap-8px'>
+                    <Button type='primary' onClick={() => void handleOpenOfficialRemote()}>
+                      {t('settings.webui.switchDevice')}
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className='space-y-10px'>

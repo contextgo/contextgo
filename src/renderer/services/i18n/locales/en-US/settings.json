@@ -601,6 +601,14 @@
   "webui.openOfficialRemote": "Open Host List",
   "webui.remoteDevicesNav": "Remote Hosts",
   "webui.switchDevice": "Switch Host",
+  "webui.remoteSession": "Remote Session",
+  "webui.switchDeviceRemoteGuardDescription": "Remote control stays single-layer. Return from the current remote session before switching to another host.",
+  "webui.switchDeviceReturnLocal": "Return to This Device",
+  "webui.switchDeviceReturnList": "Return to Host List",
+  "webui.switchDeviceReturnCurrentDesktop": "Return to This Device Desktop",
+  "webui.switchDeviceReturnCurrentDescription": "Stay on this remote device and go back to its own desktop home.",
+  "webui.switchDeviceReturnHost": "Return to Local Host",
+  "webui.switchDeviceReturnHostDescription": "Exit this remote session and go back to the desktop that opened it.",
   "webui.officialRemoteSignedOut": "The official host list is not connected yet.",
   "webui.officialRemoteHint": "Sign in once here. ContextGo will automatically link this host runtime so it appears in the hosted host list.",
   "webui.featureChannelsTitle": "Messaging Control",
@@ -1551,6 +1559,8 @@
     "externalCatalog": {
       "platformAccess": "Current Integration",
       "runtimeBoundary": "Runtime Notes",
+      "runtimeStatus": "Runtime Status",
+      "runtimeStatusSummary": "Live connector state reported by the active Space runtime.",
       "nativeSurface": "Coverage",
       "commandEntrypoints": "CLI Commands",
       "capabilities": "Capability Tree",
@@ -1590,6 +1600,26 @@
       "entrypoints": "Entrypoints",
       "writesStore": "Results persist automatically",
       "noStoreWrite": "Results do not persist yet",
+      "runtimeFields": {
+        "serviceStatus": "Service",
+        "loginStatus": "Login",
+        "activeAccount": "Active account",
+        "accounts": "Accounts",
+        "baseUrl": "Base URL",
+        "headlessMode": "Headless",
+        "capabilityCount": "Capabilities",
+        "cookiesPath": "Cookies path",
+        "serviceRepo": "Service repo",
+        "runtimeDir": "Runtime dir"
+      },
+      "runtimeValues": {
+        "running": "Running",
+        "stopped": "Stopped",
+        "loggedIn": "Logged in",
+        "loggedOut": "Not logged in",
+        "true": "Yes",
+        "false": "No"
+      },
       "unavailableTitle": "Connector details are unavailable"
     },
     "catalogPlaceholderDesc": "This connector is currently a catalog placeholder. ContextGo does not consume any runtime or collected outputs for it yet.",
@@ -1839,5 +1869,8 @@
   "webui.deviceModeLocal": "Local Host",
   "webui.deviceModeRemote": "Remote Device",
   "webui.switchDeviceUnknown": "Current host",
-  "webui.backToLocal": "Back to Local"
+  "webui.backToLocal": "Back to Local",
+  "webui.remoteDeviceLoadFailedTitle": "Unable to open the remote device",
+  "webui.remoteDeviceLoadFailedDescription": "The desktop client failed to load the hosted remote page. You can retry or return to the local host.",
+  "webui.remoteDeviceLoadFailedReason": "Loading failed: {{reason}}"
 }

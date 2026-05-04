@@ -7,6 +7,10 @@ export const OFFICIAL_REMOTE_WEBVIEW_PARTITION = 'persist:contextgo-cloud-auth';
 export const OFFICIAL_REMOTE_DEVICE_ID_QUERY_KEY = 'deviceId';
 export const OFFICIAL_REMOTE_VIEW_QUERY_KEY = 'view';
 export const OFFICIAL_REMOTE_VIEW_LIST = 'list';
+export const OFFICIAL_REMOTE_NOTICE_QUERY_KEY = 'remoteNotice';
+export const OFFICIAL_REMOTE_CLIENT_QUERY_KEY = 'client';
+export const OFFICIAL_REMOTE_CLIENT_DESKTOP_HOST = 'desktop-host';
+export const OFFICIAL_REMOTE_NOTICE_RETURN_LOCAL_HOST = 'return_local_host';
 
 const OFFICIAL_REMOTE_PREFERRED_DEVICE_ID_KEY = 'contextgo.officialRemote.preferredDeviceId';
 
@@ -50,14 +54,39 @@ export const isOfficialRemotePickerView = (searchParams: URLSearchParams): boole
   return searchParams.get(OFFICIAL_REMOTE_VIEW_QUERY_KEY) === OFFICIAL_REMOTE_VIEW_LIST;
 };
 
-export const buildOfficialDeviceUrl = (authBaseUrl: string | undefined, deviceId: string): string => {
+type BuildOfficialDeviceUrlOptions = {
+  client?: string;
+};
+
+export const buildOfficialDeviceUrl = (
+  authBaseUrl: string | undefined,
+  deviceId: string,
+  options?: BuildOfficialDeviceUrlOptions
+): string => {
   const normalizedDeviceId = deviceId.trim();
   if (!normalizedDeviceId) {
     return buildOfficialDeviceListUrl(authBaseUrl);
   }
 
   const normalizedBaseUrl = authBaseUrl?.trim().replace(/\/+$/, '') || CONTEXTGO_AUTH_BASE_URL.replace(/\/+$/, '');
-  return `${normalizedBaseUrl}/device/${encodeURIComponent(normalizedDeviceId)}`;
+  const url = new URL(`/device/${encodeURIComponent(normalizedDeviceId)}`, `${normalizedBaseUrl}/`);
+  const client = options?.client?.trim();
+  if (client) {
+    url.searchParams.set(OFFICIAL_REMOTE_CLIENT_QUERY_KEY, client);
+  }
+
+  return url.toString();
+};
+
+export const buildOfficialRemoteDisconnectRoute = (notice: string): string => {
+  const searchParams = new URLSearchParams();
+  const normalizedNotice = notice.trim();
+  if (normalizedNotice) {
+    searchParams.set(OFFICIAL_REMOTE_NOTICE_QUERY_KEY, normalizedNotice);
+  }
+
+  const query = searchParams.toString();
+  return query ? `${OFFICIAL_REMOTE_DEVICES_ROUTE}?${query}` : OFFICIAL_REMOTE_DEVICES_ROUTE;
 };
 
 export const extractOfficialRemoteDeviceId = (candidateUrl: string): string | null => {
@@ -214,6 +243,7 @@ export type OfficialRemoteRouteViewMode = 'device-list' | 'remote-device' | 'loc
 export type HostedOfficialRemoteIntent =
   | { kind: 'none' }
   | { kind: 'device-list' }
+  | { kind: 'disconnect'; notice: string | null }
   | { kind: 'device-switch'; deviceId: string }
   | { kind: 'self-open'; deviceId: string };
 
@@ -223,8 +253,13 @@ const parseOfficialRemoteIntentFromSearchParams = (
 ): HostedOfficialRemoteIntent => {
   const normalizedDisplayedDeviceId = displayedDeviceId?.trim() || null;
   const nestedRequestedDeviceId = searchParams.get(OFFICIAL_REMOTE_DEVICE_ID_QUERY_KEY)?.trim() || null;
+  const remoteNotice = searchParams.get(OFFICIAL_REMOTE_NOTICE_QUERY_KEY)?.trim() || null;
 
   if (!nestedRequestedDeviceId) {
+    if (remoteNotice) {
+      return { kind: 'disconnect', notice: remoteNotice };
+    }
+
     return { kind: 'device-list' };
   }
 
@@ -311,11 +346,16 @@ type ResolveAuthenticatedStartupPathParams = {
   activeTabId: string | null;
   openTabIds: string[];
   preferOfficialRemoteShell: boolean;
+  isMobileShellRuntime?: boolean;
   preferredRemoteDeviceId?: string | null;
 };
 
 export const resolveAuthenticatedStartupPath = (params: ResolveAuthenticatedStartupPathParams): string => {
   if (params.preferOfficialRemoteShell) {
+    if (params.isMobileShellRuntime) {
+      return buildOfficialRemoteDevicesRoute({ forcePicker: true });
+    }
+
     const preferredRemoteDeviceId = params.preferredRemoteDeviceId?.trim() || readPreferredOfficialRemoteDeviceId();
     return buildOfficialRemoteDevicesRoute({ preferredDeviceId: preferredRemoteDeviceId });
   }

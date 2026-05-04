@@ -270,12 +270,13 @@ const ProtectedLayout: React.FC<{
 const StartupConversationRedirect: React.FC = () => {
   const { openTabs, activeTabId, closeAllTabs } = useConversationTabs();
   const [startupPath, setStartupPath] = useState<string | null>(null);
+  const isMobileShellRuntime = typeof window !== 'undefined' && isMobileShellWebView();
   const preferOfficialRemoteShell =
     typeof window !== 'undefined' &&
     shouldPreferOfficialRemoteShell({
       currentHref: window.location.href,
       isDesktopRuntime: isElectronDesktop(),
-      isMobileShellRuntime: isMobileShellWebView(),
+      isMobileShellRuntime,
     });
 
   useEffect(() => {
@@ -300,6 +301,7 @@ const StartupConversationRedirect: React.FC = () => {
         activeTabId,
         openTabIds: openTabs.map((tab) => tab.id),
         preferOfficialRemoteShell,
+        isMobileShellRuntime,
       });
 
       if (preferOfficialRemoteShell || !activeTabId || nextPath === '/guid') {
@@ -336,7 +338,7 @@ const StartupConversationRedirect: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeTabId, closeAllTabs, openTabs, preferOfficialRemoteShell]);
+  }, [activeTabId, closeAllTabs, isMobileShellRuntime, openTabs, preferOfficialRemoteShell]);
 
   if (!startupPath) {
     return <AppLoader />;

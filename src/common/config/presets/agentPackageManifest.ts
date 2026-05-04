@@ -22,6 +22,7 @@ export type AgentPackageSourceKind = 'package-relative' | 'repo-relative' | 'wor
 export type AgentPackageInstallSurface =
   | 'workspace-root-docs'
   | '.contextgo/connectors/'
+  | '.contextgo/requirements/'
   | '.contextgo/skills'
   | '.contextgo/commands.json'
   | '.contextgo/hooks/'
@@ -30,7 +31,14 @@ export type AgentPackageInstallSurface =
 
 export type AgentPackageRuntimeProjection = 'none' | 'native-skills-only';
 
-export type AgentPackagePayloadId = 'workspaceScaffold' | 'skills' | 'connectors' | 'commands' | 'hooks' | 'schedules';
+export type AgentPackagePayloadId =
+  | 'workspaceScaffold'
+  | 'skills'
+  | 'connectors'
+  | 'requirements'
+  | 'commands'
+  | 'hooks'
+  | 'schedules';
 
 export type AgentPackageSourceDescriptor = {
   kind: AgentPackageSourceKind;
@@ -85,6 +93,61 @@ export type AgentPackageConnectorsPayload = AgentPackagePayloadBase & {
   connectorTypes: string[];
 };
 
+export type AgentPackageRequirementOwnerScope = {
+  ownerSkillNames?: string[];
+};
+
+export type AgentPackageToolRequirement = AgentPackageRequirementOwnerScope & {
+  id: string;
+  kind: 'mcp' | 'cli' | 'builtin-tool';
+  required: boolean;
+  label: string;
+  description?: string;
+  mcp?: {
+    serverId: string;
+    transport: 'stdio' | 'streamable_http';
+    url?: string;
+    command?: string;
+    args?: string[];
+    envRefs?: string[];
+  };
+};
+
+export type AgentPackageCredentialRequirement = AgentPackageRequirementOwnerScope & {
+  id: string;
+  kind: 'api_key' | 'oauth2' | 'service_account' | 'basic' | 'bearer_token';
+  required: boolean;
+  label: string;
+  provider: string;
+  description?: string;
+  env?: string;
+  scopes?: string[];
+  fields?: Array<{
+    key: string;
+    label: string;
+    secret: boolean;
+    required: boolean;
+  }>;
+};
+
+export type AgentPackageConnectorRequirement = AgentPackageRequirementOwnerScope & {
+  id: string;
+  connectorType: string;
+  required: boolean;
+  label: string;
+  description?: string;
+  capabilities?: string[];
+  scopes?: string[];
+};
+
+export type AgentPackageRequirementsPayload = AgentPackagePayloadBase & {
+  logicalId: 'requirements';
+  installSurface: '.contextgo/requirements/';
+  tools?: AgentPackageToolRequirement[];
+  credentials?: AgentPackageCredentialRequirement[];
+  connectors?: AgentPackageConnectorRequirement[];
+};
+
 export type AgentPackageCommandsPayload = AgentPackagePayloadBase & {
   logicalId: 'commands';
   installSurface: '.contextgo/commands.json';
@@ -116,6 +179,7 @@ export type AgentPackageManifest = {
     workspaceScaffold?: AgentPackageWorkspaceScaffoldPayload;
     skills?: AgentPackageSkillsPayload;
     connectors?: AgentPackageConnectorsPayload;
+    requirements?: AgentPackageRequirementsPayload;
     commands?: AgentPackageCommandsPayload;
     hooks?: AgentPackageHooksPayload;
     schedules?: AgentPackageSchedulesPayload;
@@ -131,6 +195,7 @@ const AGENT_PACKAGE_SOURCE_KINDS = new Set<AgentPackageSourceKind>([
 const AGENT_PACKAGE_INSTALL_SURFACES = new Set<AgentPackageInstallSurface>([
   'workspace-root-docs',
   '.contextgo/connectors/',
+  '.contextgo/requirements/',
   '.contextgo/skills',
   '.contextgo/commands.json',
   '.contextgo/hooks/',
@@ -160,6 +225,22 @@ const WORKSPACE_AUTOMATION_PROFILES = new Set<AgentPackageWorkspaceAutomationPro
 ]);
 
 const AGENT_PACKAGE_RUNTIME_IDS = new Set<AgentPackageRuntimeId>(['gemini', 'claude', 'codex', 'opencode']);
+const AGENT_PACKAGE_TOOL_REQUIREMENT_KINDS = new Set<AgentPackageToolRequirement['kind']>([
+  'mcp',
+  'cli',
+  'builtin-tool',
+]);
+const AGENT_PACKAGE_CREDENTIAL_REQUIREMENT_KINDS = new Set<AgentPackageCredentialRequirement['kind']>([
+  'api_key',
+  'oauth2',
+  'service_account',
+  'basic',
+  'bearer_token',
+]);
+const AGENT_PACKAGE_MCP_TRANSPORTS = new Set<NonNullable<AgentPackageToolRequirement['mcp']>['transport']>([
+  'stdio',
+  'streamable_http',
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -188,6 +269,14 @@ function parseStringArray(value: unknown): string[] | undefined {
 
   const parsed = value.filter(isNonEmptyString).map((item) => item.trim());
   return parsed.length === value.length ? parsed : undefined;
+}
+
+function parseOptionalStringArray(value: unknown): string[] | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return parseStringArray(value) ?? null;
 }
 
 function parseSources(value: unknown): AgentPackageSourceDescriptor[] | null {
@@ -435,6 +524,244 @@ function parseConnectorsPayload(value: unknown): AgentPackageConnectorsPayload |
   };
 }
 
+function parseRequirementOwnerScope(value: Record<string, unknown>): AgentPackageRequirementOwnerScope | null {
+  const ownerSkillNames = parseOptionalStringArray(value.ownerSkillNames);
+  if (ownerSkillNames === null) {
+    return null;
+  }
+
+  return { ownerSkillNames };
+}
+
+function parseMcpRequirement(value: unknown): AgentPackageToolRequirement['mcp'] | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!isRecord(value) || !isNonEmptyString(value.serverId) || !isNonEmptyString(value.transport)) {
+    return null;
+  }
+
+  const transport = value.transport as NonNullable<AgentPackageToolRequirement['mcp']>['transport'];
+  if (!AGENT_PACKAGE_MCP_TRANSPORTS.has(transport)) {
+    return null;
+  }
+
+  const args = parseOptionalStringArray(value.args);
+  const envRefs = parseOptionalStringArray(value.envRefs);
+  if (args === null || envRefs === null) {
+    return null;
+  }
+
+  return {
+    serverId: value.serverId.trim(),
+    transport,
+    url: isNonEmptyString(value.url) ? value.url.trim() : undefined,
+    command: isNonEmptyString(value.command) ? value.command.trim() : undefined,
+    args,
+    envRefs,
+  };
+}
+
+function parseToolRequirements(value: unknown): AgentPackageToolRequirement[] | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const requirements: AgentPackageToolRequirement[] = [];
+  for (const item of value) {
+    if (
+      !isRecord(item) ||
+      !isNonEmptyString(item.id) ||
+      !isNonEmptyString(item.kind) ||
+      !AGENT_PACKAGE_TOOL_REQUIREMENT_KINDS.has(item.kind as AgentPackageToolRequirement['kind']) ||
+      typeof item.required !== 'boolean' ||
+      !isNonEmptyString(item.label)
+    ) {
+      return null;
+    }
+
+    const ownerScope = parseRequirementOwnerScope(item);
+    const mcp = parseMcpRequirement(item.mcp);
+    if (ownerScope === null || mcp === null) {
+      return null;
+    }
+
+    requirements.push({
+      id: item.id.trim(),
+      kind: item.kind as AgentPackageToolRequirement['kind'],
+      required: item.required,
+      label: item.label.trim(),
+      description: isNonEmptyString(item.description) ? item.description.trim() : undefined,
+      ownerSkillNames: ownerScope.ownerSkillNames,
+      mcp,
+    });
+  }
+
+  return requirements;
+}
+
+function parseCredentialRequirementFields(
+  value: unknown
+): AgentPackageCredentialRequirement['fields'] | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const fields: NonNullable<AgentPackageCredentialRequirement['fields']> = [];
+  for (const item of value) {
+    if (
+      !isRecord(item) ||
+      !isNonEmptyString(item.key) ||
+      !isNonEmptyString(item.label) ||
+      typeof item.secret !== 'boolean' ||
+      typeof item.required !== 'boolean'
+    ) {
+      return null;
+    }
+
+    fields.push({
+      key: item.key.trim(),
+      label: item.label.trim(),
+      secret: item.secret,
+      required: item.required,
+    });
+  }
+
+  return fields;
+}
+
+function parseCredentialRequirements(value: unknown): AgentPackageCredentialRequirement[] | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const requirements: AgentPackageCredentialRequirement[] = [];
+  for (const item of value) {
+    if (
+      !isRecord(item) ||
+      !isNonEmptyString(item.id) ||
+      !isNonEmptyString(item.kind) ||
+      !AGENT_PACKAGE_CREDENTIAL_REQUIREMENT_KINDS.has(item.kind as AgentPackageCredentialRequirement['kind']) ||
+      typeof item.required !== 'boolean' ||
+      !isNonEmptyString(item.label) ||
+      !isNonEmptyString(item.provider)
+    ) {
+      return null;
+    }
+
+    const ownerScope = parseRequirementOwnerScope(item);
+    const scopes = parseOptionalStringArray(item.scopes);
+    const fields = parseCredentialRequirementFields(item.fields);
+    if (ownerScope === null || scopes === null || fields === null) {
+      return null;
+    }
+
+    requirements.push({
+      id: item.id.trim(),
+      kind: item.kind as AgentPackageCredentialRequirement['kind'],
+      required: item.required,
+      label: item.label.trim(),
+      provider: item.provider.trim(),
+      description: isNonEmptyString(item.description) ? item.description.trim() : undefined,
+      env: isNonEmptyString(item.env) ? item.env.trim() : undefined,
+      scopes,
+      fields,
+      ownerSkillNames: ownerScope.ownerSkillNames,
+    });
+  }
+
+  return requirements;
+}
+
+function parseConnectorRequirements(value: unknown): AgentPackageConnectorRequirement[] | undefined | null {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const requirements: AgentPackageConnectorRequirement[] = [];
+  for (const item of value) {
+    if (
+      !isRecord(item) ||
+      !isNonEmptyString(item.id) ||
+      !isNonEmptyString(item.connectorType) ||
+      typeof item.required !== 'boolean' ||
+      !isNonEmptyString(item.label)
+    ) {
+      return null;
+    }
+
+    const ownerScope = parseRequirementOwnerScope(item);
+    const capabilities = parseOptionalStringArray(item.capabilities);
+    const scopes = parseOptionalStringArray(item.scopes);
+    if (ownerScope === null || capabilities === null || scopes === null) {
+      return null;
+    }
+
+    requirements.push({
+      id: item.id.trim(),
+      connectorType: item.connectorType.trim(),
+      required: item.required,
+      label: item.label.trim(),
+      description: isNonEmptyString(item.description) ? item.description.trim() : undefined,
+      capabilities,
+      scopes,
+      ownerSkillNames: ownerScope.ownerSkillNames,
+    });
+  }
+
+  return requirements;
+}
+
+function parseRequirementsPayload(value: unknown): AgentPackageRequirementsPayload | null {
+  const base = parsePayloadBase(value, 'requirements');
+  if (
+    !base ||
+    base.installSurface !== '.contextgo/requirements/' ||
+    base.runtimeProjection !== 'none' ||
+    !isRecord(value)
+  ) {
+    return null;
+  }
+
+  const tools = parseToolRequirements(value.tools);
+  const credentials = parseCredentialRequirements(value.credentials);
+  const connectors = parseConnectorRequirements(value.connectors);
+  if (tools === null || credentials === null || connectors === null) {
+    return null;
+  }
+
+  if (!tools?.length && !credentials?.length && !connectors?.length) {
+    return null;
+  }
+
+  return {
+    logicalId: 'requirements',
+    sources: base.sources,
+    runtimeProjection: 'none',
+    installSurface: '.contextgo/requirements/',
+    tools,
+    credentials,
+    connectors,
+  };
+}
+
 function parseCommandsPayload(value: unknown): AgentPackageCommandsPayload | null {
   const base = parsePayloadBase(value, 'commands');
   if (!base || base.installSurface !== '.contextgo/commands.json' || !isRecord(value)) {
@@ -538,6 +865,8 @@ export function parseAgentPackageManifest(value: unknown): AgentPackageManifest 
     payloads.workspaceScaffold === undefined ? undefined : parseWorkspaceScaffoldPayload(payloads.workspaceScaffold);
   const skills = payloads.skills === undefined ? undefined : parseSkillsPayload(payloads.skills);
   const connectors = payloads.connectors === undefined ? undefined : parseConnectorsPayload(payloads.connectors);
+  const requirements =
+    payloads.requirements === undefined ? undefined : parseRequirementsPayload(payloads.requirements);
   const commands = payloads.commands === undefined ? undefined : parseCommandsPayload(payloads.commands);
   const hooks = payloads.hooks === undefined ? undefined : parseHooksPayload(payloads.hooks);
   const schedules = payloads.schedules === undefined ? undefined : parseSchedulesPayload(payloads.schedules);
@@ -551,6 +880,10 @@ export function parseAgentPackageManifest(value: unknown): AgentPackageManifest 
   }
 
   if (payloads.connectors !== undefined && !connectors) {
+    return null;
+  }
+
+  if (payloads.requirements !== undefined && !requirements) {
     return null;
   }
 
@@ -578,6 +911,7 @@ export function parseAgentPackageManifest(value: unknown): AgentPackageManifest 
       workspaceScaffold,
       skills,
       connectors,
+      requirements,
       commands,
       hooks,
       schedules,

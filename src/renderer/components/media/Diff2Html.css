@@ -1,3 +1,91 @@
+/* Shared diff2html containment and layout fixes. */
+.contextgo-diff-renderer {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  box-sizing: border-box;
+}
+
+.contextgo-diff-renderer .d2h-file-wrapper {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border-color: var(--border-base);
+  border-radius: 8px;
+  background: var(--bg-1);
+}
+
+.contextgo-diff-renderer .d2h-file-header {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 34px;
+  height: auto !important;
+  gap: 8px;
+  overflow: hidden;
+  padding: 6px 10px;
+}
+
+.contextgo-diff-renderer .d2h-file-name-wrapper {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.contextgo-diff-renderer .d2h-file-name {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextgo-diff-renderer .d2h-file-stats {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.contextgo-diff-renderer .d2h-files-diff,
+.contextgo-diff-renderer .d2h-file-diff {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.contextgo-diff-renderer .d2h-diff-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.contextgo-diff-renderer .d2h-code-line,
+.contextgo-diff-renderer .d2h-code-side-line {
+  min-width: 0;
+}
+
+.contextgo-diff-renderer .d2h-code-line-ctn,
+.contextgo-diff-renderer .d2h-code-side-line-ctn {
+  padding-right: 16px;
+}
+
+.contextgo-diff-renderer .d2h-code-linenumber,
+.contextgo-diff-renderer .d2h-code-side-linenumber {
+  user-select: none;
+}
+
+@media (max-width: 767px) {
+  .contextgo-diff-renderer .d2h-file-header {
+    align-items: flex-start !important;
+  }
+
+  .contextgo-diff-renderer .d2h-file-name {
+    white-space: normal;
+    word-break: break-word;
+  }
+}
+
 /* Diff2Html Dark Theme */
 .d2h-dark-color-scheme {
   /* File wrapper */

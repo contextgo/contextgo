@@ -1439,6 +1439,13 @@ export type IProjectSkillCapability = {
   skillDocumentRelativePath?: string;
   skillDocumentBody?: string;
   compatibility: string[];
+  dependencyHints: Array<{
+    kind: 'env' | 'command' | 'network' | 'mcp' | 'note';
+    label: string;
+    status: 'ready' | 'missing' | 'info';
+    source: 'compatibility' | 'openai';
+    detail?: string;
+  }>;
   implicitInvocation: boolean;
   openAIDisplayName?: string;
   openAIShortDescription?: string;

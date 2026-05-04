@@ -28,9 +28,9 @@ const CodexChat: React.FC<{
   return (
     <ConversationMessageStateProvider conversationId={conversation_id}>
       <ConversationProvider value={{ conversationId: conversation_id, workspace, type: 'codex' }}>
-        <div className='flex-1 flex flex-col px-12px md:px-20px min-h-0'>
+        <div className='conversation-mobile-chat-page flex-1 flex flex-col px-12px md:px-20px min-h-0'>
           <FlexFullContainer>
-            <MessageList className='flex-1'></MessageList>
+            <MessageList className='conversation-mobile-message-list flex-1'></MessageList>
           </FlexFullContainer>
           <ConversationChatConfirm conversation_id={conversation_id}>
             <CodexSendBox conversation_id={conversation_id} />

@@ -12,7 +12,7 @@ import { CodexSessionManager } from '@process/agent/codex/handlers/CodexSessionM
 import type { ICodexMessageEmitter } from '@process/agent/codex/messaging/CodexMessageEmitter';
 import { channelEventBus } from '@process/channels/agent/ChannelEventBus';
 import { ipcBridge } from '@/common';
-import type { ScheduleMessageMeta, IConfirmation, TMessage } from '@/common/chat/chatLib';
+import type { ConversationContextPreview, ScheduleMessageMeta, IConfirmation, TMessage } from '@/common/chat/chatLib';
 import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import type { CodexAgentManagerData } from '@/common/types/codex/types';
 import { DEFAULT_CODEX_MODELS, DEFAULT_CODEX_MODEL_ID } from '@/common/types/codex/codexModels';
@@ -242,6 +242,7 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
     files?: string[];
     msg_id?: string;
     scheduleMeta?: ScheduleMessageMeta;
+    contextPreview?: ConversationContextPreview;
   }) {
     scheduleConversationGuard.setProcessing(this.conversation_id, true);
     // Set status to running when message is being processed
@@ -264,24 +265,24 @@ class CodexAgentManager extends BaseAgentManager<CodexAgentManagerData> implemen
           content: {
             content: data.content,
             ...(data.scheduleMeta && { scheduleMeta: data.scheduleMeta }),
+            ...(data.contextPreview && { contextPreview: data.contextPreview }),
           },
           createdAt: Date.now(),
         };
         addMessage(this.conversation_id, userMessage);
-        // Emit user_content IPC for scheduled messages so the frontend can display them
-        // even if the component mounts after the DB save but before the DB load completes.
-        if (data.scheduleMeta) {
-          const userResponseMessage: IResponseMessage = {
-            type: 'user_content',
-            conversation_id: this.conversation_id,
-            msg_id: data.msg_id,
-            data: {
-              content: userMessage.content.content,
-              scheduleMeta: data.scheduleMeta,
-            },
-          };
-          ipcBridge.codexConversation.responseStream.emit(userResponseMessage);
-        }
+        // Emit user_content so the renderer can backfill server-prepared metadata
+        // onto the optimistic user bubble without duplicating the message.
+        const userResponseMessage: IResponseMessage = {
+          type: 'user_content',
+          conversation_id: this.conversation_id,
+          msg_id: data.msg_id,
+          data: {
+            content: userMessage.content.content,
+            ...(data.scheduleMeta && { scheduleMeta: data.scheduleMeta }),
+            ...(data.contextPreview && { contextPreview: data.contextPreview }),
+          },
+        };
+        ipcBridge.codexConversation.responseStream.emit(userResponseMessage);
       }
 
       // 处理文件引用 - 参考 ACP 的文件引用处理

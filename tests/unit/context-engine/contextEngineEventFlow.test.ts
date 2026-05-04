@@ -490,6 +490,10 @@ describe('context engine event flow', () => {
         archiveTitle: 'Session archive',
         archiveOverviewRelativePath:
           'Projects/workspace/_context/sessions/thread-1/archives/2026-04-08T00-03-00Z-session-compaction/overview.md',
+        archiveExtractionRelativePath:
+          'Projects/workspace/_context/sessions/thread-1/archives/2026-04-08T00-03-00Z-session-compaction/extraction.md',
+        archiveStatusRelativePath:
+          'Projects/workspace/_context/sessions/thread-1/archives/2026-04-08T00-03-00Z-session-compaction/status.json',
         pressure: 58,
         promotedCount: 1,
         pendingReviewCount: 1,
@@ -523,9 +527,12 @@ describe('context engine event flow', () => {
     );
     expect(vaultSyncService.writeSessionArchive).toHaveBeenCalledWith(
       expect.objectContaining({
-        archiveId: expect.stringMatching(/session-compaction$/),
-        title: 'Session archive',
+        archiveId: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-session-compaction$/),
+        checkpointRelativePath:
+          'Projects/workspace/_context/sessions/thread-1/checkpoints/2026-04-08T00-03-00Z-session-compaction.md',
+        currentTask: 'Ship the release safely.',
         sourceProfileKey: 'session.compaction.thread-1',
+        title: 'Session archive',
       })
     );
     expect(vaultSyncService.appendSessionTimelineEvent).toHaveBeenCalledWith(

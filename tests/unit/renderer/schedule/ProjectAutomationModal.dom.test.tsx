@@ -390,6 +390,22 @@ describe('ProjectAutomationModal', () => {
           workspaceRelativePath: '.contextgo/skills/release-guard',
           skillDocumentRelativePath: '.contextgo/skills/release-guard/SKILL.md',
           compatibility: ['Requires command-line tool `git`'],
+          dependencyHints: [
+            {
+              kind: 'command',
+              label: 'git',
+              status: 'ready',
+              source: 'compatibility',
+              detail: 'Requires command-line tool `git`',
+            },
+            {
+              kind: 'env',
+              label: 'FAL_KEY',
+              status: 'missing',
+              source: 'compatibility',
+              detail: 'Set FAL_KEY to use the media generation backend.',
+            },
+          ],
           implicitInvocation: true,
           openAIDisplayName: 'Release Guard',
           openAIShortDescription: 'Keep release work narrow.',
@@ -460,6 +476,61 @@ describe('ProjectAutomationModal', () => {
     expect(screen.getByText('release-guard')).toBeInTheDocument();
   });
 
+  it('shows skill requirements and saves project binding metadata without raw secrets', async () => {
+    const conversationWithPackage = {
+      ...conversation,
+      extra: {
+        ...conversation.extra,
+        presetAssistantId: 'builtin-figma-closed-loop',
+      },
+    } as TChatConversation;
+
+    readFileInvokeMock.mockImplementation(async ({ path }: { path: string }) => {
+      if (path.endsWith('/.contextgo/requirements/bindings.json')) {
+        return JSON.stringify({
+          schemaVersion: 'project-requirement-bindings.v1',
+          bindings: {
+            'release-guard:compatibility:env:FAL_KEY': {
+              source: 'space-credential',
+              reference: 'cred_fal_default',
+              note: 'Use the Space-owned fal.ai key.',
+            },
+          },
+        });
+      }
+
+      return '[]';
+    });
+
+    render(<ProjectAutomationModal visible={true} conversation={conversationWithPackage} onClose={() => undefined} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.automation.requirementsTitle' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('FAL_KEY')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Figma MCP server')).toBeInTheDocument();
+    expect(screen.getByText('Figma Context Connector')).toBeInTheDocument();
+    expect(screen.getByText('git')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('space-credential')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('cred_fal_default')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Use the Space-owned fal.ai key.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'conversation.workspace.automation.requirementsSave' }));
+
+    await waitFor(() => {
+      expect(writeFileInvokeMock).toHaveBeenCalledWith({
+        path: '/tmp/workspace/.contextgo/requirements/bindings.json',
+        data: expect.stringContaining('project-requirement-bindings.v1'),
+      });
+    });
+
+    const written = writeFileInvokeMock.mock.calls.at(-1)?.[0]?.data as string;
+    expect(written).toContain('cred_fal_default');
+    expect(written).not.toContain('YOUR_FAL_KEY');
+  });
+
   it('opens a skill preview modal with the skill markdown body when a project skill is clicked', async () => {
     render(<ProjectAutomationModal visible={true} conversation={conversation} onClose={() => undefined} />);
 
@@ -504,6 +575,7 @@ describe('ProjectAutomationModal', () => {
           skillDocumentRelativePath: '.contextgo/skills/release-guard/SKILL.md',
           skillDocumentBody: '## Usage\n\nRead the mirrored copy instead.\n',
           compatibility: ['Requires command-line tool `git`'],
+          dependencyHints: [],
           implicitInvocation: true,
           openAIDisplayName: 'Release Guard',
           openAIShortDescription: 'Keep release work narrow.',

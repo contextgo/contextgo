@@ -31,6 +31,11 @@
     var(--bg-1) !important;
 }
 
+.layout-content--desktop-remote-device {
+  min-width: 0 !important;
+  background: var(--bg-1) !important;
+}
+
 [data-theme='dark'] .layout-content--mobile-home {
   background: linear-gradient(180deg, rgba(30, 38, 51, 0.82) 0px, rgba(18, 22, 29, 0) 240px), var(--bg-1) !important;
 }

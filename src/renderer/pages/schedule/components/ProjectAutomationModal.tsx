@@ -6,6 +6,8 @@
 
 import { ipcBridge } from '@/common';
 import { normalizeManagedSlashCommandLibrary, type ManagedSlashCommandRecord } from '@/common/chat/slash/library';
+import { getBundledAgentPackageRequirements } from '@/common/config/presets/bundledAgentPackageRegistry';
+import type { AgentPackageRequirementsPayload } from '@/common/config/presets/agentPackageManifest';
 import type {
   IContextSchedule,
   IProjectCapabilitySnapshot,
@@ -56,7 +58,7 @@ type ProjectScheduleEditorState = {
   scheduleDescription: string;
 };
 
-type AutomationTabKey = 'skills' | 'hooks' | 'commands' | 'schedules';
+type AutomationTabKey = 'skills' | 'requirements' | 'hooks' | 'commands' | 'schedules';
 
 type SkillSelectionState = {
   names: string[];
@@ -67,12 +69,41 @@ type SkillPreviewState = {
   sourcePath?: string;
 };
 
+type RequirementBinding = {
+  source: string;
+  reference: string;
+  note: string;
+};
+
+type RequirementBindingFile = {
+  schemaVersion?: string;
+  bindings?: Record<string, Partial<RequirementBinding>>;
+};
+
+type ProjectRequirementKind = 'env' | 'command' | 'network' | 'mcp' | 'credential' | 'connector' | 'tool' | 'note';
+
+type ProjectRequirementRow = {
+  id: string;
+  ownerLabel: string;
+  kind: ProjectRequirementKind;
+  label: string;
+  status: 'ready' | 'missing' | 'info';
+  source: 'compatibility' | 'openai' | 'package';
+  detail?: string;
+};
+
 const EMPTY_SCHEDULE_EDITOR_STATE: ProjectScheduleEditorState = {
   name: '',
   enabled: true,
   message: '',
   cronExpr: '',
   scheduleDescription: '',
+};
+
+const EMPTY_REQUIREMENT_BINDING: RequirementBinding = {
+  source: '',
+  reference: '',
+  note: '',
 };
 
 const normalizeHookNames = (value: unknown): string[] => {
@@ -180,6 +211,164 @@ const resolveProjectSkillSelection = (
   return { names: Array.from(selectedNames).toSorted((left, right) => left.localeCompare(right)) };
 };
 
+const normalizeRequirementBindings = (value: unknown): Record<string, RequirementBinding> => {
+  if (!value || typeof value !== 'object') {
+    return {};
+  }
+
+  const bindings = (value as RequirementBindingFile).bindings;
+  if (!bindings || typeof bindings !== 'object') {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(bindings)
+      .filter(([key]) => key.trim())
+      .map(([key, binding]) => [
+        key,
+        {
+          source: typeof binding?.source === 'string' ? binding.source : '',
+          reference: typeof binding?.reference === 'string' ? binding.reference : '',
+          note: typeof binding?.note === 'string' ? binding.note : '',
+        },
+      ])
+  );
+};
+
+const serializeRequirementBindings = (bindings: Record<string, RequirementBinding>): string => {
+  const normalizedBindings: Record<string, RequirementBinding> = {};
+  for (const [key, binding] of Object.entries(bindings)) {
+    const normalizedBinding = {
+      source: binding.source.trim(),
+      reference: binding.reference.trim(),
+      note: binding.note.trim(),
+    };
+    if (normalizedBinding.source || normalizedBinding.reference || normalizedBinding.note) {
+      normalizedBindings[key] = normalizedBinding;
+    }
+  }
+
+  return `${JSON.stringify(
+    {
+      schemaVersion: 'project-requirement-bindings.v1',
+      bindings: normalizedBindings,
+    },
+    null,
+    2
+  )}\n`;
+};
+
+const getRequirementBinding = (
+  bindings: Record<string, RequirementBinding>,
+  requirementId: string
+): RequirementBinding => bindings[requirementId] || EMPTY_REQUIREMENT_BINDING;
+
+const resolveConversationPackageAssistantId = (conversation: TChatConversation): string | undefined => {
+  const extra = conversation.extra as { presetAssistantId?: unknown; customAgentId?: unknown } | undefined;
+  const rawId =
+    typeof extra?.presetAssistantId === 'string' && extra.presetAssistantId.trim()
+      ? extra.presetAssistantId.trim()
+      : typeof extra?.customAgentId === 'string' && extra.customAgentId.trim()
+        ? extra.customAgentId.trim()
+        : '';
+
+  if (!rawId) {
+    return undefined;
+  }
+
+  return rawId.startsWith('builtin-') ? rawId : `builtin-${rawId}`;
+};
+
+const compactDetail = (parts: Array<string | undefined>): string | undefined => {
+  const detail = parts
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part))
+    .join(' · ');
+  return detail || undefined;
+};
+
+const buildPackageRequirementOwnerLabel = (
+  ownerSkillNames: readonly string[] | undefined,
+  fallbackLabel: string
+): string => {
+  return ownerSkillNames?.length ? ownerSkillNames.join(', ') : fallbackLabel;
+};
+
+const buildPackageRequirementRows = (
+  requirements: AgentPackageRequirementsPayload | undefined,
+  packageLabel: string
+): ProjectRequirementRow[] => {
+  if (!requirements) {
+    return [];
+  }
+
+  const rows: ProjectRequirementRow[] = [];
+
+  for (const tool of requirements.tools || []) {
+    rows.push({
+      id: `package:tool:${tool.id}`,
+      ownerLabel: buildPackageRequirementOwnerLabel(tool.ownerSkillNames, packageLabel),
+      kind: tool.kind === 'mcp' ? 'mcp' : tool.kind === 'cli' ? 'command' : 'tool',
+      label: tool.label,
+      status: tool.required ? 'missing' : 'info',
+      source: 'package',
+      detail: compactDetail([
+        tool.description,
+        tool.mcp?.url,
+        tool.mcp?.command,
+        tool.mcp?.envRefs?.length ? `env: ${tool.mcp.envRefs.join(', ')}` : undefined,
+      ]),
+    });
+  }
+
+  for (const credential of requirements.credentials || []) {
+    rows.push({
+      id: `package:credential:${credential.id}`,
+      ownerLabel: buildPackageRequirementOwnerLabel(credential.ownerSkillNames, packageLabel),
+      kind: 'credential',
+      label: credential.label,
+      status: credential.required ? 'missing' : 'info',
+      source: 'package',
+      detail: compactDetail([
+        credential.description,
+        credential.provider ? `provider: ${credential.provider}` : undefined,
+        credential.env ? `env: ${credential.env}` : undefined,
+        credential.scopes?.length ? `scopes: ${credential.scopes.join(', ')}` : undefined,
+      ]),
+    });
+  }
+
+  for (const connector of requirements.connectors || []) {
+    rows.push({
+      id: `package:connector:${connector.id}`,
+      ownerLabel: buildPackageRequirementOwnerLabel(connector.ownerSkillNames, packageLabel),
+      kind: 'connector',
+      label: connector.label,
+      status: connector.required ? 'missing' : 'info',
+      source: 'package',
+      detail: compactDetail([
+        connector.description,
+        connector.connectorType ? `connector: ${connector.connectorType}` : undefined,
+        connector.capabilities?.length ? `capabilities: ${connector.capabilities.join(', ')}` : undefined,
+        connector.scopes?.length ? `scopes: ${connector.scopes.join(', ')}` : undefined,
+      ]),
+    });
+  }
+
+  return rows;
+};
+
+const resolveRequirementStatus = (
+  status: ProjectRequirementRow['status'],
+  binding: RequirementBinding
+): ProjectRequirementRow['status'] => {
+  if (binding.source.trim() && binding.reference.trim()) {
+    return 'ready';
+  }
+
+  return status;
+};
+
 const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible, conversation, onClose }) => {
   const { t } = useTranslation();
   const [messageApi, messageContext] = Message.useMessage();
@@ -194,6 +383,8 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
   const [skillsLoading, setSkillsLoading] = useState(false);
   const [availableSkills, setAvailableSkills] = useState<SkillInfo[]>([]);
   const [projectCapabilitySnapshot, setProjectCapabilitySnapshot] = useState<IProjectCapabilitySnapshot | null>(null);
+  const [requirementBindings, setRequirementBindings] = useState<Record<string, RequirementBinding>>({});
+  const [requirementsSaving, setRequirementsSaving] = useState(false);
   const [previewingSkill, setPreviewingSkill] = useState<SkillPreviewState | null>(null);
   const [skillPreviewContent, setSkillPreviewContent] = useState('');
   const [skillPreviewLoading, setSkillPreviewLoading] = useState(false);
@@ -221,6 +412,17 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
     [availableHooks, currentBackend, selectedHooks]
   );
   const presetAssistant = usePresetAssistantInfo(conversation);
+  const packageAssistantId = useMemo(() => resolveConversationPackageAssistantId(conversation), [conversation]);
+  const packageRequirementRows = useMemo(
+    () =>
+      buildPackageRequirementRows(
+        packageAssistantId ? getBundledAgentPackageRequirements(packageAssistantId) : undefined,
+        presetAssistant.info?.name ||
+          packageAssistantId ||
+          t('conversation.workspace.automation.requirementsPackageFallback', { defaultValue: 'Agent package' })
+      ),
+    [packageAssistantId, presetAssistant.info?.name, t]
+  );
   const conversationEnabledSkills = useMemo(
     () => normalizeSkillNames((conversation.extra as { enabledSkills?: unknown } | undefined)?.enabledSkills),
     [conversation]
@@ -255,6 +457,48 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
         }),
     [availableSkills, projectCapabilitySnapshot]
   );
+  const projectRequirementRows = useMemo<ProjectRequirementRow[]>(() => {
+    const seen = new Set<string>();
+    const rows: ProjectRequirementRow[] = [...packageRequirementRows];
+    for (const row of packageRequirementRows) {
+      seen.add(row.id);
+    }
+
+    for (const { capability, matchedSkill } of availableProjectSkills) {
+      const ownerLabel = matchedSkill ? resolveSkillTitle(matchedSkill) : resolveProjectSkillTitle(capability);
+      const hints = [...(capability.dependencyHints || []), ...(matchedSkill?.dependencyHints || [])];
+
+      for (const hint of hints) {
+        const id = `${capability.id || capability.name}:${hint.source}:${hint.kind}:${hint.label}`;
+        if (seen.has(id)) {
+          continue;
+        }
+
+        seen.add(id);
+        rows.push({
+          id,
+          ownerLabel,
+          kind: hint.kind,
+          label: hint.label,
+          status: hint.status,
+          source: hint.source,
+          detail: hint.detail,
+        });
+      }
+    }
+
+    return rows.toSorted((left, right) => {
+      if (left.status !== right.status) {
+        return left.status === 'missing'
+          ? -1
+          : right.status === 'missing'
+            ? 1
+            : left.status.localeCompare(right.status);
+      }
+
+      return `${left.ownerLabel}:${left.label}`.localeCompare(`${right.ownerLabel}:${right.label}`);
+    });
+  }, [availableProjectSkills, packageRequirementRows]);
 
   useEffect(() => {
     if (!visible) {
@@ -494,21 +738,49 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
     }
   });
 
+  const loadRequirementBindings = useCallback(async (): Promise<Record<string, RequirementBinding>> => {
+    if (!automationPaths) {
+      return {};
+    }
+
+    try {
+      const raw = await ipcBridge.fs.readFile.invoke({ path: automationPaths.requirementBindingsFile });
+      if (typeof raw !== 'string' || !raw.trim()) {
+        return {};
+      }
+
+      return normalizeRequirementBindings(JSON.parse(raw) as unknown);
+    } catch (error) {
+      if (!isMissingWorkspaceFileError(error)) {
+        console.warn('Failed to load project requirement bindings:', automationPaths.requirementBindingsFile, error);
+        messageApi.error(
+          t('conversation.workspace.automation.requirementsLoadFailed', {
+            defaultValue: 'Failed to load project requirement bindings',
+          })
+        );
+      }
+      return {};
+    }
+  }, [automationPaths, messageApi, t]);
+
   const handleRefreshSkills = useEffectEvent(async () => {
     if (!workspacePath) {
       setAvailableSkills([]);
       setProjectCapabilitySnapshot(null);
+      setRequirementBindings({});
       return;
     }
 
     setSkillsLoading(true);
     try {
-      const [skills, snapshot] = await Promise.all([
+      const [skills, snapshot, bindings] = await Promise.all([
         ipcBridge.fs.listAvailableSkills.invoke({ workspacePath }),
         ipcBridge.conversation.getProjectCapabilitySnapshot.invoke({ workspacePath }),
+        loadRequirementBindings(),
       ]);
       setAvailableSkills(skills);
       setProjectCapabilitySnapshot(snapshot || null);
+      setRequirementBindings(bindings);
     } catch (error) {
       console.error('Failed to load project skills:', error);
       messageApi.error(
@@ -516,6 +788,7 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
       );
       setAvailableSkills([]);
       setProjectCapabilitySnapshot(null);
+      setRequirementBindings({});
     } finally {
       setSkillsLoading(false);
     }
@@ -587,7 +860,7 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
   }, [activeTab, visible, workspacePath]);
 
   useEffect(() => {
-    if (visible && activeTab === 'skills') {
+    if (visible && (activeTab === 'skills' || activeTab === 'requirements')) {
       void handleRefreshSkills();
     }
     // useEffectEvent handlers must NOT be used as effect deps; they are intentionally stable-call, unstable-identity.
@@ -673,6 +946,47 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
     selectedHooks,
     t,
   ]);
+
+  const handleRequirementBindingChange = useCallback(
+    (requirementId: string, field: keyof RequirementBinding, value: string) => {
+      setRequirementBindings((current) => ({
+        ...current,
+        [requirementId]: {
+          ...getRequirementBinding(current, requirementId),
+          [field]: value,
+        },
+      }));
+    },
+    []
+  );
+
+  const handleSaveRequirementBindings = useCallback(async () => {
+    if (!automationPaths) {
+      return;
+    }
+
+    setRequirementsSaving(true);
+    try {
+      await ipcBridge.fs.writeFile.invoke({
+        path: automationPaths.requirementBindingsFile,
+        data: serializeRequirementBindings(requirementBindings),
+      });
+      messageApi.success(
+        t('conversation.workspace.automation.requirementsSaveSuccess', {
+          defaultValue: 'Project requirement bindings saved',
+        })
+      );
+    } catch (error) {
+      console.error('Failed to save project requirement bindings:', error);
+      messageApi.error(
+        t('conversation.workspace.automation.requirementsSaveFailed', {
+          defaultValue: 'Failed to save project requirement bindings',
+        })
+      );
+    } finally {
+      setRequirementsSaving(false);
+    }
+  }, [automationPaths, messageApi, requirementBindings, t]);
 
   const scheduleStatus = existingJob ? getJobStatusFlags(existingJob) : null;
 
@@ -865,6 +1179,146 @@ const ProjectAutomationModal: React.FC<ProjectAutomationModalProps> = ({ visible
                     ) : workspacePath ? (
                       <Typography.Paragraph className='mb-0 text-t-secondary'>
                         {t('conversation.workspace.automation.skillsEmpty')}
+                      </Typography.Paragraph>
+                    ) : (
+                      <Typography.Paragraph className='mb-0 text-t-secondary'>
+                        {t('conversation.workspace.automation.workspaceUnavailable')}
+                      </Typography.Paragraph>
+                    )}
+                  </AutomationSectionCard>
+                </AutomationPanel>
+              </div>
+            </Tabs.TabPane>
+
+            <Tabs.TabPane key='requirements' title={t('conversation.workspace.automation.requirementsTitle')}>
+              <div className='mt-8px'>
+                <AutomationPanel
+                  title={t('conversation.workspace.automation.requirementsTitle')}
+                  description={t('conversation.workspace.automation.requirementsDescription')}
+                  icon={<ConnectionPoint theme='outline' size='18' className='app-icon text-t-primary' />}
+                  meta={
+                    <div className='flex flex-col gap-8px'>
+                      {automationPaths ? (
+                        <Typography.Text type='secondary'>
+                          {t('conversation.workspace.automation.requirementsPathHint', {
+                            path: automationPaths.requirementBindingsFile,
+                          })}
+                        </Typography.Text>
+                      ) : null}
+                      <Typography.Text type='secondary'>
+                        {t('conversation.workspace.automation.requirementsNoSecretsHint')}
+                      </Typography.Text>
+                    </div>
+                  }
+                  actions={
+                    <div className='flex flex-wrap gap-8px'>
+                      <Button
+                        type='secondary'
+                        icon={<Refresh size={14} className={skillsLoading ? 'animate-spin' : ''} />}
+                        onClick={() => void handleRefreshSkills()}
+                      >
+                        {t('common.refresh', { defaultValue: 'Refresh' })}
+                      </Button>
+                      <Button
+                        type='primary'
+                        loading={requirementsSaving}
+                        disabled={!automationPaths}
+                        onClick={() => void handleSaveRequirementBindings()}
+                      >
+                        {t('conversation.workspace.automation.requirementsSave')}
+                      </Button>
+                    </div>
+                  }
+                >
+                  <AutomationSectionCard
+                    title={t('conversation.workspace.automation.requirementsBindingsTitle')}
+                    description={t('conversation.workspace.automation.requirementsBindingsDescription')}
+                    extra={<span>{projectRequirementRows.length}</span>}
+                  >
+                    {skillsLoading ? (
+                      <div className='py-16px text-center text-12px text-t-secondary'>{t('common.loading')}</div>
+                    ) : projectRequirementRows.length > 0 ? (
+                      <div className='flex flex-col gap-8px'>
+                        {projectRequirementRows.map((requirement) => {
+                          const binding = getRequirementBinding(requirementBindings, requirement.id);
+                          const status = resolveRequirementStatus(requirement.status, binding);
+                          const statusColor = status === 'ready' ? 'green' : status === 'missing' ? 'red' : 'gray';
+                          const statusLabel =
+                            status === 'ready'
+                              ? t('conversation.workspace.automation.requirementsReady')
+                              : status === 'missing'
+                                ? t('conversation.workspace.automation.requirementsMissing')
+                                : t('conversation.workspace.automation.requirementsInfo');
+                          const kindLabel =
+                            requirement.kind === 'env'
+                              ? t('conversation.workspace.automation.requirementsKind.env')
+                              : requirement.kind === 'command'
+                                ? t('conversation.workspace.automation.requirementsKind.command')
+                                : requirement.kind === 'network'
+                                  ? t('conversation.workspace.automation.requirementsKind.network')
+                                  : requirement.kind === 'mcp'
+                                    ? t('conversation.workspace.automation.requirementsKind.mcp')
+                                    : requirement.kind === 'credential'
+                                      ? t('conversation.workspace.automation.requirementsKind.credential')
+                                      : requirement.kind === 'connector'
+                                        ? t('conversation.workspace.automation.requirementsKind.connector')
+                                        : requirement.kind === 'tool'
+                                          ? t('conversation.workspace.automation.requirementsKind.tool')
+                                          : t('conversation.workspace.automation.requirementsKind.note');
+
+                          return (
+                            <div
+                              key={requirement.id}
+                              className='rounded-12px border border-solid border-[var(--color-border-2)] bg-[var(--color-fill-1)] p-12px'
+                            >
+                              <div className='flex flex-wrap items-start justify-between gap-12px'>
+                                <div className='min-w-0 flex-1'>
+                                  <div className='flex flex-wrap items-center gap-6px'>
+                                    <Typography.Text bold>{requirement.label}</Typography.Text>
+                                    <Tag size='small' color={statusColor}>
+                                      {statusLabel}
+                                    </Tag>
+                                    <Tag size='small' color='arcoblue'>
+                                      {kindLabel}
+                                    </Tag>
+                                  </div>
+                                  <Typography.Paragraph className='mb-0 mt-6px text-t-secondary'>
+                                    {t('conversation.workspace.automation.requirementsOwnerLabel')}:{' '}
+                                    {requirement.ownerLabel}
+                                  </Typography.Paragraph>
+                                  {requirement.detail ? (
+                                    <Typography.Paragraph className='mb-0 mt-6px text-12px text-t-tertiary'>
+                                      {requirement.detail}
+                                    </Typography.Paragraph>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <div className='mt-12px grid gap-8px md:grid-cols-3'>
+                                <Input
+                                  value={binding.source}
+                                  placeholder={t('conversation.workspace.automation.requirementsSourcePlaceholder')}
+                                  onChange={(value) => handleRequirementBindingChange(requirement.id, 'source', value)}
+                                />
+                                <Input
+                                  value={binding.reference}
+                                  placeholder={t('conversation.workspace.automation.requirementsReferencePlaceholder')}
+                                  onChange={(value) =>
+                                    handleRequirementBindingChange(requirement.id, 'reference', value)
+                                  }
+                                />
+                                <Input
+                                  value={binding.note}
+                                  placeholder={t('conversation.workspace.automation.requirementsNotePlaceholder')}
+                                  onChange={(value) => handleRequirementBindingChange(requirement.id, 'note', value)}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : workspacePath ? (
+                      <Typography.Paragraph className='mb-0 text-t-secondary'>
+                        {t('conversation.workspace.automation.requirementsEmpty')}
                       </Typography.Paragraph>
                     ) : (
                       <Typography.Paragraph className='mb-0 text-t-secondary'>

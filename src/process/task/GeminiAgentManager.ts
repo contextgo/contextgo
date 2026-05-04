@@ -6,7 +6,13 @@
 
 import { channelEventBus } from '@process/channels/agent/ChannelEventBus';
 import { ipcBridge } from '@/common';
-import type { ScheduleMessageMeta, IMessageText, IMessageToolGroup, TMessage } from '@/common/chat/chatLib';
+import type {
+  ConversationContextPreview,
+  ScheduleMessageMeta,
+  IMessageText,
+  IMessageToolGroup,
+  TMessage,
+} from '@/common/chat/chatLib';
 import { transformMessage } from '@/common/chat/chatLib';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import type { TProviderWithModel } from '@/common/config/storage';
@@ -268,6 +274,7 @@ export class GeminiAgentManager extends BaseAgentManager<
     msg_id: string;
     files?: string[];
     scheduleMeta?: ScheduleMessageMeta;
+    contextPreview?: ConversationContextPreview;
   }) {
     const message: TMessage = {
       id: data.msg_id,
@@ -277,6 +284,7 @@ export class GeminiAgentManager extends BaseAgentManager<
       content: {
         content: data.input,
         ...(data.scheduleMeta && { scheduleMeta: data.scheduleMeta }),
+        ...(data.contextPreview && { contextPreview: data.contextPreview }),
       },
     };
     addMessage(this.conversation_id, message);
@@ -288,18 +296,19 @@ export class GeminiAgentManager extends BaseAgentManager<
     } catch {
       // Conversation might not exist in DB yet
     }
-    // Emit user_content IPC for scheduled messages so the frontend can display them
-    // even if the component mounts after the DB save but before the DB load completes.
-    // Normal user-initiated messages are added locally by the frontend, so only cron needs this.
-    if (data.scheduleMeta) {
-      const userResponseMessage: IResponseMessage = {
-        type: 'user_content',
-        conversation_id: this.conversation_id,
-        msg_id: data.msg_id,
-        data: { content: message.content.content, scheduleMeta: data.scheduleMeta },
-      };
-      ipcBridge.geminiConversation.responseStream.emit(userResponseMessage);
-    }
+    // Emit user_content so the renderer can merge backend-prepared metadata
+    // into the optimistic user bubble with the same msg_id.
+    const userResponseMessage: IResponseMessage = {
+      type: 'user_content',
+      conversation_id: this.conversation_id,
+      msg_id: data.msg_id,
+      data: {
+        content: message.content.content,
+        ...(data.scheduleMeta && { scheduleMeta: data.scheduleMeta }),
+        ...(data.contextPreview && { contextPreview: data.contextPreview }),
+      },
+    };
+    ipcBridge.geminiConversation.responseStream.emit(userResponseMessage);
 
     this.status = 'pending';
     scheduleConversationGuard.setProcessing(this.conversation_id, true);

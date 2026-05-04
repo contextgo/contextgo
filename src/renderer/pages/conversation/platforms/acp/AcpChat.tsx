@@ -7,9 +7,11 @@
 import { ConversationProvider } from '@/renderer/hooks/context/ConversationContext';
 import type { AcpBackend } from '@/common/types/acpTypes';
 import FlexFullContainer from '@renderer/components/layout/FlexFullContainer';
+import LocalImageView from '@renderer/components/media/LocalImageView';
 import MessageList from '@renderer/pages/conversation/Messages/MessageList';
 import { ConversationMessageStateProvider } from '@renderer/pages/conversation/Messages/hooks';
-import React from 'react';
+import HOC from '@renderer/utils/ui/HOC';
+import React, { useEffect } from 'react';
 import ConversationChatConfirm from '../../components/ConversationChatConfirm';
 import AcpSendBox from './AcpSendBox';
 
@@ -20,12 +22,17 @@ const AcpChat: React.FC<{
   sessionMode?: string;
   agentName?: string;
 }> = ({ conversation_id, workspace, backend, sessionMode, agentName }) => {
+  const updateLocalImage = LocalImageView.useUpdateLocalImage();
+  useEffect(() => {
+    updateLocalImage({ root: workspace ?? '' });
+  }, [updateLocalImage, workspace]);
+
   return (
     <ConversationMessageStateProvider conversationId={conversation_id}>
       <ConversationProvider value={{ conversationId: conversation_id, workspace, type: 'acp' }}>
-        <div className='flex-1 flex flex-col px-12px md:px-20px min-h-0'>
+        <div className='conversation-mobile-chat-page flex-1 flex flex-col px-12px md:px-20px min-h-0'>
           <FlexFullContainer>
-            <MessageList className='flex-1'></MessageList>
+            <MessageList className='conversation-mobile-message-list flex-1'></MessageList>
           </FlexFullContainer>
           <ConversationChatConfirm conversation_id={conversation_id}>
             <AcpSendBox
@@ -41,4 +48,4 @@ const AcpChat: React.FC<{
   );
 };
 
-export default AcpChat;
+export default HOC.Wrapper(LocalImageView.Provider)(AcpChat);

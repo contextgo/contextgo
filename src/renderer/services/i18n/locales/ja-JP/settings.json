@@ -600,6 +600,14 @@
   "webui.openOfficialRemote": "ホスト一覧を開く",
   "webui.remoteDevicesNav": "リモートホスト",
   "webui.switchDevice": "ホストを切り替える",
+  "webui.remoteSession": "リモートセッション",
+  "webui.switchDeviceRemoteGuardDescription": "リモート操作は単一レイヤーのままにします。別のホストへ切り替える前に、現在のリモートセッションを終了してください。",
+  "webui.switchDeviceReturnLocal": "このデバイスに戻る",
+  "webui.switchDeviceReturnList": "ホスト一覧に戻る",
+  "webui.switchDeviceReturnCurrentDesktop": "このデバイスのデスクトップへ戻る",
+  "webui.switchDeviceReturnCurrentDescription": "このリモートデバイス内に留まり、そのデスクトップのホームへ戻ります。",
+  "webui.switchDeviceReturnHost": "ローカルホストへ戻る",
+  "webui.switchDeviceReturnHostDescription": "このリモートセッションを終了し、開いた側のローカルデスクトップへ戻ります。",
   "webui.officialRemoteSignedOut": "公式ホスト一覧はまだ接続されていません。",
   "webui.officialRemoteHint": "ここで一度サインインすれば十分です。ContextGo がこの Host Runtime を自動でリンクし、ホストされたホスト一覧に表示します。",
   "webui.officialRemoteRuntimeHint": "Official Remote は Host Runtime の経路を自動で準備するため、下でローカル / セルフホストアクセスを有効にする必要はありません。",
@@ -1533,6 +1541,8 @@
     "externalCatalog": {
       "platformAccess": "現在の接続方式",
       "runtimeBoundary": "実行メモ",
+      "runtimeStatus": "ランタイム状態",
+      "runtimeStatusSummary": "現在の Space ランタイムから報告された connector のリアルタイム状態です。",
       "nativeSurface": "対応範囲",
       "commandEntrypoints": "CLI コマンド",
       "capabilities": "能力ツリー",
@@ -1572,6 +1582,26 @@
       "entrypoints": "入口コマンド",
       "writesStore": "結果は自動で保存されます",
       "noStoreWrite": "結果はまだ自動保存されません",
+      "runtimeFields": {
+        "serviceStatus": "サービス",
+        "loginStatus": "ログイン",
+        "activeAccount": "有効なアカウント",
+        "accounts": "アカウント数",
+        "baseUrl": "Base URL",
+        "headlessMode": "ヘッドレス",
+        "capabilityCount": "能力数",
+        "cookiesPath": "Cookies パス",
+        "serviceRepo": "サービスリポジトリ",
+        "runtimeDir": "ランタイムディレクトリ"
+      },
+      "runtimeValues": {
+        "running": "実行中",
+        "stopped": "停止中",
+        "loggedIn": "ログイン済み",
+        "loggedOut": "未ログイン",
+        "true": "はい",
+        "false": "いいえ"
+      },
       "unavailableTitle": "connector 詳細を読み込めません"
     },
     "catalogPlaceholderDesc": "この connector は現時点ではカタログ上のプレースホルダーです。ContextGo はまだこの実行環境や収集済み出力を利用しません。",
@@ -1844,5 +1874,8 @@
   "webui.deviceModeLocal": "ローカルホスト",
   "webui.deviceModeRemote": "リモートデスクトップ",
   "webui.switchDeviceUnknown": "現在のホスト",
-  "webui.backToLocal": "ローカルへ戻る"
+  "webui.backToLocal": "ローカルへ戻る",
+  "webui.remoteDeviceLoadFailedTitle": "リモートデバイスを開けませんでした",
+  "webui.remoteDeviceLoadFailedDescription": "デスクトップクライアントでホストされたリモートページを読み込めませんでした。再試行するか、ローカルホストに戻ってください。",
+  "webui.remoteDeviceLoadFailedReason": "読み込みに失敗しました: {{reason}}"
 }

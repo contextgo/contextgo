@@ -593,6 +593,7 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     resources: ['webPages', 'analytics'],
     authType: 'none',
     stage: 'priority',
+    externalCatalogConnector: 'xiaohongshu',
   },
   {
     id: 'douyin',
@@ -663,6 +664,7 @@ const RAW_CONNECTORS: RawConnectorDefinition[] = [
     resources: ['docs', 'wiki'],
     authType: 'apiKey',
     stage: 'planned',
+    externalCatalogConnector: 'obsidian',
   },
   {
     id: 'slite',

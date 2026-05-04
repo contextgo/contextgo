@@ -10,6 +10,10 @@ import { AcpAgent } from '../../src/process/agent/acp/index';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
+type TestAcpConnection = AcpConnection & {
+  handleMessage: (message: unknown) => void;
+};
+
 /** Create an AcpConnection with internal state set up for testing */
 function makeConnection(): AcpConnection {
   const conn = new AcpConnection();
@@ -172,6 +176,64 @@ describe('AcpConnection timeout handling', () => {
     expect(cancelSpy).toHaveBeenCalled();
 
     return promptPromise;
+  });
+
+  it('should keep session/prompt alive when streaming updates arrive', async () => {
+    const conn = makeConnection();
+    conn.setPromptTimeout(30); // 30 seconds
+
+    const cancelSpy = vi.spyOn(conn, 'cancelPrompt');
+    const promptPromise = conn.sendPrompt('test').catch((err) => err);
+
+    vi.advanceTimersByTime(29000);
+
+    (conn as TestAcpConnection).handleMessage({
+      jsonrpc: '2.0',
+      method: 'session/update',
+      params: {
+        sessionId: 'test-session',
+        update: {
+          sessionUpdate: 'agent_message_chunk',
+          content: { type: 'text', text: 'still working' },
+        },
+      },
+    });
+
+    vi.advanceTimersByTime(29000);
+    expect(cancelSpy).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1000);
+
+    const error = await promptPromise;
+    expect(error).toBeInstanceOf(Error);
+    expect(error.message).toContain('LLM request timed out');
+    expect(cancelSpy).toHaveBeenCalled();
+  });
+
+  it('should keep session/prompt alive when non-stream ACP activity arrives', async () => {
+    const conn = makeConnection();
+    conn.setPromptTimeout(30); // 30 seconds
+
+    const cancelSpy = vi.spyOn(conn, 'cancelPrompt');
+    const promptPromise = conn.sendPrompt('test').catch((err) => err);
+
+    vi.advanceTimersByTime(29000);
+
+    (conn as TestAcpConnection).handleMessage({
+      jsonrpc: '2.0',
+      method: 'session/custom_progress',
+      params: { sessionId: 'test-session' },
+    });
+
+    vi.advanceTimersByTime(29000);
+    expect(cancelSpy).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1000);
+
+    const error = await promptPromise;
+    expect(error).toBeInstanceOf(Error);
+    expect(error.message).toContain('LLM request timed out');
+    expect(cancelSpy).toHaveBeenCalled();
   });
 });
 

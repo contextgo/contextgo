@@ -157,6 +157,13 @@ describe('ProjectCapabilityService', () => {
         implicitInvocation: true,
         openAIDisplayName: 'Release Guard',
         openAIShortDescription: 'Keep release work narrow.',
+        dependencyHints: [
+          expect.objectContaining({
+            kind: 'command',
+            label: 'git',
+            source: 'compatibility',
+          }),
+        ],
       }),
     ]);
     expect(snapshot?.hooks).toEqual([

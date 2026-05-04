@@ -139,6 +139,109 @@ class ObsidianSyncApiTestCase(unittest.TestCase):
         self.assertEqual(len(payload["batches"]), 1)
         self.assertEqual(payload["batches"][0]["assignedCursor"], 1)
 
+    def test_push_and_pull_preserves_tombstone_and_attachment_encoding(self) -> None:
+        desktop = self._register_device(device_name="Studio", platform="macos")
+        mobile = self._register_device(device_name="iPhone", platform="ios")
+        desktop_headers = {"Authorization": f"Bearer {desktop['token']}"}
+        mobile_headers = {"Authorization": f"Bearer {mobile['token']}"}
+
+        desktop_binding = self.client.post(
+            "/api/obsidian-sync/replicas/register",
+            headers=desktop_headers,
+            json={
+                "spaceId": "space_1",
+                "deviceId": desktop["device"]["id"],
+                "platform": "desktop",
+                "vaultFingerprint": "vault_hash_1",
+            },
+        ).json()
+        mobile_binding = self.client.post(
+            "/api/obsidian-sync/replicas/register",
+            headers=mobile_headers,
+            json={
+                "spaceId": "space_1",
+                "deviceId": mobile["device"]["id"],
+                "platform": "mobile",
+                "vaultFingerprint": "vault_hash_1",
+            },
+        ).json()
+
+        push_response = self.client.post(
+            "/api/obsidian-sync/batches/push",
+            headers=desktop_headers,
+            json={
+                "vaultBindingId": desktop_binding["vaultBindingId"],
+                "replicaId": desktop_binding["replicaId"],
+                "baseCursor": 0,
+                "entries": [
+                    {
+                        "path": "assets/image.bin",
+                        "fileClass": "attachment",
+                        "contentHash": "binary_hash",
+                        "body": "AQID",
+                        "bodyEncoding": "base64",
+                    },
+                    {
+                        "path": "Docs/Deleted.md",
+                        "fileClass": "content",
+                        "contentHash": "",
+                        "tombstone": True,
+                    },
+                ],
+            },
+        )
+        self.assertEqual(push_response.status_code, 200)
+
+        pull_response = self.client.post(
+            "/api/obsidian-sync/batches/pull",
+            headers=mobile_headers,
+            json={
+                "vaultBindingId": mobile_binding["vaultBindingId"],
+                "replicaId": mobile_binding["replicaId"],
+                "afterCursor": 0,
+            },
+        )
+
+        self.assertEqual(pull_response.status_code, 200)
+        entries = pull_response.json()["batches"][0]["entries"]
+        self.assertEqual(entries[0]["bodyEncoding"], "base64")
+        self.assertEqual(entries[0]["body"], "AQID")
+        self.assertEqual(entries[1]["tombstone"], True)
+
+    def test_push_rejects_unsafe_obsidian_paths(self) -> None:
+        desktop = self._register_device(device_name="Studio", platform="macos")
+        headers = {"Authorization": f"Bearer {desktop['token']}"}
+        binding = self.client.post(
+            "/api/obsidian-sync/replicas/register",
+            headers=headers,
+            json={
+                "spaceId": "space_1",
+                "deviceId": desktop["device"]["id"],
+                "platform": "desktop",
+                "vaultFingerprint": "vault_hash_1",
+            },
+        ).json()
+
+        response = self.client.post(
+            "/api/obsidian-sync/batches/push",
+            headers=headers,
+            json={
+                "vaultBindingId": binding["vaultBindingId"],
+                "replicaId": binding["replicaId"],
+                "baseCursor": 0,
+                "entries": [
+                    {
+                        "path": "../outside.md",
+                        "fileClass": "content",
+                        "contentHash": "h1",
+                        "body": "# outside",
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+
     def test_space_status_returns_binding_with_replicas(self) -> None:
         desktop = self._register_device(device_name="Studio", platform="macos")
         mobile = self._register_device(device_name="iPhone", platform="ios")
@@ -201,6 +304,10 @@ class ObsidianSyncApiTestCase(unittest.TestCase):
         replica = payload["binding"]["replicas"][0]
         self.assertEqual(replica["platform"], "mobile")
         self.assertEqual(replica["healthStatus"], "warn")
+        self.assertEqual(replica["appliedCursor"], 0)
+        self.assertEqual(replica["lastPushCursor"], 0)
+        self.assertEqual(replica["lastPullCursor"], 0)
+        self.assertEqual(replica["vaultFingerprint"], "vault_hash_android_1")
         self.assertEqual(replica["localReadyState"], "prepared-directory")
         self.assertEqual(replica["rootTreeUri"], "content://root/contextgo")
         self.assertEqual(replica["localDirectoryUri"], "content://root/contextgo/team-space")

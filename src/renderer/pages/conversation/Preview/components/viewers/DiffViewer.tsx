@@ -10,6 +10,7 @@ import { Checkbox } from '@arco-design/web-react';
 import classNames from 'classnames';
 import { html } from 'diff2html';
 import 'diff2html/bundles/css/diff2html.min.css';
+import '@/renderer/components/media/Diff2Html.css';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import SyntaxHighlighter from 'react-syntax-highlighter';
@@ -186,6 +187,7 @@ const DiffPreview: React.FC<DiffPreviewProps> = ({
           <div
             ref={diffContainerRef}
             className={classNames(
+              'contextgo-diff-renderer',
               'w-full max-w-full min-w-0',
               '![&_.line-num1]:hidden ![&_.line-num2]:w-30px',
               '[&_td:first-child]:w-40px ![&_td:nth-child(2)>div]:pl-45px',

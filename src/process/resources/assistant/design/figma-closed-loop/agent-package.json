@@ -110,6 +110,57 @@
       "runtimeProjection": "none",
       "connectorTypes": ["figma"]
     },
+    "requirements": {
+      "logicalId": "requirements",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "docs"
+        }
+      ],
+      "installSurface": ".contextgo/requirements/",
+      "runtimeProjection": "none",
+      "tools": [
+        {
+          "id": "figma-mcp",
+          "kind": "mcp",
+          "required": true,
+          "label": "Figma MCP server",
+          "description": "Used by Figma closed-loop skills to read and update Figma files without exposing tokens to the agent conversation.",
+          "ownerSkillNames": [
+            "figma-file-bootstrap",
+            "figma-screen-generate",
+            "figma-library-sync",
+            "figma-design-system-rules-sync",
+            "figma-implementation-handoff",
+            "figma-drift-audit"
+          ],
+          "mcp": {
+            "serverId": "figma",
+            "transport": "streamable_http",
+            "url": "https://mcp.figma.com/mcp"
+          }
+        }
+      ],
+      "connectors": [
+        {
+          "id": "figma-connector",
+          "connectorType": "figma",
+          "required": true,
+          "label": "Figma Context Connector",
+          "description": "Project mount metadata selects the Space-scoped Figma account or connector instance used by this package.",
+          "capabilities": ["files.read", "nodes.write"],
+          "ownerSkillNames": [
+            "figma-file-bootstrap",
+            "figma-screen-generate",
+            "figma-library-sync",
+            "figma-design-system-rules-sync",
+            "figma-implementation-handoff",
+            "figma-drift-audit"
+          ]
+        }
+      ]
+    },
     "commands": {
       "logicalId": "commands",
       "sources": [

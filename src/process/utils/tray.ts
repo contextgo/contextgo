@@ -79,6 +79,10 @@ const buildTrayContextMenu = async (): Promise<Electron.Menu> => {
   const runningTasksCount = getRunningTasksCount();
 
   const showAndFocus = () => {
+    console.log('[LifecycleDiag][Tray] showAndFocus invoked', {
+      hasMainWindow: Boolean(mainWindowRef && !mainWindowRef.isDestroyed()),
+      platform: process.platform,
+    });
     if (mainWindowRef && !mainWindowRef.isDestroyed()) {
       if (process.platform === 'darwin' && app.dock) {
         void app.dock.show();
@@ -92,6 +96,10 @@ const buildTrayContextMenu = async (): Promise<Electron.Menu> => {
   };
 
   const hideToTray = () => {
+    console.log('[LifecycleDiag][Tray] hideToTray invoked', {
+      hasMainWindow: Boolean(mainWindowRef && !mainWindowRef.isDestroyed()),
+      platform: process.platform,
+    });
     if (mainWindowRef && !mainWindowRef.isDestroyed()) {
       mainWindowRef.hide();
       if (process.platform === 'darwin' && app.dock) {
@@ -202,6 +210,7 @@ export const createOrUpdateTray = (): void => {
     void buildTrayContextMenu().then((menu) => tray?.setContextMenu(menu));
 
     tray.on('double-click', () => {
+      console.log('[LifecycleDiag][Tray] double-click');
       if (mainWindowRef && !mainWindowRef.isDestroyed()) {
         if (process.platform === 'darwin' && app.dock) {
           void app.dock.show();
@@ -215,6 +224,9 @@ export const createOrUpdateTray = (): void => {
     });
 
     tray.on('click', (event: any) => {
+      console.log('[LifecycleDiag][Tray] click', {
+        button: event.event?.button ?? null,
+      });
       if (event.event?.button === 2) {
         void buildTrayContextMenu().then((menu) => tray?.setContextMenu(menu));
       }

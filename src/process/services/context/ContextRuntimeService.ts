@@ -15,7 +15,7 @@ import type {
   RetrievalTrace,
 } from '../../../../packages/context-engine/src/index';
 import type { ContextTier, MemoryKind, ProfileSegment } from '../../../../packages/context-engine/src/domain';
-import type { TMessage } from '@/common/chat/chatLib';
+import type { ConversationContextPreview, TMessage } from '@/common/chat/chatLib';
 import type { ContextServiceImpl } from './ContextServiceImpl';
 import {
   createSessionCompactionProfileKey,
@@ -72,6 +72,7 @@ type PrepareOutgoingTurnResult = {
   agentInput: string;
   agentContent: string;
   contextPack?: ContextPack;
+  contextPreview?: ConversationContextPreview;
 };
 
 type MemoryCandidateDraft = {
@@ -551,6 +552,76 @@ function buildFrozenMountedState(input: {
   };
 }
 
+function mapAssemblySourceToPreviewSource(
+  source: AssemblyTrace['entries'][number]['source']
+): ConversationContextPreview['sections'][number]['source'] {
+  switch (source) {
+    case 'thread_summary':
+    case 'mounted_profile':
+    case 'mounted_section':
+      return 'mounted';
+    case 'pinned_instruction':
+      return 'instruction';
+    case 'retrieved_chunk':
+    case 'retrieved_memory':
+    case 'retrieved_profile':
+    case 'retrieved_source':
+    default:
+      return 'retrieved';
+  }
+}
+
+function buildConversationContextPreview(input: {
+  pack: ContextPack;
+  retrievalTrace: RetrievalTrace;
+  assemblyTrace: AssemblyTrace;
+  mountedBoundary?: MountedBoundaryTrace;
+  omittedCount: number;
+}): ConversationContextPreview | undefined {
+  const sectionSourceMap = new Map<string, ConversationContextPreview['sections'][number]['source']>();
+  for (const entry of input.assemblyTrace.entries) {
+    if (entry.outcome !== 'kept' || sectionSourceMap.has(entry.sectionId)) {
+      continue;
+    }
+
+    sectionSourceMap.set(entry.sectionId, mapAssemblySourceToPreviewSource(entry.source));
+  }
+
+  const preview: ConversationContextPreview = {
+    searchMode: input.retrievalTrace.searchMode,
+    queryTerms: input.retrievalTrace.queryTerms.slice(0, 8),
+    budgetTokens: input.assemblyTrace.budgetTokens,
+    spentTokens: input.assemblyTrace.spentTokens,
+    sectionCount: input.pack.sections.length,
+    omittedCount: input.omittedCount,
+    memoryRefCount: input.pack.provenance.memoryIds.length,
+    sourceRefCount: input.pack.provenance.sourceIds.length,
+    profileRefCount: input.pack.provenance.profileIds.length,
+    artifactRefCount: input.pack.provenance.artifactIds.length,
+    threadSummaryIncluded: input.mountedBoundary?.threadSummaryIncluded ?? false,
+    mountedSectionCount: input.mountedBoundary?.mountedSectionIds.length ?? 0,
+    mountedProfileCount: input.mountedBoundary?.mountedProfileIds.length ?? 0,
+    pinnedInstructionCount: input.mountedBoundary?.pinnedInstructionIds.length ?? 0,
+    sections: input.pack.sections.map((section) => ({
+      id: section.id,
+      kind: section.kind,
+      source: sectionSourceMap.get(section.id) ?? 'retrieved',
+      summary: inlineSummary(section.summary, 180),
+      tokenCount: section.tokenCount,
+    })),
+  };
+
+  const hasVisibleContext =
+    preview.sectionCount > 0 ||
+    preview.omittedCount > 0 ||
+    preview.memoryRefCount > 0 ||
+    preview.sourceRefCount > 0 ||
+    preview.profileRefCount > 0 ||
+    preview.artifactRefCount > 0;
+
+  return hasVisibleContext ? preview : undefined;
+}
+
 export class ContextRuntimeService {
   constructor(
     private readonly contextService: ContextServiceImpl,
@@ -698,6 +769,13 @@ export class ContextRuntimeService {
     });
 
     const contextBlock = buildContextPackPrompt(assembled.pack);
+    const contextPreview = buildConversationContextPreview({
+      pack: assembled.pack,
+      retrievalTrace: retrieval.trace,
+      assemblyTrace: assembled.trace,
+      mountedBoundary,
+      omittedCount: assembled.omittedEntityIds.length,
+    });
     const userSourceResult = await this.contextService.ingestSource({
       spaceId,
       threadId: input.conversation.id,
@@ -788,6 +866,7 @@ export class ContextRuntimeService {
       agentInput: injectContextBeforeUserRequest(input.agentInput, contextBlock),
       agentContent: injectContextBeforeUserRequest(input.agentContent, contextBlock),
       contextPack: assembled.pack,
+      contextPreview,
     };
   }
 

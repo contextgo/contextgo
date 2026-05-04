@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AcpConnection } from '../../src/process/agent/acp/AcpConnection';
 import { AcpAgent } from '../../src/process/agent/acp/index';
 import type { AcpSessionConfigOption, AcpSessionModels } from '../../src/types/acpTypes';
+import { ProcessConfig } from '../../src/process/utils/initStorage';
 
 vi.mock('@process/utils/initStorage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@process/utils/initStorage')>();
@@ -28,7 +29,11 @@ function makeConnection(backend: string = 'codex'): AcpConnection {
   return conn;
 }
 
-function makeAgent(backend: string, acpSessionId?: string): AcpAgent {
+function makeAgent(
+  backend: string,
+  acpSessionId?: string,
+  extra?: { sessionMode?: string; yoloMode?: boolean }
+): AcpAgent {
   return new AcpAgent({
     id: 'test-agent',
     backend: backend as any,
@@ -37,6 +42,7 @@ function makeAgent(backend: string, acpSessionId?: string): AcpAgent {
       backend: backend as any,
       workspace: '/tmp',
       acpSessionId,
+      ...extra,
     },
     onStreamEvent: vi.fn(),
   });
@@ -209,5 +215,88 @@ describe('AcpAgent.createOrResumeSession — Codex routing', () => {
 
     expect((agent as any).extra.acpSessionId).toBe('rotated-session');
     expect(onSessionIdUpdate).toHaveBeenCalledWith('rotated-session');
+  });
+});
+
+// ─── AcpAgent prompt timeout defaults ───────────────────────────────────────
+
+describe('AcpAgent.applyPromptTimeoutFromConfig', () => {
+  const getConfig = vi.mocked(ProcessConfig.get);
+
+  beforeEach(() => {
+    getConfig.mockResolvedValue(undefined);
+  });
+
+  it('uses a longer default timeout for Codex ACP when no config overrides exist', async () => {
+    const agent = makeAgent('codex');
+    const conn: AcpConnection = (agent as any).connection;
+    const setPromptTimeout = vi.spyOn(conn, 'setPromptTimeout');
+
+    await (agent as any).applyPromptTimeoutFromConfig();
+
+    expect(setPromptTimeout).toHaveBeenCalledWith(1800);
+  });
+
+  it('uses the global timeout before the Codex default', async () => {
+    const agent = makeAgent('codex');
+    const conn: AcpConnection = (agent as any).connection;
+    const setPromptTimeout = vi.spyOn(conn, 'setPromptTimeout');
+
+    getConfig.mockImplementation(async (key: string) => (key === 'acp.promptTimeout' ? 900 : undefined));
+
+    await (agent as any).applyPromptTimeoutFromConfig();
+
+    expect(setPromptTimeout).toHaveBeenCalledWith(900);
+  });
+
+  it('uses backend timeout before the global timeout', async () => {
+    const agent = makeAgent('codex');
+    const conn: AcpConnection = (agent as any).connection;
+    const setPromptTimeout = vi.spyOn(conn, 'setPromptTimeout');
+
+    getConfig.mockImplementation(async (key: string) =>
+      key === 'acp.config' ? { codex: { promptTimeout: 1200 } } : 900
+    );
+
+    await (agent as any).applyPromptTimeoutFromConfig();
+
+    expect(setPromptTimeout).toHaveBeenCalledWith(1200);
+  });
+});
+
+describe('AcpAgent Codex mode mapping', () => {
+  it('maps ContextGo Full Auto to codex-acp full-access config option', async () => {
+    const agent = makeAgent('codex', undefined, { sessionMode: 'yolo' });
+    const conn: AcpConnection = (agent as any).connection;
+    const setConfigOption = vi.spyOn(conn, 'setConfigOption').mockResolvedValue({} as any);
+
+    await (agent as any).applyBackendSessionMode();
+
+    expect(setConfigOption).toHaveBeenCalledWith('mode', 'full-access');
+  });
+
+  it('maps ContextGo Auto Edit to codex-acp auto config option', async () => {
+    const agent = makeAgent('codex', undefined, { sessionMode: 'autoEdit' });
+    const conn: AcpConnection = (agent as any).connection;
+    const setConfigOption = vi.spyOn(conn, 'setConfigOption').mockResolvedValue({} as any);
+
+    await (agent as any).applyBackendSessionMode();
+
+    expect(setConfigOption).toHaveBeenCalledWith('mode', 'auto');
+  });
+
+  it('sets codex-acp mode through configOptions instead of session/set_mode', async () => {
+    const agent = makeAgent('codex');
+    const conn: AcpConnection = (agent as any).connection;
+    (conn as any).child = { killed: false };
+    (conn as any).sessionId = 'session-1';
+    const setConfigOption = vi.spyOn(conn, 'setConfigOption').mockResolvedValue({} as any);
+    const setSessionMode = vi.spyOn(conn, 'setSessionMode');
+
+    const result = await agent.setMode('yolo');
+
+    expect(result).toEqual({ success: true });
+    expect(setConfigOption).toHaveBeenCalledWith('mode', 'full-access');
+    expect(setSessionMode).not.toHaveBeenCalled();
   });
 });

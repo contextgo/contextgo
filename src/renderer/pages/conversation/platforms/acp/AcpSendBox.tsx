@@ -6,9 +6,10 @@ import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
 import SendBox from '@/renderer/components/chat/sendbox';
 import AgentRunStatus from '@/renderer/components/chat/AgentRunStatus';
 import RuntimePlanCard from '@/renderer/components/chat/RuntimePlanCard';
+import SendContextPreview from '@/renderer/components/chat/SendContextPreview';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile, useSendBoxFiles } from '@/renderer/hooks/chat/useSendBoxFiles';
-import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
+import { useAddOrUpdateMessage, useMessageList } from '@/renderer/pages/conversation/Messages/hooks';
 import { allSupportedExts } from '@/renderer/services/FileService';
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import { mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
@@ -17,7 +18,7 @@ import { Shield } from '@icon-park/react';
 import { iconColors } from '@/renderer/styles/colors';
 import FileAttachButton from '@/renderer/components/media/FileAttachButton';
 import AcpConfigSelector from '@/renderer/components/agent/AcpConfigSelector';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
@@ -102,12 +103,22 @@ const AcpSendBox: React.FC<{
   const { checkAndUpdateTitle } = useAutoTitle();
   const slashCommands = useSlashCommands(conversation_id, { agentStatus: acpStatus });
   const { atPath, uploadFile, setAtPath, setUploadFile, content, setContent } = useSendBoxDraft(conversation_id);
+  const messages = useMessageList();
+  const activeContextPreview = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index];
+      if (message.type === 'text' && message.position === 'right') {
+        return message.content.contextPreview;
+      }
+    }
+    return undefined;
+  }, [messages]);
 
   // Use useLatestRef to keep latest setters for long-lived event listeners
   const setContentRef = useLatestRef(setContent);
   const atPathRef = useLatestRef(atPath);
 
-  const addOrUpdateMessage = useAddOrUpdateMessage(); // Move this here so it's available in useEffect
+  const addOrUpdateMessage = useAddOrUpdateMessage();
   const addOrUpdateMessageRef = useLatestRef(addOrUpdateMessage);
 
   // Shared file handling logic
@@ -297,14 +308,14 @@ const AcpSendBox: React.FC<{
   };
 
   return (
-    <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
-      <div
-        className={`conversation-run-status-stack conversation-run-status-stack--triple ${
-          running || aiProcessing ? 'conversation-run-status-stack--active' : ''
-        }`}
-      >
+    <div className='conversation-mobile-sendbox max-w-800px w-full mx-auto flex flex-col mt-auto mb-8px md:mb-16px'>
+      <div className='conversation-run-status-stack'>
         <RuntimePlanCard entries={runtimePlanEntries} running={running || aiProcessing} />
-        <AgentRunStatus trace={runTrace} running={running || aiProcessing} />
+        <AgentRunStatus
+          trace={runTrace}
+          running={running || aiProcessing}
+          actions={<SendContextPreview preview={activeContextPreview} active={running || aiProcessing} />}
+        />
       </div>
 
       <SendBox

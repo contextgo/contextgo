@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { ManagedSlashCommandRecord } from '@/common/chat/slash/library';
 import { normalizeManagedSlashCommandLibrary, resolveManagedSlashCommands } from '@/common/chat/slash/library';
 import type {
   HookCategory,
@@ -28,8 +27,10 @@ import {
   type WorkspaceConversationScheduleRecord,
 } from '@process/services/context/events/schedule/WorkspaceScheduleConfigStore';
 import {
+  buildSkillDependencyHints,
   discoverSkillDirectories,
   readSkillOpenAIConfig,
+  type SkillDependencyHint,
   type SkillDirectoryInfo,
 } from '@process/utils/skillDiscovery';
 import type { Dirent } from 'node:fs';
@@ -48,6 +49,7 @@ export type ProjectSkillCapability = {
   skillDocumentRelativePath?: string;
   skillDocumentBody?: string;
   compatibility: readonly string[];
+  dependencyHints: readonly SkillDependencyHint[];
   implicitInvocation: boolean;
   openAIDisplayName?: string;
   openAIShortDescription?: string;
@@ -251,6 +253,10 @@ const buildSkillCapability = async (
   const skillDocumentPath = path.join(skill.dirPath, SKILL_DOCUMENT_FILE_NAME);
   const skillDocumentContent = await fs.readFile(skillDocumentPath, 'utf8').catch((): string => '');
   const openAIConfig = await readSkillOpenAIConfig(skill.dirPath);
+  const dependencyHints = await buildSkillDependencyHints({
+    compatibility: skill.compatibility,
+    openAIConfig,
+  });
   return {
     kind: 'skill',
     id: skill.dirName,
@@ -261,6 +267,7 @@ const buildSkillCapability = async (
     skillDocumentRelativePath: safeRelativePath(workspacePath, skillDocumentPath),
     skillDocumentBody: extractSkillDocumentBody(skillDocumentContent, skill.name),
     compatibility: skill.compatibility,
+    dependencyHints,
     implicitInvocation: openAIConfig?.policy?.allowImplicitInvocation === true,
     openAIDisplayName: trimOptionalString(openAIConfig?.interface?.displayName),
     openAIShortDescription: trimOptionalString(openAIConfig?.interface?.shortDescription),

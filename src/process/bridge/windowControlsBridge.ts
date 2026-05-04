@@ -63,6 +63,9 @@ export function initWindowControlsBridge(): void {
   // 最小化窗口 / Minimize window
   ipcBridge.windowControls.minimize.provider(() => {
     const window = BrowserWindow.getFocusedWindow();
+    console.log('[LifecycleDiag][WindowControlsBridge] minimize', {
+      hasFocusedWindow: Boolean(window),
+    });
     if (window) {
       window.minimize();
     }
@@ -72,6 +75,9 @@ export function initWindowControlsBridge(): void {
   // 最大化窗口 / Maximize window
   ipcBridge.windowControls.maximize.provider(() => {
     const window = BrowserWindow.getFocusedWindow();
+    console.log('[LifecycleDiag][WindowControlsBridge] maximize', {
+      hasFocusedWindow: Boolean(window),
+    });
     if (window) {
       window.maximize();
     }
@@ -81,6 +87,9 @@ export function initWindowControlsBridge(): void {
   // 取消最大化窗口 / Unmaximize window
   ipcBridge.windowControls.unmaximize.provider(() => {
     const window = BrowserWindow.getFocusedWindow();
+    console.log('[LifecycleDiag][WindowControlsBridge] unmaximize', {
+      hasFocusedWindow: Boolean(window),
+    });
     if (window) {
       window.unmaximize();
     }
@@ -90,6 +99,9 @@ export function initWindowControlsBridge(): void {
   // 关闭窗口 / Close window
   ipcBridge.windowControls.close.provider(() => {
     const window = BrowserWindow.getFocusedWindow();
+    console.log('[LifecycleDiag][WindowControlsBridge] close', {
+      hasFocusedWindow: Boolean(window),
+    });
     if (window) {
       window.close();
     }

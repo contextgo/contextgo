@@ -600,6 +600,14 @@
   "webui.openOfficialRemote": "開啟主機列表",
   "webui.remoteDevicesNav": "遠端主機",
   "webui.switchDevice": "切換主機",
+  "webui.remoteSession": "遠端會話",
+  "webui.switchDeviceRemoteGuardDescription": "遠控維持單層結構。先退出目前的遠端工作階段，再切換到另一台主機。",
+  "webui.switchDeviceReturnLocal": "返回裝置",
+  "webui.switchDeviceReturnList": "返回裝置列表",
+  "webui.switchDeviceReturnCurrentDesktop": "返回目前裝置桌面",
+  "webui.switchDeviceReturnCurrentDescription": "留在目前遠端裝置內，回到它自己的桌面首頁。",
+  "webui.switchDeviceReturnHost": "返回本地主機",
+  "webui.switchDeviceReturnHostDescription": "退出這次遠控，回到開啟它的本地桌面端。",
   "webui.officialRemoteSignedOut": "官方主機列表尚未連線。",
   "webui.officialRemoteHint": "在這裡登入一次即可。ContextGo 會自動綁定目前 Host Runtime，讓它出現在代管主機列表中。",
   "webui.officialRemoteRuntimeHint": "Official Remote 會自動準備 Host Runtime 路徑，你不需要在下方額外開啟本機 / 自託管存取。",
@@ -1533,6 +1541,8 @@
     "externalCatalog": {
       "platformAccess": "目前接入方式",
       "runtimeBoundary": "執行說明",
+      "runtimeStatus": "執行狀態",
+      "runtimeStatusSummary": "目前 Space 執行階段回報的即時 connector 狀態。",
       "nativeSurface": "覆蓋能力",
       "commandEntrypoints": "CLI 命令",
       "capabilities": "能力樹",
@@ -1572,6 +1582,26 @@
       "entrypoints": "入口命令",
       "writesStore": "會自動沉澱結果",
       "noStoreWrite": "暫不自動沉澱結果",
+      "runtimeFields": {
+        "serviceStatus": "服務",
+        "loginStatus": "登入",
+        "activeAccount": "目前帳號",
+        "accounts": "帳號數",
+        "baseUrl": "Base URL",
+        "headlessMode": "無頭模式",
+        "capabilityCount": "能力數",
+        "cookiesPath": "Cookies 路徑",
+        "serviceRepo": "服務倉庫",
+        "runtimeDir": "執行目錄"
+      },
+      "runtimeValues": {
+        "running": "執行中",
+        "stopped": "已停止",
+        "loggedIn": "已登入",
+        "loggedOut": "未登入",
+        "true": "是",
+        "false": "否"
+      },
       "unavailableTitle": "暫時無法讀取 connector 詳情"
     },
     "catalogPlaceholderDesc": "這個 connector 目前仍只是目錄佔位。ContextGo 尚未消費它的執行階段或採集輸出。",
@@ -1844,5 +1874,8 @@
   "webui.deviceModeLocal": "本地主機",
   "webui.deviceModeRemote": "遠端桌面",
   "webui.switchDeviceUnknown": "目前主機",
-  "webui.backToLocal": "返回本地"
+  "webui.backToLocal": "返回本地",
+  "webui.remoteDeviceLoadFailedTitle": "無法開啟遠端裝置",
+  "webui.remoteDeviceLoadFailedDescription": "桌面端未能載入雲端託管的遠端頁面。你可以重試，或先返回本地主機。",
+  "webui.remoteDeviceLoadFailedReason": "載入失敗：{{reason}}"
 }

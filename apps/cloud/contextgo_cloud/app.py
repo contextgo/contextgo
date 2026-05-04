@@ -114,8 +114,10 @@ class ObsidianReplicaRegisterRequest(BaseModel):
 class ObsidianBatchEntryPayload(BaseModel):
     path: str = Field(min_length=1, max_length=2048)
     fileClass: str = Field(min_length=1, max_length=64)
-    contentHash: str = Field(min_length=1, max_length=256)
+    contentHash: str = Field(default="", max_length=256)
     body: Optional[str] = None
+    bodyEncoding: Optional[Literal["utf8", "base64", "none"]] = None
+    tombstone: bool = False
 
 
 class ObsidianBatchPushRequest(BaseModel):
@@ -3572,21 +3574,16 @@ async def api_obsidian_sync_register_replica(
 @app.post("/api/obsidian-sync/batches/push")
 async def api_obsidian_sync_push_batch(request: Request, payload: ObsidianBatchPushRequest) -> JSONResponse:
     user, _device = require_current_device(request)
-    result = obsidian_sync_store.push_batch(
-        user_id=user.id,
-        vault_binding_id=payload.vaultBindingId,
-        replica_id=payload.replicaId,
-        base_cursor=payload.baseCursor,
-        entries=[
-            {
-                "path": entry.path,
-                "file_class": entry.fileClass,
-                "content_hash": entry.contentHash,
-                "body": entry.body,
-            }
-            for entry in payload.entries
-        ],
-    )
+    try:
+        result = obsidian_sync_store.push_batch(
+            user_id=user.id,
+            vault_binding_id=payload.vaultBindingId,
+            replica_id=payload.replicaId,
+            base_cursor=payload.baseCursor,
+            entries=normalize_obsidian_batch_entries(payload.entries),
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
     return JSONResponse(
         {
             "success": True,
@@ -3598,12 +3595,15 @@ async def api_obsidian_sync_push_batch(request: Request, payload: ObsidianBatchP
 @app.post("/api/obsidian-sync/batches/pull")
 async def api_obsidian_sync_pull_batches(request: Request, payload: ObsidianBatchPullRequest) -> JSONResponse:
     user, _device = require_current_device(request)
-    result = obsidian_sync_store.pull_batches(
-        user_id=user.id,
-        vault_binding_id=payload.vaultBindingId,
-        replica_id=payload.replicaId,
-        after_cursor=payload.afterCursor,
-    )
+    try:
+        result = obsidian_sync_store.pull_batches(
+            user_id=user.id,
+            vault_binding_id=payload.vaultBindingId,
+            replica_id=payload.replicaId,
+            after_cursor=payload.afterCursor,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
     return JSONResponse(
         {
             "success": True,
@@ -3619,6 +3619,8 @@ async def api_obsidian_sync_pull_batches(request: Request, payload: ObsidianBatc
                             "fileClass": entry.get("fileClass") or entry.get("file_class"),
                             "contentHash": entry.get("contentHash") or entry.get("content_hash"),
                             "body": entry.get("body"),
+                            "bodyEncoding": entry.get("bodyEncoding") or entry.get("body_encoding") or "utf8",
+                            "tombstone": bool(entry.get("tombstone")),
                         }
                         for entry in batch["entries"]
                     ],
@@ -3639,6 +3641,46 @@ async def api_obsidian_sync_space_status(space_id: str, request: Request) -> JSO
             "binding": binding,
         }
     )
+
+
+def normalize_obsidian_batch_entries(entries: list[ObsidianBatchEntryPayload]) -> list[dict[str, Any]]:
+    normalized_entries: list[dict[str, Any]] = []
+    for entry in entries:
+        normalized_path = entry.path.replace("\\", "/")
+        if (
+            normalized_path.startswith("/")
+            or normalized_path.startswith("../")
+            or "/../" in normalized_path
+            or normalized_path == ".."
+        ):
+            raise ValueError(f"Unsafe Obsidian sync path: {entry.path}")
+        if entry.fileClass not in {"content", "attachment", "obsidian-config", "workspace-state"}:
+            raise ValueError(f"Unsupported Obsidian file class: {entry.fileClass}")
+        tombstone = bool(entry.tombstone)
+        body_encoding = entry.bodyEncoding or ("none" if tombstone else "utf8")
+        content_hash = entry.contentHash or ""
+        body = entry.body or ""
+        if tombstone:
+            body = ""
+            body_encoding = "none"
+        elif not content_hash:
+            raise ValueError("Obsidian sync entries require contentHash unless tombstone is true")
+        elif body_encoding == "base64":
+            try:
+                base64.b64decode(body.encode("ascii"), validate=True)
+            except Exception as error:
+                raise ValueError(f"Invalid base64 body for Obsidian sync path: {entry.path}") from error
+        normalized_entries.append(
+            {
+                "path": normalized_path,
+                "file_class": entry.fileClass,
+                "content_hash": content_hash,
+                "body": body,
+                "body_encoding": body_encoding,
+                "tombstone": tombstone,
+            }
+        )
+    return normalized_entries
 
 
 @app.api_route("/{relay_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"], response_model=None)

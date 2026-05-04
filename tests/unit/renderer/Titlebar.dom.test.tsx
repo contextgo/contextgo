@@ -16,10 +16,11 @@ const remoteAccessTargetRef = {
     mode: 'local',
     currentUrl: '',
     entryUrl: '',
-  } as { mode: 'local' | 'device-list' | 'remote-device'; currentUrl: string; entryUrl: string },
+  } as { mode: 'local' | 'device-list' | 'remote-host-shell' | 'remote-device'; currentUrl: string; entryUrl: string },
 };
 let isElectronDesktopMock = true;
 let isMacOSMock = true;
+let isWindowsMock = false;
 let isMobileShellWebViewMock = false;
 
 vi.mock('@/common', () => ({
@@ -52,6 +53,7 @@ vi.mock('react-i18next', () => ({
 vi.mock('@/renderer/utils/platform', () => ({
   isElectronDesktop: () => isElectronDesktopMock,
   isMacOS: () => isMacOSMock,
+  isWindows: () => isWindowsMock,
   isMobileShellWebView: () => isMobileShellWebViewMock,
 }));
 
@@ -151,6 +153,7 @@ describe('Titlebar', () => {
     };
     isElectronDesktopMock = true;
     isMacOSMock = true;
+    isWindowsMock = false;
     isMobileShellWebViewMock = false;
     isFullScreenInvokeMock.mockResolvedValue(false);
     useConversationAgentsMock.mockReturnValue({
@@ -412,38 +415,70 @@ describe('Titlebar', () => {
     expect(await screen.findByLabelText('settings.webui.remoteDevicesNav')).toBeInTheDocument();
   });
 
-  it('uses the remote mode badge as a hoverable back-to-local control for remote device shells', async () => {
+  it('uses the local mode badge as the desktop entry point to the host list', async () => {
+    const switcherSpy = vi.fn();
+    window.addEventListener('official-remote:switcher', switcherSpy as EventListener);
+
+    try {
+      renderTitlebar('/guid');
+
+      const localBadge = await screen.findByRole('button', { name: 'settings.webui.deviceModeLocal' });
+      fireEvent.mouseEnter(localBadge);
+
+      const openHostListButton = screen.getByRole('button', { name: 'settings.webui.openOfficialRemote' });
+      expect(openHostListButton).toBeInTheDocument();
+
+      fireEvent.click(openHostListButton);
+
+      expect(switcherSpy).toHaveBeenCalledTimes(1);
+      expect(navigateMock).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener('official-remote:switcher', switcherSpy as EventListener);
+    }
+  });
+
+  it('uses the remote mode badge as a hoverable switch-device control for desktop remote host shells', async () => {
     remoteAccessTargetRef.current = {
-      mode: 'remote-device',
+      mode: 'remote-host-shell',
       currentUrl: 'https://remote.contextgo.io/device/device-1',
       entryUrl: 'https://remote.contextgo.io/remote/devices',
     };
 
-    const { container } = renderTitlebar('/remote/devices?deviceId=device-1');
+    const switcherSpy = vi.fn();
+    window.addEventListener('official-remote:switcher', switcherSpy as EventListener);
 
-    expect(await screen.findByLabelText('settings.webui.deviceModeRemote')).toBeInTheDocument();
-    expect(container.querySelector('.app-titlebar__floating-host-chrome')).toBeTruthy();
-    expect(container.querySelector('.app-titlebar__desktop-left')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Collapse sidebar' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'common.goBack' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'common.forward' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Expand workspace' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Collapse workspace' })).not.toBeInTheDocument();
+    try {
+      const { container } = renderTitlebar('/remote/devices?deviceId=device-1');
 
-    const remoteBadge = screen.getByRole('button', { name: 'settings.webui.deviceModeRemote' });
-    fireEvent.mouseEnter(remoteBadge);
+      expect(await screen.findByLabelText('settings.webui.deviceModeRemote')).toBeInTheDocument();
+      expect(container.querySelector('.app-titlebar--desktop-chrome-only')).toBeNull();
+      expect(container.querySelector('.app-titlebar__desktop-left')).toBeNull();
+      expect(setSiderCollapsedMock).not.toHaveBeenCalled();
+      expect(navigateMock).not.toHaveBeenCalled();
+      expect(screen.queryByRole('button', { name: 'Collapse sidebar' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'common.goBack' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'common.forward' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Expand workspace' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Collapse workspace' })).not.toBeInTheDocument();
 
-    const backToLocalButton = screen.getByRole('button', { name: 'settings.webui.backToLocal' });
-    expect(backToLocalButton).toBeInTheDocument();
+      const remoteBadge = screen.getByRole('button', { name: 'settings.webui.deviceModeRemote' });
+      fireEvent.mouseEnter(remoteBadge);
 
-    fireEvent.click(backToLocalButton);
+      const switchDeviceButton = screen.getByRole('button', { name: 'settings.webui.switchDevice' });
+      expect(switchDeviceButton).toBeInTheDocument();
 
-    expect(navigateMock).toHaveBeenCalledWith('/guid');
+      fireEvent.click(switchDeviceButton);
+
+      expect(switcherSpy).toHaveBeenCalledTimes(1);
+      expect(navigateMock).not.toHaveBeenCalledWith('/guid');
+    } finally {
+      window.removeEventListener('official-remote:switcher', switcherSpy as EventListener);
+    }
   });
 
-  it('keeps remote device shells in floating chrome-only mode even when local workspace tabs still exist', async () => {
+  it('keeps mac remote device shells free of the desktop chrome overlay even when local workspace tabs still exist', async () => {
     remoteAccessTargetRef.current = {
-      mode: 'remote-device',
+      mode: 'remote-host-shell',
       currentUrl: 'https://remote.contextgo.io/device/device-1',
       entryUrl: 'https://remote.contextgo.io/remote/devices',
     };
@@ -454,12 +489,108 @@ describe('Titlebar', () => {
     });
 
     expect(await screen.findByLabelText('settings.webui.deviceModeRemote')).toBeInTheDocument();
-    expect(container.querySelector('.app-titlebar--desktop-chrome-only')).toBeTruthy();
-    expect(container.querySelector('.app-titlebar__floating-host-chrome')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar--desktop-chrome-only')).toBeNull();
     expect(container.querySelector('.app-titlebar__desktop-left')).toBeNull();
     expect(container.querySelector('.app-titlebar__desktop-right')).toBeNull();
     expect(container.querySelector('.app-titlebar__toolbar')).toBeNull();
     expect(container.querySelector('#app-titlebar-chat-slot')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Collapse sidebar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'common.goBack' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'common.forward' })).not.toBeInTheDocument();
+  });
+
+  it('exits hosted remote runtime pages back to the local desktop host from the remote badge', async () => {
+    const originalHash = window.location.hash;
+    const originalPathname = window.location.pathname;
+    const originalSearch = window.location.search;
+    window.history.replaceState({}, '', '/device/device-1?client=desktop-host#/conversation/conv-1');
+
+    remoteAccessTargetRef.current = {
+      mode: 'remote-device',
+      currentUrl: 'https://remote.contextgo.io/device/device-1',
+      entryUrl: 'https://remote.contextgo.io/remote/devices',
+    };
+
+    try {
+      renderTitlebar('/conversation/conv-1');
+
+      const remoteBadge = await screen.findByRole('button', { name: 'settings.webui.deviceModeRemote' });
+      fireEvent.mouseEnter(remoteBadge);
+
+      const backToHostButton = screen.getByRole('button', { name: 'settings.webui.switchDeviceReturnHost' });
+      expect(backToHostButton).toBeInTheDocument();
+
+      fireEvent.click(backToHostButton);
+
+      expect(window.location.hash).toBe('#/remote/devices?remoteNotice=return_local_host');
+      expect(navigateMock).not.toHaveBeenCalledWith('/guid');
+    } finally {
+      window.history.replaceState({}, '', `${originalPathname}${originalSearch}${originalHash}`);
+    }
+  });
+
+  it('keeps Windows remote host shells free of local tabs while preserving host window controls', async () => {
+    isMacOSMock = false;
+    isWindowsMock = true;
+    remoteAccessTargetRef.current = {
+      mode: 'remote-host-shell',
+      currentUrl: 'https://remote.contextgo.io/device/device-1',
+      entryUrl: 'https://remote.contextgo.io/remote/devices',
+    };
+
+    const { container } = renderTitlebar('/remote/devices?deviceId=device-1', {
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+    });
+
+    expect(await screen.findByLabelText('settings.webui.deviceModeRemote')).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar__desktop-left')).toBeNull();
+    expect(container.querySelector('.app-titlebar__desktop-right')).toBeTruthy();
+    expect(container.querySelector('.app-titlebar__toolbar')).toBeTruthy();
+    expect(container.querySelector('#app-titlebar-chat-slot')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Collapse sidebar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'common.goBack' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'common.forward' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('window-controls')).toBeInTheDocument();
+  });
+
+  it('does not show the desktop host switcher badge on Linux desktop shells', async () => {
+    isMacOSMock = false;
+    isWindowsMock = false;
+    remoteAccessTargetRef.current = {
+      mode: 'remote-host-shell',
+      currentUrl: 'https://remote.contextgo.io/device/device-1',
+      entryUrl: 'https://remote.contextgo.io/remote/devices',
+    };
+
+    const { container } = renderTitlebar('/remote/devices?deviceId=device-1', {
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+    });
+
+    expect(container.querySelector('.app-titlebar__mode-badge')).toBeNull();
+    expect(screen.queryByLabelText('settings.webui.deviceModeRemote')).not.toBeInTheDocument();
+    expect(screen.getByTestId('window-controls')).toBeInTheDocument();
+  });
+
+  it('keeps hosted remote runtime pages in control of their own desktop left chrome', async () => {
+    remoteAccessTargetRef.current = {
+      mode: 'remote-device',
+      currentUrl: 'https://remote.contextgo.io/device/device-1',
+      entryUrl: 'https://remote.contextgo.io/remote/devices',
+    };
+
+    const { container } = renderTitlebar('/conversation/conv-1', {
+      workspaceAvailable: true,
+      openTabs: [createTab('conv-1')],
+    });
+
+    expect(await screen.findByLabelText('settings.webui.deviceModeRemote')).toBeInTheDocument();
+    expect(container.querySelector('.app-titlebar--desktop-chrome-only')).toBeNull();
+    expect(container.querySelector('.app-titlebar__desktop-left')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'common.goBack' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'common.forward' })).toBeInTheDocument();
   });
 
   it('shows a route title on mobile connector pages', async () => {

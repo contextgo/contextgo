@@ -56,6 +56,61 @@
     "tools": "{{count}} araç",
     "tools_other": "{{count}} araç"
   },
+  "contextPreview": {
+    "pill": "Bağlam · {{count}}",
+    "composerTag": "Gönderim Bağlamı",
+    "composerSummary": "Bu turda {{count}} bağlam öğesi eklenecek",
+    "composerSummary_other": "Bu turda {{count}} bağlam öğesi eklenecek",
+    "title": "Bu Turda Kullanılan Bağlam",
+    "subtitle": "Bu, kullanıcı sorgusu ajana gönderilmeden önce gerçekten eklenen bağlam paketidir.",
+    "mountedTitle": "Bağlı Bağlam",
+    "queryTermsTitle": "Arama Terimleri",
+    "sectionsTitle": "Dahil Edilen Bölümler",
+    "sectionTokens": "{{count}} token",
+    "boolean": {
+      "yes": "Evet",
+      "no": "Hayır"
+    },
+    "short": {
+      "memoryRefs": "{{count}} bellek",
+      "memoryRefs_other": "{{count}} bellek",
+      "sourceRefs": "{{count}} kaynak",
+      "sourceRefs_other": "{{count}} kaynak",
+      "profileRefs": "{{count}} profil",
+      "profileRefs_other": "{{count}} profil"
+    },
+    "metrics": {
+      "sections": "Bölümler",
+      "memoryRefs": "Bellek referansları",
+      "sourceRefs": "Kaynak referansları",
+      "profileRefs": "Profil referansları",
+      "omitted": "Atlananlar",
+      "tokenBudget": "Token bütçesi",
+      "threadSummary": "İş parçacığı özeti",
+      "mountedSections": "Bağlı bölümler",
+      "mountedProfiles": "Bağlı profiller",
+      "pinnedInstructions": "Sabit talimatlar"
+    },
+    "searchMode": {
+      "lexical": "Sözcüksel",
+      "vector": "Vektör",
+      "hybrid": "Hibrit"
+    },
+    "sectionSource": {
+      "mounted": "Bağlı",
+      "retrieved": "Getirilen",
+      "instruction": "Sabit"
+    },
+    "sectionKind": {
+      "threadState": "İş Parçacığı Durumu",
+      "source": "Kaynak",
+      "artifact": "Çıktı",
+      "memory": "Bellek",
+      "profile": "Profil",
+      "instruction": "Talimat",
+      "compaction": "Sıkıştırma Özeti"
+    }
+  },
   "confirmation": {
     "applyChange": "Bu değişikliği uygula?",
     "allowExecution": "Yürütmeye izin ver?",

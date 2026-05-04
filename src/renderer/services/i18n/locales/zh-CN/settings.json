@@ -601,6 +601,14 @@
   "webui.openOfficialRemote": "打开主机列表",
   "webui.remoteDevicesNav": "远程主机",
   "webui.switchDevice": "切换主机",
+  "webui.remoteSession": "远程会话",
+  "webui.switchDeviceRemoteGuardDescription": "远控保持单层结构。先退出当前远程会话，再切换到另一台主机。",
+  "webui.switchDeviceReturnLocal": "返回设备",
+  "webui.switchDeviceReturnList": "返回设备列表",
+  "webui.switchDeviceReturnCurrentDesktop": "返回当前设备桌面",
+  "webui.switchDeviceReturnCurrentDescription": "留在当前远端设备内，回到它自己的桌面首页。",
+  "webui.switchDeviceReturnHost": "返回本地主机",
+  "webui.switchDeviceReturnHostDescription": "退出这次远控，回到打开它的本地桌面端。",
   "webui.officialRemoteSignedOut": "官方主机列表尚未连接。",
   "webui.officialRemoteHint": "在这里登录一次即可。ContextGo 会自动绑定当前 Host Runtime，让它出现在托管主机列表中。",
   "webui.featureChannelsTitle": "Messaging Control",
@@ -1521,6 +1529,8 @@
     "externalCatalog": {
       "platformAccess": "当前接入方式",
       "runtimeBoundary": "运行说明",
+      "runtimeStatus": "运行状态",
+      "runtimeStatusSummary": "当前 Space 运行时返回的实时 connector 状态。",
       "nativeSurface": "覆盖能力",
       "commandEntrypoints": "CLI 命令",
       "capabilities": "能力树",
@@ -1560,6 +1570,26 @@
       "entrypoints": "入口命令",
       "writesStore": "会自动沉淀结果",
       "noStoreWrite": "暂不自动沉淀结果",
+      "runtimeFields": {
+        "serviceStatus": "服务",
+        "loginStatus": "登录",
+        "activeAccount": "当前账号",
+        "accounts": "账号数",
+        "baseUrl": "Base URL",
+        "headlessMode": "无头模式",
+        "capabilityCount": "能力数",
+        "cookiesPath": "Cookies 路径",
+        "serviceRepo": "服务仓库",
+        "runtimeDir": "运行目录"
+      },
+      "runtimeValues": {
+        "running": "运行中",
+        "stopped": "已停止",
+        "loggedIn": "已登录",
+        "loggedOut": "未登录",
+        "true": "是",
+        "false": "否"
+      },
       "unavailableTitle": "暂时无法读取 connector 详情"
     },
     "catalogPlaceholderDesc": "这个 connector 目前还只是目录占位。ContextGo 还没有消费它的运行时或采集输出。",
@@ -1840,5 +1870,8 @@
   "webui.deviceModeLocal": "本地主机",
   "webui.deviceModeRemote": "远程桌面",
   "webui.switchDeviceUnknown": "当前主机",
-  "webui.backToLocal": "返回本地"
+  "webui.backToLocal": "返回本地",
+  "webui.remoteDeviceLoadFailedTitle": "无法打开远程设备",
+  "webui.remoteDeviceLoadFailedDescription": "桌面端未能加载云端托管的远程页面。你可以重试，或先返回本地主机。",
+  "webui.remoteDeviceLoadFailedReason": "加载失败：{{reason}}"
 }

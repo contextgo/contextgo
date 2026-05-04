@@ -81,6 +81,7 @@ const LoginPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { status, login } = useAuth();
+  const isMobileShellRuntime = typeof window !== 'undefined' && isMobileShellWebView();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -114,10 +115,11 @@ const LoginPage: React.FC = () => {
       preferOfficialRemoteShell: shouldPreferOfficialRemoteShell({
         currentHref: window.location.href,
         isDesktopRuntime: isElectronDesktop(),
-        isMobileShellRuntime: isMobileShellWebView(),
+        isMobileShellRuntime,
       }),
+      isMobileShellRuntime,
     });
-  }, []);
+  }, [isMobileShellRuntime]);
 
   useEffect(() => {
     document.body.classList.add('login-page-active');

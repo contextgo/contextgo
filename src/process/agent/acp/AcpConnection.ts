@@ -557,8 +557,8 @@ export class AcpConnection {
     }
   }
 
-  // 重置所有 session/prompt 请求的超时计时器（在收到流式更新时调用）
-  // Reset timeout timers for all session/prompt requests (called when receiving streaming updates)
+  // 重置所有 session/prompt 请求的超时计时器（在收到流式更新或其它 ACP 活动时调用）
+  // Reset timeout timers for all session/prompt requests (called when receiving streaming updates or other ACP activity)
   private resetSessionPromptTimeouts(): void {
     for (const [id, request] of this.pendingRequests) {
       if (request.method === 'session/prompt' && !request.isPaused && request.timeoutId) {
@@ -632,6 +632,11 @@ export class AcpConnection {
     try {
       let result = null;
 
+      // Any inbound ACP request/notification means the backend is still active on
+      // the current turn. Refresh the prompt timeout so long-running tool and
+      // reasoning phases are not cancelled while progress is still arriving.
+      this.resetSessionPromptTimeouts();
+
       // 可辨识联合类型：TypeScript 根据 method 字面量自动窄化 params 类型
       switch (message.method) {
         case ACP_METHODS.SESSION_UPDATE:
@@ -643,8 +648,6 @@ export class AcpConnection {
                 `[ACP-PERF] stream: first chunk received ${Date.now() - this.lastPromptSentAt}ms (since prompt sent)`
               );
           }
-          // Reset timeout on streaming updates - LLM is still processing
-          this.resetSessionPromptTimeouts();
           // Update cached configOptions when config_option_update arrives
           if (
             message.params?.update &&

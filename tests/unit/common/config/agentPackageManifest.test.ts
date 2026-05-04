@@ -230,6 +230,102 @@ describe('agent-package manifests', () => {
     });
   });
 
+  it('parses a requirements payload as a first-class package surface', () => {
+    const manifest = parseAgentPackageManifest({
+      protocolVersion: 'agent-package.v1',
+      packageId: 'test-package',
+      assistantPresetId: 'builtin-test-package',
+      displayName: 'Test Package',
+      runtimeNeutral: true,
+      entryDocument: {
+        file: 'AGENTS.md',
+      },
+      payloads: {
+        requirements: {
+          logicalId: 'requirements',
+          sources: [{ kind: 'package-relative', root: 'docs' }],
+          installSurface: '.contextgo/requirements/',
+          runtimeProjection: 'none',
+          tools: [
+            {
+              id: 'figma-mcp',
+              kind: 'mcp',
+              required: true,
+              label: 'Figma MCP server',
+              ownerSkillNames: ['figma-screen-generate'],
+              mcp: {
+                serverId: 'figma',
+                transport: 'streamable_http',
+                url: 'https://mcp.figma.com/mcp',
+              },
+            },
+          ],
+          credentials: [
+            {
+              id: 'fal-key',
+              kind: 'api_key',
+              required: true,
+              label: 'fal.ai API key',
+              provider: 'fal-ai',
+              env: 'FAL_KEY',
+              fields: [{ key: 'apiKey', label: 'API key', secret: true, required: true }],
+            },
+          ],
+          connectors: [
+            {
+              id: 'figma-connector',
+              connectorType: 'figma',
+              required: true,
+              label: 'Figma connector',
+              capabilities: ['files.read'],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(manifest?.payloads.requirements).toEqual({
+      logicalId: 'requirements',
+      sources: [{ kind: 'package-relative', root: 'docs' }],
+      installSurface: '.contextgo/requirements/',
+      runtimeProjection: 'none',
+      tools: [
+        {
+          id: 'figma-mcp',
+          kind: 'mcp',
+          required: true,
+          label: 'Figma MCP server',
+          ownerSkillNames: ['figma-screen-generate'],
+          mcp: {
+            serverId: 'figma',
+            transport: 'streamable_http',
+            url: 'https://mcp.figma.com/mcp',
+          },
+        },
+      ],
+      credentials: [
+        {
+          id: 'fal-key',
+          kind: 'api_key',
+          required: true,
+          label: 'fal.ai API key',
+          provider: 'fal-ai',
+          env: 'FAL_KEY',
+          fields: [{ key: 'apiKey', label: 'API key', secret: true, required: true }],
+        },
+      ],
+      connectors: [
+        {
+          id: 'figma-connector',
+          connectorType: 'figma',
+          required: true,
+          label: 'Figma connector',
+          capabilities: ['files.read'],
+        },
+      ],
+    });
+  });
+
   it('rejects a connectors payload when connector types are missing', () => {
     const manifest = parseAgentPackageManifest({
       protocolVersion: 'agent-package.v1',
@@ -260,6 +356,7 @@ describe('agent-package manifests', () => {
     expect(getBundledAgentPackageInstallSurfaces('builtin-figma-closed-loop')).toEqual([
       '.contextgo/skills',
       '.contextgo/connectors/',
+      '.contextgo/requirements/',
       '.contextgo/commands.json',
       '.contextgo/schedules.json',
     ]);

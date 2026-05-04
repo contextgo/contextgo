@@ -4,6 +4,7 @@ import type {
   AgentPackageHooksPayload,
   AgentPackageManifest,
   AgentPackagePayloadId,
+  AgentPackageRequirementsPayload,
   AgentPackageSchedulesPayload,
   AgentPackageSkillsPayload,
   AgentPackageSourceDescriptor,
@@ -194,6 +195,13 @@ export function hasBundledAgentPackageConnectorsPayload(assistantId: string): bo
   return !!getBundledAgentPackagePayload(assistantId, 'connectors');
 }
 
+export function getBundledAgentPackageRequirements(assistantId: string): AgentPackageRequirementsPayload | undefined {
+  const payload = getBundledAgentPackagePayload(assistantId, 'requirements') as
+    | AgentPackageRequirementsPayload
+    | undefined;
+  return payload;
+}
+
 export function getBundledAgentPackageDefaultEnabledHookNames(assistantId: string): string[] | undefined {
   const payload = getBundledAgentPackagePayload(assistantId, 'hooks') as AgentPackageHooksPayload | undefined;
   return payload?.defaultEnabledHookNames ? [...payload.defaultEnabledHookNames] : undefined;
@@ -241,6 +249,7 @@ export function getBundledAgentPackageInstallSurfaces(assistantId: string): stri
 
   maybePush(descriptor.manifest.payloads.skills?.installSurface);
   maybePush(descriptor.manifest.payloads.connectors?.installSurface);
+  maybePush(descriptor.manifest.payloads.requirements?.installSurface);
   maybePush(descriptor.manifest.payloads.commands?.installSurface);
   maybePush(descriptor.manifest.payloads.hooks?.installSurface);
   maybePush(descriptor.manifest.payloads.hooks?.selectionSurface);

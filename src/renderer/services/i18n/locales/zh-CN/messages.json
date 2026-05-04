@@ -56,6 +56,61 @@
     "tools": "{{count}} 个工具",
     "tools_other": "{{count}} 个工具"
   },
+  "contextPreview": {
+    "pill": "上下文 · {{count}}",
+    "composerTag": "发送上下文",
+    "composerSummary": "本次将附带 {{count}} 条上下文",
+    "composerSummary_other": "本次将附带 {{count}} 条上下文",
+    "title": "本轮实际携带的上下文",
+    "subtitle": "这是用户消息发给 Agent 之前，实际挂载进去的上下文包。",
+    "mountedTitle": "挂载上下文",
+    "queryTermsTitle": "检索词",
+    "sectionsTitle": "已纳入的上下文片段",
+    "sectionTokens": "{{count}} 个 token",
+    "boolean": {
+      "yes": "是",
+      "no": "否"
+    },
+    "short": {
+      "memoryRefs": "{{count}} 条记忆",
+      "memoryRefs_other": "{{count}} 条记忆",
+      "sourceRefs": "{{count}} 个来源",
+      "sourceRefs_other": "{{count}} 个来源",
+      "profileRefs": "{{count}} 个画像",
+      "profileRefs_other": "{{count}} 个画像"
+    },
+    "metrics": {
+      "sections": "片段数",
+      "memoryRefs": "记忆引用",
+      "sourceRefs": "来源引用",
+      "profileRefs": "画像引用",
+      "omitted": "已省略",
+      "tokenBudget": "Token 预算",
+      "threadSummary": "线程摘要",
+      "mountedSections": "挂载片段",
+      "mountedProfiles": "挂载画像",
+      "pinnedInstructions": "固定指令"
+    },
+    "searchMode": {
+      "lexical": "词法",
+      "vector": "向量",
+      "hybrid": "混合"
+    },
+    "sectionSource": {
+      "mounted": "挂载",
+      "retrieved": "检索",
+      "instruction": "固定"
+    },
+    "sectionKind": {
+      "threadState": "线程状态",
+      "source": "来源",
+      "artifact": "产物",
+      "memory": "记忆",
+      "profile": "画像",
+      "instruction": "指令",
+      "compaction": "压缩摘要"
+    }
+  },
   "confirmation": {
     "applyChange": "应用此更改？",
     "allowExecution": "允许执行？",

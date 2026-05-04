@@ -124,12 +124,41 @@ export type ScheduleMessageMeta = {
   triggeredAt: number;
 };
 
+export type ConversationContextPreviewSectionSource = 'mounted' | 'retrieved' | 'instruction';
+
+export type ConversationContextPreviewSection = {
+  id: string;
+  kind: 'thread-state' | 'source' | 'artifact' | 'memory' | 'profile' | 'instruction' | 'compaction';
+  source: ConversationContextPreviewSectionSource;
+  summary: string;
+  tokenCount: number;
+};
+
+export type ConversationContextPreview = {
+  searchMode: 'lexical' | 'vector' | 'hybrid';
+  queryTerms: readonly string[];
+  budgetTokens: number;
+  spentTokens: number;
+  sectionCount: number;
+  omittedCount: number;
+  memoryRefCount: number;
+  sourceRefCount: number;
+  profileRefCount: number;
+  artifactRefCount: number;
+  threadSummaryIncluded: boolean;
+  mountedSectionCount: number;
+  mountedProfileCount: number;
+  pinnedInstructionCount: number;
+  sections: readonly ConversationContextPreviewSection[];
+};
+
 export type IMessageText = IMessage<
   'text',
   {
     content: string;
     scheduleMeta?: ScheduleMessageMeta;
     groupMeta?: MessageGroupMeta;
+    contextPreview?: ConversationContextPreview;
   }
 >;
 
@@ -491,10 +520,17 @@ export const transformMessage = (message: IResponseMessage): TMessage => {
         conversation_id: message.conversation_id,
         content: isRichData
           ? {
-              content: (data as { content: string; scheduleMeta?: ScheduleMessageMeta; groupMeta?: MessageGroupMeta })
-                .content,
+              content: (
+                data as {
+                  content: string;
+                  scheduleMeta?: ScheduleMessageMeta;
+                  groupMeta?: MessageGroupMeta;
+                  contextPreview?: ConversationContextPreview;
+                }
+              ).content,
               scheduleMeta: (data as { scheduleMeta?: ScheduleMessageMeta }).scheduleMeta,
               groupMeta: (data as { groupMeta?: MessageGroupMeta }).groupMeta,
+              contextPreview: (data as { contextPreview?: ConversationContextPreview }).contextPreview,
             }
           : { content: data as string },
       };

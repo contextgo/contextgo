@@ -27,6 +27,16 @@ import { createPortal } from 'react-dom';
 import './chat-layout.css';
 
 const REMOUNT_DIAG_TAG = '[RemountDiag]';
+const MOBILE_KEYBOARD_OVERLAP_THRESHOLD = 96;
+
+const isEditableElement = (element: Element | null): element is HTMLElement => {
+  if (!(element instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = element.tagName;
+  return tagName === 'INPUT' || tagName === 'TEXTAREA' || element.isContentEditable;
+};
 
 const logRemountDiag = (scope: string, phase: string, payload: Record<string, unknown>) => {
   console.log(`${REMOUNT_DIAG_TAG}[${scope}] ${phase} ${JSON.stringify(payload)}`);
@@ -64,6 +74,7 @@ const ChatLayout: React.FC<{
   const workspaceHeaderHeight = showWorkspaceHeader ? WORKSPACE_HEADER_HEIGHT : 0;
   const [desktopHeaderTarget, setDesktopHeaderTarget] = useState<HTMLElement | null>(null);
   const [desktopToolbarTarget, setDesktopToolbarTarget] = useState<HTMLElement | null>(null);
+  const [mobileKeyboardInset, setMobileKeyboardInset] = useState(0);
 
   useEffect(() => {
     logRemountDiag('ChatLayout', 'mount', {
@@ -102,6 +113,54 @@ const ChatLayout: React.FC<{
       toolbarTargetPresent: Boolean(desktopToolbarTarget),
     });
   }, [conversationId, desktopHeaderTarget, desktopToolbarTarget, isMobile, titlebarPrimarySlotId, toolbarSlotId]);
+
+  useEffect(() => {
+    if (!isMobile || typeof window === 'undefined') {
+      setMobileKeyboardInset(0);
+      return undefined;
+    }
+
+    const viewport = window.visualViewport;
+    if (!viewport) {
+      setMobileKeyboardInset(0);
+      return undefined;
+    }
+
+    let frameId = 0;
+
+    const syncKeyboardInset = () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        const activeElement = document.activeElement;
+        const isInputActive = isEditableElement(activeElement);
+        const overlap = Math.max(0, window.innerHeight - (viewport.height + viewport.offsetTop));
+        setMobileKeyboardInset(isInputActive && overlap > MOBILE_KEYBOARD_OVERLAP_THRESHOLD ? Math.round(overlap) : 0);
+      });
+    };
+
+    syncKeyboardInset();
+
+    viewport.addEventListener('resize', syncKeyboardInset);
+    viewport.addEventListener('scroll', syncKeyboardInset);
+    window.addEventListener('resize', syncKeyboardInset);
+    document.addEventListener('focusin', syncKeyboardInset);
+    document.addEventListener('focusout', syncKeyboardInset);
+
+    return () => {
+      if (frameId) {
+        window.cancelAnimationFrame(frameId);
+      }
+
+      viewport.removeEventListener('resize', syncKeyboardInset);
+      viewport.removeEventListener('scroll', syncKeyboardInset);
+      window.removeEventListener('resize', syncKeyboardInset);
+      document.removeEventListener('focusin', syncKeyboardInset);
+      document.removeEventListener('focusout', syncKeyboardInset);
+    };
+  }, [isMobile]);
 
   // --- Hook A: workspace collapse ---
   const { rightSiderCollapsed, setRightSiderCollapsed } = useWorkspaceCollapse({
@@ -323,7 +382,16 @@ const ChatLayout: React.FC<{
             }}
           >
             {layout?.isMobile ? mobileHeaderBlock : null}
-            <ArcoLayout.Content className='flex flex-col flex-1 bg-1 overflow-hidden'>
+            <ArcoLayout.Content
+              className='chat-layout-conversation-surface flex flex-col flex-1 bg-1 overflow-hidden'
+              style={
+                layout?.isMobile
+                  ? {
+                      ['--conversation-mobile-keyboard-inset' as string]: `${mobileKeyboardInset}px`,
+                    }
+                  : undefined
+              }
+            >
               {props.children}
             </ArcoLayout.Content>
           </ArcoLayout.Content>

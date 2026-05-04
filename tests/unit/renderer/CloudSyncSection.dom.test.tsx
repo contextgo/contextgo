@@ -175,6 +175,7 @@ vi.mock('@/common/config/storage', () => ({
 
 vi.mock('@/renderer/utils/platform', () => ({
   isElectronDesktop: () => true,
+  isMacOS: () => true,
 }));
 
 vi.mock('@/renderer/hooks/context/useSelectedSpace', () => ({

@@ -12,6 +12,14 @@ type ConnectorCapabilityPanelProps = {
   section: ConnectorCapabilitySection;
 };
 
+type RuntimeStatusItem = {
+  id: string;
+  labelKey: string;
+  value: string;
+  tone?: 'green' | 'orange' | 'red' | 'gray' | 'arcoblue';
+  mono?: boolean;
+};
+
 const getWorkflowStatusColor = (status: string): 'green' | 'orange' | 'gray' => {
   if (status === 'ready') {
     return 'green';
@@ -37,6 +45,139 @@ const getCapabilityModeLabelKey = (mode: string): string => {
 
 const getWorkflowSurfaceLabelKey = (surface: string): string =>
   `settings.connectors.externalCatalog.workflowSurfaces.${surface}`;
+
+const getRuntimeValue = (runtime: Record<string, unknown>, key: string): unknown => runtime[key];
+
+const formatRuntimeValue = (value: unknown, t: (key: string) => string): string | null => {
+  if (typeof value === 'boolean') {
+    return t(
+      value
+        ? 'settings.connectors.externalCatalog.runtimeValues.true'
+        : 'settings.connectors.externalCatalog.runtimeValues.false'
+    );
+  }
+  if (typeof value === 'number') {
+    return String(value);
+  }
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const buildXiaohongshuRuntimeStatusItems = (
+  runtime: Record<string, unknown>,
+  t: (key: string) => string
+): RuntimeStatusItem[] => {
+  const serviceRunning =
+    getRuntimeValue(runtime, 'pid_running') === true || getRuntimeValue(runtime, 'health_reachable') === true;
+  const loggedIn = getRuntimeValue(runtime, 'logged_in') === true;
+  const capabilities = getRuntimeValue(runtime, 'capabilities');
+  const runtimeDir = formatRuntimeValue(getRuntimeValue(runtime, 'state_dir'), t);
+  const serviceRepo = formatRuntimeValue(getRuntimeValue(runtime, 'service_repo_path'), t);
+  const cookiesPath = formatRuntimeValue(getRuntimeValue(runtime, 'cookies_path'), t);
+  const baseUrl = formatRuntimeValue(getRuntimeValue(runtime, 'base_url'), t);
+  const activeAccount = formatRuntimeValue(getRuntimeValue(runtime, 'active_account_id'), t);
+  const accountCount = formatRuntimeValue(getRuntimeValue(runtime, 'account_count'), t);
+  const headless = formatRuntimeValue(getRuntimeValue(runtime, 'headless'), t);
+
+  const items: Array<RuntimeStatusItem | null> = [
+    {
+      id: 'service-status',
+      labelKey: 'settings.connectors.externalCatalog.runtimeFields.serviceStatus',
+      value: t(
+        serviceRunning
+          ? 'settings.connectors.externalCatalog.runtimeValues.running'
+          : 'settings.connectors.externalCatalog.runtimeValues.stopped'
+      ),
+      tone: serviceRunning ? 'green' : 'red',
+    },
+    {
+      id: 'login-status',
+      labelKey: 'settings.connectors.externalCatalog.runtimeFields.loginStatus',
+      value: t(
+        loggedIn
+          ? 'settings.connectors.externalCatalog.runtimeValues.loggedIn'
+          : 'settings.connectors.externalCatalog.runtimeValues.loggedOut'
+      ),
+      tone: loggedIn ? 'green' : 'orange',
+    },
+    activeAccount
+      ? {
+          id: 'active-account',
+          labelKey: 'settings.connectors.externalCatalog.runtimeFields.activeAccount',
+          value: activeAccount,
+          tone: 'arcoblue',
+        }
+      : null,
+    accountCount
+      ? {
+          id: 'account-count',
+          labelKey: 'settings.connectors.externalCatalog.runtimeFields.accounts',
+          value: accountCount,
+        }
+      : null,
+    baseUrl
+      ? {
+          id: 'base-url',
+          labelKey: 'settings.connectors.externalCatalog.runtimeFields.baseUrl',
+          value: baseUrl,
+          mono: true,
+        }
+      : null,
+    headless
+      ? {
+          id: 'headless',
+          labelKey: 'settings.connectors.externalCatalog.runtimeFields.headlessMode',
+          value: headless,
+        }
+      : null,
+    Array.isArray(capabilities)
+      ? {
+          id: 'capabilities',
+          labelKey: 'settings.connectors.externalCatalog.runtimeFields.capabilityCount',
+          value: String(capabilities.length),
+        }
+      : null,
+    cookiesPath
+      ? {
+          id: 'cookies-path',
+          labelKey: 'settings.connectors.externalCatalog.runtimeFields.cookiesPath',
+          value: cookiesPath,
+          mono: true,
+        }
+      : null,
+    serviceRepo && serviceRepo !== '(unset)'
+      ? {
+          id: 'service-repo',
+          labelKey: 'settings.connectors.externalCatalog.runtimeFields.serviceRepo',
+          value: serviceRepo,
+          mono: true,
+        }
+      : null,
+    runtimeDir
+      ? {
+          id: 'runtime-dir',
+          labelKey: 'settings.connectors.externalCatalog.runtimeFields.runtimeDir',
+          value: runtimeDir,
+          mono: true,
+        }
+      : null,
+  ];
+
+  return items.filter((item): item is RuntimeStatusItem => item !== null);
+};
+
+const buildRuntimeStatusItems = (
+  details: ExternalConnectorCatalogDetails,
+  t: (key: string) => string
+): RuntimeStatusItem[] => {
+  if (details.connector === 'xiaohongshu') {
+    return buildXiaohongshuRuntimeStatusItems(details.runtime, t);
+  }
+  return [];
+};
 
 const getWorkflowDisplayLabel = (
   connector: string,
@@ -87,6 +228,7 @@ const getWorkflowDisplayNativeObjects = (
 export default function ConnectorCapabilityPanel({ details, section }: ConnectorCapabilityPanelProps) {
   const { t } = useTranslation();
   const capabilityGroups = details.capabilities?.groups ?? [];
+  const runtimeStatusItems = buildRuntimeStatusItems(details, t);
 
   if (section === 'capabilities') {
     if (!details.capabilities) {
@@ -336,6 +478,30 @@ export default function ConnectorCapabilityPanel({ details, section }: Connector
 
   return (
     <>
+      {runtimeStatusItems.length > 0 ? (
+        <div className={classNames(styles.detailCard, styles.detailCardWide)}>
+          <div className={styles.capabilityHeader}>
+            <div>
+              <h3 className={styles.detailCardTitle}>{t('settings.connectors.externalCatalog.runtimeStatus')}</h3>
+              <div className={styles.detailCardText}>
+                {t('settings.connectors.externalCatalog.runtimeStatusSummary')}
+              </div>
+            </div>
+            <Tag color='cyan'>{runtimeStatusItems.length}</Tag>
+          </div>
+          <div className={styles.runtimeStatusGrid}>
+            {runtimeStatusItems.map((item) => (
+              <div key={item.id} className={styles.runtimeStatusItem}>
+                <div className={styles.runtimeStatusLabel}>{t(item.labelKey)}</div>
+                <div className={classNames(styles.runtimeStatusValue, item.mono && styles.runtimeStatusValueMono)}>
+                  {item.tone ? <Tag color={item.tone}>{item.value}</Tag> : item.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className={classNames(styles.detailCard, styles.detailCardWide)}>
         <h3 className={styles.detailCardTitle}>{t('settings.connectors.externalCatalog.platformAccess')}</h3>
         <div className={styles.detailCardText}>{details.platform_access}</div>

@@ -21,6 +21,7 @@ Each package should converge on this shape:
   AGENTS.md
   docs/
   connectors/
+  requirements/
   workspace/
   skills/
   hooks/
@@ -45,6 +46,8 @@ outputs in `entryDocument.runtimeEntryProjections`.
 `skills/` carries task-specific executable workflow content.
 
 `connectors/` is optional source material for package-declared connector requirements and project-facing mount guidance.
+
+`requirements` metadata declares the tools, MCP servers, credential kinds, connector types, and local runtime conditions needed by a package. It must not contain raw secrets; project bindings reference Space credentials, connector instances, env vars, or runtime config entries instead.
 
 ## Installation Boundary
 

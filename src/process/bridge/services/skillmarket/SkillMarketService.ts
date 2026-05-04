@@ -759,6 +759,7 @@ export class SkillMarketService {
         bundle,
         score: scoreBundle(bundle, tokens),
       }))
+      .filter((entry) => entry.score >= 0)
       .toSorted((left, right) => {
         const leftRecommended = selectedIndustryBundleIds.has(left.bundle.id);
         const rightRecommended = selectedIndustryBundleIds.has(right.bundle.id);

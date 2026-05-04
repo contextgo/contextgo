@@ -104,6 +104,21 @@ describe('ThoughtDisplay', () => {
     expect(onStop).toHaveBeenCalledTimes(1);
   });
 
+  it('places status actions inside the running row', () => {
+    render(
+      <ThoughtDisplay
+        running
+        actions={<button type='button'>context</button>}
+        thought={{
+          subject: 'Analyzing',
+          description: 'Working through the next step',
+        }}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'context' })).toBeInTheDocument();
+  });
+
   it('does not render stale thought content after the run ends', () => {
     const { container } = render(
       <ThoughtDisplay

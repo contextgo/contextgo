@@ -144,7 +144,7 @@ const MessageItem: React.FC<{ message: TMessage; highlighted?: boolean }> = Reac
     prev.highlighted === next.highlighted
 );
 
-const MessageList: React.FC<{ className?: string }> = () => {
+const MessageList: React.FC<{ className?: string }> = ({ className }) => {
   const list = useMessageList();
   const conversationContext = useConversationContextSafe();
   const layout = useLayoutContext();
@@ -443,7 +443,7 @@ const MessageList: React.FC<{ className?: string }> = () => {
   );
 
   return (
-    <div className='relative flex-1 h-full min-w-0 overflow-x-hidden'>
+    <div className={classNames('relative flex-1 h-full min-w-0 overflow-x-hidden', className)}>
       {/* Use PreviewGroup to wrap all messages for cross-message image preview */}
       <Image.PreviewGroup actionsLayout={['zoomIn', 'zoomOut', 'originalSize', 'rotateLeft', 'rotateRight']}>
         <ImagePreviewContext.Provider value={{ inPreviewGroup: true }}>

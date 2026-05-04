@@ -37,6 +37,14 @@ import { getClaudeModel } from './utils';
 
 /** Enable ACP performance diagnostics via ACP_PERF=1 */
 const ACP_PERF_LOG = process.env.ACP_PERF === '1';
+const CODEX_DEFAULT_PROMPT_TIMEOUT_SECONDS = 1800;
+const CODEX_MODE_CONFIG_ID = 'mode';
+const CODEX_MODE_MAP: Record<string, string> = {
+  default: 'read-only',
+  autoEdit: 'auto',
+  yolo: 'full-access',
+  bypassPermissions: 'full-access',
+};
 
 /**
  * Initialize response result interface
@@ -89,6 +97,8 @@ export interface AcpAgentConfig {
     customArgs?: string[];
     customEnv?: Record<string, string>;
     yoloMode?: boolean;
+    /** Selected session mode from ContextGo UI / ContextGo UI 选择的会话模式 */
+    sessionMode?: string;
     /** Display name for the agent (from extension or custom config) / Agent 显示名称 */
     agentName?: string;
     /** ACP session ID for resume support / ACP session ID 用于会话恢复 */
@@ -115,6 +125,8 @@ export class AcpAgent {
     customArgs?: string[];
     customEnv?: Record<string, string>;
     yoloMode?: boolean;
+    /** Selected session mode from ContextGo UI / ContextGo UI 选择的会话模式 */
+    sessionMode?: string;
     /** Display name for the agent (from extension or custom config) / Agent 显示名称 */
     agentName?: string;
     /** ACP session ID for resume support / ACP session ID 用于会话恢复 */
@@ -175,6 +187,7 @@ export class AcpAgent {
       customArgs: config.customArgs,
       customEnv: config.customEnv,
       yoloMode: false,
+      sessionMode: undefined,
     };
 
     this.connection = new AcpConnection();
@@ -318,6 +331,7 @@ export class AcpAgent {
           }
         }
       }
+      await this.applyBackendSessionMode();
 
       // Apply model from ~/.claude/settings.json for Claude backend.
       // claude-agent-acp may default to a region-mismatched Bedrock model;
@@ -377,6 +391,10 @@ export class AcpAgent {
       const globalTimeout = await ProcessConfig.get('acp.promptTimeout');
       if (globalTimeout && globalTimeout > 0) {
         this.connection.setPromptTimeout(globalTimeout);
+        return;
+      }
+      if (this.extra.backend === 'codex') {
+        this.connection.setPromptTimeout(CODEX_DEFAULT_PROMPT_TIMEOUT_SECONDS);
       }
     } catch {
       // Ignore config read errors, default timeout will be used
@@ -391,6 +409,7 @@ export class AcpAgent {
   async enableYoloMode(): Promise<void> {
     if (this.extra.yoloMode) return;
     this.extra.yoloMode = true;
+    this.extra.sessionMode = 'yolo';
 
     if (this.connection.isConnected && this.connection.hasActiveSession) {
       const yoloModeMap: Partial<Record<AcpBackend, string>> = {
@@ -399,6 +418,8 @@ export class AcpAgent {
       const sessionMode = yoloModeMap[this.extra.backend];
       if (sessionMode) {
         await this.connection.setSessionMode(sessionMode);
+      } else if (this.extra.backend === 'codex') {
+        await this.applyBackendSessionMode();
       }
     }
   }
@@ -1422,13 +1443,32 @@ export class AcpAgent {
       return { success: false, error: 'No active session. Please send a message first to establish a session.' };
     }
     try {
-      await this.connection.setSessionMode(mode);
+      this.extra.sessionMode = mode;
+      this.extra.yoloMode = mode === 'yolo' || mode === 'bypassPermissions';
+      if (this.extra.backend === 'codex') {
+        await this.applyBackendSessionMode();
+      } else {
+        await this.connection.setSessionMode(mode);
+      }
       return { success: true };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error('[AcpAgent] Failed to set mode:', errorMsg);
       return { success: false, error: errorMsg };
     }
+  }
+
+  private getCodexAcpMode(): string | null {
+    const mode = this.extra.sessionMode || (this.extra.yoloMode ? 'yolo' : undefined);
+    if (!mode) return null;
+    return CODEX_MODE_MAP[mode] ?? mode;
+  }
+
+  private async applyBackendSessionMode(): Promise<void> {
+    if (this.extra.backend !== 'codex') return;
+    const codexMode = this.getCodexAcpMode();
+    if (!codexMode) return;
+    await this.connection.setConfigOption(CODEX_MODE_CONFIG_ID, codexMode);
   }
 
   private async ensureBackendAuth(backend: AcpBackend, loginArg: string): Promise<void> {

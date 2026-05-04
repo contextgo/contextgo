@@ -297,7 +297,7 @@ describe('SkillMarketService.searchSkills', () => {
     expect(result.totalAvailable).toBe(3);
     expect(result.stats.clusterCount).toBe(5);
     expect(result.industryIndex[0]?.recommendedSkills[0]?.id).toBe('market-skill::1.0.0::tester');
-    expect(result.bundles[0]?.skills).toHaveLength(2);
+    expect(result.bundles).toHaveLength(0);
     expect(result.categories).toEqual(['automation', 'developer-tools']);
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toMatchObject({
@@ -341,6 +341,29 @@ describe('SkillMarketService.searchSkills', () => {
 
     expect(result.items.map((item) => item.id)).toEqual(['market-skill::1.0.0::tester']);
     expect(result.bundles.map((bundle) => bundle.id)).toEqual(['engineering-copilot', 'engineering-foundation']);
+  });
+
+  it('does not return unrelated bundles when query tokens only match individual skills', async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url === CONFIG_URL) return createConfigResponse();
+      if (url === CURATED_STATS_URL) return createStatsResponse();
+      if (url === CURATED_MANIFEST_URL) return createManifestResponse();
+      if (url === INDUSTRY_URL) return createIndustryResponse();
+      if (url === BUNDLE_URL) return createBundleResponse();
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+
+    const service = new SkillMarketService({
+      fetchImpl,
+      configUrl: CONFIG_URL,
+      skillsDir: path.join(os.tmpdir(), 'unused-skill-market-query-bundles'),
+    });
+
+    const result = await service.searchSkills({ query: 'scanner', limit: 10 });
+
+    expect(result.items.map((item) => item.id)).toEqual(['market-skill::1.0.0::tester']);
+    expect(result.bundles).toEqual([]);
   });
 });
 

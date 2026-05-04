@@ -199,6 +199,9 @@ export const useGeminiMessage = (conversation_id: string, onError?: (message: IR
           addOrUpdateMessage(transformMessage(message));
           break;
         }
+        case 'user_content':
+          addOrUpdateMessage(transformMessage(message));
+          break;
         case 'tool_group':
           {
             // Mark that current turn has content output

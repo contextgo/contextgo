@@ -27,7 +27,28 @@
   background: linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 68%, transparent) 0%, transparent 100%);
 }
 
+.chat-layout-conversation-surface {
+  --conversation-mobile-keyboard-inset: 0px;
+}
+
 @media (max-width: 767px) {
+  .conversation-mobile-chat-page {
+    min-height: 0;
+  }
+
+  .conversation-mobile-message-list {
+    padding-bottom: calc(10px + var(--conversation-mobile-keyboard-inset, 0px));
+    transition: padding-bottom 180ms ease;
+  }
+
+  .conversation-mobile-sendbox {
+    transform: translateY(calc(var(--conversation-mobile-keyboard-inset, 0px) * -1));
+    transition:
+      transform 180ms ease,
+      margin-bottom 180ms ease;
+    will-change: transform;
+  }
+
   .chat-layout-mobile-top-chrome {
     position: relative;
     z-index: 2;

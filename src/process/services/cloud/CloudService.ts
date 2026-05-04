@@ -110,6 +110,10 @@ function readOptionalString(value: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function readOptionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
 function normalizeRemoteDeviceStatus(value: unknown): CloudRemoteDevice['remoteStatus'] {
   const raw = isRecord(value) ? value : {};
 
@@ -211,6 +215,10 @@ function normalizeObsidianReplica(value: unknown): CloudObsidianReplica | null {
     platform,
     healthStatus,
     lastSyncedAt: readOptionalString(value.lastSyncedAt),
+    appliedCursor: readOptionalNumber(value.appliedCursor),
+    lastPushCursor: readOptionalNumber(value.lastPushCursor),
+    lastPullCursor: readOptionalNumber(value.lastPullCursor),
+    vaultFingerprint: readOptionalString(value.vaultFingerprint),
     localReadyState: readOptionalString(value.localReadyState) as CloudObsidianReplica['localReadyState'],
     rootTreeUri: readOptionalString(value.rootTreeUri),
     localDirectoryUri: readOptionalString(value.localDirectoryUri),

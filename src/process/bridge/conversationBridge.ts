@@ -502,6 +502,7 @@ export function initConversationBridge(
       skills: snapshot.skills.map((skill) => ({
         ...skill,
         compatibility: [...skill.compatibility],
+        dependencyHints: [...skill.dependencyHints],
       })),
       hooks: snapshot.hooks.map((hook) => ({
         ...hook,
@@ -646,6 +647,7 @@ export function initConversationBridge(
         files: workspaceFiles,
         agentInput,
         agentContent,
+        contextPreview: preparedTurn.contextPreview,
       });
       return { success: true };
     } catch (err: unknown) {

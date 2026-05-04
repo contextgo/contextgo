@@ -56,6 +56,61 @@
     "tools": "{{count}} tool",
     "tools_other": "{{count}} tools"
   },
+  "contextPreview": {
+    "pill": "Context · {{count}}",
+    "composerTag": "Send Context",
+    "composerSummary": "This turn will attach {{count}} context item",
+    "composerSummary_other": "This turn will attach {{count}} context items",
+    "title": "Context Used For This Turn",
+    "subtitle": "This is the actual context package attached to the user query before it was sent to the agent.",
+    "mountedTitle": "Mounted Context",
+    "queryTermsTitle": "Retrieval Terms",
+    "sectionsTitle": "Included Sections",
+    "sectionTokens": "{{count}} tokens",
+    "boolean": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "short": {
+      "memoryRefs": "{{count}} memory",
+      "memoryRefs_other": "{{count}} memories",
+      "sourceRefs": "{{count}} source",
+      "sourceRefs_other": "{{count}} sources",
+      "profileRefs": "{{count}} profile",
+      "profileRefs_other": "{{count}} profiles"
+    },
+    "metrics": {
+      "sections": "Sections",
+      "memoryRefs": "Memory refs",
+      "sourceRefs": "Source refs",
+      "profileRefs": "Profile refs",
+      "omitted": "Omitted",
+      "tokenBudget": "Token budget",
+      "threadSummary": "Thread summary",
+      "mountedSections": "Mounted sections",
+      "mountedProfiles": "Mounted profiles",
+      "pinnedInstructions": "Pinned instructions"
+    },
+    "searchMode": {
+      "lexical": "Lexical",
+      "vector": "Vector",
+      "hybrid": "Hybrid"
+    },
+    "sectionSource": {
+      "mounted": "Mounted",
+      "retrieved": "Retrieved",
+      "instruction": "Pinned"
+    },
+    "sectionKind": {
+      "threadState": "Thread State",
+      "source": "Source",
+      "artifact": "Artifact",
+      "memory": "Memory",
+      "profile": "Profile",
+      "instruction": "Instruction",
+      "compaction": "Compaction"
+    }
+  },
   "confirmation": {
     "applyChange": "Apply this change?",
     "allowExecution": "Allow execution?",

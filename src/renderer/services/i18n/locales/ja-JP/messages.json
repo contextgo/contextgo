@@ -56,6 +56,61 @@
     "tools": "ツール {{count}} 件",
     "tools_other": "ツール {{count}} 件"
   },
+  "contextPreview": {
+    "pill": "コンテキスト · {{count}}",
+    "composerTag": "送信コンテキスト",
+    "composerSummary": "このターンでは {{count}} 件のコンテキストが添付されます",
+    "composerSummary_other": "このターンでは {{count}} 件のコンテキストが添付されます",
+    "title": "このターンで使われたコンテキスト",
+    "subtitle": "これは、ユーザーの問い合わせがエージェントへ送信される前に実際に添付されたコンテキストパックです。",
+    "mountedTitle": "マウント済みコンテキスト",
+    "queryTermsTitle": "検索語",
+    "sectionsTitle": "含まれたセクション",
+    "sectionTokens": "{{count}} トークン",
+    "boolean": {
+      "yes": "はい",
+      "no": "いいえ"
+    },
+    "short": {
+      "memoryRefs": "{{count}} 件の記憶",
+      "memoryRefs_other": "{{count}} 件の記憶",
+      "sourceRefs": "{{count}} 件のソース",
+      "sourceRefs_other": "{{count}} 件のソース",
+      "profileRefs": "{{count}} 件のプロフィール",
+      "profileRefs_other": "{{count}} 件のプロフィール"
+    },
+    "metrics": {
+      "sections": "セクション数",
+      "memoryRefs": "記憶参照",
+      "sourceRefs": "ソース参照",
+      "profileRefs": "プロフィール参照",
+      "omitted": "省略",
+      "tokenBudget": "トークン予算",
+      "threadSummary": "スレッド要約",
+      "mountedSections": "マウント済みセクション",
+      "mountedProfiles": "マウント済みプロフィール",
+      "pinnedInstructions": "固定指示"
+    },
+    "searchMode": {
+      "lexical": "字句",
+      "vector": "ベクトル",
+      "hybrid": "ハイブリッド"
+    },
+    "sectionSource": {
+      "mounted": "マウント済み",
+      "retrieved": "取得",
+      "instruction": "固定"
+    },
+    "sectionKind": {
+      "threadState": "スレッド状態",
+      "source": "ソース",
+      "artifact": "成果物",
+      "memory": "記憶",
+      "profile": "プロフィール",
+      "instruction": "指示",
+      "compaction": "圧縮要約"
+    }
+  },
   "confirmation": {
     "applyChange": "この変更を適用しますか？",
     "allowExecution": "実行を許可しますか？",

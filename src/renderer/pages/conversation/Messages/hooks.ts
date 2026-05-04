@@ -64,6 +64,17 @@ function getOrBuildIndex(list: TMessage[]): MessageIndex {
   return cached;
 }
 
+function mergeTextMessageContent(
+  existing: Extract<TMessage, { type: 'text' }>,
+  incoming: Extract<TMessage, { type: 'text' }>
+): Extract<TMessage, { type: 'text' }>['content'] {
+  return {
+    ...existing.content,
+    ...incoming.content,
+    content: existing.content.content || incoming.content.content,
+  };
+}
+
 // 使用索引优化的消息合并函数
 // Index-optimized message compose function
 function composeMessageWithIndex(message: TMessage, list: TMessage[], index: MessageIndex): TMessage[] {
@@ -159,8 +170,21 @@ function composeMessageWithIndex(message: TMessage, list: TMessage[], index: Mes
     if (existingIdx !== undefined && existingIdx < list.length) {
       const existingMsg = list[existingIdx];
       if (existingMsg.type === 'text') {
-        // User messages (right position) are complete — skip if already exists to prevent duplicates
+        // User messages (right position) should merge metadata back from backend
+        // without duplicating or appending the visible text.
         if (message.position === 'right') {
+          const newList = list.slice();
+          const mergedMessage: typeof existingMsg = {
+            ...existingMsg,
+            ...message,
+            id: existingMsg.id,
+            createdAt: existingMsg.createdAt,
+            content: mergeTextMessageContent(existingMsg, message),
+          };
+          newList[existingIdx] = mergedMessage;
+          return newList;
+        }
+        if (existingMsg.position === 'right') {
           return list;
         }
         // AI streaming messages (left position) — append chunks

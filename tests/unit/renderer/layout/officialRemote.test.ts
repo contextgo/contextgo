@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildOfficialRemoteDisconnectRoute,
   buildOfficialDeviceListUrl,
   buildOfficialRemoteDevicesRoute,
   buildOfficialDeviceUrl,
   getCurrentHostRuntimeStatusKey,
   isCurrentHostRuntimeReady,
+  OFFICIAL_REMOTE_CLIENT_DESKTOP_HOST,
   OFFICIAL_REMOTE_DEVICES_ROUTE,
+  OFFICIAL_REMOTE_NOTICE_RETURN_LOCAL_HOST,
   OFFICIAL_REMOTE_VIEW_LIST,
   OFFICIAL_REMOTE_VIEW_QUERY_KEY,
   OFFICIAL_REMOTE_WEBVIEW_PARTITION,
@@ -52,6 +55,17 @@ describe('officialRemote utils', () => {
   it('builds a direct device URL for the hosted remote runtime', () => {
     expect(buildOfficialDeviceUrl('https://remote.example.com///', 'device-123')).toBe(
       'https://remote.example.com/device/device-123'
+    );
+    expect(
+      buildOfficialDeviceUrl('https://remote.example.com///', 'device-123', {
+        client: OFFICIAL_REMOTE_CLIENT_DESKTOP_HOST,
+      })
+    ).toBe('https://remote.example.com/device/device-123?client=desktop-host');
+  });
+
+  it('builds a hosted disconnect route for the outer desktop shell to consume', () => {
+    expect(buildOfficialRemoteDisconnectRoute(OFFICIAL_REMOTE_NOTICE_RETURN_LOCAL_HOST)).toBe(
+      '/remote/devices?remoteNotice=return_local_host'
     );
   });
 
@@ -100,6 +114,18 @@ describe('officialRemote utils', () => {
       })
     ).toEqual({
       kind: 'device-list',
+    });
+
+    expect(
+      resolveHostedOfficialRemoteIntent(
+        'https://remote.example.com/device/device-123?client=desktop-host#/remote/devices?remoteNotice=return_local_host',
+        {
+          displayedDeviceId: 'device-123',
+        }
+      )
+    ).toEqual({
+      kind: 'disconnect',
+      notice: 'return_local_host',
     });
   });
 
@@ -203,6 +229,18 @@ describe('officialRemote utils', () => {
         }),
       })
     ).toBe(buildOfficialRemoteDevicesRoute({ preferredDeviceId: 'device-123' }));
+  });
+
+  it('keeps mobile-shell startup on the device list even when a preferred device exists', () => {
+    expect(
+      resolveAuthenticatedStartupPath({
+        activeTabId: null,
+        openTabIds: [],
+        preferOfficialRemoteShell: true,
+        isMobileShellRuntime: true,
+        preferredRemoteDeviceId: 'device-123',
+      })
+    ).toBe(buildOfficialRemoteDevicesRoute({ forcePicker: true }));
   });
 
   it('falls back to the current conversation or guid when remote shell is not preferred', () => {

@@ -1,7 +1,7 @@
 import { AcpAgent } from '@process/agent/acp';
 import { channelEventBus } from '@process/channels/agent/ChannelEventBus';
 import { ipcBridge } from '@/common';
-import type { ScheduleMessageMeta, TMessage } from '@/common/chat/chatLib';
+import type { ConversationContextPreview, ScheduleMessageMeta, TMessage } from '@/common/chat/chatLib';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
 import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/common/chat/chatLib';
 import { CONTEXTGO_FILES_MARKER } from '@/common/config/constants';
@@ -364,6 +364,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
           customArgs: customArgs,
           customEnv: customEnv,
           yoloMode: yoloMode,
+          sessionMode: this.currentMode,
           agentName: data.agentName,
           acpSessionId: data.acpSessionId,
           acpSessionUpdatedAt: data.acpSessionUpdatedAt,
@@ -698,6 +699,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
     files?: string[];
     msg_id?: string;
     scheduleMeta?: ScheduleMessageMeta;
+    contextPreview?: ConversationContextPreview;
   }): Promise<{
     success: boolean;
     msg?: string;
@@ -726,6 +728,7 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
           content: {
             content: data.content,
             ...(data.scheduleMeta && { scheduleMeta: data.scheduleMeta }),
+            ...(data.contextPreview && { contextPreview: data.contextPreview }),
           },
           createdAt: Date.now(),
         };
@@ -740,9 +743,11 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
           type: 'user_content',
           conversation_id: this.conversation_id,
           msg_id: data.msg_id,
-          data: data.scheduleMeta
-            ? { content: userMessage.content.content, scheduleMeta: data.scheduleMeta }
-            : userMessage.content.content,
+          data: {
+            content: userMessage.content.content,
+            ...(data.scheduleMeta && { scheduleMeta: data.scheduleMeta }),
+            ...(data.contextPreview && { contextPreview: data.contextPreview }),
+          },
         };
         ipcBridge.acpConversation.responseStream.emit(userResponseMessage);
       }
@@ -1067,9 +1072,6 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
    * @returns Promise that resolves with success status and current mode
    */
   async setMode(mode: string): Promise<{ success: boolean; msg?: string; data?: { mode: string } }> {
-    // Codex (via codex-acp bridge) does not support ACP session/set_mode — it uses MCP
-    // and manages approval at the Manager layer. Update local state only to avoid
-    // "Invalid params" JSON-RPC error from the bridge.
     if (this.options.backend === 'codex') {
       const prev = this.currentMode;
       this.currentMode = mode;
@@ -1078,6 +1080,13 @@ class AcpAgentManager extends BaseAgentManager<AcpAgentManagerData, AcpPermissio
 
       if (this.isYoloMode(prev) && !this.isYoloMode(mode)) {
         void this.clearLegacyYoloConfig();
+      }
+
+      if (this.agent) {
+        const result = await this.agent.setMode(mode);
+        if (!result.success) {
+          return { success: false, msg: result.error };
+        }
       }
       return { success: true, data: { mode: this.currentMode } };
     }

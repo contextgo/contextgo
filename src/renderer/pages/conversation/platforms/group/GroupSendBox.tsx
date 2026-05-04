@@ -84,7 +84,7 @@ const GroupSendBox: React.FC<{
   );
 
   return (
-    <div className='max-w-800px w-full mx-auto mt-auto mb-16px'>
+    <div className='conversation-mobile-sendbox max-w-800px w-full mx-auto mt-auto mb-8px md:mb-16px'>
       <SendBox
         value={content}
         onChange={setContent}

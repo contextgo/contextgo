@@ -74,6 +74,12 @@ describe('AgentRunStatus', () => {
     expect(screen.queryByRole('button', { name: /停止/i })).not.toBeInTheDocument();
   });
 
+  it('renders status actions on the same running row', () => {
+    render(<AgentRunStatus trace={baseTrace} running actions={<button type='button'>context</button>} />);
+
+    expect(screen.getByRole('button', { name: 'context' })).toBeInTheDocument();
+  });
+
   it('does not render when the agent is not running', () => {
     const { container } = render(<AgentRunStatus trace={baseTrace} running={false} />);
 

@@ -31,6 +31,7 @@ import supabaseLogo from '@/renderer/assets/connectors/data/supabase.svg';
 import telegramLogo from '@/renderer/assets/channel-logos/telegram.svg';
 import vercelLogo from '@/renderer/assets/connectors/development/vercel.svg';
 import weixinLogo from '@/renderer/assets/channel-logos/weixin.svg';
+import xiaohongshuLogo from '@/renderer/assets/connectors/knowledge/xiaohongshu.svg';
 import zendeskLogo from '@/renderer/assets/connectors/business/zendesk.svg';
 import zoomLogo from '@/renderer/assets/connectors/collaboration/zoom.svg';
 
@@ -72,6 +73,7 @@ export const CONNECTOR_LOCAL_LOGOS: Record<string, string> = {
   telegram: telegramLogo,
   vercel: vercelLogo,
   wecom: weixinLogo,
+  xiaohongshu: xiaohongshuLogo,
   zendesk: zendeskLogo,
   zoom: zoomLogo,
 };

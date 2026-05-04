@@ -34,9 +34,9 @@ const GeminiChat: React.FC<{
   return (
     <ConversationMessageStateProvider conversationId={conversation_id}>
       <ConversationProvider value={conversationValue}>
-        <div className='flex-1 flex flex-col px-12px md:px-20px min-h-0'>
+        <div className='conversation-mobile-chat-page flex-1 flex flex-col px-12px md:px-20px min-h-0'>
           <FlexFullContainer>
-            <MessageList className='flex-1'></MessageList>
+            <MessageList className='conversation-mobile-message-list flex-1'></MessageList>
           </FlexFullContainer>
           <ConversationChatConfirm conversation_id={conversation_id}>
             <GeminiSendBox conversation_id={conversation_id} modelSelection={modelSelection}></GeminiSendBox>

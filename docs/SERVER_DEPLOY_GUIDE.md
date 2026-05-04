@@ -21,22 +21,29 @@ Deploy ContextGo WebUI on headless Linux servers — cloud VMs, Kubernetes Pods,
 
 - Linux x86_64 (Ubuntu 20.04+ / Debian 11+ recommended)
 - At least 2GB RAM
-- ContextGo `.deb` package from [Releases](https://github.com/contextgo/contextgo/releases)
+- ContextGo `.deb` package from [contextgo/contextgo-releases](https://github.com/contextgo/contextgo-releases/releases)
 
 ---
 
 ## Installation
 
 ```bash
+# Resolve the latest public release from contextgo/contextgo-releases
+VERSION=$(curl -fsSL "https://api.github.com/repos/contextgo/contextgo-releases/releases/latest" \
+  | grep '"tag_name"' | head -1 | sed 's/.*"v\([^\"]*\)\".*/\1/')
+DEB_FILENAME="ContextGo-${VERSION}-linux-amd64.deb"
+
 # Download the latest .deb package
-wget https://github.com/contextgo/contextgo/releases/latest/download/ContextGo-linux-x64.deb
+wget "https://github.com/contextgo/contextgo-releases/releases/download/v${VERSION}/${DEB_FILENAME}"
 
 # Install
-sudo dpkg -i ContextGo-linux-x64.deb
-sudo apt-get install -f  # Fix missing dependencies
+sudo dpkg -i "$DEB_FILENAME"
+sudo apt-get install -f -y  # Fix missing dependencies
 ```
 
-> **Container note**: If you encounter dependency errors for `libegl1` / `libgles2` (common with NVIDIA runtime in containers), use `dpkg --force-all -i` to force install.
+> **Package note**: The current public Linux x64 asset resolves to `ContextGo-1.0.0-linux-amd64.deb`.
+>
+> **Container note**: If you encounter dependency errors for `libegl1` / `libgles2` (common with NVIDIA runtime in containers), use `dpkg --force-all -i "$DEB_FILENAME"` to force install.
 
 ---
 
@@ -76,13 +83,13 @@ start() {
     cd "$WORKDIR"
 
     nohup xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
-        /usr/bin/contextgo --webui --remote --no-sandbox \
+        /usr/bin/ContextGo --webui --remote --no-sandbox \
         > "$LOGFILE" 2>&1 &
     echo $! > "$PIDFILE"
     sleep 3
     if kill -0 "$(cat $PIDFILE)" 2>/dev/null; then
         echo "ContextGo started successfully (PID: $(cat $PIDFILE))"
-        echo "WebUI: http://$(hostname -I | awk '{print $1}'):25808"
+        echo "WebUI: http://$(hostname -I | awk '{print $1}'):25809"
     else
         echo "ContextGo failed to start. Check log: $LOGFILE"
         rm -f "$PIDFILE"
@@ -114,7 +121,7 @@ restart() {
 status() {
     if [ -f "$PIDFILE" ] && kill -0 "$(cat $PIDFILE)" 2>/dev/null; then
         echo "ContextGo is running (PID: $(cat $PIDFILE))"
-        ss -tlnp | grep 25808
+        ss -tlnp | grep 25809
     else
         echo "ContextGo is not running."
         rm -f "$PIDFILE" 2>/dev/null
@@ -140,11 +147,11 @@ chmod +x /opt/ContextGo/start-contextgo.sh
 
 ## Remote Access
 
-ContextGo WebUI listens on port **25808**. Choose a method based on your network setup:
+The current public Linux `.deb` package starts ContextGo WebUI on port **25809** in `--webui` mode. Choose a method based on your network setup:
 
 ### Option A: Direct Access (Public IP)
 
-Open port 25808 in your cloud provider's security group or firewall, then access via `http://YOUR_SERVER_IP:25808`.
+Open port 25809 in your cloud provider's security group or firewall, then access via `http://YOUR_SERVER_IP:25809`.
 
 ### Option B: ngrok Tunnel (NAT / K8s / No Public IP)
 
@@ -153,7 +160,7 @@ pip3 install pyngrok
 ngrok config add-authtoken YOUR_TOKEN
 
 # Start tunnel
-nohup ngrok http 25808 --log=stdout > /var/log/ngrok.log 2>&1 &
+nohup ngrok http 25809 --log=stdout > /var/log/ngrok.log 2>&1 &
 
 # Get public URL
 curl -s http://127.0.0.1:4040/api/tunnels | python3 -c "
@@ -167,8 +174,8 @@ import sys, json
 ### Option C: SSH Tunnel (From Your Local Machine)
 
 ```bash
-ssh -L 25808:127.0.0.1:25808 user@YOUR_SERVER_IP
-# Then access: http://localhost:25808
+ssh -L 25809:127.0.0.1:25809 user@YOUR_SERVER_IP
+# Then access: http://localhost:25809
 ```
 
 ---
@@ -215,7 +222,7 @@ Then update the `nohup xvfb-run ...` line in your startup script:
 
 ```bash
     nohup xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
-        /usr/bin/contextgo --webui --remote --no-sandbox \
+        /usr/bin/ContextGo --webui --remote --no-sandbox \
         --proxy-pac-url="file:///opt/ContextGo/proxy.pac" \
         > "$LOGFILE" 2>&1 &
 ```
@@ -267,12 +274,12 @@ For Gemini API calls, configure the proxy inside ContextGo WebUI:
 
 | Issue                                     | Solution                                                     |
 | ----------------------------------------- | ------------------------------------------------------------ |
-| `dpkg` dependency errors in containers    | `dpkg --force-all -i ContextGo-linux-x64.deb`                |
+| `dpkg` dependency errors in containers    | `dpkg --force-all -i "$DEB_FILENAME"`                        |
 | ContextGo can only access `/tmp`          | Set `WORKDIR` in the startup script to your workspace path   |
 | WebUI not accessible remotely             | Check firewall rules, or use ngrok / SSH tunnel              |
 | All requests fail when proxy is down      | Use PAC file (`--proxy-pac-url`) instead of `--proxy-server` |
 | `curl` fails after SSH tunnel disconnects | Add `PROMPT_COMMAND` auto-detect to `~/.bashrc` (see Step 3) |
-| Port 25808 already in use                 | `kill $(lsof -t -i:25808)` then restart                      |
+| Port 25809 already in use                 | `kill $(lsof -t -i:25809)` then restart                      |
 | Xvfb errors                               | `apt-get install -y xvfb libxkbcommon-x11-0`                 |
 
 ---
@@ -291,7 +298,7 @@ For Gemini API calls, configure the proxy inside ContextGo WebUI:
 │       ▼                                          │
 │  ┌────────────────────────────┐                  │
 │  │  ContextGo (Electron)        │                   │
-│  │  ├─ Chromium (port 25808) │                   │
+│  │  ├─ Chromium (port 25809) │                   │
 │  │  │  └─ proxy.pac          │──► PAC decides:   │
 │  │  │     per-request        │   PROXY or DIRECT │
 │  │  └─ Node.js (API calls)   │                   │
@@ -324,20 +331,27 @@ For Gemini API calls, configure the proxy inside ContextGo WebUI:
 
 - Linux x86_64（推荐 Ubuntu 20.04+ / Debian 11+）
 - 至少 2GB 内存
-- ContextGo `.deb` 安装包（[下载地址](https://github.com/contextgo/contextgo/releases)）
+- ContextGo `.deb` 安装包（[下载地址](https://github.com/contextgo/contextgo-releases/releases)）
 
 ## 安装
 
 ```bash
+# 获取 contextgo/contextgo-releases 的最新版本号
+VERSION=$(curl -fsSL "https://api.github.com/repos/contextgo/contextgo-releases/releases/latest" \
+  | grep '"tag_name"' | head -1 | sed 's/.*"v\([^\"]*\)\".*/\1/')
+DEB_FILENAME="ContextGo-${VERSION}-linux-amd64.deb"
+
 # 下载最新 .deb 包
-wget https://github.com/contextgo/contextgo/releases/latest/download/ContextGo-linux-x64.deb
+wget "https://github.com/contextgo/contextgo-releases/releases/download/v${VERSION}/${DEB_FILENAME}"
 
 # 安装
-sudo dpkg -i ContextGo-linux-x64.deb
-sudo apt-get install -f  # 修复依赖
+sudo dpkg -i "$DEB_FILENAME"
+sudo apt-get install -f -y  # 修复依赖
 ```
 
-> **容器环境**：若遇到 `libegl1` / `libgles2` 依赖错误（常见于 NVIDIA 运行时），可用 `dpkg --force-all -i` 强制安装。
+> **安装包说明**：当前公开 Linux x64 安装包会解析到 `ContextGo-1.0.0-linux-amd64.deb`。
+>
+> **容器环境**：若遇到 `libegl1` / `libgles2` 依赖错误（常见于 NVIDIA 运行时），可用 `dpkg --force-all -i "$DEB_FILENAME"` 强制安装。
 
 ## 虚拟显示 (Xvfb)
 
@@ -371,13 +385,13 @@ start() {
     cd "$WORKDIR"
 
     nohup xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
-        /usr/bin/contextgo --webui --remote --no-sandbox \
+        /usr/bin/ContextGo --webui --remote --no-sandbox \
         > "$LOGFILE" 2>&1 &
     echo $! > "$PIDFILE"
     sleep 3
     if kill -0 "$(cat $PIDFILE)" 2>/dev/null; then
         echo "ContextGo 启动成功 (PID: $(cat $PIDFILE))"
-        echo "WebUI: http://$(hostname -I | awk '{print $1}'):25808"
+        echo "WebUI: http://$(hostname -I | awk '{print $1}'):25809"
     else
         echo "ContextGo 启动失败，请查看日志: $LOGFILE"
         rm -f "$PIDFILE"
@@ -405,7 +419,7 @@ restart() { stop; sleep 1; start; }
 status() {
     if [ -f "$PIDFILE" ] && kill -0 "$(cat $PIDFILE)" 2>/dev/null; then
         echo "ContextGo 运行中 (PID: $(cat $PIDFILE))"
-        ss -tlnp | grep 25808
+        ss -tlnp | grep 25809
     else
         echo "ContextGo 未在运行。"
         rm -f "$PIDFILE" 2>/dev/null
@@ -420,13 +434,13 @@ esac
 
 ## 远程访问
 
-ContextGo WebUI 监听端口 **25808**，根据网络环境选择访问方式：
+当前公开 Linux `.deb` 包在 `--webui` 模式下实际监听端口为 **25809**，根据网络环境选择访问方式：
 
 | 方式       | 适用场景              | 命令                                       |
 | ---------- | --------------------- | ------------------------------------------ |
-| 直接访问   | 有公网 IP             | 安全组开放 25808 端口                      |
-| ngrok 穿透 | NAT / K8s / 无公网 IP | `ngrok http 25808`                         |
-| SSH 隧道   | 仅个人使用            | `ssh -L 25808:127.0.0.1:25808 user@server` |
+| 直接访问   | 有公网 IP             | 安全组开放 25809 端口                      |
+| ngrok 穿透 | NAT / K8s / 无公网 IP | `ngrok http 25809`                         |
+| SSH 隧道   | 仅个人使用            | `ssh -L 25809:127.0.0.1:25809 user@server` |
 
 ## 代理自动回退
 
@@ -501,4 +515,4 @@ PROMPT_COMMAND="_auto_proxy;${PROMPT_COMMAND}"
 | 远程无法访问 WebUI      | 检查防火墙/安全组，或使用 ngrok       |
 | 代理断开后所有请求失败  | 用 PAC 文件替代 `--proxy-server`      |
 | SSH 断开后 curl 失败    | bashrc 添加 `PROMPT_COMMAND` 自动检测 |
-| 端口 25808 被占用       | `kill $(lsof -t -i:25808)` 后重启     |
+| 端口 25809 被占用       | `kill $(lsof -t -i:25809)` 后重启     |

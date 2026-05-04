@@ -4,13 +4,14 @@ import { shouldSuppressAgentLifecycleStreamMessage, transformMessage } from '@/c
 import { uuid } from '@/common/utils';
 import PendingMessageBar from '@/renderer/components/chat/PendingMessageBar';
 import RuntimePlanCard from '@/renderer/components/chat/RuntimePlanCard';
+import SendContextPreview from '@/renderer/components/chat/SendContextPreview';
 import SendBox from '@/renderer/components/chat/sendbox';
 import type { RuntimePlanEntry } from '@/renderer/components/chat/runtimePlanTypes';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile } from '@/renderer/hooks/chat/useSendBoxFiles';
 import { readConversationUiState } from '@/renderer/pages/conversation/hooks/conversationUiStateCache';
 import { useConversationUiStateRestore } from '@/renderer/pages/conversation/hooks/useConversationUiStateRestore';
-import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
+import { useAddOrUpdateMessage, useMessageList } from '@/renderer/pages/conversation/Messages/hooks';
 import { allSupportedExts, type FileMetadata } from '@/renderer/services/FileService';
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import { mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
@@ -87,6 +88,16 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
   const { t } = useTranslation();
   const { checkAndUpdateTitle } = useAutoTitle();
   const addOrUpdateMessage = useAddOrUpdateMessage();
+  const messages = useMessageList();
+  const activeContextPreview = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const message = messages[index];
+      if (message.type === 'text' && message.position === 'right') {
+        return message.content.contextPreview;
+      }
+    }
+    return undefined;
+  }, [messages]);
 
   const [running, setRunning] = useState(initialUiState.running);
   const [aiProcessing, setAiProcessing] = useState(initialUiState.aiProcessing); // New loading state for AI response
@@ -296,6 +307,13 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
           // Mark that current turn has content output
           hasContentInTurnRef.current = true;
           setThought({ subject: '', description: '' });
+          const transformedMessage = transformMessage(message);
+          if (transformedMessage) {
+            addOrUpdateMessage(transformedMessage);
+          }
+          break;
+        }
+        case 'user_content': {
           const transformedMessage = transformMessage(message);
           if (transformedMessage) {
             addOrUpdateMessage(transformedMessage);
@@ -607,14 +625,15 @@ const CodexSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id }
   };
 
   return (
-    <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
-      <div
-        className={`conversation-run-status-stack conversation-run-status-stack--double ${
-          aiProcessing || running ? 'conversation-run-status-stack--active' : ''
-        }`}
-      >
+    <div className='conversation-mobile-sendbox max-w-800px w-full mx-auto flex flex-col mt-auto mb-8px md:mb-16px'>
+      <div className='conversation-run-status-stack'>
         <RuntimePlanCard entries={runtimePlanEntries} running={aiProcessing || running} />
-        <ThoughtDisplay thought={thought} running={aiProcessing || running} onStop={handleStop} />
+        <ThoughtDisplay
+          thought={thought}
+          running={aiProcessing || running}
+          onStop={handleStop}
+          actions={<SendContextPreview preview={activeContextPreview} active={running || aiProcessing} />}
+        />
       </div>
 
       <SendBox

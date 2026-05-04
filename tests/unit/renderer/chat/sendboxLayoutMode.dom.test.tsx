@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -123,13 +125,14 @@ vi.mock('@icon-park/react', () => ({
   ArrowUp: () => React.createElement('span', {}, 'ArrowUp'),
   CloseOne: () => React.createElement('span', {}, 'CloseOne'),
   CloseSmall: () => React.createElement('span', {}, 'CloseSmall'),
+  FileText: () => React.createElement('span', {}, 'FileText'),
   Square: () => React.createElement('span', {}, 'Square'),
   SquareSmall: () => React.createElement('span', {}, 'SquareSmall'),
 }));
 
 vi.mock('@arco-design/web-react', () => ({
   Button: ({ onClick, children, icon, ...props }: React.ComponentProps<'button'>) =>
-    React.createElement('button', { onClick, ...props }, icon ?? children),
+    React.createElement('button', { onClick, ...props }, icon, children),
   Input: {
     TextArea: ({
       value,
@@ -159,10 +162,23 @@ vi.mock('@arco-design/web-react', () => ({
   Message: {
     useMessage: () => [{ warning: vi.fn() }, null],
   },
+  Drawer: ({ visible, title, children }: { visible?: boolean; title?: React.ReactNode; children?: React.ReactNode }) =>
+    visible
+      ? React.createElement(
+          'div',
+          {
+            role: 'dialog',
+          },
+          React.createElement('div', {}, title),
+          children
+        )
+      : null,
   Tag: ({ children }: { children: React.ReactNode }) => React.createElement('div', {}, children),
+  Tooltip: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, {}, children),
 }));
 
 import SendBox from '@/renderer/components/chat/sendbox';
+import SendContextPreview from '@/renderer/components/chat/SendContextPreview';
 
 const Harness: React.FC<{ lockMultiLine?: boolean; initialValue?: string }> = ({
   lockMultiLine = false,
@@ -186,6 +202,32 @@ const setupTextarea = (textarea: HTMLTextAreaElement) => {
     value: 180,
   });
 };
+
+const createContextPreview = () => ({
+  searchMode: 'hybrid' as const,
+  queryTerms: ['alpha'],
+  budgetTokens: 2400,
+  spentTokens: 680,
+  sectionCount: 3,
+  omittedCount: 1,
+  memoryRefCount: 2,
+  sourceRefCount: 1,
+  profileRefCount: 1,
+  artifactRefCount: 0,
+  threadSummaryIncluded: true,
+  mountedSectionCount: 2,
+  mountedProfileCount: 1,
+  pinnedInstructionCount: 1,
+  sections: [
+    {
+      id: 'section-1',
+      kind: 'thread-state' as const,
+      source: 'mounted' as const,
+      summary: 'Thread snapshot',
+      tokenCount: 120,
+    },
+  ],
+});
 
 describe('SendBox layout mode with pretext', () => {
   beforeEach(() => {
@@ -434,5 +476,29 @@ describe('SendBox layout mode with pretext', () => {
 
     expect(document.activeElement).not.toBe(textarea);
     expect(document.activeElement).toBe(button);
+  });
+
+  it('opens the shared context preview drawer from the status-row button', () => {
+    const { container } = render(<SendContextPreview preview={createContextPreview()} active />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'messages.contextPreview.composerTag' }));
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getAllByText('3').length).toBeGreaterThan(0);
+    expect(container.querySelector('.sendbox-context-preview__scroll')).toBeNull();
+    expect(container.querySelector('.sendbox-context-preview__header')).toBeNull();
+    expect(container.querySelector('.sendbox-context-preview__meta')).toBeNull();
+    expect(screen.getByText('messages.contextPreview.subtitle')).toBeInTheDocument();
+    expect(screen.getByText('messages.contextPreview.short.memoryRefs')).toBeInTheDocument();
+    expect(screen.getByText('Thread snapshot')).toBeInTheDocument();
+  });
+
+  it('does not reserve a fixed run-status height for absent plan rows', () => {
+    const css = readFileSync(path.join(process.cwd(), 'src/renderer/components/chat/sendbox.css'), 'utf8');
+
+    expect(css).not.toContain('conversation-run-status-stack--double');
+    expect(css).not.toContain('conversation-run-status-stack--triple');
+    expect(css).not.toContain('conversation-run-status-stack--active');
+    expect(css).not.toMatch(/conversation-run-status-stack--single[^{]*\{[^}]*min-height/s);
   });
 });
