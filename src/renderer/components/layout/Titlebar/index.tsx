@@ -211,8 +211,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const isRemoteDesktopContext = isRemoteHostShellContext || remoteAccess?.target.mode === 'remote-device';
   // Hosted remote runtime pages keep their own normal chrome; only host shells suppress
   // local workspace/tabs chrome around the embedded remote surface.
-  const showWorkspaceButton =
-    !isRemoteHostShellContext && workspaceAvailable && (!layout?.isMobile || isMobileShellRuntime);
+  const showWorkspaceButton = !isRemoteHostShellContext && workspaceAvailable && !layout?.isMobile;
 
   const workspaceTooltip = workspaceCollapsed
     ? t('common.expandMore', { defaultValue: 'Expand workspace' })
@@ -235,7 +234,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable, leftPaneWidth }
   const showDesktopNavigationButtons = !layout?.isMobile && !isDesktopRemoteHostShell;
   const showSiderToggle =
     Boolean(layout?.setSiderCollapsed) && !(layout?.isMobile && isSettingsRoute) && !isDesktopRemoteHostShell;
-  const showMobileNavigationButtons = Boolean(layout?.isMobile && isRemoteDesktopContext);
+  const showMobileNavigationButtons = false;
   const showBackToChatButton = Boolean(layout?.isMobile && isSettingsRoute);
   const showSettingsNavButton = Boolean(layout?.isMobile && isSettingsRoute);
   const showNewConversationButton = Boolean(layout?.isMobile && workspaceAvailable);
