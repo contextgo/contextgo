@@ -670,7 +670,7 @@ describe('Titlebar', () => {
     expect(container.querySelector('.app-titlebar__brand--leading')).toBeTruthy();
   });
 
-  it('keeps conversation actions visible inside the mobile shell', async () => {
+  it('keeps conversation actions visible without workspace chrome inside the mobile shell', async () => {
     isElectronDesktopMock = false;
     isMacOSMock = false;
     isMobileShellWebViewMock = true;
@@ -685,7 +685,7 @@ describe('Titlebar', () => {
 
     expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'conversation.entry.create' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Expand workspace' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Expand workspace' })).not.toBeInTheDocument();
   });
 
   it('truncates long conversation titles inside the mobile shell header', async () => {
