@@ -6,15 +6,23 @@ This package complements AI Media Studio. AI Media Studio generates media throug
 
 ## Included Skills
 
-- `hyperframes-composition`: author scene structure, timelines, dimensions, and animations.
-- `hyperframes-cli`: initialize, preview, render, package, and diagnose HyperFrames projects.
-- `hyperframes-media`: manage assets, fonts, audio, subtitles, generated media inputs, and file references.
-- `hyperframes-registry`: use and extend reusable scenes, adapters, and templates.
-- `website-to-video`: convert URLs or page captures into short product or explainer videos.
+- Official upstream skills from HyperFrames:
+  - `hyperframes`: author HTML compositions, captions, voiceovers, audio-reactive visuals, transitions, and render-safe timing.
+  - `hyperframes-cli`: initialize, lint, inspect, preview, render, diagnose, and upgrade HyperFrames projects.
+  - `hyperframes-media`: run TTS, transcribe audio/video, and remove backgrounds for composition assets.
+  - `hyperframes-registry`: install and wire reusable HyperFrames blocks and components.
+  - `website-to-hyperframes`: run the official seven-step website capture-to-video pipeline.
+  - `gsap`, `animejs`, `css-animations`, `lottie`, `tailwind`, `three`, and `waapi`: adapter contracts for deterministic frame seeking.
+  - `remotion-to-hyperframes`: translate explicit Remotion migration requests into HyperFrames.
+- ContextGo workflow skills:
+  - `hyperframes-composition`: place projects, manifests, assets, and render outputs in the workspace.
+  - `website-to-video`: convert URLs or page captures into ContextGo video briefs and deliverables.
 - `article-to-video`: convert docs, changelogs, blogs, and reports into narrated or captioned video scripts.
 - `data-to-video`: convert CSV/JSON/tables into animated chart videos.
 - `ai-media-to-hyperframes`: compose Infermesh-generated images/videos into a final HyperFrames render.
 - `hyperframes-qc`: validate render outputs, manifests, dimensions, duration, subtitles, assets, and rerender readiness.
+
+See `upstream-hyperframes.md` for the vendored upstream commit, source layout, and package mapping.
 
 ## Install Surfaces
 

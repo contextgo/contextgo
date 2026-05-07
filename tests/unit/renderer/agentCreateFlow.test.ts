@@ -97,7 +97,14 @@ describe('buildCapabilityRecommendation', () => {
     expect(recommendation.linkedPackagePresetId).toBe('builtin-hyperframes-video-studio');
     expect(recommendation.packageLabel).toBe('HyperFrames Video Studio');
     expect(recommendation.defaultSkills).toEqual(
-      expect.arrayContaining(['hyperframes-composition', 'hyperframes-cli', 'website-to-video', 'hyperframes-qc'])
+      expect.arrayContaining([
+        'hyperframes',
+        'hyperframes-composition',
+        'hyperframes-cli',
+        'website-to-hyperframes',
+        'website-to-video',
+        'hyperframes-qc',
+      ])
     );
     expect(recommendation.commandCount).toBeGreaterThan(0);
     expect(recommendation.scheduleCount).toBe(2);

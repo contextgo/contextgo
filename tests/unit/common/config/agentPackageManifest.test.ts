@@ -47,6 +47,25 @@ function expectSourceRootExists(resourceDir: string, source: AgentPackageSourceD
   expect(fs.existsSync(absolutePath), `Missing source root for ${resourceDir}: ${absolutePath}`).toBe(true);
 }
 
+function findPackageRelativeSkillFile(
+  resourceDir: string,
+  sources: AgentPackageSourceDescriptor[] | undefined,
+  skillName: string
+): string | null {
+  for (const source of sources ?? []) {
+    if (source.kind !== 'package-relative') {
+      continue;
+    }
+
+    const skillFile = path.join(REPO_ROOT, resourceDir, source.root, skillName, 'SKILL.md');
+    if (fs.existsSync(skillFile)) {
+      return skillFile;
+    }
+  }
+
+  return null;
+}
+
 describe('agent-package manifests', () => {
   it('keeps bundled package facts out of assistant preset metadata', () => {
     for (const preset of ASSISTANT_PRESETS) {
@@ -186,22 +205,40 @@ describe('agent-package manifests', () => {
   it('ships a HyperFrames video package with local skills, CLI requirements, and video workspace scaffold', () => {
     const manifest = readManifest('src/process/resources/assistant/creative/hyperframes-video-studio');
 
-    expect(manifest.payloads.skills?.sources).toEqual([{ kind: 'package-relative', root: 'skills' }]);
+    expect(manifest.payloads.skills?.sources).toEqual([
+      { kind: 'package-relative', root: 'official-skills/core/skills' },
+      { kind: 'package-relative', root: 'official-skills/adapters/skills' },
+      { kind: 'package-relative', root: 'official-skills/migration/skills' },
+      { kind: 'package-relative', root: 'contextgo-skills/skills' },
+    ]);
+    expect(manifest.payloads.skills?.bootstrapStrategy).toBe('packaged-skills');
     expect(manifest.payloads.skills?.defaultEnabledSkillNames).toEqual([
+      'hyperframes',
       'hyperframes-composition',
       'hyperframes-cli',
       'hyperframes-media',
       'hyperframes-registry',
+      'website-to-hyperframes',
       'website-to-video',
       'article-to-video',
       'data-to-video',
       'hyperframes-qc',
     ]);
     expect(manifest.payloads.skills?.packagedSkillNames).toEqual([
-      'hyperframes-composition',
+      'hyperframes',
       'hyperframes-cli',
       'hyperframes-media',
       'hyperframes-registry',
+      'website-to-hyperframes',
+      'animejs',
+      'css-animations',
+      'gsap',
+      'lottie',
+      'tailwind',
+      'three',
+      'waapi',
+      'remotion-to-hyperframes',
+      'hyperframes-composition',
       'website-to-video',
       'article-to-video',
       'data-to-video',
@@ -226,13 +263,12 @@ describe('agent-package manifests', () => {
     ).toBe(true);
 
     for (const skillName of manifest.payloads.skills?.packagedSkillNames ?? []) {
-      const skillFile = path.join(
-        REPO_ROOT,
-        'src/process/resources/assistant/creative/hyperframes-video-studio/skills',
-        skillName,
-        'SKILL.md'
+      const skillFile = findPackageRelativeSkillFile(
+        'src/process/resources/assistant/creative/hyperframes-video-studio',
+        manifest.payloads.skills?.sources,
+        skillName
       );
-      expect(fs.existsSync(skillFile), `Missing packaged HyperFrames skill: ${skillFile}`).toBe(true);
+      expect(skillFile, `Missing packaged HyperFrames skill: ${skillName}`).not.toBeNull();
     }
   });
 

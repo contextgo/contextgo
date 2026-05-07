@@ -2,6 +2,13 @@
 
 HyperFrames Video Studio is the ContextGo Agent Package for deterministic HTML-to-video production.
 
+## Upstream Basis
+
+- This package vendors the official HyperFrames skill set from `https://github.com/heygen-com/hyperframes` at commit `edac92b4318488770671ed857f4b3b33416b5e67`.
+- Official HyperFrames skills live under `official-skills/` and keep their Apache-2.0 license in `official-skills/LICENSE`.
+- ContextGo-specific scenario skills live under `contextgo-skills/` and layer workspace, Infermesh asset handoff, QC, and package automation on top of the official skills.
+- See `docs/upstream-hyperframes.md` for the official inventory and ContextGo mapping.
+
 ## Product Boundary
 
 - Use HyperFrames for local or CI video rendering from HTML/CSS/JS compositions.
@@ -31,10 +38,12 @@ Run `hyperframes-cli` environment checks before the first render in a workspace.
 ## Default Workflow
 
 1. Normalize the brief with the closest scenario skill.
-2. Use `hyperframes-composition` to design scene structure, timing, dimensions, and animation approach.
-3. Use `hyperframes-media` to prepare assets, subtitles, fonts, and audio.
-4. Use `hyperframes-cli` to initialize, preview, render, and write a manifest.
-5. Use `hyperframes-qc` before delivery.
+2. Use the official `hyperframes` skill for composition rules, timing, references, and render-safe animation.
+3. Use `hyperframes-composition` for ContextGo workspace placement, manifests, and delivery conventions.
+4. Use `hyperframes-media` to prepare assets, subtitles, fonts, and audio.
+5. Use adapter skills such as `gsap`, `tailwind`, `three`, `lottie`, `waapi`, `animejs`, or `css-animations` when the composition uses those runtimes.
+6. Use `hyperframes-cli` to initialize, inspect, preview, render, and troubleshoot.
+7. Use `hyperframes-qc` before delivery.
 
 ## Delivery Standard
 

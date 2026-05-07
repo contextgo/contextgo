@@ -88,27 +88,51 @@
       "sources": [
         {
           "kind": "package-relative",
-          "root": "skills"
+          "root": "official-skills/core/skills"
+        },
+        {
+          "kind": "package-relative",
+          "root": "official-skills/adapters/skills"
+        },
+        {
+          "kind": "package-relative",
+          "root": "official-skills/migration/skills"
+        },
+        {
+          "kind": "package-relative",
+          "root": "contextgo-skills/skills"
         }
       ],
       "installSurface": ".contextgo/skills",
       "runtimeProjection": "native-skills-only",
-      "bootstrapStrategy": "enabled-skills",
+      "bootstrapStrategy": "packaged-skills",
       "defaultEnabledSkillNames": [
+        "hyperframes",
         "hyperframes-composition",
         "hyperframes-cli",
         "hyperframes-media",
         "hyperframes-registry",
+        "website-to-hyperframes",
         "website-to-video",
         "article-to-video",
         "data-to-video",
         "hyperframes-qc"
       ],
       "packagedSkillNames": [
-        "hyperframes-composition",
+        "hyperframes",
         "hyperframes-cli",
         "hyperframes-media",
         "hyperframes-registry",
+        "website-to-hyperframes",
+        "animejs",
+        "css-animations",
+        "gsap",
+        "lottie",
+        "tailwind",
+        "three",
+        "waapi",
+        "remotion-to-hyperframes",
+        "hyperframes-composition",
         "website-to-video",
         "article-to-video",
         "data-to-video",
@@ -133,7 +157,7 @@
           "required": true,
           "label": "Node.js 22 or newer",
           "description": "HyperFrames requires a modern Node.js runtime for local preview and render workflows.",
-          "ownerSkillNames": ["hyperframes-cli", "hyperframes-composition"]
+          "ownerSkillNames": ["hyperframes", "hyperframes-cli", "hyperframes-composition"]
         },
         {
           "id": "ffmpeg",
@@ -149,7 +173,7 @@
           "required": true,
           "label": "HyperFrames CLI",
           "description": "Use npx/bunx HyperFrames commands to preview and render HTML video compositions.",
-          "ownerSkillNames": ["hyperframes-cli", "hyperframes-registry"]
+          "ownerSkillNames": ["hyperframes-cli", "hyperframes-registry", "website-to-hyperframes"]
         },
         {
           "id": "docker",

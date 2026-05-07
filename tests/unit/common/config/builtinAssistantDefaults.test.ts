@@ -226,10 +226,12 @@ describe('builtinAssistantDefaults', () => {
     );
     expect(hyperframesVideoAssistant?.enabledSkills).toEqual(
       expect.arrayContaining([
+        'hyperframes',
         'hyperframes-composition',
         'hyperframes-cli',
         'hyperframes-media',
         'hyperframes-registry',
+        'website-to-hyperframes',
         'website-to-video',
         'article-to-video',
         'data-to-video',

@@ -1090,7 +1090,7 @@ const HYPERFRAMES_VIDEO_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = 
     name: 'video-init',
     description: 'Initialize or normalize a HyperFrames video project in the workspace.',
     template:
-      'Use the `hyperframes-cli`, `hyperframes-composition`, and `hyperframes-media` skills for this request. Check Node.js 22+, FFmpeg, and package runner availability, create or normalize a project under `docs/videos/projects/`, write the brief under `docs/videos/briefs/`, prepare asset folders, and end with preview/render commands plus missing dependency blockers.',
+      'Use the `hyperframes`, `hyperframes-cli`, `hyperframes-composition`, and `hyperframes-media` skills for this request. Check Node.js 22+, FFmpeg, and package runner availability, create or normalize a project under `docs/videos/projects/`, write the brief under `docs/videos/briefs/`, prepare asset folders, and end with preview/render commands plus missing dependency blockers.',
   },
   {
     type: 'custom',
@@ -1099,7 +1099,7 @@ const HYPERFRAMES_VIDEO_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = 
     name: 'video-preview',
     description: 'Preview a HyperFrames composition and report layout, timing, and asset issues.',
     template:
-      'Use the `hyperframes-cli`, `hyperframes-composition`, and `hyperframes-media` skills for this request. Resolve the project path, run or prepare the HyperFrames preview command, inspect source-level layout/timing/asset issues, and report what must be fixed before rendering.',
+      'Use the `hyperframes`, `hyperframes-cli`, `hyperframes-composition`, and `hyperframes-media` skills for this request. Resolve the project path, run or prepare the HyperFrames preview command, inspect source-level layout/timing/asset issues, and report what must be fixed before rendering.',
   },
   {
     type: 'custom',
@@ -1117,7 +1117,7 @@ const HYPERFRAMES_VIDEO_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = 
     name: 'url-to-video',
     description: 'Turn a website, landing page, product page, or docs URL into a HyperFrames video.',
     template:
-      'Use the `website-to-video`, `hyperframes-registry`, `hyperframes-media`, `hyperframes-composition`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Extract the page hierarchy, plan a short script and scenes, prepare screenshots/assets, build the composition, render it, and QC text, crops, timing, and source fidelity.',
+      'Use the `website-to-hyperframes`, `website-to-video`, `hyperframes`, `hyperframes-registry`, `hyperframes-media`, `hyperframes-composition`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Extract the page hierarchy, plan a short script and scenes, prepare screenshots/assets, build the composition, render it, and QC text, crops, timing, and source fidelity.',
   },
   {
     type: 'custom',
@@ -1126,7 +1126,7 @@ const HYPERFRAMES_VIDEO_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = 
     name: 'article-to-video',
     description: 'Turn an article, changelog, docs page, or report into a captioned HyperFrames video.',
     template:
-      'Use the `article-to-video`, `hyperframes-composition`, `hyperframes-media`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Distill the source into hook, beats, evidence, and CTA, write exact visible captions, compose scenes, render, and QC factual alignment plus subtitle readability.',
+      'Use the `article-to-video`, `hyperframes`, `hyperframes-composition`, `hyperframes-media`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Distill the source into hook, beats, evidence, and CTA, write exact visible captions, compose scenes, render, and QC factual alignment plus subtitle readability.',
   },
   {
     type: 'custom',
@@ -1135,7 +1135,7 @@ const HYPERFRAMES_VIDEO_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = 
     name: 'data-to-video',
     description: 'Turn CSV, JSON, spreadsheet extracts, or report tables into animated chart videos.',
     template:
-      'Use the `data-to-video`, `hyperframes-registry`, `hyperframes-composition`, `hyperframes-media`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Classify the data shape, record transformations, choose a chart recipe, animate labels and values, render, and QC units, labels, contrast, and timing.',
+      'Use the `data-to-video`, `hyperframes`, `hyperframes-registry`, `hyperframes-composition`, `hyperframes-media`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Classify the data shape, record transformations, choose a chart recipe, animate labels and values, render, and QC units, labels, contrast, and timing.',
   },
   {
     type: 'custom',
@@ -1144,7 +1144,7 @@ const HYPERFRAMES_VIDEO_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = 
     name: 'caption-video',
     description: 'Add subtitles, title cards, lower thirds, or CTA overlays to a HyperFrames video composition.',
     template:
-      'Use the `hyperframes-composition`, `hyperframes-media`, and `hyperframes-qc` skills for this request. Normalize captions and timing, add title cards or lower thirds with safe margins, prepare audio/subtitle assets if present, preview, render, and QC subtitle readability and timing.',
+      'Use the `hyperframes`, `hyperframes-composition`, `hyperframes-media`, and `hyperframes-qc` skills for this request. Normalize captions and timing, add title cards or lower thirds with safe margins, prepare audio/subtitle assets if present, preview, render, and QC subtitle readability and timing.',
   },
   {
     type: 'custom',
@@ -1153,7 +1153,7 @@ const HYPERFRAMES_VIDEO_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = 
     name: 'media-to-video',
     description: 'Compose generated images, generated videos, screenshots, and clips into a final HyperFrames video.',
     template:
-      'Use the `ai-media-to-hyperframes`, `hyperframes-media`, `hyperframes-composition`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Inventory source assets and any AI Media Studio manifests, reject blocked inputs, plan title/montage/caption/end-card scenes, render the final video, and record source lineage in the render manifest.',
+      'Use the `ai-media-to-hyperframes`, `hyperframes`, `hyperframes-media`, `hyperframes-composition`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Inventory source assets and any AI Media Studio manifests, reject blocked inputs, plan title/montage/caption/end-card scenes, render the final video, and record source lineage in the render manifest.',
   },
   {
     type: 'custom',
