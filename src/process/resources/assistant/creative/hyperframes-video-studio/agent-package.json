@@ -1,0 +1,189 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "hyperframes-video-studio",
+  "assistantPresetId": "builtin-hyperframes-video-studio",
+  "displayName": "HyperFrames Video Studio",
+  "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "workspace"
+        }
+      ],
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "deterministic HTML/CSS/JS video composition with HyperFrames",
+        "website, article, data, and generated media to reproducible MP4/WebM renders",
+        "workspace render manifests, reusable assets, preview/render commands, and QC"
+      ],
+      "suggestedArtifacts": [
+        "video briefs",
+        "HyperFrames project folders",
+        "render manifests",
+        "MP4/WebM outputs",
+        "subtitle and media assets",
+        "render QC reports"
+      ],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/README.md",
+          "target": "docs/videos/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/briefs/README.md",
+          "target": "docs/videos/briefs/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/projects/README.md",
+          "target": "docs/videos/projects/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/renders/README.md",
+          "target": "docs/videos/renders/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/assets/README.md",
+          "target": "docs/videos/assets/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/qc/README.md",
+          "target": "docs/videos/qc/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/manifests/README.md",
+          "target": "docs/videos/manifests/README.md"
+        }
+      ]
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "skills"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "hyperframes-composition",
+        "hyperframes-cli",
+        "hyperframes-media",
+        "hyperframes-registry",
+        "website-to-video",
+        "article-to-video",
+        "data-to-video",
+        "hyperframes-qc"
+      ],
+      "packagedSkillNames": [
+        "hyperframes-composition",
+        "hyperframes-cli",
+        "hyperframes-media",
+        "hyperframes-registry",
+        "website-to-video",
+        "article-to-video",
+        "data-to-video",
+        "ai-media-to-hyperframes",
+        "hyperframes-qc"
+      ]
+    },
+    "requirements": {
+      "logicalId": "requirements",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "docs"
+        }
+      ],
+      "installSurface": ".contextgo/requirements/",
+      "runtimeProjection": "none",
+      "tools": [
+        {
+          "id": "nodejs-22",
+          "kind": "cli",
+          "required": true,
+          "label": "Node.js 22 or newer",
+          "description": "HyperFrames requires a modern Node.js runtime for local preview and render workflows.",
+          "ownerSkillNames": ["hyperframes-cli", "hyperframes-composition"]
+        },
+        {
+          "id": "ffmpeg",
+          "kind": "cli",
+          "required": true,
+          "label": "FFmpeg",
+          "description": "FFmpeg is required to encode rendered frames into MP4/WebM outputs.",
+          "ownerSkillNames": ["hyperframes-cli", "hyperframes-qc"]
+        },
+        {
+          "id": "hyperframes-cli",
+          "kind": "cli",
+          "required": true,
+          "label": "HyperFrames CLI",
+          "description": "Use npx/bunx HyperFrames commands to preview and render HTML video compositions.",
+          "ownerSkillNames": ["hyperframes-cli", "hyperframes-registry"]
+        },
+        {
+          "id": "docker",
+          "kind": "cli",
+          "required": false,
+          "label": "Docker",
+          "description": "Optional reproducible render environment for teams that need consistent browser, font, and FFmpeg behavior.",
+          "ownerSkillNames": ["hyperframes-cli", "hyperframes-qc"]
+        }
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "hyperframes-video-studio"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "hyperframes-video-studio"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "hyperframes-video-studio"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "hyperframes-video-studio"
+    }
+  }
+}

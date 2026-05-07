@@ -183,6 +183,59 @@ describe('agent-package manifests', () => {
     ).toBe(true);
   });
 
+  it('ships a HyperFrames video package with local skills, CLI requirements, and video workspace scaffold', () => {
+    const manifest = readManifest('src/process/resources/assistant/creative/hyperframes-video-studio');
+
+    expect(manifest.payloads.skills?.sources).toEqual([{ kind: 'package-relative', root: 'skills' }]);
+    expect(manifest.payloads.skills?.defaultEnabledSkillNames).toEqual([
+      'hyperframes-composition',
+      'hyperframes-cli',
+      'hyperframes-media',
+      'hyperframes-registry',
+      'website-to-video',
+      'article-to-video',
+      'data-to-video',
+      'hyperframes-qc',
+    ]);
+    expect(manifest.payloads.skills?.packagedSkillNames).toEqual([
+      'hyperframes-composition',
+      'hyperframes-cli',
+      'hyperframes-media',
+      'hyperframes-registry',
+      'website-to-video',
+      'article-to-video',
+      'data-to-video',
+      'ai-media-to-hyperframes',
+      'hyperframes-qc',
+    ]);
+    expect(manifest.payloads.requirements?.tools?.map((tool) => tool.id)).toEqual([
+      'nodejs-22',
+      'ffmpeg',
+      'hyperframes-cli',
+      'docker',
+    ]);
+    expect(manifest.payloads.commands?.workspaceAutomationProfile).toBe('hyperframes-video-studio');
+    expect(manifest.payloads.schedules?.workspaceAutomationProfile).toBe('hyperframes-video-studio');
+    expect(
+      manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/videos/README.md')
+    ).toBe(true);
+    expect(
+      manifest.payloads.workspaceScaffold?.templates?.some(
+        (template) => template.target === 'docs/videos/manifests/README.md'
+      )
+    ).toBe(true);
+
+    for (const skillName of manifest.payloads.skills?.packagedSkillNames ?? []) {
+      const skillFile = path.join(
+        REPO_ROOT,
+        'src/process/resources/assistant/creative/hyperframes-video-studio/skills',
+        skillName,
+        'SKILL.md'
+      );
+      expect(fs.existsSync(skillFile), `Missing packaged HyperFrames skill: ${skillFile}`).toBe(true);
+    }
+  });
+
   it('ships a Figma round-trip skill set and figma-closed-loop automation profile', () => {
     const manifest = readManifest('src/process/resources/assistant/design/figma-closed-loop');
 
@@ -376,6 +429,19 @@ describe('agent-package manifests', () => {
           'docs/scenes/README.md',
           'docs/renders/README.md',
           'docs/qc/README.md',
+        ],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/creative/hyperframes-video-studio',
+        expectedTargets: [
+          'AGENTS.md',
+          'docs/videos/README.md',
+          'docs/videos/briefs/README.md',
+          'docs/videos/projects/README.md',
+          'docs/videos/renders/README.md',
+          'docs/videos/assets/README.md',
+          'docs/videos/qc/README.md',
+          'docs/videos/manifests/README.md',
         ],
       },
       {

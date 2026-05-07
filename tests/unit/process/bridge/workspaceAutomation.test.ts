@@ -9,6 +9,7 @@ import os from 'os';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getBundledAgentPackageDefaultEnabledHookNames } from '../../../../src/common/config/presets/bundledAgentPackageRegistry';
+import type { TChatConversation } from '../../../../src/common/config/storage';
 
 const ENGINEERING_DEFAULT_HOOKS = getBundledAgentPackageDefaultEnabledHookNames('builtin-superpowers')!;
 
@@ -290,6 +291,48 @@ describe('workspaceAutomation harness bootstrap', () => {
       ])
     );
 
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
+  });
+
+  it('creates HyperFrames Video Studio workspace commands and disabled schedules without engineering hooks', async () => {
+    const workspaceDir = path.join(tempRoot, 'workspace-hyperframes');
+    await fs.mkdir(workspaceDir, { recursive: true });
+
+    await ensureHarnessWorkspaceAutomationForConversation({
+      type: 'acp',
+      extra: {
+        workspace: workspaceDir,
+        presetAssistantId: 'builtin-hyperframes-video-studio',
+      },
+    } as Pick<TChatConversation, 'type' | 'extra'>);
+
+    const commandsFile = getWorkspaceCommandsFile(workspaceDir);
+    expect(commandsFile).not.toBeNull();
+
+    const commandLibrary = await readCommandLibrary(workspaceDir);
+    expect(commandLibrary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'plan', name: 'plan' }),
+        expect.objectContaining({ id: 'verify', name: 'verify' }),
+        expect.objectContaining({ id: 'hyperframes-video-init', name: 'video-init' }),
+        expect.objectContaining({ id: 'hyperframes-video-preview', name: 'video-preview' }),
+        expect.objectContaining({ id: 'hyperframes-video-render', name: 'video-render' }),
+        expect.objectContaining({ id: 'hyperframes-url-to-video', name: 'url-to-video' }),
+        expect.objectContaining({ id: 'hyperframes-article-to-video', name: 'article-to-video' }),
+        expect.objectContaining({ id: 'hyperframes-data-to-video', name: 'data-to-video' }),
+        expect.objectContaining({ id: 'hyperframes-caption-video', name: 'caption-video' }),
+        expect.objectContaining({ id: 'hyperframes-media-to-video', name: 'media-to-video' }),
+        expect.objectContaining({ id: 'hyperframes-video-qc', name: 'video-qc' }),
+        expect.objectContaining({ id: 'hyperframes-video-package', name: 'video-package' }),
+      ])
+    );
+
+    await expect(fs.readFile(getWorkspaceSchedulesFile(workspaceDir)!, 'utf-8')).resolves.toContain(
+      'HyperFrames weekly video draft'
+    );
+    await expect(fs.readFile(getWorkspaceSchedulesFile(workspaceDir)!, 'utf-8')).resolves.toContain(
+      'HyperFrames weekly render QC audit'
+    );
     await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
   });
 

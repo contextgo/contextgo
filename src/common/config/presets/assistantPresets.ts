@@ -260,6 +260,49 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
+    id: 'hyperframes-video-studio',
+    avatar: '\u{1F39E}\uFE0F',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'HyperFrames Video Studio',
+      'zh-CN': 'HyperFrames Video Studio',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'HTML-to-Video',
+      'zh-CN': 'HTML 转视频',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want HyperFrames projects, assets, render manifests, MP4/WebM outputs, and QC reports written back into the project folder.',
+      'zh-CN':
+        '如果希望把 HyperFrames 工程、素材、渲染清单、MP4/WebM 输出和 QC 报告直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'HyperFrames Video Studio',
+      'zh-CN': 'HyperFrames Video Studio',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A built-in deterministic HTML-to-video assistant for turning websites, articles, changelogs, reports, data, and generated media into HyperFrames-rendered MP4/WebM videos with exact text, timelines, manifests, and QC.',
+      'zh-CN':
+        '面向确定性 HTML 转视频生产的内置助手，用于把网站、文章、changelog、报告、数据和生成素材编排成 HyperFrames 渲染的 MP4/WebM 视频，覆盖精确文字、时间线、渲染清单与 QC。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Turn this website into a 30-second HyperFrames product video with render manifest and QC',
+        'Convert this changelog into a short deterministic video with captions and an end card',
+        'Build an animated data video from this table and render it through HyperFrames',
+        'Compose these generated images and clips into a final HyperFrames social video',
+      ],
+      'zh-CN': [
+        '把这个网站做成一支 30 秒 HyperFrames 产品视频，并产出渲染清单和 QC',
+        '把这份 changelog 转成一支带字幕和 end card 的确定性短视频',
+        '基于这张表做一支动态图表视频，并通过 HyperFrames 渲染',
+        '把这些生成图片和片段编排成一支最终 HyperFrames 社媒视频',
+      ],
+    },
+  },
+  {
     id: 'visual-artifact-runner',
     avatar: '\u{1F5BC}\uFE0F',
     presetAgentType: 'codex',
