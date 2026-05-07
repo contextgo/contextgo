@@ -23,6 +23,9 @@ const MOTION_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNa
 const HYPERFRAMES_VIDEO_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
   'builtin-hyperframes-video-studio'
 )!;
+const REMOTION_VIDEO_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-remotion-video-studio'
+)!;
 const VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
   'builtin-visual-artifact-runner'
 )!;
@@ -343,6 +346,33 @@ describe('loadPresetAssistantResources', () => {
       rules: 'builtin rules',
       skills: '',
       enabledSkills: [...HYPERFRAMES_VIDEO_STUDIO_DEFAULT_SKILLS],
+      enabledHooks: undefined,
+    });
+  });
+
+  it('falls back to builtin remotion preset default skills without hooks when stored config is missing', async () => {
+    const deps = createDeps({
+      readBundledAgentPackageContent: vi.fn(async () => ({
+        success: true,
+        data: { agentsDocument: { content: 'builtin rules' } },
+      })),
+      getEnabledSkills: vi.fn(async () => undefined),
+      getEnabledHooks: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      loadPresetAssistantResources(
+        {
+          customAgentId: 'builtin-remotion-video-studio',
+          localeKey: 'en-US',
+          fallbackRules: 'fallback rules',
+        },
+        deps
+      )
+    ).resolves.toEqual({
+      rules: 'builtin rules',
+      skills: '',
+      enabledSkills: [...REMOTION_VIDEO_STUDIO_DEFAULT_SKILLS],
       enabledHooks: undefined,
     });
   });

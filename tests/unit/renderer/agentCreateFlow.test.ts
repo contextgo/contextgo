@@ -111,6 +111,33 @@ describe('buildCapabilityRecommendation', () => {
     expect(recommendation.runtime).toBe('codex');
   });
 
+  it('should recommend remotion video studio for React video and SSR render intent', () => {
+    const draft: AgentCreateIntentDraft = {
+      workDescription: 'Build a Remotion React video with parameterized props and render via @remotion/renderer',
+      audience: 'Product engineering',
+      output: 'Remotion project, Player embed, SSR render script, and QC report',
+      workStyle: 'create',
+      recurrence: 'frequent',
+    };
+
+    const recommendation = buildCapabilityRecommendation(draft);
+
+    expect(recommendation.linkedPackagePresetId).toBe('builtin-remotion-video-studio');
+    expect(recommendation.packageLabel).toBe('Remotion Video Studio');
+    expect(recommendation.defaultSkills).toEqual(
+      expect.arrayContaining([
+        'remotion-best-practices',
+        'remotion-composition',
+        'remotion-render-ops',
+        'remotion-ai-media',
+        'remotion-qc',
+      ])
+    );
+    expect(recommendation.commandCount).toBeGreaterThan(0);
+    expect(recommendation.scheduleCount).toBe(3);
+    expect(recommendation.runtime).toBe('codex');
+  });
+
   it('should recommend visual artifact runner for deck/pdf artifact requests', () => {
     const draft: AgentCreateIntentDraft = {
       workDescription: 'Convert this PDF report into a polished deck artifact with QC and export notes',

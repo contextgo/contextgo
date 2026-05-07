@@ -303,6 +303,49 @@ export const ASSISTANT_PRESETS: AssistantPreset[] = [
     },
   },
   {
+    id: 'remotion-video-studio',
+    avatar: '\u{1F3A5}',
+    presetAgentType: 'codex',
+    harnessTagI18n: {
+      'en-US': 'Remotion Video Studio',
+      'zh-CN': 'Remotion Video Studio',
+    },
+    recommendedDomainI18n: {
+      'en-US': 'React Video',
+      'zh-CN': 'React 视频',
+    },
+    workspaceBootstrapHintI18n: {
+      'en-US':
+        'Link a workspace before starting if you want Remotion projects, manifests, generated media ledgers, renders, and QC reports written back into the project folder.',
+      'zh-CN':
+        '如果希望把 Remotion 项目、manifest、生成媒体台账、渲染结果和 QC 报告直接写回项目目录，开始前建议先关联工作空间。',
+    },
+    nameI18n: {
+      'en-US': 'Remotion Video Studio',
+      'zh-CN': 'Remotion Video Studio',
+    },
+    descriptionI18n: {
+      'en-US':
+        'A built-in React video assistant for Remotion project bootstrap, TSX composition authoring, Player embedding, Studio preview, still checks, local and SSR renders, optional Lambda planning, Infermesh asset lineage, captions, manifests, and render QC.',
+      'zh-CN':
+        '面向 Remotion 原生创作与渲染的内置 React 视频助手，用于项目初始化、TSX composition 编写、Player 嵌入、Studio 预览、still check、本地与 SSR 渲染、可选 Lambda 规划、Infermesh 素材 lineage、字幕、manifest 和渲染 QC。',
+    },
+    promptsI18n: {
+      'en-US': [
+        'Bootstrap a Remotion project for this video brief and prepare the first composition',
+        'Build a parameterized Remotion composition with Infermesh-generated assets and render QC',
+        'Embed a Remotion Player preview, then prepare SSR render scripts for this personalized video',
+        'Plan a Remotion Lambda render workflow, but do not deploy until I confirm AWS and license readiness',
+      ],
+      'zh-CN': [
+        '基于这个视频 brief 初始化一个 Remotion 项目，并准备第一版 composition',
+        '用 Infermesh 生成素材做一个可参数化的 Remotion composition，并完成渲染 QC',
+        '先嵌入 Remotion Player 预览，再为这个个性化视频准备 SSR 渲染脚本',
+        '规划一套 Remotion Lambda 渲染流程，但在我确认 AWS 和 license 之前不要部署',
+      ],
+    },
+  },
+  {
     id: 'visual-artifact-runner',
     avatar: '\u{1F5BC}\uFE0F',
     presetAgentType: 'codex',

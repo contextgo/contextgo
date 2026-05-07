@@ -61,6 +61,27 @@ function findPackageRelativeSkillFile(
     if (fs.existsSync(skillFile)) {
       return skillFile;
     }
+
+    const sourceRoot = path.join(REPO_ROOT, resourceDir, source.root);
+    if (!fs.existsSync(sourceRoot)) {
+      continue;
+    }
+
+    for (const entry of fs.readdirSync(sourceRoot, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      const nestedSkillFile = path.join(sourceRoot, entry.name, 'SKILL.md');
+      if (!fs.existsSync(nestedSkillFile)) {
+        continue;
+      }
+
+      const skillContent = fs.readFileSync(nestedSkillFile, 'utf-8');
+      if (new RegExp(`^name:\\s*${skillName}\\s*$`, 'm').test(skillContent)) {
+        return nestedSkillFile;
+      }
+    }
   }
 
   return null;
@@ -269,6 +290,105 @@ describe('agent-package manifests', () => {
         skillName
       );
       expect(skillFile, `Missing packaged HyperFrames skill: ${skillName}`).not.toBeNull();
+    }
+  });
+
+  it('ships the complete upstream Remotion skill tree plus ContextGo workflow wrappers', () => {
+    const resourceDir = 'src/process/resources/assistant/creative/remotion-video-studio';
+    const manifest = readManifest(resourceDir);
+    const upstreamFiles = [
+      'SKILL.md',
+      'rules/visual/3d.md',
+      'rules/visual/audio-visualization.md',
+      'rules/media/audio.md',
+      'rules/core/calculate-metadata.md',
+      'rules/core/compositions.md',
+      'rules/captions/display-captions.md',
+      'rules/tools/ffmpeg.md',
+      'rules/tools/get-audio-duration.md',
+      'rules/tools/get-video-dimensions.md',
+      'rules/tools/get-video-duration.md',
+      'rules/media/gifs.md',
+      'rules/fonts/google-fonts.md',
+      'rules/visual/html-in-canvas.md',
+      'rules/media/images.md',
+      'rules/captions/import-srt-captions.md',
+      'rules/visual/light-leaks.md',
+      'rules/fonts/local-fonts.md',
+      'rules/media/lottie.md',
+      'rules/visual/mapbox.md',
+      'rules/visual/measuring-dom-nodes.md',
+      'rules/visual/measuring-text.md',
+      'rules/core/parameters.md',
+      'rules/core/sequencing.md',
+      'rules/visual/sfx.md',
+      'rules/tools/silence-detection.md',
+      'rules/captions/subtitles.md',
+      'rules/visual/tailwind.md',
+      'rules/visual/text-animations.md',
+      'rules/core/timing.md',
+      'rules/captions/transcribe-captions.md',
+      'rules/core/transitions.md',
+      'rules/media/transparent-videos.md',
+      'rules/core/trimming.md',
+      'rules/media/videos.md',
+      'rules/captions/voiceover.md',
+      'rules/assets/charts-bar-chart.tsx',
+      'rules/assets/text-animations-typewriter.tsx',
+      'rules/assets/text-animations-word-highlight.tsx',
+    ];
+
+    expect(manifest.payloads.skills?.sources).toEqual([
+      { kind: 'package-relative', root: 'official-skills/skills' },
+      { kind: 'package-relative', root: 'contextgo-skills/skills' },
+    ]);
+    expect(manifest.payloads.skills?.bootstrapStrategy).toBe('packaged-skills');
+    expect(manifest.payloads.skills?.packagedSkillNames).toEqual([
+      'remotion-best-practices',
+      'remotion-project-bootstrap',
+      'remotion-composition',
+      'remotion-render-ops',
+      'remotion-player-app',
+      'remotion-captions',
+      'remotion-ai-media',
+      'remotion-lambda',
+      'remotion-qc',
+    ]);
+    expect(manifest.payloads.skills?.defaultEnabledSkillNames).toEqual([
+      'remotion-best-practices',
+      'remotion-project-bootstrap',
+      'remotion-composition',
+      'remotion-render-ops',
+      'remotion-player-app',
+      'remotion-captions',
+      'remotion-ai-media',
+      'remotion-qc',
+    ]);
+    expect(manifest.payloads.commands?.workspaceAutomationProfile).toBe('remotion-video-studio');
+    expect(manifest.payloads.schedules?.workspaceAutomationProfile).toBe('remotion-video-studio');
+    expect(manifest.payloads.requirements?.tools?.map((tool) => tool.id)).toEqual(
+      expect.arrayContaining(['nodejs-modern', 'package-manager', 'create-video', 'remotion-cli', 'ffmpeg', 'aws-cli'])
+    );
+    expect(manifest.payloads.workspaceScaffold?.templates?.map((template) => template.target)).toEqual(
+      expect.arrayContaining([
+        'docs/videos/remotion/README.md',
+        'docs/videos/remotion/projects/README.md',
+        'docs/videos/remotion/assets/README.md',
+        'docs/videos/remotion/manifests/README.md',
+        'docs/videos/remotion/qc/README.md',
+      ])
+    );
+
+    for (const skillName of manifest.payloads.skills?.packagedSkillNames ?? []) {
+      const skillFile = findPackageRelativeSkillFile(resourceDir, manifest.payloads.skills?.sources, skillName);
+      expect(skillFile, `Missing packaged Remotion skill: ${skillName}`).not.toBeNull();
+    }
+
+    for (const file of upstreamFiles) {
+      expect(
+        fs.existsSync(path.join(REPO_ROOT, resourceDir, 'official-skills/skills/remotion', file)),
+        `Missing vendored upstream Remotion file: ${file}`
+      ).toBe(true);
     }
   });
 

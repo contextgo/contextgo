@@ -336,6 +336,52 @@ describe('workspaceAutomation harness bootstrap', () => {
     await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
   });
 
+  it('creates Remotion Video Studio workspace commands and disabled schedules without hooks', async () => {
+    const workspaceDir = path.join(tempRoot, 'workspace-remotion');
+    await fs.mkdir(workspaceDir, { recursive: true });
+
+    await ensureHarnessWorkspaceAutomationForConversation({
+      type: 'acp',
+      extra: {
+        workspace: workspaceDir,
+        presetAssistantId: 'builtin-remotion-video-studio',
+      },
+    } as any);
+
+    const commandsFile = getWorkspaceCommandsFile(workspaceDir);
+    expect(commandsFile).not.toBeNull();
+
+    const commandLibrary = await readCommandLibrary(workspaceDir);
+    expect(commandLibrary).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'plan', name: 'plan' }),
+        expect.objectContaining({ id: 'verify', name: 'verify' }),
+        expect.objectContaining({ id: 'remotion-init', name: 'remotion-init' }),
+        expect.objectContaining({ id: 'remotion-studio', name: 'remotion-studio' }),
+        expect.objectContaining({ id: 'remotion-still-check', name: 'remotion-still-check' }),
+        expect.objectContaining({ id: 'remotion-render', name: 'remotion-render' }),
+        expect.objectContaining({ id: 'remotion-ssr-render', name: 'remotion-ssr-render' }),
+        expect.objectContaining({ id: 'remotion-player-app', name: 'remotion-player-app' }),
+        expect.objectContaining({ id: 'remotion-captions', name: 'remotion-captions' }),
+        expect.objectContaining({ id: 'remotion-ai-media', name: 'remotion-ai-media' }),
+        expect.objectContaining({ id: 'remotion-lambda-plan', name: 'remotion-lambda-plan' }),
+        expect.objectContaining({ id: 'remotion-qc', name: 'remotion-qc' }),
+        expect.objectContaining({ id: 'remotion-package', name: 'remotion-package' }),
+      ])
+    );
+
+    await expect(fs.readFile(getWorkspaceSchedulesFile(workspaceDir)!, 'utf-8')).resolves.toContain(
+      'remotion-weekly-video-draft'
+    );
+    await expect(fs.readFile(getWorkspaceSchedulesFile(workspaceDir)!, 'utf-8')).resolves.toContain(
+      'remotion-render-qc-audit'
+    );
+    await expect(fs.readFile(getWorkspaceSchedulesFile(workspaceDir)!, 'utf-8')).resolves.toContain(
+      'remotion-template-asset-freshness'
+    );
+    await expect(readWorkspaceHookSelection(workspaceDir)).resolves.toBeNull();
+  });
+
   it('creates Office Analyst workspace commands without engineering hooks for an office analyst conversation workspace', async () => {
     const workspaceDir = path.join(tempRoot, 'workspace-office');
     await fs.mkdir(workspaceDir, { recursive: true });

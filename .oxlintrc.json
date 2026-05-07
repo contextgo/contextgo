@@ -72,6 +72,7 @@
     "apps/web/next-env.d.ts",
     "src/agent/gemini/cli/",
     "src/process/resources/assistant/creative/hyperframes-video-studio/official-skills/",
+    "src/process/resources/assistant/creative/remotion-video-studio/official-skills/",
     "mobile/"
   ]
 }

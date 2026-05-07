@@ -18,6 +18,7 @@ import figmaClosedLoopManifestRaw from '@/process/resources/assistant/design/fig
 import marketingCreativeStudioManifestRaw from '@/process/resources/assistant/creative/marketing-creative-studio/agent-package.json';
 import motionStudioManifestRaw from '@/process/resources/assistant/creative/motion-studio/agent-package.json';
 import hyperframesVideoStudioManifestRaw from '@/process/resources/assistant/creative/hyperframes-video-studio/agent-package.json';
+import remotionVideoStudioManifestRaw from '@/process/resources/assistant/creative/remotion-video-studio/agent-package.json';
 import visualArtifactRunnerManifestRaw from '@/process/resources/assistant/creative/visual-artifact-runner/agent-package.json';
 import pmWorkbenchManifestRaw from '@/process/resources/assistant/product/pm-workbench/agent-package.json';
 import officeAnalystManifestRaw from '@/process/resources/assistant/office/office-analyst/agent-package.json';
@@ -79,6 +80,13 @@ export const BUNDLED_AGENT_PACKAGE_DESCRIPTORS: readonly BundledAgentPackageDesc
     manifest: parseBundledManifest(
       hyperframesVideoStudioManifestRaw,
       'src/process/resources/assistant/creative/hyperframes-video-studio'
+    ),
+  },
+  {
+    resourceDir: 'src/process/resources/assistant/creative/remotion-video-studio',
+    manifest: parseBundledManifest(
+      remotionVideoStudioManifestRaw,
+      'src/process/resources/assistant/creative/remotion-video-studio'
     ),
   },
   {

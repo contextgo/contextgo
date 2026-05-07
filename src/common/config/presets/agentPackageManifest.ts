@@ -13,6 +13,7 @@ export type AgentPackageWorkspaceAutomationProfile =
   | 'marketing-creative-studio'
   | 'motion-studio'
   | 'hyperframes-video-studio'
+  | 'remotion-video-studio'
   | 'visual-artifact-runner';
 
 export type AgentPackageWorkspaceSkillBootstrapStrategy = 'enabled-skills' | 'packaged-skills';
@@ -223,6 +224,7 @@ const WORKSPACE_AUTOMATION_PROFILES = new Set<AgentPackageWorkspaceAutomationPro
   'marketing-creative-studio',
   'motion-studio',
   'hyperframes-video-studio',
+  'remotion-video-studio',
   'visual-artifact-runner',
 ]);
 

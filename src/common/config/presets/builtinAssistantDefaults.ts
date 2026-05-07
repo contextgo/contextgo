@@ -23,6 +23,7 @@ export const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set([
   'marketing-creative-studio',
   'motion-studio',
   'hyperframes-video-studio',
+  'remotion-video-studio',
   'visual-artifact-runner',
   'startup-strategist',
   'office-analyst',

@@ -27,6 +27,9 @@ const MOTION_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNa
 const HYPERFRAMES_VIDEO_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
   'builtin-hyperframes-video-studio'
 )!;
+const REMOTION_VIDEO_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-remotion-video-studio'
+)!;
 const VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
   'builtin-visual-artifact-runner'
 )!;
@@ -56,11 +59,14 @@ describe('builtinAssistantDefaults', () => {
     const hyperframesVideoAssistant = assistants.find(
       (assistant) => assistant.id === 'builtin-hyperframes-video-studio'
     );
+    const remotionVideoStudioAssistant = assistants.find(
+      (assistant) => assistant.id === 'builtin-remotion-video-studio'
+    );
     const visualArtifactRunnerAssistant = assistants.find(
       (assistant) => assistant.id === 'builtin-visual-artifact-runner'
     );
 
-    expect(assistants).toHaveLength(14);
+    expect(assistants).toHaveLength(15);
     expect(assistants.map((assistant) => assistant.id)).toEqual([
       'builtin-morph-ppt',
       'builtin-startup-strategist',
@@ -69,6 +75,7 @@ describe('builtinAssistantDefaults', () => {
       'builtin-marketing-creative-studio',
       'builtin-motion-studio',
       'builtin-hyperframes-video-studio',
+      'builtin-remotion-video-studio',
       'builtin-visual-artifact-runner',
       'builtin-pm-workbench',
       'builtin-office-analyst',
@@ -236,6 +243,36 @@ describe('builtinAssistantDefaults', () => {
         'article-to-video',
         'data-to-video',
         'hyperframes-qc',
+      ])
+    );
+    expect(remotionVideoStudioAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...REMOTION_VIDEO_STUDIO_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'React Video',
+          'zh-CN': 'React 视频',
+        },
+        harnessTagI18n: {
+          'en-US': 'Remotion Video Studio',
+          'zh-CN': 'Remotion Video Studio',
+        },
+      })
+    );
+    expect(remotionVideoStudioAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'remotion-best-practices',
+        'remotion-project-bootstrap',
+        'remotion-composition',
+        'remotion-render-ops',
+        'remotion-player-app',
+        'remotion-captions',
+        'remotion-ai-media',
+        'remotion-qc',
       ])
     );
     expect(visualArtifactRunnerAssistant).toEqual(
@@ -522,6 +559,9 @@ describe('builtinAssistantDefaults', () => {
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-hyperframes-video-studio', undefined)).toEqual([
       ...HYPERFRAMES_VIDEO_STUDIO_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-remotion-video-studio', undefined)).toEqual([
+      ...REMOTION_VIDEO_STUDIO_DEFAULT_SKILLS,
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-visual-artifact-runner', undefined)).toEqual([
       ...VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS,

@@ -1212,6 +1212,199 @@ const HYPERFRAMES_VIDEO_STUDIO_SCHEDULE_SEED: WorkspaceAutomationScheduleSeed = 
   ],
 };
 
+const REMOTION_VIDEO_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the Remotion brief, composition contract, asset sources, render target, and license risks before authoring TSX.',
+    templateOverride:
+      'Restate the Remotion task, identify target dimensions, fps, duration, composition ids, parameterization needs, Infermesh or source assets, output format, and license or credential risks. Propose the shortest Remotion-native workflow before editing project files or rendering.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify Remotion render integrity, props, assets, captions, license status, and rerender reproducibility.',
+    templateOverride:
+      'Use the `remotion-qc` and `remotion-render-ops` skills for this request. Verify output dimensions, fps, duration, visible text, representative frames, audio, captions, Infermesh asset lineage, Remotion license status, and rerender command reproducibility before declaring the render ready.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'remotion-init',
+    enabled: true,
+    name: 'remotion-init',
+    description: 'Bootstrap or normalize a Remotion project for a workspace video brief.',
+    template:
+      'Use the `remotion-project-bootstrap` and `remotion-best-practices` skills for this request. Confirm project id, package manager, target dimensions, fps, duration, scripts, and workspace paths, then scaffold or normalize the Remotion project and write project notes under `docs/videos/remotion/projects/`.',
+  },
+  {
+    type: 'custom',
+    id: 'remotion-studio',
+    enabled: true,
+    name: 'remotion-studio',
+    description: 'Prepare or run Remotion Studio preview for a composition.',
+    template:
+      'Use the `remotion-render-ops` skill for this request. Verify dependencies, identify the composition id and props, start or prepare Remotion Studio, and capture preview findings before a still check or full render.',
+  },
+  {
+    type: 'custom',
+    id: 'remotion-still-check',
+    enabled: true,
+    name: 'remotion-still-check',
+    description: 'Render representative still frames before a full Remotion render.',
+    template:
+      'Use the `remotion-render-ops` and `remotion-qc` skills for this request. Pick representative frames from the scene map, run still checks for the target composition and props, inspect for blank frames, missing assets, text mistakes, and layout overflow, then record findings in the render manifest.',
+  },
+  {
+    type: 'custom',
+    id: 'remotion-render',
+    enabled: true,
+    name: 'remotion-render',
+    description: 'Run a local Remotion render and write a reproducible manifest.',
+    template:
+      'Use the `remotion-render-ops` skill for this request. Confirm still checks passed, run the local render with explicit composition id and input props, name the output deterministically, collect logs, and write or update the render manifest.',
+  },
+  {
+    type: 'custom',
+    id: 'remotion-ssr-render',
+    enabled: true,
+    name: 'remotion-ssr-render',
+    description: 'Build or run an @remotion/renderer SSR workflow for parameterized video rendering.',
+    template:
+      'Use the `remotion-render-ops` and `remotion-composition` skills for this request. Separate browser Player code from server renderer code, wire typed props, run or draft the @remotion/renderer path, and record bundle, composition, props, output, and logs in the manifest.',
+  },
+  {
+    type: 'custom',
+    id: 'remotion-player-app',
+    enabled: true,
+    name: 'remotion-player-app',
+    description: 'Embed Remotion Player into a React/Vite/Next preview or product surface.',
+    template:
+      'Use the `remotion-player-app` and `remotion-composition` skills for this request. Define the Player props contract, keep renderer APIs out of the browser bundle, add preview controls appropriate to the product surface, and document how Player preview differs from final render.',
+  },
+  {
+    type: 'custom',
+    id: 'remotion-captions',
+    enabled: true,
+    name: 'remotion-captions',
+    description: 'Prepare captions, transcription imports, and caption rendering for a Remotion composition.',
+    template:
+      'Use the `remotion-captions` and `remotion-best-practices` skills for this request. Identify caption source, normalize SRT/VTT/JSON or Infermesh STT output, apply Remotion caption display rules, and verify timing and legibility in still checks and QC.',
+  },
+  {
+    type: 'custom',
+    id: 'remotion-ai-media',
+    enabled: true,
+    name: 'remotion-ai-media',
+    description: 'Consume Infermesh / AI Media Studio generated assets in a Remotion project with lineage.',
+    template:
+      'Use the `remotion-ai-media` skill for this request. Treat Infermesh / AI Media Studio as the generation gateway, copy or reference generated assets into the Remotion project public assets, record task/model/source lineage under `docs/videos/remotion/assets/`, and link the asset ledger from the render manifest.',
+  },
+  {
+    type: 'custom',
+    id: 'remotion-lambda-plan',
+    enabled: true,
+    name: 'remotion-lambda-plan',
+    description: 'Plan Remotion Lambda rendering requirements without deploying by default.',
+    template:
+      'Use the `remotion-lambda` and `remotion-render-ops` skills for this request. Confirm the user explicitly wants cloud rendering, then plan AWS account, region, permissions, Remotion license readiness, deployment steps, expected cost factors, and rollback. Do not deploy until the user confirms.',
+  },
+  {
+    type: 'custom',
+    id: 'remotion-qc',
+    enabled: true,
+    name: 'remotion-qc',
+    description: 'Run Remotion output QC before publish or handoff.',
+    template:
+      'Use the `remotion-qc` skill for this request. Check output file, dimensions, fps, duration, visible text, representative frames, audio, captions, generated asset lineage, license risks, and rerender reproducibility. Return pass, warn, or blocked with exact next steps.',
+  },
+  {
+    type: 'custom',
+    id: 'remotion-package',
+    enabled: true,
+    name: 'remotion-package',
+    description: 'Package Remotion source, assets, manifests, renders, and QC notes for handoff.',
+    template:
+      'Use the `remotion-render-ops`, `remotion-ai-media`, and `remotion-qc` skills for this request. Gather source paths, render outputs, manifests, asset ledgers, license notes, QC report, and rerender commands into a handoff summary without copying secrets.',
+  },
+] as const;
+
+const REMOTION_VIDEO_STUDIO_SCHEDULE_SEED: WorkspaceAutomationScheduleSeed = {
+  conversationSchedules: [
+    {
+      id: 'remotion-weekly-video-draft',
+      name: 'Weekly Remotion video draft',
+      enabled: false,
+      schedule: {
+        kind: 'cron',
+        expr: '0 10 * * 1',
+        description: 'Every Monday at 10:00',
+      },
+      message:
+        'Use the Remotion Video Studio package to scan the latest workspace context, propose one draft video brief, identify needed Infermesh assets, and stop before editing or rendering unless approved.',
+      conversationId: 'builtin-remotion-weekly-video-draft',
+      conversationTitle: 'Weekly Remotion Video Draft',
+      agentType: 'codex',
+      createdBy: 'agent',
+    },
+    {
+      id: 'remotion-render-qc-audit',
+      name: 'Remotion render QC audit',
+      enabled: false,
+      schedule: {
+        kind: 'cron',
+        expr: '0 16 * * 5',
+        description: 'Every Friday at 16:00',
+      },
+      message:
+        'Use the `remotion-qc` skill to audit recent Remotion render manifests and QC reports, then summarize blocked renders, stale rerender commands, missing asset lineage, and license risks.',
+      conversationId: 'builtin-remotion-render-qc-audit',
+      conversationTitle: 'Remotion Render QC Audit',
+      agentType: 'codex',
+      createdBy: 'agent',
+    },
+    {
+      id: 'remotion-template-asset-freshness',
+      name: 'Remotion asset and template freshness',
+      enabled: false,
+      schedule: {
+        kind: 'cron',
+        expr: '0 11 1 * *',
+        description: 'On the first day of each month at 11:00',
+      },
+      message:
+        'Use the Remotion Video Studio package to review project templates, generated asset ledgers, source paths, and package scripts for staleness. Report refresh recommendations only.',
+      conversationId: 'builtin-remotion-template-asset-freshness',
+      conversationTitle: 'Remotion Asset Freshness',
+      agentType: 'codex',
+      createdBy: 'agent',
+    },
+  ],
+};
+
 const VISUAL_ARTIFACT_RUNNER_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
   {
     type: 'builtin',
@@ -1356,6 +1549,11 @@ const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
     label: 'HyperFrames Video Studio',
     commandSeeds: HYPERFRAMES_VIDEO_STUDIO_COMMAND_SEEDS,
     scheduleSeed: HYPERFRAMES_VIDEO_STUDIO_SCHEDULE_SEED,
+  },
+  'remotion-video-studio': {
+    label: 'Remotion Video Studio',
+    commandSeeds: REMOTION_VIDEO_STUDIO_COMMAND_SEEDS,
+    scheduleSeed: REMOTION_VIDEO_STUDIO_SCHEDULE_SEED,
   },
   'visual-artifact-runner': {
     label: 'Visual Artifact Runner',
