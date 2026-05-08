@@ -45,6 +45,8 @@
   "exclude": [
     "src/process/services/database/drivers/BunSqliteDriver.ts",
     "src/process/services/database/drivers/BunSqliteDriver.bun.test.ts",
-    "src/process/resources/**/rules/assets/**/*.tsx"
+    "src/process/resources/**/rules/assets/**/*.tsx",
+    "src/process/resources/assistant/creative/hyperframes-video-studio/official-skills/**/*.ts",
+    "src/process/resources/assistant/creative/hyperframes-video-studio/official-skills/**/*.tsx"
   ]
 }

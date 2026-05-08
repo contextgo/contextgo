@@ -22,6 +22,7 @@ export const DEFAULT_ENABLED_BUILTIN_PRESET_IDS = new Set([
   'figma-closed-loop',
   'marketing-creative-studio',
   'motion-studio',
+  'hyperframes-video-studio',
   'visual-artifact-runner',
   'startup-strategist',
   'office-analyst',

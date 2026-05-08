@@ -47,6 +47,25 @@ function expectSourceRootExists(resourceDir: string, source: AgentPackageSourceD
   expect(fs.existsSync(absolutePath), `Missing source root for ${resourceDir}: ${absolutePath}`).toBe(true);
 }
 
+function findPackageRelativeSkillFile(
+  resourceDir: string,
+  sources: AgentPackageSourceDescriptor[] | undefined,
+  skillName: string
+): string | null {
+  for (const source of sources ?? []) {
+    if (source.kind !== 'package-relative') {
+      continue;
+    }
+
+    const skillFile = path.join(REPO_ROOT, resourceDir, source.root, skillName, 'SKILL.md');
+    if (fs.existsSync(skillFile)) {
+      return skillFile;
+    }
+  }
+
+  return null;
+}
+
 describe('agent-package manifests', () => {
   it('keeps bundled package facts out of assistant preset metadata', () => {
     for (const preset of ASSISTANT_PRESETS) {
@@ -181,6 +200,76 @@ describe('agent-package manifests', () => {
     expect(
       manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/assets/README.md')
     ).toBe(true);
+  });
+
+  it('ships a HyperFrames video package with local skills, CLI requirements, and video workspace scaffold', () => {
+    const manifest = readManifest('src/process/resources/assistant/creative/hyperframes-video-studio');
+
+    expect(manifest.payloads.skills?.sources).toEqual([
+      { kind: 'package-relative', root: 'official-skills/core/skills' },
+      { kind: 'package-relative', root: 'official-skills/adapters/skills' },
+      { kind: 'package-relative', root: 'official-skills/migration/skills' },
+      { kind: 'package-relative', root: 'contextgo-skills/skills' },
+    ]);
+    expect(manifest.payloads.skills?.bootstrapStrategy).toBe('packaged-skills');
+    expect(manifest.payloads.skills?.defaultEnabledSkillNames).toEqual([
+      'hyperframes',
+      'hyperframes-composition',
+      'hyperframes-cli',
+      'hyperframes-media',
+      'hyperframes-registry',
+      'website-to-hyperframes',
+      'website-to-video',
+      'article-to-video',
+      'data-to-video',
+      'hyperframes-qc',
+    ]);
+    expect(manifest.payloads.skills?.packagedSkillNames).toEqual([
+      'hyperframes',
+      'hyperframes-cli',
+      'hyperframes-media',
+      'hyperframes-registry',
+      'website-to-hyperframes',
+      'animejs',
+      'css-animations',
+      'gsap',
+      'lottie',
+      'tailwind',
+      'three',
+      'waapi',
+      'remotion-to-hyperframes',
+      'hyperframes-composition',
+      'website-to-video',
+      'article-to-video',
+      'data-to-video',
+      'ai-media-to-hyperframes',
+      'hyperframes-qc',
+    ]);
+    expect(manifest.payloads.requirements?.tools?.map((tool) => tool.id)).toEqual([
+      'nodejs-22',
+      'ffmpeg',
+      'hyperframes-cli',
+      'docker',
+    ]);
+    expect(manifest.payloads.commands?.workspaceAutomationProfile).toBe('hyperframes-video-studio');
+    expect(manifest.payloads.schedules?.workspaceAutomationProfile).toBe('hyperframes-video-studio');
+    expect(
+      manifest.payloads.workspaceScaffold?.templates?.some((template) => template.target === 'docs/videos/README.md')
+    ).toBe(true);
+    expect(
+      manifest.payloads.workspaceScaffold?.templates?.some(
+        (template) => template.target === 'docs/videos/manifests/README.md'
+      )
+    ).toBe(true);
+
+    for (const skillName of manifest.payloads.skills?.packagedSkillNames ?? []) {
+      const skillFile = findPackageRelativeSkillFile(
+        'src/process/resources/assistant/creative/hyperframes-video-studio',
+        manifest.payloads.skills?.sources,
+        skillName
+      );
+      expect(skillFile, `Missing packaged HyperFrames skill: ${skillName}`).not.toBeNull();
+    }
   });
 
   it('ships a Figma round-trip skill set and figma-closed-loop automation profile', () => {
@@ -376,6 +465,19 @@ describe('agent-package manifests', () => {
           'docs/scenes/README.md',
           'docs/renders/README.md',
           'docs/qc/README.md',
+        ],
+      },
+      {
+        resourceDir: 'src/process/resources/assistant/creative/hyperframes-video-studio',
+        expectedTargets: [
+          'AGENTS.md',
+          'docs/videos/README.md',
+          'docs/videos/briefs/README.md',
+          'docs/videos/projects/README.md',
+          'docs/videos/renders/README.md',
+          'docs/videos/assets/README.md',
+          'docs/videos/qc/README.md',
+          'docs/videos/manifests/README.md',
         ],
       },
       {

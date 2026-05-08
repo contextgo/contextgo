@@ -1044,6 +1044,174 @@ const MOTION_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
   },
 ] as const;
 
+const HYPERFRAMES_VIDEO_STUDIO_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
+  {
+    type: 'builtin',
+    id: 'plan',
+    enabled: true,
+    descriptionOverride:
+      'Frame the HyperFrames video job, render environment, source inputs, target format, project paths, and QC risks before authoring.',
+    templateOverride:
+      'Restate the HyperFrames video request, identify source type (website, article, data, generated media, or custom composition), target channel, dimensions, duration, required text, assets, render environment, workspace paths, and QC risks before creating or editing the composition.',
+  },
+  {
+    type: 'builtin',
+    id: 'tdd',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'code-review',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'security',
+    enabled: false,
+  },
+  {
+    type: 'builtin',
+    id: 'verify',
+    enabled: true,
+    descriptionOverride:
+      'Verify HyperFrames render manifests, output files, dimensions, duration, subtitles, assets, and QC verdict before delivery.',
+    templateOverride:
+      'Use the `hyperframes-qc` skill for this request. Verify the current HyperFrames output end to end: manifest exists, render command is recorded, output file exists, dimensions/duration/fps match the brief, subtitles and exact text are readable, assets resolve locally, source lineage is recorded, and the QC verdict is clear before delivery.',
+  },
+  {
+    type: 'builtin',
+    id: 'orchestrate',
+    enabled: false,
+  },
+  {
+    type: 'custom',
+    id: 'hyperframes-video-init',
+    enabled: true,
+    name: 'video-init',
+    description: 'Initialize or normalize a HyperFrames video project in the workspace.',
+    template:
+      'Use the `hyperframes`, `hyperframes-cli`, `hyperframes-composition`, and `hyperframes-media` skills for this request. Check Node.js 22+, FFmpeg, and package runner availability, create or normalize a project under `docs/videos/projects/`, write the brief under `docs/videos/briefs/`, prepare asset folders, and end with preview/render commands plus missing dependency blockers.',
+  },
+  {
+    type: 'custom',
+    id: 'hyperframes-video-preview',
+    enabled: true,
+    name: 'video-preview',
+    description: 'Preview a HyperFrames composition and report layout, timing, and asset issues.',
+    template:
+      'Use the `hyperframes`, `hyperframes-cli`, `hyperframes-composition`, and `hyperframes-media` skills for this request. Resolve the project path, run or prepare the HyperFrames preview command, inspect source-level layout/timing/asset issues, and report what must be fixed before rendering.',
+  },
+  {
+    type: 'custom',
+    id: 'hyperframes-video-render',
+    enabled: true,
+    name: 'video-render',
+    description: 'Render a HyperFrames project to MP4/WebM and write a render manifest.',
+    template:
+      'Use the `hyperframes-cli` and `hyperframes-qc` skills for this request. Render the selected HyperFrames project into `docs/videos/renders/`, write or refresh a manifest under `docs/videos/manifests/`, preserve the exact render command, then run QC before delivery.',
+  },
+  {
+    type: 'custom',
+    id: 'hyperframes-url-to-video',
+    enabled: true,
+    name: 'url-to-video',
+    description: 'Turn a website, landing page, product page, or docs URL into a HyperFrames video.',
+    template:
+      'Use the `website-to-hyperframes`, `website-to-video`, `hyperframes`, `hyperframes-registry`, `hyperframes-media`, `hyperframes-composition`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Extract the page hierarchy, plan a short script and scenes, prepare screenshots/assets, build the composition, render it, and QC text, crops, timing, and source fidelity.',
+  },
+  {
+    type: 'custom',
+    id: 'hyperframes-article-to-video',
+    enabled: true,
+    name: 'article-to-video',
+    description: 'Turn an article, changelog, docs page, or report into a captioned HyperFrames video.',
+    template:
+      'Use the `article-to-video`, `hyperframes`, `hyperframes-composition`, `hyperframes-media`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Distill the source into hook, beats, evidence, and CTA, write exact visible captions, compose scenes, render, and QC factual alignment plus subtitle readability.',
+  },
+  {
+    type: 'custom',
+    id: 'hyperframes-data-to-video',
+    enabled: true,
+    name: 'data-to-video',
+    description: 'Turn CSV, JSON, spreadsheet extracts, or report tables into animated chart videos.',
+    template:
+      'Use the `data-to-video`, `hyperframes`, `hyperframes-registry`, `hyperframes-composition`, `hyperframes-media`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Classify the data shape, record transformations, choose a chart recipe, animate labels and values, render, and QC units, labels, contrast, and timing.',
+  },
+  {
+    type: 'custom',
+    id: 'hyperframes-caption-video',
+    enabled: true,
+    name: 'caption-video',
+    description: 'Add subtitles, title cards, lower thirds, or CTA overlays to a HyperFrames video composition.',
+    template:
+      'Use the `hyperframes`, `hyperframes-composition`, `hyperframes-media`, and `hyperframes-qc` skills for this request. Normalize captions and timing, add title cards or lower thirds with safe margins, prepare audio/subtitle assets if present, preview, render, and QC subtitle readability and timing.',
+  },
+  {
+    type: 'custom',
+    id: 'hyperframes-media-to-video',
+    enabled: true,
+    name: 'media-to-video',
+    description: 'Compose generated images, generated videos, screenshots, and clips into a final HyperFrames video.',
+    template:
+      'Use the `ai-media-to-hyperframes`, `hyperframes`, `hyperframes-media`, `hyperframes-composition`, `hyperframes-cli`, and `hyperframes-qc` skills for this request. Inventory source assets and any AI Media Studio manifests, reject blocked inputs, plan title/montage/caption/end-card scenes, render the final video, and record source lineage in the render manifest.',
+  },
+  {
+    type: 'custom',
+    id: 'hyperframes-video-qc',
+    enabled: true,
+    name: 'video-qc',
+    description: 'Run structured QC on HyperFrames render outputs and manifests.',
+    template:
+      'Use the `hyperframes-qc` skill for this request. Validate manifest, project path, output file, dimensions, duration, fps, exact text, subtitles, assets, audio, rights notes, and source lineage, then write a QC report under `docs/videos/qc/` with pass, pass-with-notes, rerender-required, or blocked verdict.',
+  },
+  {
+    type: 'custom',
+    id: 'hyperframes-video-package',
+    enabled: true,
+    name: 'video-package',
+    description: 'Package a HyperFrames render with source, manifest, assets, and QC report for handoff.',
+    template:
+      'Use the `hyperframes-cli`, `hyperframes-media`, and `hyperframes-qc` skills for this request. Collect the project path, render output, manifest, key assets, source notes, and QC report, verify no required files are missing, and produce a handoff summary with rerender instructions.',
+  },
+] as const;
+
+const HYPERFRAMES_VIDEO_STUDIO_SCHEDULE_SEED: WorkspaceAutomationScheduleSeed = {
+  conversationSchedules: [
+    {
+      id: 'hyperframes-weekly-video-draft',
+      name: 'HyperFrames weekly video draft',
+      enabled: false,
+      schedule: {
+        kind: 'cron',
+        expr: '0 10 * * 1',
+        description: 'Mondays at 10:00',
+      },
+      message:
+        'Use the `article-to-video`, `website-to-video`, or `data-to-video` skill depending on the newest workspace source. Draft one HyperFrames video candidate from recent changelog, docs, website, report, or data updates; write the brief under `docs/videos/briefs/` and stop before render unless the source is already approved.',
+      conversationId: 'hyperframes-weekly-video-draft-template',
+      conversationTitle: 'HyperFrames Weekly Video Draft',
+      agentType: 'codex',
+      createdBy: 'agent',
+    },
+    {
+      id: 'hyperframes-weekly-render-qc',
+      name: 'HyperFrames weekly render QC audit',
+      enabled: false,
+      schedule: {
+        kind: 'cron',
+        expr: '0 16 * * 5',
+        description: 'Fridays at 16:00',
+      },
+      message:
+        'Use the `hyperframes-qc` and `hyperframes-cli` skills. Audit `docs/videos/projects/`, `docs/videos/renders/`, `docs/videos/manifests/`, and `docs/videos/qc/`; report missing manifests, stale renders, missing local assets, dependency blockers, and outputs that need rerendering.',
+      conversationId: 'hyperframes-weekly-render-qc-template',
+      conversationTitle: 'HyperFrames Weekly Render QC Audit',
+      agentType: 'codex',
+      createdBy: 'agent',
+    },
+  ],
+};
+
 const VISUAL_ARTIFACT_RUNNER_COMMAND_SEEDS: readonly WorkspaceCommandSeed[] = [
   {
     type: 'builtin',
@@ -1183,6 +1351,11 @@ const WORKSPACE_AUTOMATION_PROFILE_DEFINITIONS: Record<
     label: 'Motion Studio',
     commandSeeds: MOTION_STUDIO_COMMAND_SEEDS,
     scheduleSeed: EMPTY_SCHEDULE_SEED,
+  },
+  'hyperframes-video-studio': {
+    label: 'HyperFrames Video Studio',
+    commandSeeds: HYPERFRAMES_VIDEO_STUDIO_COMMAND_SEEDS,
+    scheduleSeed: HYPERFRAMES_VIDEO_STUDIO_SCHEDULE_SEED,
   },
   'visual-artifact-runner': {
     label: 'Visual Artifact Runner',

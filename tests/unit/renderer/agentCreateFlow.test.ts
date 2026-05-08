@@ -83,6 +83,34 @@ describe('buildCapabilityRecommendation', () => {
     expect(recommendation.runtime).toBe('codex');
   });
 
+  it('should recommend HyperFrames video studio for deterministic website-to-video intent', () => {
+    const draft: AgentCreateIntentDraft = {
+      workDescription: 'Use HyperFrames to turn this website into an HTML-to-video MP4 render with captions',
+      audience: 'Product marketing',
+      output: 'MP4 render, manifest, and QC report',
+      workStyle: 'create',
+      recurrence: 'frequent',
+    };
+
+    const recommendation = buildCapabilityRecommendation(draft);
+
+    expect(recommendation.linkedPackagePresetId).toBe('builtin-hyperframes-video-studio');
+    expect(recommendation.packageLabel).toBe('HyperFrames Video Studio');
+    expect(recommendation.defaultSkills).toEqual(
+      expect.arrayContaining([
+        'hyperframes',
+        'hyperframes-composition',
+        'hyperframes-cli',
+        'website-to-hyperframes',
+        'website-to-video',
+        'hyperframes-qc',
+      ])
+    );
+    expect(recommendation.commandCount).toBeGreaterThan(0);
+    expect(recommendation.scheduleCount).toBe(2);
+    expect(recommendation.runtime).toBe('codex');
+  });
+
   it('should recommend visual artifact runner for deck/pdf artifact requests', () => {
     const draft: AgentCreateIntentDraft = {
       workDescription: 'Convert this PDF report into a polished deck artifact with QC and export notes',

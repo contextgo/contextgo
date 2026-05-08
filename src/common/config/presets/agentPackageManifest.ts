@@ -12,6 +12,7 @@ export type AgentPackageWorkspaceAutomationProfile =
   | 'figma-closed-loop'
   | 'marketing-creative-studio'
   | 'motion-studio'
+  | 'hyperframes-video-studio'
   | 'visual-artifact-runner';
 
 export type AgentPackageWorkspaceSkillBootstrapStrategy = 'enabled-skills' | 'packaged-skills';
@@ -221,6 +222,7 @@ const WORKSPACE_AUTOMATION_PROFILES = new Set<AgentPackageWorkspaceAutomationPro
   'figma-closed-loop',
   'marketing-creative-studio',
   'motion-studio',
+  'hyperframes-video-studio',
   'visual-artifact-runner',
 ]);
 

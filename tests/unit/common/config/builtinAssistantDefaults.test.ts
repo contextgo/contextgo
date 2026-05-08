@@ -24,6 +24,9 @@ const MARKETING_CREATIVE_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEn
   'builtin-marketing-creative-studio'
 )!;
 const MOTION_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames('builtin-motion-studio')!;
+const HYPERFRAMES_VIDEO_STUDIO_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
+  'builtin-hyperframes-video-studio'
+)!;
 const VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS = getBundledAgentPackageDefaultEnabledSkillNames(
   'builtin-visual-artifact-runner'
 )!;
@@ -50,11 +53,14 @@ describe('builtinAssistantDefaults', () => {
       (assistant) => assistant.id === 'builtin-marketing-creative-studio'
     );
     const motionAssistant = assistants.find((assistant) => assistant.id === 'builtin-motion-studio');
+    const hyperframesVideoAssistant = assistants.find(
+      (assistant) => assistant.id === 'builtin-hyperframes-video-studio'
+    );
     const visualArtifactRunnerAssistant = assistants.find(
       (assistant) => assistant.id === 'builtin-visual-artifact-runner'
     );
 
-    expect(assistants).toHaveLength(13);
+    expect(assistants).toHaveLength(14);
     expect(assistants.map((assistant) => assistant.id)).toEqual([
       'builtin-morph-ppt',
       'builtin-startup-strategist',
@@ -62,6 +68,7 @@ describe('builtinAssistantDefaults', () => {
       'builtin-figma-closed-loop',
       'builtin-marketing-creative-studio',
       'builtin-motion-studio',
+      'builtin-hyperframes-video-studio',
       'builtin-visual-artifact-runner',
       'builtin-pm-workbench',
       'builtin-office-analyst',
@@ -197,6 +204,38 @@ describe('builtinAssistantDefaults', () => {
         'motion-poster-builder',
         'motion-render-ops',
         'motion-qc',
+      ])
+    );
+    expect(hyperframesVideoAssistant).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        builtinTier: 'product',
+        builtinVisibility: 'featured',
+        presetAgentType: 'codex',
+        enabledHooks: undefined,
+        enabledSkills: [...HYPERFRAMES_VIDEO_STUDIO_DEFAULT_SKILLS],
+        recommendedDomainI18n: {
+          'en-US': 'HTML-to-Video',
+          'zh-CN': 'HTML 转视频',
+        },
+        harnessTagI18n: {
+          'en-US': 'HyperFrames Video Studio',
+          'zh-CN': 'HyperFrames Video Studio',
+        },
+      })
+    );
+    expect(hyperframesVideoAssistant?.enabledSkills).toEqual(
+      expect.arrayContaining([
+        'hyperframes',
+        'hyperframes-composition',
+        'hyperframes-cli',
+        'hyperframes-media',
+        'hyperframes-registry',
+        'website-to-hyperframes',
+        'website-to-video',
+        'article-to-video',
+        'data-to-video',
+        'hyperframes-qc',
       ])
     );
     expect(visualArtifactRunnerAssistant).toEqual(
@@ -480,6 +519,9 @@ describe('builtinAssistantDefaults', () => {
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-motion-studio', undefined)).toEqual([
       ...MOTION_STUDIO_DEFAULT_SKILLS,
+    ]);
+    expect(resolveBuiltinAssistantEnabledSkills('builtin-hyperframes-video-studio', undefined)).toEqual([
+      ...HYPERFRAMES_VIDEO_STUDIO_DEFAULT_SKILLS,
     ]);
     expect(resolveBuiltinAssistantEnabledSkills('builtin-visual-artifact-runner', undefined)).toEqual([
       ...VISUAL_ARTIFACT_RUNNER_DEFAULT_SKILLS,
