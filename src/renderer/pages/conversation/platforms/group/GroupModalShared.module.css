@@ -1,0 +1,186 @@
+.segmentedGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.segmentedGroup :global(.arco-radio-group-button) {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--fill-1) 86%, var(--bg-1) 14%);
+}
+
+.segmentedGroup :global(.arco-radio-button) {
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+}
+
+.segmentedGroup :global(.arco-radio-button-content) {
+  border-radius: 12px !important;
+}
+
+.segmentedGroup :global(.arco-radio-button.arco-radio-checked) {
+  box-shadow: 0 8px 18px color-mix(in srgb, rgb(var(--primary-6)) 18%, transparent);
+}
+
+.segmentedGroup :global(.arco-radio-button.arco-radio-checked .arco-radio-button-content) {
+  background: color-mix(in srgb, var(--color-primary-light-1) 70%, var(--bg-1) 30%) !important;
+  color: rgb(var(--primary-6)) !important;
+}
+
+.roundedSelect :global(.arco-select-view) {
+  border-radius: 14px !important;
+  border-color: color-mix(in srgb, var(--border-base) 78%, transparent) !important;
+  background: color-mix(in srgb, var(--bg-1) 92%, var(--fill-1) 8%) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
+    0 10px 24px color-mix(in srgb, rgb(15 23 42) 7%, transparent) !important;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease !important;
+}
+
+.roundedSelect :global(.arco-select-view-single) {
+  min-height: 40px;
+}
+
+.roundedSelect :global(.arco-select-view-input) {
+  border-radius: 14px !important;
+}
+
+.roundedSelect :global(.arco-select-view:hover),
+.roundedSelect :global(.arco-select-view.arco-select-view-focus) {
+  border-color: color-mix(in srgb, rgb(var(--primary-6)) 42%, var(--border-base)) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
+    0 14px 30px color-mix(in srgb, rgb(var(--primary-6)) 12%, transparent) !important;
+}
+
+.roundedField :global(.arco-input-wrapper),
+.roundedField :global(.arco-input),
+.roundedField :global(.arco-textarea-wrapper),
+.roundedField :global(.arco-textarea),
+.roundedField :global(.arco-input-number) {
+  border-radius: 16px !important;
+  border-color: color-mix(in srgb, var(--border-base) 78%, transparent) !important;
+  background: color-mix(in srgb, var(--bg-1) 92%, var(--fill-1) 8%) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
+    0 10px 24px color-mix(in srgb, rgb(15 23 42) 7%, transparent) !important;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease !important;
+}
+
+.roundedField :global(.arco-input),
+.roundedField :global(.arco-textarea),
+.roundedField :global(.arco-input-number .arco-input) {
+  border-radius: inherit !important;
+  background: transparent !important;
+}
+
+.roundedField :global(.arco-input-wrapper:hover),
+.roundedField :global(.arco-input:hover),
+.roundedField :global(.arco-textarea-wrapper:hover),
+.roundedField :global(.arco-textarea:hover),
+.roundedField :global(.arco-input-number:hover),
+.roundedField :global(.arco-input-wrapper:focus-within),
+.roundedField :global(.arco-input.arco-input-focus),
+.roundedField :global(.arco-textarea-wrapper:focus-within),
+.roundedField :global(.arco-textarea.arco-textarea-focus),
+.roundedField :global(.arco-input-number.arco-input-number-focus) {
+  border-color: color-mix(in srgb, rgb(var(--primary-6)) 42%, var(--border-base)) !important;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
+    0 14px 30px color-mix(in srgb, rgb(var(--primary-6)) 12%, transparent) !important;
+}
+
+.participantCard {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-base);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 96%, transparent), transparent 120%), var(--fill-0);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.participantCard::before {
+  content: '';
+  position: absolute;
+  inset: 8px auto 8px 8px;
+  width: 4px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.participantCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.participantCardSelected {
+  border-color: color-mix(in srgb, rgb(var(--primary-6)) 30%, var(--border-base));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-primary-light-1) 62%, var(--bg-1) 38%), transparent 140%),
+    var(--color-fill-1);
+  box-shadow:
+    0 14px 28px rgba(15, 23, 42, 0.08),
+    0 0 0 1px color-mix(in srgb, rgb(var(--primary-6)) 12%, transparent) inset;
+}
+
+.participantCardSelected::before {
+  background: rgb(var(--primary-6));
+}
+
+.participantCardDisabled {
+  opacity: 0.72;
+}
+
+.participantMeta {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-1) 72%, var(--fill-2) 28%);
+  border: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+}
+
+.inlineControlRow {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.innerPanel {
+  margin-top: 2px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 76%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 92%, transparent), transparent 120%),
+    color-mix(in srgb, var(--fill-1) 76%, var(--bg-1) 24%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 18%, transparent);
+}
+
+@media (min-width: 768px) {
+  .inlineControlRow {
+    flex-direction: row;
+    align-items: center;
+  }
+}

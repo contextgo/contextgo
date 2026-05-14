@@ -1,0 +1,1271 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Context Engine Architecture Report</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3efe6;
+        --panel: rgba(255, 251, 244, 0.9);
+        --panel-strong: #fff9ef;
+        --line: rgba(98, 74, 36, 0.18);
+        --text: #2f2618;
+        --muted: #6d5a3c;
+        --accent: #b55d2f;
+        --accent-soft: rgba(181, 93, 47, 0.12);
+        --accent-strong: #7b3f1e;
+        --success: #2d6a4f;
+        --shadow: 0 22px 60px rgba(74, 52, 25, 0.14);
+        --radius: 24px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+        background:
+          radial-gradient(circle at top left, rgba(201, 124, 63, 0.12), transparent 28%),
+          radial-gradient(circle at top right, rgba(84, 129, 116, 0.12), transparent 22%),
+          linear-gradient(180deg, #f8f3ea 0%, var(--bg) 100%);
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      a {
+        color: var(--accent-strong);
+      }
+
+      .shell {
+        width: min(1180px, calc(100vw - 48px));
+        margin: 0 auto;
+        padding: 48px 0 72px;
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        padding: 44px;
+        border: 1px solid var(--line);
+        border-radius: 32px;
+        background:
+          linear-gradient(135deg, rgba(255, 249, 239, 0.96), rgba(250, 241, 226, 0.9)),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent);
+        box-shadow: var(--shadow);
+      }
+
+      .hero::after {
+        content: '';
+        position: absolute;
+        right: -90px;
+        top: -80px;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(181, 93, 47, 0.2), rgba(181, 93, 47, 0));
+        pointer-events: none;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      h1 {
+        margin-top: 18px;
+        font-size: clamp(40px, 6vw, 68px);
+        line-height: 1.02;
+        max-width: 900px;
+      }
+
+      .lead {
+        margin-top: 18px;
+        max-width: 860px;
+        font-size: 19px;
+        color: var(--muted);
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 20px;
+        margin-top: 28px;
+      }
+
+      .hero-card {
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.42);
+        backdrop-filter: blur(6px);
+      }
+
+      .hero-card h3 {
+        font-size: 16px;
+      }
+
+      .hero-card p,
+      .hero-card li {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .hero-card ul {
+        margin: 10px 0 0;
+        padding-left: 18px;
+      }
+
+      nav {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-top: 22px;
+      }
+
+      nav a {
+        display: block;
+        padding: 14px 16px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.58);
+        text-decoration: none;
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 600;
+        transition:
+          transform 180ms ease,
+          border-color 180ms ease,
+          background 180ms ease;
+      }
+
+      nav a:hover {
+        transform: translateY(-2px);
+        border-color: rgba(181, 93, 47, 0.5);
+        background: rgba(255, 250, 242, 0.92);
+      }
+
+      main {
+        display: grid;
+        gap: 20px;
+        margin-top: 22px;
+      }
+
+      section {
+        padding: 32px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      section h2 {
+        font-size: 30px;
+        margin-bottom: 10px;
+      }
+
+      section > p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 17px;
+      }
+
+      .quote {
+        margin-top: 20px;
+        padding: 18px 20px;
+        border-left: 4px solid var(--accent);
+        border-radius: 16px;
+        background: rgba(181, 93, 47, 0.08);
+        color: var(--text);
+        font-size: 18px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 20px;
+      }
+
+      .card {
+        padding: 20px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--panel-strong);
+      }
+
+      .card h3 {
+        font-size: 18px;
+      }
+
+      .card p,
+      .card li {
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .card ul,
+      .card ol {
+        margin: 12px 0 0;
+        padding-left: 18px;
+      }
+
+      .stack {
+        display: grid;
+        gap: 14px;
+        margin-top: 20px;
+      }
+
+      .layer {
+        padding: 18px 20px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(255, 251, 244, 0.96), rgba(250, 243, 232, 0.86));
+      }
+
+      .layer strong {
+        display: block;
+        font-size: 18px;
+      }
+
+      .layer span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+      }
+
+      .diagram {
+        margin-top: 22px;
+        padding: 24px;
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: linear-gradient(135deg, rgba(255, 250, 243, 0.94), rgba(248, 242, 230, 0.9));
+        overflow: auto;
+      }
+
+      .diagram pre {
+        margin: 0;
+        font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
+        font-size: 14px;
+        line-height: 1.7;
+        color: #44311c;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .pill {
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(45, 106, 79, 0.1);
+        color: var(--success);
+        border: 1px solid rgba(45, 106, 79, 0.2);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .warning {
+        background: rgba(123, 63, 30, 0.08);
+        color: var(--accent-strong);
+        border-color: rgba(123, 63, 30, 0.2);
+      }
+
+      .timeline {
+        display: grid;
+        gap: 14px;
+        margin-top: 22px;
+      }
+
+      .timeline-item {
+        display: grid;
+        grid-template-columns: 130px 1fr;
+        gap: 18px;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--panel-strong);
+      }
+
+      .timeline-item strong {
+        font-size: 14px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+      }
+
+      .timeline-item p,
+      .timeline-item ul {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .timeline-item ul {
+        margin-top: 8px;
+        padding-left: 18px;
+      }
+
+      .reference-tabs {
+        margin-top: 22px;
+      }
+
+      .tab-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .tab-button {
+        appearance: none;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--text);
+        cursor: pointer;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 600;
+        padding: 10px 16px;
+        transition:
+          transform 180ms ease,
+          border-color 180ms ease,
+          background 180ms ease,
+          color 180ms ease;
+      }
+
+      .tab-button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(181, 93, 47, 0.45);
+      }
+
+      .tab-button[aria-selected='true'] {
+        border-color: rgba(181, 93, 47, 0.45);
+        background: rgba(181, 93, 47, 0.12);
+        color: var(--accent-strong);
+      }
+
+      .tab-panel {
+        display: none;
+      }
+
+      .tab-panel.is-active {
+        display: block;
+      }
+
+      .reference-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .reference-link + .reference-link {
+        margin-left: 16px;
+      }
+
+      .reference-note {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .translation-block {
+        margin-top: 16px;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 252, 247, 0.88);
+      }
+
+      .translation-block h3 {
+        font-size: 17px;
+      }
+
+      .translation-block p,
+      .translation-block li {
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .translation-block ul {
+        margin: 10px 0 0;
+        padding-left: 18px;
+      }
+
+      .doc-map {
+        display: grid;
+        gap: 14px;
+        margin-top: 20px;
+      }
+
+      .doc-map-item {
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--panel-strong);
+      }
+
+      .doc-map-item h3 {
+        font-size: 17px;
+      }
+
+      .doc-map-item p,
+      .doc-map-item li {
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .doc-map-item ul {
+        margin: 10px 0 0;
+        padding-left: 18px;
+      }
+
+      footer {
+        margin-top: 22px;
+        padding: 22px 26px;
+        border-radius: 20px;
+        border: 1px solid var(--line);
+        background: rgba(255, 251, 244, 0.86);
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      @media (max-width: 960px) {
+        .shell {
+          width: min(100vw - 28px, 1180px);
+          padding-top: 24px;
+        }
+
+        .hero {
+          padding: 28px;
+        }
+
+        .hero-grid,
+        .grid,
+        nav {
+          grid-template-columns: 1fr;
+        }
+
+        section {
+          padding: 24px;
+        }
+
+        .timeline-item {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div class="eyebrow">Context Engine Report</div>
+        <h1>ContextGo 长期上下文引擎架构约束报告</h1>
+        <p class="lead">
+          这份报告把当前讨论固化成一个清晰的长期方向：<code>ContextGo</code>
+          的核心不是把聊天历史做长，也不是把工作目录做成渐进式披露的文件树，而是以
+          <code>Space</code> 为逻辑边界，构建一个可形成、可演化、可治理、可协作的 <code>Context Engine</code>。
+        </p>
+
+        <div class="hero-grid">
+          <article class="hero-card">
+            <h3>判断基线</h3>
+            <ul>
+              <li><code>context window</code> 是执行窗口，不是记忆本体。</li>
+              <li><code>RAG</code> 只覆盖 retrieval 的一部分，不是完整记忆系统。</li>
+              <li>工作目录只能提供 runtime material，不能承担长期上下文主身份。</li>
+              <li>
+                <code>Space</code> 必须高于 <code>Conversation</code>、<code>Thread</code>、<code>Mount</code>
+                和单次执行。
+              </li>
+            </ul>
+          </article>
+          <article class="hero-card">
+            <h3>设计来源</h3>
+            <ul>
+              <li>论文综述提供 <code>forms × functions × dynamics</code> 的问题空间。</li>
+              <li><code>Supermemory</code> 提供 memory engine / context service 的建模参考。</li>
+              <li><code>AFFiNE</code> 提供 local-first、doc/canvas 和协作表面的能力参考。</li>
+              <li><code>ContextGo</code> 当前产品已具备 agent、connector、IM 和 runtime 壳层基础。</li>
+            </ul>
+          </article>
+        </div>
+
+        <nav>
+          <a href="#thesis">核心结论</a>
+          <a href="#references">参考资料</a>
+          <a href="#docs-map">文档地图</a>
+          <a href="#layers">五层架构</a>
+          <a href="#governance">治理边界</a>
+          <a href="#objects">对象模型</a>
+          <a href="#lifecycle">记忆生命周期</a>
+          <a href="#runtime-connectors">Runtime 与 Connector</a>
+          <a href="#affine">AFFiNE 吸收</a>
+          <a href="#roadmap">实施路线</a>
+        </nav>
+      </header>
+
+      <main>
+        <section id="thesis">
+          <h2>1. 核心结论</h2>
+          <p>
+            <code>ContextGo</code> 下一阶段不应继续围绕“单个工作目录下的 agent 协作”做线性扩展，而应把已有的 agent
+            runtime、connector、IM channel、automation 能力上提到 <code>Space-first</code> 的结构中，由一个独立的
+            <code>Context Engine</code> 负责长期上下文沉淀与每次执行的 <code>Context Pack</code> 组装。
+          </p>
+
+          <div class="quote">
+            <code>Space</code> 是长期逻辑空间，<code>Context Engine</code> 是空间之下的记忆与上下文子系统，<code
+              >Context Pack</code
+            >
+            是一次执行真正送进模型窗口的可解释载荷。
+          </div>
+
+          <div class="grid">
+            <article class="card">
+              <h3>必须避免的偏差</h3>
+              <ul>
+                <li>把 <code>Space</code> 退化成“某个目录的高级名字”。</li>
+                <li>把 <code>Conversation</code> 当成长期知识容器继续膨胀。</li>
+                <li>把 connector 只当成“导入文本到 prompt”的桥。</li>
+                <li>把图谱、白板、笔记 UI 误认成 context engine 本身。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>必须固定的判断</h3>
+              <ul>
+                <li>记忆系统必须分层，不同层使用不同索引结构。</li>
+                <li>记忆必须具备 formation、promotion、compaction、forgetting、review。</li>
+                <li>高价值记忆要有 provenance、scope 和人机协作介入点。</li>
+                <li>
+                  <code>Space</code>、<code>Thread</code>、<code>Mount</code>、<code>Context Pack</code>
+                  必须语义稳定，不再漂移。
+                </li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="references">
+          <h2>2. 参考资料</h2>
+          <p>
+            这部分把当前架构判断所依赖的核心参考集中到一处，并提供可切换视图。目标不是堆链接，而是明确每个参考分别回答什么问题，以及它们在
+            <code>ContextGo</code> 中处于哪一层。
+          </p>
+
+          <div class="reference-tabs" data-tabs>
+            <div class="tab-list" role="tablist" aria-label="参考资料切换">
+              <button
+                class="tab-button"
+                role="tab"
+                id="tab-paper"
+                aria-controls="panel-paper"
+                aria-selected="true"
+                data-tab-target="panel-paper"
+              >
+                参考论文
+              </button>
+              <button
+                class="tab-button"
+                role="tab"
+                id="tab-projects"
+                aria-controls="panel-projects"
+                aria-selected="false"
+                data-tab-target="panel-projects"
+              >
+                参考项目
+              </button>
+              <button
+                class="tab-button"
+                role="tab"
+                id="tab-translation"
+                aria-controls="panel-translation"
+                aria-selected="false"
+                data-tab-target="panel-translation"
+              >
+                论文核心翻译
+              </button>
+            </div>
+
+            <div class="tab-panel is-active" id="panel-paper" role="tabpanel" aria-labelledby="tab-paper">
+              <div class="grid">
+                <article class="card">
+                  <h3>Memory in the Age of AI Agents</h3>
+                  <p>
+                    这篇综述论文最重要的价值，不在于提出一个单点算法，而在于把 agent memory
+                    从“聊天历史更长一点”或“接一个 RAG”里解耦出来，作为一类独立系统能力来讨论。
+                  </p>
+                  <div>
+                    <a class="reference-link" href="https://arxiv.org/abs/2512.13564" target="_blank" rel="noreferrer"
+                      >arXiv 摘要</a
+                    >
+                    <a class="reference-link" href="https://arxiv.org/pdf/2512.13564" target="_blank" rel="noreferrer"
+                      >PDF 原文</a
+                    >
+                  </div>
+                  <p class="reference-note">
+                    报告中采用的核心框架即来自该论文：<code>forms</code>、<code>functions</code>、<code>dynamics</code>
+                    三个维度共同定义 memory system。
+                  </p>
+                </article>
+                <article class="card">
+                  <h3>对本项目最有用的三点</h3>
+                  <ul>
+                    <li>把记忆从“长 / 短期”二分法升级为多维框架。</li>
+                    <li>把 retrieval 放回生命周期的一环，而不是全部。</li>
+                    <li>把 formation、evolution、retrieval 都纳入引擎职责，而不是只做召回。</li>
+                  </ul>
+                </article>
+              </div>
+            </div>
+
+            <div class="tab-panel" id="panel-projects" role="tabpanel" aria-labelledby="tab-projects">
+              <div class="grid">
+                <article class="card">
+                  <h3>Supermemory</h3>
+                  <p>
+                    用来参考
+                    <code>memory engine / context service</code> 的对象建模、统一入口和长期记忆思路，而不是反过来定义
+                    <code>Space</code> 本体。
+                  </p>
+                  <a
+                    class="reference-link"
+                    href="https://github.com/supermemoryai/supermemory"
+                    target="_blank"
+                    rel="noreferrer"
+                    >GitHub 仓库</a
+                  >
+                </article>
+                <article class="card">
+                  <h3>AFFiNE</h3>
+                  <p>
+                    用来吸收 local-first、doc/canvas 融合、块模型、协作表面和人类友好的知识工作台能力，但不能直接充当
+                    <code>Context Engine</code>。
+                  </p>
+                  <a
+                    class="reference-link"
+                    href="https://github.com/toeverything/AFFiNE"
+                    target="_blank"
+                    rel="noreferrer"
+                    >GitHub 仓库</a
+                  >
+                </article>
+                <article class="card">
+                  <h3>Obsidian</h3>
+                  <p>
+                    用来参考文件式知识组织、图视图、Canvas 与人类笔记工作流，但它属于
+                    <code>Context Surface</code> 范畴，不是上下文引擎本身。
+                  </p>
+                  <a class="reference-link" href="https://help.obsidian.md/developers" target="_blank" rel="noreferrer"
+                    >开发者入口</a
+                  >
+                </article>
+                <article class="card">
+                  <h3>角色对照</h3>
+                  <ul>
+                    <li>论文定义问题空间。</li>
+                    <li><code>Supermemory</code> 提供引擎层参考。</li>
+                    <li><code>AFFiNE</code> 与 <code>Obsidian</code> 提供人类表面和知识组织层参考。</li>
+                    <li>
+                      <code>ContextGo</code> 负责把这些吸收成自己的
+                      <code>Space + Context Engine + Execution Runtime</code>。
+                    </li>
+                  </ul>
+                </article>
+              </div>
+            </div>
+
+            <div class="tab-panel" id="panel-translation" role="tabpanel" aria-labelledby="tab-translation">
+              <div class="translation-block">
+                <h3>核心翻译 1：为什么记忆不能等于 RAG</h3>
+                <p>
+                  论文的核心意思可以翻成一句更工程化的话：Agent
+                  的记忆不是简单把外部文本检索回来，它是一套让系统能形成状态、积累经验、保留工作上下文，并在之后任务里被有选择地取回和更新的机制。
+                </p>
+              </div>
+
+              <div class="translation-block">
+                <h3>核心翻译 2：三维框架</h3>
+                <ul>
+                  <li><code>Forms</code>：记忆以什么形式存在，例如 token-level、parametric、latent。</li>
+                  <li><code>Functions</code>：记忆承担什么作用，例如 factual、experiential、working。</li>
+                  <li><code>Dynamics</code>：记忆如何在时间中运行，例如 formation、evolution、retrieval。</li>
+                </ul>
+              </div>
+
+              <div class="translation-block">
+                <h3>核心翻译 3：对 ContextGo 的直接启发</h3>
+                <ul>
+                  <li><code>Context window</code> 只是视窗，真正的系统核心是记忆对象和生命周期。</li>
+                  <li><code>Context Pack</code> 不能等于历史拼接，而是 task-scoped 的筛选和装配。</li>
+                  <li>长期上下文必须拥有升级、压缩、遗忘、审批和 provenance 机制。</li>
+                  <li>文件树、知识图、白板都只是表面或证据层，不能直接等于记忆引擎。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="layers">
+          <h2>3. 五层总架构</h2>
+          <p>
+            整体系统建议拆成五层，每层解决不同问题。上层偏产品心智和人机协作，下层偏长期上下文治理和执行编排，中间通过稳定对象模型衔接。
+          </p>
+
+          <div class="stack">
+            <div class="layer">
+              <strong>Layer 1 · Space Layer</strong>
+              <span>顶层产品逻辑空间。负责 <code>spaceId</code>、成员、权限、默认边界、协作归属、长期资产组织。</span>
+            </div>
+            <div class="layer">
+              <strong>Layer 2 · Execution Layer</strong>
+              <span
+                ><code>Thread / Conversation / Agent Run / IM Session / Cron / Hooks / Runtime Workspace</code
+                >。负责任务执行，不定义长期记忆。</span
+              >
+            </div>
+            <div class="layer">
+              <strong>Layer 3 · Ingestion Layer</strong>
+              <span
+                >统一吸纳 connector、工作目录文件、IM 消息、用户编辑、Agent 产物，把它们转换成标准化上下文对象。</span
+              >
+            </div>
+            <div class="layer">
+              <strong>Layer 4 · Context Engine Layer</strong>
+              <span
+                ><code>document -&gt; chunk -&gt; memory -&gt; profile -&gt; retrieval -&gt; context pack</code
+                >。这是长期记忆、生命周期和装配中枢。</span
+              >
+            </div>
+            <div class="layer">
+              <strong>Layer 5 · Human Surface Layer</strong>
+              <span
+                ><code>Space Docs / Space Canvas / Members / Memory Review / Context Graph</code
+                >。负责让人理解、编辑、审批和协作。</span
+              >
+            </div>
+          </div>
+
+          <div class="diagram">
+            <pre>
+ContextGo Space
+├── Human Surface
+│   ├── Space Docs
+│   ├── Space Canvas
+│   ├── Members / Approval
+│   └── Context Graph / Review UI
+├── Context Engine
+│   ├── Ingestion
+│   ├── Document / Chunk / Memory / Profile
+│   ├── Retrieval / Ranking / Assembly
+│   └── Context Pack
+└── Execution Runtime
+    ├── Thread / Conversation
+    ├── Agent Run / Hooks / Cron
+    ├── Connector Binding
+    ├── IM Channels
+    └── Runtime Workspace / Mount</pre
+            >
+          </div>
+        </section>
+
+        <section id="docs-map">
+          <h2>4. 关联文档地图</h2>
+          <p>
+            这份 HTML
+            报告是总报告，不替代仓库内已经存在的设计稿。它的职责是把长期主约束写死，并给出一条稳定的阅读入口。下面这些文档继续承担各自的专题说明。
+          </p>
+
+          <div class="doc-map">
+            <article class="doc-map-item">
+              <h3>总边界与定位</h3>
+              <ul>
+                <li>
+                  <a href="./docs/charter.md">charter.md</a>：定义 Context Engine 模块目标、非职责和第一阶段成功标准。
+                </li>
+                <li>
+                  <a href="./docs/reference-landscape.md">reference-landscape.md</a>：串联论文、Supermemory、AFFiNE
+                  三类外部参考。
+                </li>
+                <li>
+                  <a href="../../docs/tech/space-model.md">space-model.md</a>：定义 Space-first 的产品主模型和术语边界。
+                </li>
+                <li>
+                  <a href="../../docs/tech/repo-topology.md">repo-topology.md</a>：定义主产品仓库与 sibling connector
+                  仓库的长期边界。
+                </li>
+              </ul>
+            </article>
+
+            <article class="doc-map-item">
+              <h3>引擎内部设计</h3>
+              <ul>
+                <li><a href="./docs/domain-model.md">domain-model.md</a>：对象模型总览。</li>
+                <li><a href="./docs/local-first-sync.md">local-first-sync.md</a>：local-first 与同步演进方向。</li>
+                <li><a href="./docs/implementation-phases.md">implementation-phases.md</a>：阶段性实施路径。</li>
+                <li><a href="./docs/phase-0-1-foundation.md">phase-0-1-foundation.md</a>：基础阶段的收敛目标。</li>
+              </ul>
+            </article>
+
+            <article class="doc-map-item">
+              <h3>外部能力吸收</h3>
+              <ul>
+                <li>
+                  <a href="./docs/supermemory-context-os-fit.md">supermemory-context-os-fit.md</a>：为什么 Supermemory
+                  更适合作为 memory engine 参考，而不是 Space 本体。
+                </li>
+                <li>
+                  <a href="./docs/affine-space-provider.md">affine-space-provider.md</a
+                  >：现有文档名仍保留，但应按“能力吸收”而不是“外部主语”来理解。
+                </li>
+                <li>
+                  <a href="./docs/workbench-space-canvas-interaction.md">workbench-space-canvas-interaction.md</a
+                  >：Canvas/Space 表面的交互约束。
+                </li>
+                <li>
+                  <a href="./docs/affine-block-payload-mapping.md">affine-block-payload-mapping.md</a
+                  >：内容结构与块级数据映射。
+                </li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="governance">
+          <h2>5. 长期治理边界</h2>
+          <p>
+            这套约束不是“等以后实现多了再统一”的文档，而是现在就应该启动的一轮治理。因为项目已经同时拥有
+            <code>Agent runtime</code>、<code>Space</code>、<code>Context Engine</code>、<code>Connector</code>、<code
+              >IM channel</code
+            >、<code>Docs/Canvas</code>
+            这些高耦合方向，如果不尽早固定边界，后续每新增一个能力都会把系统再拉向不同的心智模型。
+          </p>
+
+          <div class="quote">
+            当前最需要防止的不是“功能不够多”，而是“多条能力线各自沿着自己的术语和边界发展”，最后把产品拖进不可维护的多中心架构。
+          </div>
+
+          <div class="grid">
+            <article class="card">
+              <h3>必须被治理的五个边界</h3>
+              <ul>
+                <li><strong>Space vs Conversation</strong>：顶层主语必须是 <code>Space</code>，不是会话。</li>
+                <li><strong>Context Engine vs Surface</strong>：文档、白板、图谱是表面，不是引擎。</li>
+                <li><strong>Context Engine vs Runtime</strong>：记忆与装配属于引擎，执行循环属于 runtime。</li>
+                <li>
+                  <strong>Connector Repo vs Product</strong>：独立 connector 项目负责接入控制面，主产品负责产品化吸收。
+                </li>
+                <li><strong>Human Governance vs Auto Loop</strong>：审批、权限、审计不能藏进 runtime 私有协议里。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>如果不治理，会出现什么</h3>
+              <ul>
+                <li><code>workspace / conversation / space / context</code> 四套主语并存。</li>
+                <li>connector 一会儿被当数据同步器，一会儿被当 runtime，一会儿又被当产品模块。</li>
+                <li>不同 Agent runtime 各自携带自己的 skill / hook / loop 模型，主产品失去定义权。</li>
+                <li><code>AFFiNE</code>、<code>Obsidian</code>、<code>Supermemory</code> 的参考层级被混淆。</li>
+                <li>长期会形成多个“半核心层”，每一层都在偷偷定义系统主模型。</li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="grid">
+            <article class="card">
+              <h3>当前就该启动的治理动作</h3>
+              <ol>
+                <li>
+                  冻结术语表：`Space`、`Thread`、`Mount`、`ConnectorBinding`、`ContextPack`、`Runtime Workspace`。
+                </li>
+                <li>冻结责任矩阵：每个模块都必须回答“这是不是我的职责”。</li>
+                <li>冻结 connector 边界：哪些是 productized，哪些继续在独立项目孵化。</li>
+                <li>冻结 runtime 边界：支持多 runtime，但不承诺私有能力完全等价。</li>
+                <li>冻结 ingestion / execution / governance 三条链，避免一条链同时做三件事。</li>
+              </ol>
+            </article>
+            <article class="card">
+              <h3>治理成功的标志</h3>
+              <ul>
+                <li>新增功能时，能先放到明确层级，而不是先实现再补解释。</li>
+                <li>同一个对象不会在不同模块里被重新命名和重新解释。</li>
+                <li>connector、runtime、context engine 都能并行演进，但不互相抢主语。</li>
+                <li>任何一个外部参考项目都只能影响某一层，而不是反向统治全局。</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="runtime-connectors">
+          <h2>6. 多 Runtime 与 Connector 项目边界</h2>
+          <p>
+            长期支持多种 Agent runtime 是合理的，但不能把产品做成“所有 runtime 的私有协议适配层”。同样，connector
+            也不能既是外部仓库的内部实现细节，又是主产品未定义边界的万能模块。稳定做法是：<code>ContextGo</code>
+            持有产品级执行契约，connector 项目负责能力孵化与接入控制面。
+          </p>
+
+          <div class="grid">
+            <article class="card">
+              <h3>多 Runtime 的长期原则</h3>
+              <ul>
+                <li>支持多 runtime，但不追求所有私有能力完全等价。</li>
+                <li>
+                  <code>skill</code>、<code>hook</code>、<code>multi-agent</code> 的产品语义必须由
+                  <code>ContextGo</code> 定义。
+                </li>
+                <li>runtime adapter 负责把稳定契约翻译成具体 runtime 能力，而不是反过来定义产品主模型。</li>
+                <li>多 agent 的编排定义权在 <code>ContextGo</code>，不是交给某个 runtime 的私有子 agent 协议。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>Connector 项目的长期原则</h3>
+              <ul>
+                <li>
+                  sibling <code>../connector</code> 仓库负责 connector capability incubation 与 connector control
+                  plane。
+                </li>
+                <li>它负责 <code>datasource / profile / runtime / secret</code> 与外部系统接入形态。</li>
+                <li>主产品负责 productization、Space 归属、审批治理、Context Engine 接线与 UI/remote surface。</li>
+                <li>一旦 connector 成为产品能力，其稳定 contract 必须先在主产品仓库中被定义。</li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="grid">
+            <article class="card">
+              <h3>Connector 不是 snapshot pipeline</h3>
+              <ul>
+                <li><code>snapshot</code> 只是 connector 的一种产物，不是 connector 本体。</li>
+                <li>
+                  agent-first connector 的 canonical form 更接近 <code>CLI / MCP / API / managed runtime</code> 这样的
+                  execution surface。
+                </li>
+                <li>进入 <code>Context Engine</code> 的是其中可沉淀、可检索、可抽象的部分。</li>
+                <li>进入 <code>Execution Runtime</code> 的是其中可调用、可观察、可审批的 action surface。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>建议的稳定 contract</h3>
+              <ul>
+                <li>
+                  <strong>Runtime contract</strong>：Run lifecycle、context injection、tool surface、artifact
+                  IO、capability declaration。
+                </li>
+                <li>
+                  <strong>Connector contract</strong>：context outputs、execution capabilities、runtime
+                  handles、health/validation、writeback results。
+                </li>
+                <li><strong>治理约束</strong>：approval broker、audit log、scope isolation 由主产品持有。</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section id="objects">
+          <h2>7. 核心对象模型</h2>
+          <p>
+            产品层对象和引擎层对象必须分开定义。前者负责归属、协作、执行与审批，后者负责沉淀、压缩、检索与组装。<code
+              >Context Engine</code
+            >
+            服务于 <code>Space</code>，不能反向定义 <code>Space</code>。
+          </p>
+
+          <div class="grid">
+            <article class="card">
+              <h3>产品层对象</h3>
+              <ul>
+                <li><strong>Space</strong>：长期逻辑空间，定义隔离、归属与成员协作边界。</li>
+                <li><strong>Thread</strong>：空间内的一条任务线或执行视图。</li>
+                <li><strong>Mount</strong>：当前设备上的本地资源挂载点，不是空间身份。</li>
+                <li><strong>ConnectorBinding</strong>：外部系统上下文通道的绑定关系。</li>
+                <li><strong>SourceItem</strong>：进入空间的标准化外部上下文对象。</li>
+                <li><strong>Artifact</strong>：执行生成的一等产物。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>引擎层对象</h3>
+              <ul>
+                <li><strong>SourceRecord</strong>：可回溯的原始轨迹记录。</li>
+                <li><strong>DocumentSnapshot</strong>：稳定归档的文档快照。</li>
+                <li><strong>Chunk</strong>：最小检索单元。</li>
+                <li><strong>MemoryCandidate</strong>：待评估、待升级的候选记忆。</li>
+                <li><strong>MemoryEntry</strong>：长期有效的高价值语义状态对象。</li>
+                <li><strong>ProfileSegment</strong>：多条记忆压缩出的高层规则、画像或元认知片段。</li>
+                <li><strong>ContextPack</strong>：一次执行真正发送给 agent 的上下文载荷。</li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="diagram">
+            <pre>
+Space
+  -> Thread / SourceItem / Artifact / ConnectorBinding / Member
+    -> SourceRecord / DocumentSnapshot / Chunk / MemoryCandidate / MemoryEntry / ProfileSegment
+      -> RetrievalPlan / ContextPack</pre
+            >
+          </div>
+
+          <div class="pill-row">
+            <div class="pill"><code>MemoryEntry</code> 不等于聊天消息</div>
+            <div class="pill"><code>ProfileSegment</code> 不等于配置项</div>
+            <div class="pill"><code>ContextPack</code> 不等于历史拼接</div>
+            <div class="pill warning"><code>Runtime Workspace</code> 不是顶层产品对象</div>
+          </div>
+        </section>
+
+        <section id="lifecycle">
+          <h2>8. 记忆生命周期与索引策略</h2>
+          <p>
+            一个完整的 memory system 不是“向量库 + 若干
+            prompt”，而是一套会形成、升级、压缩、遗忘、审查和再装配的运行机制。不同记忆层应采用不同存储与索引结构。
+          </p>
+
+          <div class="grid">
+            <article class="card">
+              <h3>生命周期闭环</h3>
+              <ol>
+                <li><strong>Formation</strong>：从聊天、编辑、connector、文件、Agent 产物生成候选记忆。</li>
+                <li><strong>Promotion</strong>：把候选提升为长期记忆，自动或人工确认。</li>
+                <li><strong>Compaction</strong>：将多条记忆压缩成 profile、规则或更高层抽象。</li>
+                <li><strong>Forgetting</strong>：降权、归档、软删除、冲突替换，而不是简单丢弃。</li>
+                <li><strong>Review</strong>：对高影响约束、团队规则和长期事实执行人工审阅。</li>
+                <li><strong>Assembly</strong>：按任务范围、token 预算和优先级组装 <code>Context Pack</code>。</li>
+              </ol>
+            </article>
+            <article class="card">
+              <h3>多层索引策略</h3>
+              <ul>
+                <li><strong>Lexical Index</strong>：关键词、精确字段、命名实体过滤。</li>
+                <li><strong>Vector Index</strong>：语义近邻和 chunk / doc 召回。</li>
+                <li><strong>Structured Index</strong>：偏好、约束、决策、身份等 typed memory。</li>
+                <li>
+                  <strong>Graph Edges</strong>：<code>supports / updates / derives / contradicts / belongs_to</code>。
+                </li>
+                <li><strong>Temporal Index</strong>：recency、活跃 thread、最近变化。</li>
+                <li>
+                  <strong>Scope Index</strong>：<code>space / thread / connector / source kind / member</code>
+                  范围过滤。
+                </li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="diagram">
+            <pre>
+Source / Interaction / Artifact
+        ↓
+Normalization + Provenance
+        ↓
+DocumentSnapshot + Chunk + MemoryCandidate
+        ↓
+Promotion / Review / Compaction / Forgetting
+        ↓
+MemoryEntry + ProfileSegment
+        ↓
+Retrieval + Ranking + Budgeting
+        ↓
+ContextPack → Agent Context Window</pre
+            >
+          </div>
+        </section>
+
+        <section id="affine">
+          <h2>9. AFFiNE 的正确吸收方式</h2>
+          <p>
+            <code>AFFiNE</code> 的价值在于 local-first、doc/canvas
+            融合、块级内容模型、协同存储与人类友好的工作台交互。要吸收的是这些能力，而不是把
+            <code>AFFiNE</code> 当成外围 provider 或直接让它定义 <code>ContextGo</code> 的顶层产品边界。
+          </p>
+
+          <div class="grid">
+            <article class="card">
+              <h3>应当吸收的能力</h3>
+              <ul>
+                <li><code>doc + canvas</code> 的统一工作表面。</li>
+                <li>block-based 内容模型和 edgeless interaction。</li>
+                <li>local-first storage / sync / collaboration substrate。</li>
+                <li>让人更容易编辑、组织、审阅上下文的交互模式。</li>
+              </ul>
+            </article>
+            <article class="card">
+              <h3>不应交给 AFFiNE 定义的部分</h3>
+              <ul>
+                <li><code>Space</code> 的产品级身份与命名。</li>
+                <li>Agent runtime、connector orchestration、IM channel 模型。</li>
+                <li>memory lifecycle、context governance、approval 规则。</li>
+                <li><code>Context Pack</code> 的装配逻辑和执行时决策权。</li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="quote">
+            不是 <code>AFFiNE as provider</code>，而是 <code>AFFiNE capability absorption into ContextGo Space</code>。
+          </div>
+
+          <div class="grid">
+            <article class="card">
+              <h3>吸收后的定位</h3>
+              <p>
+                <code>AFFiNE</code> 更适合作为 <code>Space Surface substrate</code> 与
+                <code>local-first collaboration substrate</code> 的能力来源，进入 <code>Space Docs</code>、<code
+                  >Space Canvas</code
+                >、内容组织与协作表面。
+              </p>
+            </article>
+            <article class="card">
+              <h3>最终边界</h3>
+              <p>
+                <code>ContextGo</code> 继续定义顶层 <code>Space</code>、长期上下文引擎、execution runtime 与 connector /
+                channel 体系；<code>AFFiNE</code> 贡献的是人类表面与内容底座，而不是系统主语。
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section id="roadmap">
+          <h2>10. 分阶段实施路线</h2>
+          <p>
+            为避免继续在
+            <code>workspace / conversation / space / context</code> 四套心智模型中来回漂移，建议先锁边界，再补 ingestion
+            和 context pack 中枢，最后再做更强的图谱和协作表面。
+          </p>
+
+          <div class="timeline">
+            <article class="timeline-item">
+              <strong>Phase 0</strong>
+              <div>
+                <p>冻结术语和责任边界。</p>
+                <ul>
+                  <li>
+                    统一
+                    <code>Space / Thread / Mount / Runtime Workspace / SourceItem / Artifact / ContextPack</code>
+                    的定义。
+                  </li>
+                  <li>明确 <code>Conversation</code> 在迁移期只是 <code>Thread</code> 的近似承载。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="timeline-item">
+              <strong>Phase 1</strong>
+              <div>
+                <p>先做归属和 provenance，再谈高级检索。</p>
+                <ul>
+                  <li>长期对象优先补齐 <code>spaceId</code>。</li>
+                  <li>统一 <code>threadId / connectorBindingId / mountId / origin</code> 等追踪字段。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="timeline-item">
+              <strong>Phase 2</strong>
+              <div>
+                <p>统一 ingestion 入口。</p>
+                <ul>
+                  <li>connector、工作目录、IM、文档编辑、Agent 产物都走标准入库路径。</li>
+                  <li>不允许每类来源各自发明独立 memory 写法。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="timeline-item">
+              <strong>Phase 3</strong>
+              <div>
+                <p>把 <code>Context Pack</code> 组装做成系统中枢。</p>
+                <ul>
+                  <li>
+                    区分 thread state、active space context、retrieved memory、profile、evidence、runtime context。
+                  </li>
+                  <li>让每次 Agent 执行都可解释、可裁剪、可审查。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="timeline-item">
+              <strong>Phase 4</strong>
+              <div>
+                <p>补齐记忆生命周期闭环。</p>
+                <ul>
+                  <li>上线 promotion、review、compaction、forgetting、profile refresh 的 runtime 闭环。</li>
+                  <li>区分自动升级与人工审批的边界。</li>
+                </ul>
+              </div>
+            </article>
+            <article class="timeline-item">
+              <strong>Phase 5</strong>
+              <div>
+                <p>再做图谱、Canvas 和更强的人类协作表面。</p>
+                <ul>
+                  <li>图谱要服务于解释、审查和导航，而不是先于 engine core 独立膨胀。</li>
+                  <li><code>Space Docs / Space Canvas / Members</code> 才是长期协作的落点。</li>
+                </ul>
+              </div>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        本报告用于固定 <code>ContextGo</code> 的长期上下文引擎方向：<code>Space-first</code>、<code
+          >Context Engine</code
+        >
+        独立化、<code>Context Pack</code> 产品化，以及对 <code>AFFiNE</code> 与
+        <code>Supermemory</code> 的能力吸收边界。它不是代码实现说明，而是下一阶段所有数据模型、UI 表面与 runtime
+        接线的共同约束。
+      </footer>
+    </div>
+
+    <script>
+      const tabGroups = document.querySelectorAll('[data-tabs]');
+
+      for (const group of tabGroups) {
+        const buttons = Array.from(group.querySelectorAll('[data-tab-target]'));
+        const panels = Array.from(group.querySelectorAll('.tab-panel'));
+
+        const activate = (targetId) => {
+          buttons.forEach((button) => {
+            const selected = button.getAttribute('data-tab-target') === targetId;
+            button.setAttribute('aria-selected', selected ? 'true' : 'false');
+          });
+
+          panels.forEach((panel) => {
+            panel.classList.toggle('is-active', panel.id === targetId);
+          });
+        };
+
+        buttons.forEach((button) => {
+          button.addEventListener('click', () => activate(button.getAttribute('data-tab-target')));
+        });
+      }
+    </script>
+  </body>
+</html>

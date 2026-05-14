@@ -1,0 +1,42 @@
+/**
+ * @license
+ * Copyright 2025 ContextGo (contextgo.io)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/**
+ * Centralized localStorage keys for the application
+ * 应用程序的集中式 localStorage 键管理
+ *
+ * All localStorage keys should be defined here to:
+ * - Avoid key conflicts
+ * - Make it easy to find and manage all persisted states
+ * - Provide a single source of truth for storage key names
+ */
+export const STORAGE_KEYS = {
+  /** Workspace tree collapse state / 工作空间目录树折叠状态 */
+  WORKSPACE_TREE_COLLAPSE: 'contextgo_workspace_collapse_state',
+
+  /** Workspace panel collapse state / 工作空间面板折叠状态 */
+  WORKSPACE_PANEL_COLLAPSE: 'contextgo_workspace_panel_collapsed',
+
+  /** Conversation tabs state / 会话 tabs 状态 */
+  CONVERSATION_TABS: 'contextgo_conversation_tabs',
+
+  /** Hosted remote device route prefix / 官方 Remote 设备路由前缀 */
+  OFFICIAL_REMOTE_DEVICE_ROUTE_PREFIX: 'contextgo:official-remote-device-route:',
+
+  /** Sidebar collapse state / 侧边栏折叠状态 */
+  SIDEBAR_COLLAPSE: 'contextgo_sider_collapsed',
+
+  /** Theme preference / 主题偏好 */
+  THEME: 'contextgo_theme',
+
+  /** Language preference / 语言偏好 */
+  LANGUAGE: 'contextgo_language',
+
+  /** Selected Space identifier / 当前选中的 Space ID */
+  SELECTED_SPACE_ID: 'contextgo_selected_space_id',
+} as const;
+
+export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

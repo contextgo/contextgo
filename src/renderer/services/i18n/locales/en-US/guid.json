@@ -1,0 +1,100 @@
+{
+  "agentFallbackNotice": "{{original}} is unavailable, using {{fallback}} instead.",
+  "noAgentAvailable": "No Main Agent is available. Please login to Google or install Claude/Codex CLI. Go to settings?",
+  "noAgentAvailableShort": "No Main Agent available. Click to configure.",
+  "agentTabAutoSwitch": "Model not compatible with Gemini, auto-switched to {{fallback}}",
+  "autoSwitchToAgent": "Gemini is not configured, auto-switching to {{agent}}",
+  "autoSwitchedAgent": "{{from}} is not available, switched to {{to}}",
+  "sendFailed": "Failed to send the message. Please try again.",
+  "sendFailedWithReason": "Failed to send the message: {{reason}}",
+  "externalSessions": {
+    "title": "Continue external sessions",
+    "titleVariants": {
+      "continueWork": "Continue outside work",
+      "resumeProgress": "Pick up unfinished work",
+      "bringBack": "Bring outside progress back"
+    },
+    "description": "New CLI sessions created outside ContextGo will appear here when they have not been taken over yet.",
+    "filters": {
+      "all": "All"
+    },
+    "refresh": "Refresh",
+    "loading": "Scanning external sessions...",
+    "loadingShort": "Preparing",
+    "updatedAt": "Updated {{time}}",
+    "import": "Take over",
+    "loadFailed": "Failed to scan external sessions.",
+    "loadFailedShort": "Try again",
+    "importFailed": "Failed to take over the selected external session.",
+    "readyCountShort": "{{count}} ready",
+    "emptyState": "No external sessions are waiting yet.",
+    "emptyStateShort": "Nothing pending",
+    "providers": {
+      "claude": "Claude",
+      "codex": "Codex",
+      "gemini": "Gemini",
+      "opencode": "OpenCode",
+      "openclaw-gateway": "OpenClaw"
+    },
+    "readyCount": "{{count}} sessions ready",
+    "open": "Open"
+  },
+  "openclaw": {
+    "defaultAgent": "Default"
+  },
+  "scanning": {
+    "initialMessage": "Current Agent is unavailable, detecting other available agents...",
+    "scanningMessage": "Scanning local available agents...",
+    "connectingMessage": "Connected successfully, please wait...",
+    "establishingConnection": "Establishing connection...",
+    "statusQueued": "Queued",
+    "statusTesting": "Testing latency...",
+    "statusUnreachable": "Unreachable",
+    "statusAvailable": "Available"
+  },
+  "vault": {
+    "title": "Open Space Vault",
+    "description": "Open the ContextGo-managed Obsidian vault for the selected space.",
+    "affordance": "Open Vault",
+    "mobileAffordance": "Open in Obsidian",
+    "mobileSetupAffordance": "Set Up in Obsidian",
+    "mobileStatusReady": "Ready on this device",
+    "mobileStatusNeedsSetup": "Needs one-time Obsidian bind",
+    "androidStatusPrepared": "Android vault folder prepared",
+    "androidStatusRegistered": "Android mobile replica registered",
+    "androidSetupPrepared": "Android vault folder prepared. Finish binding it in Obsidian.",
+    "androidReplicaRegistered": "Android mobile replica registered with ContextGo Cloud.",
+    "androidSetupCancelled": "Android vault setup was cancelled.",
+    "statusReady": "Open in Obsidian or Finder",
+    "openSuccess": "Space vault opened.",
+    "openFailed": "Failed to open the space vault.",
+    "obsidianMissing": "Obsidian was not detected. The vault folder and download page have been opened for you.",
+    "mobileSetupRequired": "Finish binding this Space in Obsidian on the current device first."
+  },
+  "space": {
+    "loading": "Loading spaces...",
+    "empty": "No space selected",
+    "newSpace": "New Space",
+    "selectorTitle": "Switch space",
+    "createTitle": "Create Space",
+    "createAction": "Create Space",
+    "namePlaceholder": "Space name",
+    "descriptionPlaceholder": "Description (optional)",
+    "nameRequired": "Space name is required.",
+    "createSuccess": "Created space {{name}}.",
+    "createFailed": "Failed to create space.",
+    "switchSuccess": "Switched to {{name}}.",
+    "switchFailed": "Failed to switch space."
+  },
+  "contextEngine": {
+    "title": "Context Engine",
+    "systemManaged": "System-managed",
+    "loading": "Loading maintenance activity...",
+    "loadFailed": "Failed to load maintenance activity.",
+    "activeCount": "{{count}} maintenance run active",
+    "idleCount": "{{count}} maintenance agent watching",
+    "empty": "Waiting for the first maintenance run.",
+    "defaultTask": "No summary yet",
+    "scope": "Scope: {{scope}}"
+  }
+}

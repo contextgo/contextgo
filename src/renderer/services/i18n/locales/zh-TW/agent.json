@@ -1,0 +1,127 @@
+{
+  "health": {
+    "detectedError": "檢測到當前 Agent ({{agent}}) 回應異常",
+    "autoSwitching": "。系統將自動嘗試切換線路。",
+    "evaluating": "正在評估網路延遲與模型可用性...",
+    "checking": "檢查 {{agent}} 節點...",
+    "foundBest": "已找到最佳替代方案",
+    "recommendSwitch": "推薦切換",
+    "available": "可用",
+    "lowLatency": "低延遲",
+    "mediumLatency": "中等延遲",
+    "highLatency": "高延遲",
+    "bestMatch": "最佳匹配",
+    "noAvailable": "當前環境沒有可用 agent",
+    "checkConfig": "請檢查配置或稍後重試"
+  },
+  "setup": {
+    "connectionError": "連接錯誤",
+    "notConfigured": "{{agent}} 尚未配置",
+    "authRequired": "使用此 Agent 需要先完成認證或配置 API Key。",
+    "findingAlternatives": "正在查找可用的替代方案...",
+    "checkingAgent": "正在檢查 {{agent}}...",
+    "alternativesFound": "找到 {{count}} 個可用的替代方案",
+    "autoSwitching": "正在自動切換到最佳可用 Agent...",
+    "configError": "配置有問題，請檢查配置或選擇其他 Agent：",
+    "noAlternatives": "未找到可用的 Agent",
+    "configureFirst": "請先在設定中配置一個 Agent。",
+    "switching": "正在切換 Agent..."
+  },
+  "hooks": {
+    "sidecarExported": "已為 {{hookName}} 匯出 sidecar 檔案。",
+    "markdownPath": "Markdown",
+    "metadataPath": "中繼資料",
+    "openMarkdown": "開啟 Markdown",
+    "showInFolder": "顯示所在資料夾",
+    "sidecarActionFailed": "無法開啟匯出的 sidecar 輸出。"
+  },
+  "contextEngine": {
+    "title": "上下文引擎",
+    "description": "系統託管的維護 Agent 會持續壓縮會話上下文，並把穩定的專案知識提升到專案層。",
+    "systemManaged": "系統託管",
+    "loading": "正在載入維護任務...",
+    "loadFailed": "載入維護任務失敗。",
+    "activeCount": "{{count}} 個維護任務執行中",
+    "idleCount": "{{count}} 個維護 Agent 正在觀察",
+    "empty": "等待第一條維護任務出現。",
+    "taskFallback": "暫無摘要",
+    "scope": "作用範圍：{{scope}}",
+    "latestEvent": "最新事件：{{event}}",
+    "updatedAt": "更新時間：{{time}}",
+    "openConsole": "查看執行台",
+    "active": "執行中",
+    "idle": "觀察中",
+    "state": {
+      "error": "異常",
+      "executing": "執行中",
+      "idle": "空閒",
+      "researching": "檢索中",
+      "syncing": "同步中",
+      "writing": "寫入中"
+    },
+    "groupActiveCount": "{{count}} 個任務執行中",
+    "groupWatchingCount": "{{count}} 個 Agent 正在觀察",
+    "artifactTitle": "文件：{{title}}",
+    "artifactPath": "路徑：{{path}}",
+    "groups": {
+      "session_compaction": "會話壓縮",
+      "project_promotion": "專案提升",
+      "other": "其他維護任務"
+    },
+    "operationLog": {
+      "signal": {
+        "user_interrupt": {
+          "title": "執行已中斷",
+          "summary": "本次執行已被手動停止。"
+        },
+        "repeated_request": {
+          "title": "任務再次被提起"
+        },
+        "strategy_shift": {
+          "title": "本輪思路發生變化"
+        },
+        "tool_failure_cluster": {
+          "title": "工具失敗開始集中出現"
+        },
+        "memory_candidate_created": {
+          "title": "提煉出待確認經驗"
+        },
+        "memory_candidate_promoted": {
+          "title": "沉澱了一條穩定經驗"
+        },
+        "context_window_prepared": {
+          "title": "已準備本輪上下文",
+          "summary": "已整理繼續當前任務所需的上下文。",
+          "recentSignals": "已納入 {{count}} 條近期上下文記錄。"
+        }
+      },
+      "job": {
+        "session_compaction": {
+          "queued": "已排隊更新會話上下文",
+          "completed": "已更新會話上下文",
+          "failed": "會話上下文更新失敗"
+        },
+        "session_pattern_detection": {
+          "queued": "已排隊掃描會話模式",
+          "completed": "已完成會話模式掃描",
+          "failed": "會話模式掃描失敗"
+        },
+        "project_promotion": {
+          "queued": "已排隊更新專案知識",
+          "completed": "已更新專案知識",
+          "failed": "專案知識更新失敗"
+        },
+        "space_memory_distillation": {
+          "queued": "已排隊提煉空間記憶",
+          "completed": "已完成空間記憶提煉",
+          "failed": "空間記憶提煉失敗"
+        },
+        "connector_digest": {
+          "queued": "已排隊整理連接器摘要",
+          "completed": "已完成連接器摘要整理",
+          "failed": "連接器摘要整理失敗"
+        }
+      }
+    }
+  }
+}

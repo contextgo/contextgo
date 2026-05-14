@@ -1,0 +1,711 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const hoistedMocks = vi.hoisted(() => ({
+  configStorageGetMock: vi.fn(),
+}));
+
+const useLayoutContextMock = vi.fn();
+const useConversationTabsMock = vi.fn();
+const useSWRMock = vi.fn();
+const configStorageGetMock = hoistedMocks.configStorageGetMock;
+const navigateMock = vi.fn();
+const useParamsMock = vi.fn();
+const closePreviewMock = vi.fn();
+const getModelInfoInvokeMock = vi.fn();
+const probeModelInfoInvokeMock = vi.fn();
+const setModelInvokeMock = vi.fn();
+const responseStreamOnMock = vi.fn(() => vi.fn());
+const openclawGetModelInfoInvokeMock = vi.fn();
+const openclawSetModelInvokeMock = vi.fn();
+const openclawResponseStreamOnMock = vi.fn(() => vi.fn());
+const openclawGetRuntimeInvokeMock = vi.fn();
+const getModelConfigInvokeMock = vi.fn();
+const messageErrorMock = vi.fn();
+let isMobileShellWebViewMock = false;
+let acpResponseStreamHandler: ((message: { conversation_id?: string; type: string; data?: unknown }) => void) | null =
+  null;
+const chatConversationMock = vi.fn(({ conversation }: { conversation: { name: string } }) => (
+  <div data-testid='chat-conversation'>{conversation.name}</div>
+));
+
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    conversation: {
+      create: { invoke: vi.fn() },
+    },
+    acpConversation: {
+      getModelInfo: { invoke: (...args: unknown[]) => getModelInfoInvokeMock(...args) },
+      probeModelInfo: { invoke: (...args: unknown[]) => probeModelInfoInvokeMock(...args) },
+      setModel: { invoke: (...args: unknown[]) => setModelInvokeMock(...args) },
+      responseStream: { on: (...args: unknown[]) => responseStreamOnMock(...args) },
+    },
+    openclawConversation: {
+      getModelInfo: { invoke: (...args: unknown[]) => openclawGetModelInfoInvokeMock(...args) },
+      setModel: { invoke: (...args: unknown[]) => openclawSetModelInvokeMock(...args) },
+      responseStream: { on: (...args: unknown[]) => openclawResponseStreamOnMock(...args) },
+      getRuntime: { invoke: (...args: unknown[]) => openclawGetRuntimeInvokeMock(...args) },
+    },
+    mode: {
+      getModelConfig: { invoke: (...args: unknown[]) => getModelConfigInvokeMock(...args) },
+    },
+  },
+}));
+
+vi.mock('@/common/config/storage', () => ({
+  ConfigStorage: {
+    get: (...args: unknown[]) => hoistedMocks.configStorageGetMock(...args),
+  },
+}));
+
+vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
+  useLayoutContext: () => useLayoutContextMock(),
+}));
+
+vi.mock('@/renderer/hooks/context/ThemeContext', () => ({
+  useThemeContext: () => ({
+    theme: 'light',
+    setTheme: vi.fn(),
+    colorScheme: 'default',
+    setColorScheme: vi.fn(),
+    fontScale: 1,
+    setFontScale: vi.fn(),
+  }),
+}));
+
+vi.mock('@/renderer/pages/conversation/hooks/ConversationTabsContext', () => ({
+  useConversationTabs: () => useConversationTabsMock(),
+}));
+
+vi.mock('@/renderer/hooks/agent/usePresetAssistantInfo', () => ({
+  usePresetAssistantInfo: () => ({ info: null }),
+}));
+
+vi.mock('@/renderer/pages/conversation/hooks/useConversationAgents', () => ({
+  useConversationAgents: () => ({
+    cliAgents: [],
+    presetAssistants: [],
+    isLoading: false,
+  }),
+}));
+
+vi.mock('@/renderer/utils/model/agentLogo', () => ({
+  getAgentLogo: () => undefined,
+  getModelLogo: () => undefined,
+  getModelDisplayLabel: ({ selectedLabel, fallbackLabel }: { selectedLabel?: string; fallbackLabel: string }) =>
+    selectedLabel || fallbackLabel,
+}));
+
+vi.mock('@/renderer/utils/emitter', () => ({
+  emitter: { emit: vi.fn() },
+}));
+
+vi.mock('@/renderer/utils/ui/siderTooltip', () => ({
+  cleanupSiderTooltips: vi.fn(),
+}));
+
+vi.mock('@/renderer/utils/workspace/workspaceHistory', () => ({
+  updateWorkspaceTime: vi.fn(),
+}));
+
+vi.mock('@/renderer/utils/platform', () => ({
+  isMobileShellWebView: () => isMobileShellWebViewMock,
+}));
+
+vi.mock('@/renderer/pages/guid/constants', () => ({
+  CUSTOM_AVATAR_IMAGE_MAP: {},
+}));
+
+vi.mock('@/renderer/pages/conversation/utils/newConversationName', () => ({
+  applyDefaultConversationName: vi.fn((value) => value),
+}));
+
+vi.mock('@/renderer/pages/conversation/utils/createConversationParams', () => ({
+  buildCliAgentParams: vi.fn(),
+  buildPresetAssistantParams: vi.fn(),
+}));
+
+vi.mock('react-router-dom', () => ({
+  useNavigate: () => navigateMock,
+  useParams: () => useParamsMock(),
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'zh-CN' },
+  }),
+}));
+
+vi.mock('@icon-park/react', () => ({
+  Brain: (props: React.HTMLAttributes<HTMLSpanElement>) => <span {...props}>brain</span>,
+  Close: (props: React.HTMLAttributes<HTMLSpanElement>) => <span {...props}>close</span>,
+  MessageOne: (props: React.HTMLAttributes<HTMLSpanElement>) => <span {...props}>message</span>,
+  Plus: (props: React.HTMLAttributes<HTMLSpanElement>) => <span {...props}>plus</span>,
+  Robot: (props: React.HTMLAttributes<HTMLSpanElement>) => <span {...props}>robot</span>,
+}));
+
+vi.mock('@arco-design/web-react', () => ({
+  Button: ({
+    children,
+    title,
+    className,
+    style,
+    disabled,
+    onClick,
+  }: {
+    children: React.ReactNode;
+    title?: string;
+    className?: string;
+    style?: React.CSSProperties;
+    disabled?: boolean;
+    onClick?: () => void;
+  }) => (
+    <button title={title} className={className} style={style} disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  ),
+  Dropdown: ({ children, droplist }: { children: React.ReactNode; droplist?: React.ReactNode }) => (
+    <>
+      {children}
+      {droplist}
+    </>
+  ),
+  Popover: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Menu: Object.assign(({ children }: { children: React.ReactNode }) => <div>{children}</div>, {
+    Item: ({
+      children,
+      onClick,
+      className,
+    }: {
+      children: React.ReactNode;
+      onClick?: () => void;
+      className?: string;
+    }) => (
+      <button type='button' className={className} onClick={onClick}>
+        {children}
+      </button>
+    ),
+    ItemGroup: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  }),
+  Message: {
+    error: (...args: unknown[]) => messageErrorMock(...args),
+  },
+  Select: Object.assign(
+    ({
+      children,
+      value,
+      onChange,
+    }: {
+      children?: React.ReactNode;
+      value?: string;
+      onChange?: (value: string) => void;
+    }) => (
+      <select value={value} onChange={(event) => onChange?.(event.target.value)}>
+        {children}
+      </select>
+    ),
+    {
+      Option: ({ children, value }: { children?: React.ReactNode; value: string }) => (
+        <option value={value}>{children}</option>
+      ),
+      OptGroup: ({ children, label }: { children?: React.ReactNode; label: string }) => (
+        <optgroup label={label}>{children}</optgroup>
+      ),
+    }
+  ),
+  Spin: ({ loading }: { loading?: boolean }) => (loading ? <div>loading</div> : null),
+  Steps: Object.assign(({ children }: { children?: React.ReactNode }) => <div>{children}</div>, {
+    Step: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  }),
+}));
+
+vi.mock('swr', () => ({
+  default: (...args: unknown[]) => useSWRMock(...args),
+}));
+
+vi.mock('@/renderer/pages/conversation/Preview', () => ({
+  usePreviewActions: () => ({
+    closePreview: closePreviewMock,
+  }),
+  usePreviewSurface: () => ({
+    isOpen: false,
+    activeTab: null,
+    activeTabId: null,
+  }),
+}));
+
+vi.mock('@/renderer/pages/conversation/Preview/context', () => ({
+  usePreviewSurface: () => ({
+    isOpen: false,
+    activeTab: null,
+    activeTabId: null,
+  }),
+}));
+
+vi.mock('@/renderer/pages/conversation/components/ChatConversation', () => ({
+  default: (props: { conversation: { name: string } }) => chatConversationMock(props),
+}));
+
+import ChatConversationIndex from '@/renderer/pages/conversation';
+import AcpModelSelector from '@/renderer/components/agent/AcpModelSelector';
+import ConversationTabs, {
+  resolveConversationTabDensity,
+  resolveConversationTabWidth,
+} from '@/renderer/pages/conversation/components/ConversationTabs';
+import GeminiModelSelector from '@/renderer/pages/conversation/platforms/gemini/GeminiModelSelector';
+
+describe('ConversationTabs', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isMobileShellWebViewMock = false;
+    navigateMock.mockReset();
+    useParamsMock.mockReturnValue({ id: 'conv-1' });
+    useSWRMock.mockImplementation((key: unknown) => {
+      if (key === 'model.config') {
+        return {
+          data: [
+            {
+              id: 'provider-1',
+              name: 'Claude',
+              platform: 'claude',
+              model: ['claude-3.7-sonnet', 'claude-3.5-haiku'],
+              modelHealth: {
+                'claude-3.7-sonnet': {
+                  status: 'healthy',
+                },
+              },
+            },
+          ],
+          isLoading: false,
+        };
+      }
+
+      return {
+        data: {
+          id: 'conv-1',
+          name: 'OpenClaw Session',
+          type: 'openclaw-gateway',
+          workspace: '/tmp/workspace',
+          extra: { backend: 'openclaw-gateway' },
+        },
+        isLoading: false,
+      };
+    });
+    configStorageGetMock.mockResolvedValue(undefined);
+    getModelInfoInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'claude-3.7-sonnet',
+          currentModelLabel: 'claude-3.7-sonnet',
+          canSwitch: true,
+          availableModels: [{ id: 'claude-3.7-sonnet', label: 'claude-3.7-sonnet' }],
+        },
+      },
+    });
+    probeModelInfoInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'claude-3.7-sonnet',
+          currentModelLabel: 'claude-3.7-sonnet',
+          canSwitch: true,
+          availableModels: [
+            { id: 'claude-3.7-sonnet', label: 'claude-3.7-sonnet' },
+            { id: 'claude-3.5-haiku', label: 'claude-3.5-haiku' },
+          ],
+        },
+      },
+    });
+    openclawGetModelInfoInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'claude-3.7-sonnet',
+          currentModelLabel: 'claude-3.7-sonnet',
+          canSwitch: true,
+          switchSupported: true,
+          availableModels: [
+            { id: 'claude-3.7-sonnet', label: 'claude-3.7-sonnet' },
+            { id: 'claude-3.5-haiku', label: 'claude-3.5-haiku' },
+          ],
+        },
+      },
+    });
+    openclawSetModelInvokeMock.mockResolvedValue({ success: true, data: { modelInfo: null } });
+    openclawResponseStreamOnMock.mockReturnValue(vi.fn());
+    openclawGetRuntimeInvokeMock.mockResolvedValue({
+      success: true,
+      data: {
+        conversationId: 'conv-openclaw',
+        runtime: {
+          modelProvider: 'claude',
+          model: 'claude-3.7-sonnet',
+        },
+      },
+    });
+    setModelInvokeMock.mockResolvedValue({ success: true, data: { modelInfo: null } });
+    acpResponseStreamHandler = null;
+    responseStreamOnMock.mockImplementation(
+      (listener: (message: { conversation_id?: string; type: string; data?: unknown }) => void) => {
+        acpResponseStreamHandler = listener;
+        return vi.fn();
+      }
+    );
+    getModelConfigInvokeMock.mockResolvedValue([
+      {
+        id: 'provider-1',
+        name: 'Claude',
+        platform: 'claude',
+        model: ['claude-3.7-sonnet', 'claude-3.5-haiku'],
+        modelHealth: {
+          'claude-3.7-sonnet': {
+            status: 'healthy',
+          },
+        },
+      },
+    ]);
+    useConversationTabsMock.mockReturnValue({
+      openTabs: [
+        {
+          id: 'conv-1',
+          name: 'OpenClaw Session',
+          type: 'openclaw-gateway',
+          workspace: '/tmp/workspace',
+          extra: { backend: 'openclaw-gateway' },
+        },
+      ],
+      activeTabId: 'conv-1',
+      switchTab: vi.fn(),
+      closeTab: vi.fn(),
+      closeAllTabs: vi.fn(),
+      closeTabsToLeft: vi.fn(),
+      closeTabsToRight: vi.fn(),
+      closeOtherTabs: vi.fn(),
+      openTabsForConversations: vi.fn(),
+    });
+  });
+
+  it('uses full-height alignment classes on desktop header', () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+
+    const { container } = render(<ConversationTabs showHeaderActions={false} />);
+    const root = container.firstElementChild;
+    const inner = root?.firstElementChild;
+
+    expect(root?.className).toContain('h-full');
+    expect(root?.className).toContain('w-full');
+    expect(root?.className).toContain('max-w-full');
+    expect(root?.className).toContain('items-center');
+    expect(inner?.className).toContain('h-full');
+    expect(inner?.className).toContain('max-w-full');
+    expect(screen.getByText('OpenClaw Session')).toBeInTheDocument();
+    expect(root).not.toHaveClass('bg-1');
+    expect(root).toHaveStyle({ background: 'var(--app-conversation-strip-bg, var(--bg-1))' });
+  });
+
+  it('keeps the compact mobile wrapper sizing on mobile', () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: true });
+
+    const { container } = render(<ConversationTabs showHeaderActions={false} />);
+    const root = container.firstElementChild;
+
+    expect(root?.className).toContain('min-h-42px');
+    expect(root?.className).toContain('py-4px');
+  });
+
+  it('uses an embedded mobile wrapper when tabs share the row with chat controls', () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: true });
+
+    const { container } = render(<ConversationTabs showHeaderActions={false} mobileEmbedded />);
+    const root = container.firstElementChild;
+    const inner = root?.firstElementChild;
+
+    expect(root?.className).toContain('flex-1');
+    expect(root?.className).toContain('bg-transparent');
+    expect(root?.className).toContain('py-0');
+    expect(inner?.className).toContain('h-34px');
+    expect(root).toHaveStyle({ background: 'transparent' });
+  });
+
+  it('uses compact fixed-width tabs inside the mobile shell', () => {
+    isMobileShellWebViewMock = true;
+    useLayoutContextMock.mockReturnValue({ isMobile: true });
+
+    const { container } = render(<ConversationTabs showHeaderActions={false} />);
+    const tab = container.querySelector('[aria-label="OpenClaw Session"]') as HTMLDivElement | null;
+
+    expect(tab?.dataset.density).toBe('compact');
+    expect(tab?.style.width).toBe('88px');
+  });
+
+  it('keeps mobile shell density compact until the header becomes extremely cramped', () => {
+    expect(
+      resolveConversationTabDensity({
+        isMobile: true,
+        isMobileShell: true,
+        openTabsCount: 4,
+        containerWidth: 0,
+        showHeaderActions: false,
+      })
+    ).toBe('compact');
+    expect(
+      resolveConversationTabDensity({
+        isMobile: true,
+        isMobileShell: true,
+        openTabsCount: 5,
+        containerWidth: 180,
+        showHeaderActions: false,
+      })
+    ).toBe('icon');
+  });
+
+  it('switches to icon density when desktop tabs become crowded', () => {
+    expect(
+      resolveConversationTabDensity({
+        isMobile: false,
+        isMobileShell: false,
+        openTabsCount: 12,
+        containerWidth: 0,
+        showHeaderActions: true,
+      })
+    ).toBe('icon');
+  });
+
+  it('shrinks desktop density with the chat slot width even without header actions', () => {
+    expect(
+      resolveConversationTabDensity({
+        isMobile: false,
+        isMobileShell: false,
+        openTabsCount: 7,
+        containerWidth: 220,
+        showHeaderActions: false,
+      })
+    ).toBe('icon');
+    expect(
+      resolveConversationTabDensity({
+        isMobile: false,
+        isMobileShell: false,
+        openTabsCount: 7,
+        containerWidth: 920,
+        showHeaderActions: false,
+      })
+    ).toBe('full');
+  });
+
+  it('shrinks desktop tab width with the available chat slot width', () => {
+    expect(
+      resolveConversationTabWidth({
+        density: 'full',
+        openTabsCount: 5,
+        containerWidth: 620,
+        showHeaderActions: false,
+      })
+    ).toBe(120);
+    expect(
+      resolveConversationTabWidth({
+        density: 'full',
+        openTabsCount: 5,
+        containerWidth: 1020,
+        showHeaderActions: false,
+      })
+    ).toBe(184);
+  });
+
+  it('renders icon-only tabs when there are many desktop tabs and uses close icon for the active tab', () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+    useConversationTabsMock.mockReturnValue({
+      openTabs: Array.from({ length: 12 }, (_, index) => ({
+        id: `conv-${index + 1}`,
+        name: `Session ${index + 1}`,
+        type: 'openclaw-gateway',
+        workspace: `/tmp/workspace-${index + 1}`,
+        extra: { backend: 'openclaw-gateway' },
+      })),
+      activeTabId: 'conv-1',
+      switchTab: vi.fn(),
+      closeTab: vi.fn(),
+      closeAllTabs: vi.fn(),
+      closeTabsToLeft: vi.fn(),
+      closeTabsToRight: vi.fn(),
+      closeOtherTabs: vi.fn(),
+    });
+
+    const { container } = render(<ConversationTabs showHeaderActions={false} />);
+    const tabs = container.querySelectorAll('[data-density="icon"]');
+    const activeTab = container.querySelector('[data-density="icon"][aria-label="Session 1"]');
+
+    expect(tabs.length).toBe(12);
+    expect(screen.queryByText('Session 1')).not.toBeInTheDocument();
+    expect(activeTab).toHaveTextContent('close');
+    expect(activeTab).not.toHaveTextContent('message');
+  });
+
+  it('closes stale tabs and redirects when the active conversation no longer exists', async () => {
+    const closeTabMock = vi.fn();
+    const openTabsForConversationsMock = vi.fn();
+    useParamsMock.mockReturnValue({ id: 'missing-conv' });
+    useSWRMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    });
+    useConversationTabsMock.mockReturnValue({
+      openTabs: [],
+      activeTabId: null,
+      switchTab: vi.fn(),
+      closeTab: closeTabMock,
+      closeAllTabs: vi.fn(),
+      closeTabsToLeft: vi.fn(),
+      closeTabsToRight: vi.fn(),
+      closeOtherTabs: vi.fn(),
+      openTabsForConversations: openTabsForConversationsMock,
+    });
+
+    render(<ChatConversationIndex />);
+
+    await waitFor(() => {
+      expect(closeTabMock).toHaveBeenCalledWith('missing-conv');
+    });
+    expect(navigateMock).toHaveBeenCalledWith('/guid', { replace: true });
+    expect(openTabsForConversationsMock).not.toHaveBeenCalled();
+    expect(chatConversationMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps a native title on the ACP model button for hover text', async () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+
+    const { container } = render(
+      <AcpModelSelector conversationId='conv-acp' backend='claude' initialModelId='claude-3.7-sonnet' />
+    );
+
+    await waitFor(() => {
+      const button = container.querySelector('button[title="claude-3.7-sonnet"]');
+      expect(button).toBeTruthy();
+    });
+  });
+
+  it('keeps Codex model selector clickable after a stream update without model list', async () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+    getModelInfoInvokeMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'gpt-5',
+          currentModelLabel: 'gpt-5',
+          canSwitch: true,
+          availableModels: [
+            { id: 'gpt-5', label: 'GPT-5' },
+            { id: 'gpt-5-mini', label: 'GPT-5 Mini' },
+          ],
+        },
+      },
+    });
+
+    const { container } = render(
+      <AcpModelSelector conversationId='conv-codex' backend='codex' initialModelId='gpt-5' />
+    );
+
+    await waitFor(() => {
+      const button = container.querySelector('button[title="gpt-5"]');
+      expect(button).toBeTruthy();
+      expect(button?.hasAttribute('disabled')).toBe(false);
+    });
+
+    acpResponseStreamHandler?.({
+      conversation_id: 'conv-codex',
+      type: 'acp_model_info',
+      data: {
+        source: 'models',
+        currentModelId: 'gpt-5',
+        currentModelLabel: 'gpt-5',
+        canSwitch: false,
+        availableModels: [],
+      },
+    });
+
+    await waitFor(() => {
+      const button = container.querySelector('button[title="gpt-5"]');
+      expect(button).toBeTruthy();
+      expect(button?.hasAttribute('disabled')).toBe(false);
+    });
+
+    expect(screen.getByText('GPT-5 Mini')).toBeInTheDocument();
+  });
+
+  it('falls back to probing backend model info when only a persisted ACP model id is available', async () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+    configStorageGetMock.mockResolvedValueOnce(undefined);
+    getModelInfoInvokeMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'gemini-2.0-flash',
+          currentModelLabel: 'gemini-2.0-flash',
+          canSwitch: false,
+          availableModels: [],
+        },
+      },
+    });
+    probeModelInfoInvokeMock.mockResolvedValueOnce({
+      success: true,
+      data: {
+        modelInfo: {
+          source: 'models',
+          currentModelId: 'gemini-2.0-flash',
+          currentModelLabel: 'Gemini 2.0 Flash',
+          canSwitch: true,
+          availableModels: [
+            { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+            { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+          ],
+        },
+      },
+    });
+
+    const { container } = render(
+      <AcpModelSelector conversationId='conv-codex-probe' backend='codex' initialModelId='gemini-2.0-flash' />
+    );
+
+    await waitFor(() => {
+      expect(probeModelInfoInvokeMock).toHaveBeenCalledWith({ backend: 'codex' });
+    });
+
+    await waitFor(() => {
+      const button = container.querySelector('button[title="gemini-2.0-flash"]');
+      expect(button).toBeTruthy();
+      expect(button?.hasAttribute('disabled')).toBe(false);
+    });
+
+    expect(screen.getByText('Gemini 2.5 Pro')).toBeInTheDocument();
+  });
+
+  it('keeps a native title on the Gemini model button for hover text', () => {
+    useLayoutContextMock.mockReturnValue({ isMobile: false });
+
+    const selection = {
+      currentModel: {
+        id: 'provider-1',
+        name: 'Claude Provider',
+        platform: 'claude',
+        useModel: 'claude-3.7-sonnet',
+      },
+      providers: [],
+      geminiModeLookup: new Map(),
+      getAvailableModels: vi.fn(() => []),
+      handleSelectModel: vi.fn(),
+      formatModelLabel: vi.fn(() => 'claude-3.7-sonnet'),
+    };
+
+    const { container } = render(<GeminiModelSelector selection={selection} />);
+
+    expect(container.querySelector('button[title="claude-3.7-sonnet"]')).toBeTruthy();
+  });
+});

@@ -1,0 +1,36 @@
+.voiceInputSection :global(.arco-input),
+.voiceInputSection :global(.arco-input-inner-wrapper),
+.voiceInputSection :global(.arco-select-view),
+.voiceInputSection :global(.arco-textarea) {
+  border-radius: 14px !important;
+}
+
+.voiceInputSection :global(.arco-input),
+.voiceInputSection :global(.arco-input-inner-wrapper),
+.voiceInputSection :global(.arco-select-view),
+.voiceInputSection :global(.arco-textarea) {
+  background: color-mix(in srgb, var(--fill-0) 92%, var(--bg-1) 8%) !important;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease !important;
+}
+
+.voiceInputSection :global(.arco-input:hover),
+.voiceInputSection :global(.arco-input-inner-wrapper:hover),
+.voiceInputSection :global(.arco-select:hover .arco-select-view),
+.voiceInputSection :global(.arco-textarea:hover) {
+  background: color-mix(in srgb, var(--fill-0) 76%, var(--fill-2) 24%) !important;
+}
+
+.voiceInputSection :global(.arco-input:focus),
+.voiceInputSection :global(.arco-input.arco-input-focus),
+.voiceInputSection :global(.arco-input-inner-wrapper:focus),
+.voiceInputSection :global(.arco-input-inner-wrapper.arco-input-inner-wrapper-focus),
+.voiceInputSection :global(.arco-select.arco-select-focused .arco-select-view),
+.voiceInputSection :global(.arco-textarea:focus),
+.voiceInputSection :global(.arco-textarea.arco-textarea-focus) {
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--border-base)) !important;
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-0) 4%) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent) !important;
+}

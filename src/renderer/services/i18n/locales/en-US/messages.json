@@ -1,0 +1,125 @@
+{
+  "fileChanges": "File Changes",
+  "fileChangesCount": "{{count}} File Changes",
+  "conversationInProgress": "A conversation is currently in progress...",
+  "confirm": "Confirm",
+  "canceledExecution": "Execution canceled",
+  "interrupted": "Interrupted by user.",
+  "openLinkFailed": "Failed to open link",
+  "auto_handling_permissions": "Auto handling permission request: {{request}}",
+  "copy": "Copy",
+  "copySuccess": "Copied successfully",
+  "copyFailed": "Failed to copy",
+  "copiedToClipboard": "Copied to clipboard",
+  "downloadSuccess": "Download successful",
+  "downloadFailed": "Failed to download",
+  "imageLoadFailed": "Failed to load image",
+  "scrollToBottom": "Scroll to bottom",
+  "availableCommands": "{{count}} Available Commands",
+  "slash.title": "Commands",
+  "slash.hint": "Type / to open command menu",
+  "slash.empty": "No commands found",
+  "unknownMessageType": "Unknown message type: {{type}}",
+  "permissionRequest": "Permission Request",
+  "agentRequestingPermission": "The agent is requesting permission.",
+  "command": "Command:",
+  "chooseAction": "Choose an action:",
+  "option": "Option",
+  "noOptionsAvailable": "No options available",
+  "processing": "Processing...",
+  "responseSentSuccessfully": "Response sent successfully",
+  "fileOperation": {
+    "written": "File written",
+    "read": "File read",
+    "deleted": "File deleted",
+    "operation": "File operation",
+    "summary": {
+      "read": "Read {{count}} file",
+      "read_other": "Read {{count}} files",
+      "written": "Modified {{count}} file",
+      "written_other": "Modified {{count}} files",
+      "deleted": "Deleted {{count}} file",
+      "deleted_other": "Deleted {{count}} files",
+      "operation": "Ran {{count}} file operation",
+      "operation_other": "Ran {{count}} file operations"
+    }
+  },
+  "jsonCard": {
+    "parameters": "Parameters",
+    "rawJson": "Raw JSON",
+    "model": "Model",
+    "prompt": "Prompt",
+    "size": "Size"
+  },
+  "stepSummary": {
+    "viewSteps": "View Steps",
+    "tools": "{{count}} tool",
+    "tools_other": "{{count}} tools"
+  },
+  "contextPreview": {
+    "pill": "Context · {{count}}",
+    "composerTag": "Send Context",
+    "composerSummary": "This turn will attach {{count}} context item",
+    "composerSummary_other": "This turn will attach {{count}} context items",
+    "title": "Context Used For This Turn",
+    "subtitle": "This is the actual context package attached to the user query before it was sent to the agent.",
+    "mountedTitle": "Mounted Context",
+    "queryTermsTitle": "Retrieval Terms",
+    "sectionsTitle": "Included Sections",
+    "sectionTokens": "{{count}} tokens",
+    "boolean": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "short": {
+      "memoryRefs": "{{count}} memory",
+      "memoryRefs_other": "{{count}} memories",
+      "sourceRefs": "{{count}} source",
+      "sourceRefs_other": "{{count}} sources",
+      "profileRefs": "{{count}} profile",
+      "profileRefs_other": "{{count}} profiles"
+    },
+    "metrics": {
+      "sections": "Sections",
+      "memoryRefs": "Memory refs",
+      "sourceRefs": "Source refs",
+      "profileRefs": "Profile refs",
+      "omitted": "Omitted",
+      "tokenBudget": "Token budget",
+      "threadSummary": "Thread summary",
+      "mountedSections": "Mounted sections",
+      "mountedProfiles": "Mounted profiles",
+      "pinnedInstructions": "Pinned instructions"
+    },
+    "searchMode": {
+      "lexical": "Lexical",
+      "vector": "Vector",
+      "hybrid": "Hybrid"
+    },
+    "sectionSource": {
+      "mounted": "Mounted",
+      "retrieved": "Retrieved",
+      "instruction": "Pinned"
+    },
+    "sectionKind": {
+      "threadState": "Thread State",
+      "source": "Source",
+      "artifact": "Artifact",
+      "memory": "Memory",
+      "profile": "Profile",
+      "instruction": "Instruction",
+      "compaction": "Compaction"
+    }
+  },
+  "confirmation": {
+    "applyChange": "Apply this change?",
+    "allowExecution": "Allow execution?",
+    "proceed": "Do you want to proceed?",
+    "allowMCPTool": "Allow execution of MCP tool \"{{toolName}}\" from server \"{{serverName}}\"?",
+    "yesAllowOnce": "Yes, allow once",
+    "yesAllowAlways": "Yes, allow always",
+    "yesAlwaysAllowTool": "Yes, always allow tool \"{{toolName}}\" from server \"{{serverName}}\"",
+    "yesAlwaysAllowServer": "Yes, always allow all tools from server \"{{serverName}}\"",
+    "no": "No (esc)"
+  }
+}

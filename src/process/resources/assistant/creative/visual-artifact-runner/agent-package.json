@@ -1,0 +1,136 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "visual-artifact-runner",
+  "assistantPresetId": "builtin-visual-artifact-runner",
+  "displayName": "Visual Artifact Runner",
+  "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "workspace"
+        }
+      ],
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "input normalization for briefs, reports, PDFs, and structured data",
+        "layout recipe and theme execution across deck, PDF, and infographic outputs",
+        "artifact quality checks, build notes, asset inventories, and failure-page reporting"
+      ],
+      "suggestedArtifacts": [
+        "deck briefs",
+        "summary decks",
+        "infographic plans",
+        "build notes",
+        "QC reports",
+        "asset inventories"
+      ],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/README.md",
+          "target": "docs/README.md"
+        },
+        {
+          "source": "workspace/docs/inputs/README.md",
+          "target": "docs/inputs/README.md"
+        },
+        {
+          "source": "workspace/docs/recipes/README.md",
+          "target": "docs/recipes/README.md"
+        },
+        {
+          "source": "workspace/docs/exports/README.md",
+          "target": "docs/exports/README.md"
+        }
+      ]
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "skills"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": [
+        "deck-from-brief",
+        "deck-from-report",
+        "pdf-to-deck",
+        "report-to-infographic",
+        "deck-theme-apply",
+        "artifact-qc"
+      ],
+      "packagedSkillNames": [
+        "deck-from-brief",
+        "deck-from-report",
+        "pdf-to-deck",
+        "report-to-infographic",
+        "deck-theme-apply",
+        "artifact-qc"
+      ],
+      "hidePackageOwnedSkillsFromLibrary": true
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "visual-artifact-runner"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "visual-artifact-runner"
+    },
+    "hooks": {
+      "logicalId": "hooks",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "hooks"
+        }
+      ],
+      "installSurface": ".contextgo/hooks/",
+      "selectionSurface": ".contextgo/hooks.json",
+      "runtimeProjection": "none"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "visual-artifact-runner"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "visual-artifact-runner"
+    }
+  }
+}

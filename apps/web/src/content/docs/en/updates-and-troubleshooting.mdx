@@ -1,0 +1,42 @@
+---
+eyebrow: Updates
+title: Check updates and troubleshoot common failures
+summary: Keep the website, the in-app updater, and the release repository aligned, then diagnose login, device, runtime, and update problems from one place.
+readingTime: 7 min
+updatedAt: 2026-04-12
+category: operations
+---
+
+## Release source of truth
+
+Public releases are published to `contextgo/contextgo-releases`. The website download page and the desktop updater should both point to that same release source.
+
+If the website version and the in-app update version do not match, treat that as a release pipeline issue first.
+
+## Recommended troubleshooting order
+
+Use the least destructive checks first:
+
+1. Confirm account sign-in and browser callback behavior.
+2. Confirm the expected device is registered and online.
+3. Confirm remote access status if the issue appears in the browser or mobile client.
+4. Confirm runtime detection and provider authentication.
+5. Confirm the release version shown by the website and updater.
+
+## Common issue groups
+
+Use this page as the entry point for the following symptoms:
+
+- browser sign-in does not complete
+- device binding does not refresh
+- remote access shows unavailable
+- a runtime is installed but cannot run work
+- update checks fail or show an unexpected version
+
+## When to compare versions
+
+Compare release versions when:
+
+- the website offers one installer version and the desktop app shows another
+- a user reports an update that cannot be downloaded
+- a published release is missing from the download page

@@ -1,0 +1,39 @@
+---
+eyebrow: Product Model
+title: Understand the ContextGo product model before you scale usage
+summary: Review the role of the desktop host, cloud account, browser and mobile access, and the release repository before onboarding more devices or teammates.
+readingTime: 6 min
+updatedAt: 2026-04-12
+category: guides
+---
+
+## Core components
+
+ContextGo is organized around four product components:
+
+- Desktop host: the main execution environment for files, local tools, runtimes, and WebUI.
+- Cloud account: the identity layer for sign-in, device registration, and account-linked discovery.
+- Browser or mobile client: the remote control surface used to connect back to the desktop host.
+- Release repository: the source for public installers, release notes, and downloadable artifacts.
+
+## What runs where
+
+The desktop app remains the primary host. When you start a task, install a runtime, access local files, or use connectors tied to the machine, that work happens on the desktop.
+
+The cloud account does not replace the desktop host. It is used to identify the user, register devices, and make those devices available to browser or mobile clients.
+
+The browser and mobile clients are remote entry points. They are intended for controlling the host and viewing results, not for replacing the host with a separate cloud runtime.
+
+## Release source
+
+Public release assets are published from `contextgo/contextgo-releases`. The website download page and in-app update flow should reference the same release source.
+
+When checking a version mismatch, compare the website version, the in-app update version, and the latest published release in that repository.
+
+## Recommended reading order
+
+Use the documentation in this order:
+
+1. Read `Quick Start` to complete first-device setup.
+2. Read `Features` pages when configuring agents, hooks, scheduled tasks, runtimes, connectors, or skills.
+3. Read `Operations` pages when managing account state, remote access, updates, or troubleshooting.

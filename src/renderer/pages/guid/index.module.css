@@ -1,0 +1,651 @@
+.guidLayout {
+  width: min(800px, 100%);
+  max-width: 100%;
+  padding: 0 16px 32px;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+
+.guidInputCard {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.guidInputCardMobile {
+  border-radius: 22px;
+}
+
+.guidMentionDropdown {
+  width: 100%;
+  max-width: min(420px, calc(100vw - 48px));
+}
+
+.actionRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  width: 100%;
+  gap: 8px 12px;
+  margin-top: 12px;
+}
+
+.actionTools {
+  display: contents;
+}
+
+.actionControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 1;
+  min-width: 0;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.actionControls > * {
+  min-width: 0;
+}
+
+.actionMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+}
+
+.actionEntry {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-right: 0;
+}
+
+.actionConfigGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.actionConfigGroupWithDivider > :first-child {
+  position: relative;
+}
+
+.actionConfigGroupWithDivider > :first-child::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  width: 1px;
+  height: 18px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text-4) 55%, transparent);
+}
+
+.actionTools :global(.sendbox-model-btn) {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--color-text-2) !important;
+  padding-inline: 10px !important;
+  min-height: 28px !important;
+}
+
+.actionTools :global(.sendbox-model-btn:hover) {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--color-text-1) !important;
+}
+
+.actionConfigGroup :global(.sendbox-model-btn .arco-btn-content) {
+  gap: 0 !important;
+}
+
+.actionConfigGroup :global(.sendbox-model-btn .arco-btn-content > span:first-child) {
+  gap: 6px !important;
+}
+
+.actionSubmit {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  align-self: center;
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.lightPlaceholder::placeholder {
+  color: #a1a2aa;
+  opacity: 1;
+}
+
+.plusButtonRotate {
+  animation: rotate-animation 0.3s ease-in-out;
+}
+
+@keyframes rotate-animation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(45deg);
+  }
+}
+
+@keyframes guid-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--color-fill-2) 25%, var(--color-fill-3) 50%, var(--color-fill-2) 75%);
+  background-size: 200% 100%;
+  animation: guid-shimmer 1.5s ease-in-out infinite;
+  border-radius: 50%;
+}
+
+.skeletonPill {
+  background: linear-gradient(90deg, var(--color-fill-2) 25%, var(--color-fill-3) 50%, var(--color-fill-2) 75%);
+  background-size: 200% 100%;
+  animation: guid-shimmer 1.5s ease-in-out infinite;
+  border-radius: 100px;
+}
+
+.guidContainer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 0 24px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.guidContainer .guidLayout {
+  margin-top: -5vh;
+}
+
+@keyframes agentSelectPop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1.02);
+  }
+}
+
+.agentItemSelected {
+  background-color: var(--fill-0);
+  transition:
+    opacity 0.5s cubic-bezier(0.2, 0.8, 0.3, 1),
+    background-color 0.25s ease-out;
+  animation: agentSelectPop 0.4s ease-out forwards;
+}
+
+.guidQuickActions {
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+}
+
+.guidQuickActionsMobile {
+  width: 100%;
+  max-width: min(800px, 100%);
+  margin-top: 18px;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+.guidQuickActionsMobileGrid {
+  display: flex;
+  justify-content: center;
+}
+
+.guidQuickActionMobileStack {
+  width: 100%;
+  max-width: min(100%, 320px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.guidQuickActionMobileButton {
+  width: 100% !important;
+  min-height: 48px !important;
+  padding: 0 14px !important;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-1) 4%) !important;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--text-primary) 5%, transparent);
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.guidQuickActionMobileButton :global(.arco-btn-content) {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.guidQuickActionMobileButtonInner {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.guidQuickActionMobileTitle {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.guidQuickActionMobileStatus {
+  max-width: 100%;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.guidQuickActionChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  line-height: 0;
+}
+
+.guidQuickActionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.guidQuickActionBody {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.guidQuickActionTitle {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.guidQuickActionMeta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.agentPillViewport {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-bottom: 20px;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.agentPillViewport::-webkit-scrollbar {
+  display: none;
+}
+
+.agentPillRail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: max(100%, max-content);
+  padding: 8px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--bg-2) 92%, var(--fill-2) 8%);
+  border: 1px solid color-mix(in srgb, var(--border-base) 84%, transparent);
+  box-sizing: border-box;
+}
+
+.agentPillChip {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+  color: var(--text-secondary) !important;
+}
+
+.agentPillChipCompact {
+  justify-content: center;
+  min-width: 38px;
+  padding: 0 10px !important;
+}
+
+.agentPillChipActive {
+  background: color-mix(in srgb, var(--bg-active) 70%, var(--bg-1) 30%) !important;
+  color: var(--text-primary) !important;
+}
+
+.agentPillChipLabel {
+  min-width: 0;
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.assistantSection {
+  min-width: 0;
+}
+
+.assistantFallbackNotice {
+  border-radius: 12px;
+}
+
+.assistantSectionHeader {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0 !important;
+}
+
+.assistantSectionHeader :global(.arco-btn-content) {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.assistantDescriptionPanel {
+  overflow-wrap: anywhere;
+}
+
+.assistantPromptList {
+  align-items: stretch;
+}
+
+.assistantPromptButton {
+  max-width: 100%;
+  min-height: 34px !important;
+  padding: 6px 12px !important;
+  border-radius: 16px !important;
+  background: color-mix(in srgb, var(--fill-2) 86%, var(--bg-1) 14%) !important;
+  color: rgb(var(--primary-6)) !important;
+  justify-content: flex-start !important;
+  text-align: left;
+  white-space: normal !important;
+  line-height: 1.45;
+}
+
+.assistantPromptButton:hover {
+  background: color-mix(in srgb, var(--fill-3) 84%, var(--bg-1) 16%) !important;
+}
+
+.assistantPresetGrid {
+  align-items: stretch;
+}
+
+.assistantPresetButton {
+  min-height: 36px !important;
+  max-width: 100%;
+  padding: 0 16px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  border-style: solid !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-1) 4%) !important;
+}
+
+.assistantPresetLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.assistantManageButton {
+  min-width: 36px !important;
+  min-height: 36px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border-style: dashed !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--bg-1) 96%, var(--fill-1) 4%) !important;
+}
+
+.assistantManageLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.lightPlaceholder :global(textarea::placeholder) {
+  color: #a1a2aa !important;
+  opacity: 1 !important;
+}
+
+.presetAgentTag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-fill-2);
+  padding: 4px 6px 4px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.presetAgentTag:hover {
+  background: var(--color-fill-3);
+}
+
+.presetAgentTagName {
+  font-size: 14px;
+  color: var(--color-text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.presetAgentTagClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-left: 2px;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.presetAgentTagClose:hover {
+  background: var(--color-fill-4);
+}
+
+@media (max-width: 768px) {
+  .guidLayout {
+    width: 100%;
+    padding: 0 12px calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .actionRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 10px 12px;
+  }
+
+  .actionControls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+    min-width: 0;
+  }
+
+  .actionConfigGroup {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+  }
+
+  .actionConfigGroupWithDivider > :first-child::after {
+    display: none;
+  }
+
+  .actionSubmit {
+    width: auto;
+    align-self: end;
+  }
+
+  .actionMeta {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+    margin-top: 2px;
+  }
+
+  .actionSubmit {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .guidContainer {
+    justify-content: flex-start;
+    overflow-y: auto;
+    padding-top: calc(18px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .guidContainer .guidLayout {
+    margin-top: 0;
+  }
+
+  .presetAgentTagName {
+    max-width: 120px;
+  }
+
+  .guidQuickActionsMobile {
+    padding-inline: 12px;
+  }
+
+  .assistantFallbackNotice {
+    align-items: flex-start;
+  }
+
+  .assistantPromptButton {
+    width: 100%;
+    justify-content: flex-start !important;
+  }
+
+  .assistantPresetGrid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .assistantPresetButton {
+    width: auto;
+    max-width: 100%;
+    min-height: 40px !important;
+    border-radius: 18px !important;
+    padding: 0 14px !important;
+  }
+
+  .assistantManageButton {
+    width: auto;
+    max-width: 100%;
+    min-height: 40px !important;
+    border-radius: 18px !important;
+  }
+
+  .assistantManageButton {
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 0 14px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .guidLayout {
+    padding-inline: 10px;
+  }
+
+  .guidQuickActionsMobile {
+    padding-inline: 10px;
+  }
+
+  .guidQuickActionMobileButton {
+    max-width: 100%;
+  }
+
+  .agentPillChipLabel,
+  .presetAgentTagName {
+    max-width: 96px;
+  }
+}

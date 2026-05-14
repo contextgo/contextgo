@@ -1,0 +1,44 @@
+{
+  "pageTitle": "ContextGo - ログイン",
+  "brand": "ContextGo",
+  "subtitle": "おかえりなさい。アカウントにサインインしてください",
+  "recoverySubtitle": "このログイン画面はホストのローカル復旧経路です。リモート利用の主入口は引き続き Official Remote です。",
+  "username": "ユーザー名",
+  "usernamePlaceholder": "ユーザー名を入力してください",
+  "password": "パスワード",
+  "passwordPlaceholder": "パスワードを入力してください",
+  "rememberMe": "ログイン状態を保持",
+  "submit": "ログイン",
+  "submitting": "ログイン中...",
+  "success": "ログインに成功しました。リダイレクトします...",
+  "showPassword": "パスワードを表示",
+  "hidePassword": "パスワードを隠す",
+  "languageToggle": "言語を切り替える",
+  "footerPrimary": "コマンドラインAIをモダンに変革",
+  "footerSecondary": "効率的でエレガント",
+  "errors": {
+    "empty": "ユーザー名とパスワードを入力してください",
+    "invalidCredentials": "ユーザー名またはパスワードが正しくありません",
+    "tooManyAttempts": "試行回数が多すぎます。後でもう一度お試しください",
+    "networkError": "接続に失敗しました。後でもう一度お試しください",
+    "serverError": "サーバーで問題が発生しました。しばらく待ってから再試行してください",
+    "unknown": "ログインに失敗しました。後でもう一度お試しください"
+  },
+  "oauth": {
+    "title": "または次の方法で続行",
+    "loading": "利用可能なサインイン方法を確認しています...",
+    "providers": {
+      "github": "GitHub で続行",
+      "google": "Google で続行"
+    },
+    "errors": {
+      "accessDenied": "外部サインインがキャンセルされたか拒否されました",
+      "callbackFailed": "外部サインインに失敗しました。もう一度お試しください。",
+      "emailNotAllowed": "このアカウントではサインインできません。",
+      "emailRequired": "サインインには確認済みのメールアドレスが必要です。",
+      "providerUnavailable": "このサインイン方法は未設定です。",
+      "sessionExpired": "サインインセッションの有効期限が切れました。もう一度お試しください。",
+      "unknown": "外部サインインに失敗しました。もう一度お試しください。"
+    }
+  }
+}

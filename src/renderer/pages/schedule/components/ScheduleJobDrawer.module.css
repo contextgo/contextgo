@@ -1,0 +1,8 @@
+.cronDrawer :global(.arco-drawer-body) {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.cronDrawer :global(.arco-drawer-body)::-webkit-scrollbar {
+  display: none;
+}

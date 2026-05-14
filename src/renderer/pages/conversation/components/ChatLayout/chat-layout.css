@@ -1,0 +1,151 @@
+/* Chat layout header styles */
+
+.chat-layout-header--mobile-unified {
+  height: 46px !important;
+  min-height: 46px;
+  padding: 0 12px !important;
+  background: linear-gradient(180deg, var(--bg-2) 0%, transparent 100%) !important;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+.chat-layout-header--glass {
+  position: relative;
+  isolation: isolate;
+  contain: paint;
+  background-color: color-mix(in srgb, var(--bg-1) 92%, transparent) !important;
+}
+
+.chat-layout-header--glass::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -12px;
+  height: 12px;
+  pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 68%, transparent) 0%, transparent 100%);
+}
+
+.chat-layout-conversation-surface {
+  --conversation-mobile-keyboard-inset: 0px;
+}
+
+@media (max-width: 767px) {
+  .conversation-mobile-chat-page {
+    min-height: 0;
+  }
+
+  .conversation-mobile-message-list {
+    padding-bottom: calc(10px + var(--conversation-mobile-keyboard-inset, 0px));
+    transition: padding-bottom 180ms ease;
+  }
+
+  .conversation-mobile-sendbox {
+    transform: translateY(calc(var(--conversation-mobile-keyboard-inset, 0px) * -1));
+    transition:
+      transform 180ms ease,
+      margin-bottom 180ms ease;
+    will-change: transform;
+  }
+
+  .chat-layout-mobile-top-chrome {
+    position: relative;
+    z-index: 2;
+    background: #f6f8fb;
+    border-bottom: 1px solid color-mix(in srgb, var(--bg-2) 72%, var(--border-base));
+  }
+
+  .chat-layout-mobile-context-row {
+    min-width: 0;
+    padding: 4px 12px 8px;
+  }
+
+  .chat-layout-mobile-toolbar {
+    width: 100%;
+  }
+
+  .chat-layout-mobile-toolbar-scroll {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chat-layout-mobile-toolbar-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chat-layout-mobile-toolbar-item {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+}
+
+@supports ((-webkit-backdrop-filter: blur(6px)) or (backdrop-filter: blur(6px))) {
+  .chat-layout-header--glass {
+    -webkit-backdrop-filter: saturate(110%) blur(6px);
+    backdrop-filter: saturate(110%) blur(6px);
+  }
+}
+
+.workspace-panel-header__content {
+  display: flex;
+  align-items: center;
+}
+
+@media (prefers-reduced-motion: reduce), (max-width: 768px) {
+  .chat-layout-header--glass {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: var(--bg-1) !important;
+  }
+
+  .chat-layout-header--glass::after {
+    display: none;
+  }
+
+  [data-theme='dark'] .chat-layout-mobile-top-chrome {
+    background: #1c2129;
+    border-bottom-color: color-mix(in srgb, var(--bg-2) 72%, var(--border-base));
+  }
+}
+
+/* Mobile: conversation header pills */
+@media (max-width: 767px) {
+  .agent-mode-compact-pill {
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 0 10px !important;
+    border-radius: 999px !important;
+  }
+
+  .agent-mode-compact-pill .arco-btn-content {
+    line-height: 1;
+  }
+
+  .agent-mode-compact-pill--readonly,
+  .agent-mode-compact-pill--readonly:hover,
+  .agent-mode-compact-pill--readonly:active,
+  .agent-mode-compact-pill--readonly:focus,
+  .agent-mode-compact-pill--readonly:focus-visible {
+    cursor: default !important;
+    pointer-events: none !important;
+    background: var(--color-fill-2) !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .chat-header-schedule-pill {
+    margin-right: 4px;
+  }
+}

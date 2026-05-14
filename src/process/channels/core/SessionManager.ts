@@ -1,0 +1,361 @@
+/**
+ * @license
+ * Copyright 2025 ContextGo (contextgo.io)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { uuid } from '@/common/utils';
+import { getDatabase } from '@process/services/database';
+import type { ChannelAgentType, IChannelSession, IChannelUser, PluginType } from '../types';
+
+/**
+ * SessionManager - Manages user sessions for the Personal Assistant
+ *
+ * Sessions are keyed by composite key `${userId}:${chatId}` to support
+ * per-chat isolation: the same user in different group chats gets separate sessions.
+ * When chatId is omitted, falls back to userId-only key for backward compatibility.
+ */
+export class SessionManager {
+  // In-memory cache of active sessions keyed by composite key (userId:chatId)
+  private activeSessions: Map<string, IChannelSession> = new Map();
+
+  constructor() {
+    this.loadActiveSessions();
+  }
+
+  /**
+   * Build composite key for session lookup
+   */
+  private buildKey(userId: string, chatId?: string): string {
+    return chatId ? `${userId}:${chatId}` : userId;
+  }
+
+  private findSessionEntryById(sessionId: string): { key: string; session: IChannelSession } | null {
+    for (const [key, session] of this.activeSessions.entries()) {
+      if (session.id === sessionId) {
+        return { key, session };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Load active sessions from database into memory
+   */
+  private async loadActiveSessions(): Promise<void> {
+    const db = await getDatabase();
+    const result = db.getChannelSessions();
+
+    if (result.success && result.data) {
+      for (const session of result.data) {
+        const key = this.buildKey(session.userId, session.chatId);
+        this.activeSessions.set(key, session);
+      }
+    }
+  }
+
+  /**
+   * Get session for a user (optionally scoped to a specific chat)
+   */
+  getSession(userId: string, chatId?: string): IChannelSession | null {
+    return this.activeSessions.get(this.buildKey(userId, chatId)) ?? null;
+  }
+
+  /**
+   * Store a resolved session projection in cache and database.
+   */
+  async storeSession(session: IChannelSession): Promise<void> {
+    const key = this.buildKey(session.userId, session.chatId);
+    const db = await getDatabase();
+    const existingById = this.findSessionEntryById(session.id);
+    if (existingById && existingById.key !== key) {
+      this.activeSessions.delete(existingById.key);
+    }
+
+    const existingSession = this.activeSessions.get(key);
+    if (existingSession && existingSession.id !== session.id) {
+      db.deleteChannelSession(existingSession.id);
+    }
+
+    this.activeSessions.set(key, session);
+    db.upsertChannelSession(session);
+  }
+
+  /**
+   * Get session by platform user (lookup user first, then get session)
+   */
+  async getSessionByPlatformUser(
+    platformUserId: string,
+    platformType: PluginType,
+    chatId?: string
+  ): Promise<IChannelSession | null> {
+    const db = await getDatabase();
+    const usersResult = db.getChannelUsers();
+    if (!usersResult.success || !usersResult.data) {
+      return null;
+    }
+
+    const projectedUsers = usersResult.data.filter(
+      (user) => user.platformUserId === platformUserId && user.platformType === platformType
+    );
+    if (projectedUsers.length === 0) {
+      return null;
+    }
+
+    if (chatId) {
+      for (const projectedUser of projectedUsers) {
+        const session = this.getSession(projectedUser.id, chatId);
+        if (session) {
+          return session;
+        }
+      }
+    }
+
+    return this.getSession(projectedUsers[0].id, chatId);
+  }
+
+  /**
+   * Create a new session for a user
+   * This will clear any existing session for the same user+chat combo
+   */
+  async createSession(
+    user: IChannelUser,
+    agentType: ChannelAgentType = 'gemini',
+    workspace?: string,
+    chatId?: string
+  ): Promise<IChannelSession> {
+    // Generate a new conversationId
+    return await this.createSessionWithConversation(user, uuid(), agentType, workspace, chatId);
+  }
+
+  /**
+   * Create a new session with a specific conversation ID
+   */
+  async createSessionWithConversation(
+    user: IChannelUser,
+    conversationId: string,
+    agentType: ChannelAgentType = 'gemini',
+    workspace?: string,
+    chatId?: string
+  ): Promise<IChannelSession> {
+    const db = await getDatabase();
+    const key = this.buildKey(user.id, chatId);
+
+    // Clear existing session if any
+    const existingSession = this.activeSessions.get(key);
+    if (existingSession) {
+      db.deleteChannelSession(existingSession.id);
+    }
+
+    // Create new session with the provided conversation ID
+    const now = Date.now();
+    const session: IChannelSession = {
+      id: uuid(),
+      userId: user.id,
+      agentType,
+      workspace,
+      conversationId,
+      chatId,
+      createdAt: now,
+      lastActivity: now,
+    };
+
+    // Save to database
+    await this.storeSession(session);
+
+    // Update user's session reference
+    db.getChannelUserByPlatform(user.platformUserId, user.platformType);
+
+    return session;
+  }
+
+  /**
+   * Update session's conversation ID (after creating a conversation)
+   */
+  async updateSessionConversation(sessionId: string, conversationId: string): Promise<boolean> {
+    // Find session by ID and its key
+    let foundKey: string | null = null;
+    let foundSession: IChannelSession | null = null;
+    for (const [key, s] of this.activeSessions.entries()) {
+      if (s.id === sessionId) {
+        foundKey = key;
+        foundSession = s;
+        break;
+      }
+    }
+
+    if (!foundSession || !foundKey) {
+      console.warn(`[SessionManager] Session ${sessionId} not found`);
+      return false;
+    }
+
+    // Create updated session (immutable)
+    const updated: IChannelSession = {
+      ...foundSession,
+      conversationId,
+      lastActivity: Date.now(),
+    };
+
+    // Persist the source of truth before refreshing the legacy mirror row.
+    const db = await getDatabase();
+    db.updateExternalSessionActivity(updated.id, {
+      lastActivity: updated.lastActivity,
+      activeConversationId: updated.conversationId,
+    });
+    await this.storeSession(updated);
+
+    return true;
+  }
+
+  /**
+   * Update session's last activity timestamp
+   */
+  async updateSessionActivity(userId: string, chatId?: string): Promise<void> {
+    const key = this.buildKey(userId, chatId);
+    const session = this.activeSessions.get(key);
+    if (!session) return;
+
+    // Create updated session (immutable)
+    const updated: IChannelSession = { ...session, lastActivity: Date.now() };
+    this.activeSessions.set(key, updated);
+
+    const db = await getDatabase();
+    db.updateExternalSessionActivity(updated.id, {
+      lastActivity: updated.lastActivity,
+      activeConversationId: updated.conversationId,
+    });
+    db.upsertChannelSession(updated);
+  }
+
+  /**
+   * Update session activity by stable session ID.
+   * Preferred for the new resource model because session ID maps to external_session.id.
+   */
+  async updateSessionActivityById(sessionId: string, conversationId?: string): Promise<void> {
+    const entry = this.findSessionEntryById(sessionId);
+    if (!entry) {
+      return;
+    }
+
+    const updated: IChannelSession = {
+      ...entry.session,
+      conversationId: conversationId ?? entry.session.conversationId,
+      lastActivity: Date.now(),
+    };
+    this.activeSessions.set(entry.key, updated);
+
+    const db = await getDatabase();
+    db.updateExternalSessionActivity(updated.id, {
+      lastActivity: updated.lastActivity,
+      activeConversationId: updated.conversationId,
+    });
+    db.upsertChannelSession(updated);
+  }
+
+  /**
+   * Clear session for a user (e.g., when user clicks "New Session")
+   */
+  async clearSession(userId: string, chatId?: string): Promise<boolean> {
+    const key = this.buildKey(userId, chatId);
+    const session = this.activeSessions.get(key);
+    if (!session) {
+      return false;
+    }
+
+    const db = await getDatabase();
+    const externalSession = db.getExternalSession(session.id);
+    if (externalSession.success && externalSession.data?.bindingId) {
+      const bindingResult = db.getChannelBinding(externalSession.data.bindingId);
+      if (bindingResult.success && bindingResult.data?.temporary) {
+        db.deleteChannelBinding(bindingResult.data.id);
+      }
+    }
+
+    db.deleteChannelSession(session.id);
+    this.activeSessions.delete(key);
+
+    return true;
+  }
+
+  /**
+   * Clear all sessions from both in-memory cache and database.
+   * Used when channel settings change to force session re-evaluation on next message.
+   */
+  async clearAllSessions(): Promise<number> {
+    const db = await getDatabase();
+    let cleared = 0;
+    for (const [key, session] of this.activeSessions.entries()) {
+      db.deleteChannelSession(session.id);
+      this.activeSessions.delete(key);
+      cleared++;
+    }
+    return cleared;
+  }
+
+  /**
+   * Clear session by conversation ID
+   * Used when a conversation is deleted from ContextGoUI
+   */
+  async clearSessionByConversationId(conversationId: string): Promise<IChannelSession | null> {
+    const db = await getDatabase();
+
+    // Find session with this conversation ID
+    let foundSession: IChannelSession | null = null;
+    let foundKey: string | null = null;
+
+    for (const [key, session] of this.activeSessions.entries()) {
+      if (session.conversationId === conversationId) {
+        foundSession = session;
+        foundKey = key;
+        break;
+      }
+    }
+
+    if (!foundSession || !foundKey) {
+      return null;
+    }
+
+    // Delete from database and cache
+    db.deleteChannelSession(foundSession.id);
+    this.activeSessions.delete(foundKey);
+
+    return foundSession;
+  }
+
+  /**
+   * Get all active sessions
+   */
+  getAllSessions(): IChannelSession[] {
+    return Array.from(this.activeSessions.values());
+  }
+
+  /**
+   * Get session count
+   */
+  getSessionCount(): number {
+    return this.activeSessions.size;
+  }
+
+  /**
+   * Cleanup stale sessions (e.g., inactive for more than 24 hours)
+   */
+  async cleanupStaleSessions(maxAgeMs: number = 24 * 60 * 60 * 1000): Promise<number> {
+    const db = await getDatabase();
+    const now = Date.now();
+    let cleaned = 0;
+
+    for (const [key, session] of this.activeSessions.entries()) {
+      if (now - session.lastActivity > maxAgeMs) {
+        db.deleteChannelSession(session.id);
+        this.activeSessions.delete(key);
+        cleaned++;
+      }
+    }
+
+    if (cleaned > 0) {
+      console.log(`[SessionManager] Cleaned up ${cleaned} stale session(s)`);
+    }
+
+    return cleaned;
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "agentFallbackNotice": "{{original}} is unavailable, using {{fallback}} instead.",
+  "noAgentAvailable": "Kullanılabilir bir Ana Ajan yok. Lütfen Google'a giriş yapın veya Claude/Codex CLI kurun. Ayarlara gitmek ister misiniz?",
+  "noAgentAvailableShort": "No Main Agent available. Click to configure.",
+  "agentTabAutoSwitch": "Model not compatible with Gemini, auto-switched to {{fallback}}",
+  "autoSwitchToAgent": "Gemini is not configured, auto-switching to {{agent}}",
+  "autoSwitchedAgent": "{{from}} is not available, switched to {{to}}",
+  "sendFailed": "Mesaj gönderilemedi. Lütfen tekrar deneyin.",
+  "sendFailedWithReason": "Mesaj gönderilemedi: {{reason}}",
+  "externalSessions": {
+    "title": "Harici Session'ları Devral",
+    "titleVariants": {
+      "continueWork": "Dışarıdaki işe devam et",
+      "resumeProgress": "Yarım kalan işi sürdür",
+      "bringBack": "Dış ilerlemeyi geri getir"
+    },
+    "description": "ContextGo dışında başlatılan ve henüz devralınmamış CLI oturumları burada görünür.",
+    "filters": {
+      "all": "Tümü"
+    },
+    "refresh": "Yenile",
+    "loading": "Harici Session'lar taranıyor...",
+    "updatedAt": "Son güncelleme {{time}}",
+    "import": "Devral",
+    "loadFailed": "Harici Session'lar taranamadı.",
+    "importFailed": "Seçilen harici Session devralınamadı.",
+    "providers": {
+      "claude": "Claude",
+      "codex": "Codex",
+      "gemini": "Gemini",
+      "opencode": "OpenCode",
+      "openclaw-gateway": "OpenClaw"
+    },
+    "loadingShort": "Hazırlanıyor",
+    "loadFailedShort": "Tekrar dene",
+    "readyCount": "{{count}} oturum hazır",
+    "readyCountShort": "{{count}} devam edebilir",
+    "emptyStateShort": "Bekleyen bir şey yok",
+    "open": "Aç",
+    "emptyState": "Henüz devralınacak harici Session yok."
+  },
+  "openclaw": {
+    "defaultAgent": "Varsayılan"
+  },
+  "scanning": {
+    "initialMessage": "Current Agent is unavailable, detecting other available agents...",
+    "scanningMessage": "Scanning local available agents...",
+    "connectingMessage": "Connected successfully, please wait...",
+    "establishingConnection": "Establishing connection...",
+    "statusQueued": "Queued",
+    "statusTesting": "Testing latency...",
+    "statusUnreachable": "Unreachable",
+    "statusAvailable": "Available"
+  },
+  "vault": {
+    "title": "Space Vault Aç",
+    "description": "Seçili alan için ContextGo tarafından yönetilen Obsidian vaultunu aç.",
+    "affordance": "Vault Aç",
+    "mobileAffordance": "Obsidian'da Aç",
+    "mobileSetupAffordance": "Obsidian'da Kur",
+    "mobileStatusReady": "Bu cihazda hazır",
+    "mobileStatusNeedsSetup": "Obsidian içinde bir kez bağlanması gerekiyor",
+    "androidStatusPrepared": "Android yerel Vault klasörü hazır",
+    "androidStatusRegistered": "Android mobil replica kaydedildi",
+    "androidSetupPrepared": "Android için yerel Vault klasörü hazırlandı. Bağlamayı Obsidian içinde tamamlayın.",
+    "androidReplicaRegistered": "Android mobil replica ContextGo Cloud'a kaydedildi.",
+    "androidSetupCancelled": "Android Vault kurulumu iptal edildi.",
+    "statusReady": "Obsidian veya Finder’da aç",
+    "openSuccess": "Space vault açıldı.",
+    "openFailed": "Space vault açılamadı.",
+    "obsidianMissing": "Obsidian algılanmadı. Vault klasoru ve indirme sayfası sizin için açıldı.",
+    "mobileSetupRequired": "Önce bu cihazdaki Obsidian içinde bu Space için yerel bağlamayı tamamlayın."
+  },
+  "space": {
+    "loading": "Space'ler yükleniyor...",
+    "empty": "Seçili bir Space yok",
+    "newSpace": "Yeni Space",
+    "selectorTitle": "Space değiştir",
+    "createTitle": "Space Oluştur",
+    "createAction": "Space Oluştur",
+    "namePlaceholder": "Space adı",
+    "descriptionPlaceholder": "Açıklama (isteğe bağlı)",
+    "nameRequired": "Space adı gerekli.",
+    "createSuccess": "{{name}} oluşturuldu.",
+    "createFailed": "Space oluşturulamadı.",
+    "switchSuccess": "{{name}} seçildi.",
+    "switchFailed": "Space değiştirilemedi."
+  },
+  "contextEngine": {
+    "title": "Context Engine",
+    "systemManaged": "Sistem yönetimli",
+    "loading": "Bakım etkinliği yükleniyor...",
+    "loadFailed": "Bakım etkinliği yüklenemedi.",
+    "activeCount": "{{count}} bakım çalışması etkin",
+    "idleCount": "{{count}} bakım Agent izliyor",
+    "empty": "İlk bakım çalışması bekleniyor.",
+    "defaultTask": "Henüz özet yok",
+    "scope": "Kapsam: {{scope}}"
+  }
+}

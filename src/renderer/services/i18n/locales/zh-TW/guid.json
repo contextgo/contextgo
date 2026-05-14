@@ -1,0 +1,100 @@
+{
+  "agentFallbackNotice": "{{original}} is unavailable, using {{fallback}} instead.",
+  "noAgentAvailable": "目前沒有可用的主代理。請登入 Google 或安裝 Claude/Codex CLI。要前往設定嗎？",
+  "noAgentAvailableShort": "No Main Agent available. Click to configure.",
+  "agentTabAutoSwitch": "Model not compatible with Gemini, auto-switched to {{fallback}}",
+  "autoSwitchToAgent": "Gemini is not configured, auto-switching to {{agent}}",
+  "autoSwitchedAgent": "{{from}} is not available, switched to {{to}}",
+  "sendFailed": "訊息傳送失敗，請重試。",
+  "sendFailedWithReason": "訊息傳送失敗：{{reason}}",
+  "externalSessions": {
+    "title": "接管外部會話",
+    "titleVariants": {
+      "continueWork": "繼續外部任務",
+      "resumeProgress": "接著上次的進度",
+      "bringBack": "把外部進度帶回來"
+    },
+    "description": "在 ContextGo 外啟動且尚未接管的 CLI 會話會顯示在這裡。",
+    "filters": {
+      "all": "全部"
+    },
+    "refresh": "重新整理",
+    "loading": "正在掃描外部會話...",
+    "updatedAt": "最近更新於 {{time}}",
+    "import": "接管使用",
+    "loadFailed": "掃描外部會話失敗。",
+    "importFailed": "接管所選外部會話失敗。",
+    "providers": {
+      "claude": "Claude",
+      "codex": "Codex",
+      "gemini": "Gemini",
+      "opencode": "OpenCode",
+      "openclaw-gateway": "OpenClaw"
+    },
+    "loadingShort": "準備中",
+    "loadFailedShort": "稍後再試",
+    "readyCount": "{{count}} 個待接管會話",
+    "readyCountShort": "{{count}} 項可繼續",
+    "emptyStateShort": "暫無可繼續內容",
+    "open": "打開",
+    "emptyState": "暫無待接管的外部會話。"
+  },
+  "openclaw": {
+    "defaultAgent": "預設"
+  },
+  "scanning": {
+    "initialMessage": "Current Agent is unavailable, detecting other available agents...",
+    "scanningMessage": "Scanning local available agents...",
+    "connectingMessage": "Connected successfully, please wait...",
+    "establishingConnection": "Establishing connection...",
+    "statusQueued": "Queued",
+    "statusTesting": "Testing latency...",
+    "statusUnreachable": "Unreachable",
+    "statusAvailable": "Available"
+  },
+  "vault": {
+    "title": "打開空間 Vault",
+    "description": "打開 ContextGo 為目前選中空間管理的 Obsidian Vault。",
+    "affordance": "打開 Vault",
+    "mobileAffordance": "在 Obsidian 中打開",
+    "mobileSetupAffordance": "在 Obsidian 中完成綁定",
+    "mobileStatusReady": "目前裝置已就緒",
+    "mobileStatusNeedsSetup": "需要在 Obsidian 中完成一次綁定",
+    "androidStatusPrepared": "Android 本地 Vault 目錄已準備",
+    "androidStatusRegistered": "Android 行動副本已註冊",
+    "androidSetupPrepared": "已為 Android 裝置準備本地 Vault 目錄，請繼續在 Obsidian 中完成綁定。",
+    "androidReplicaRegistered": "Android 行動副本已註冊到 ContextGo Cloud。",
+    "androidSetupCancelled": "已取消 Android Vault 目錄準備。",
+    "statusReady": "在 Obsidian 或 Finder 中打開",
+    "openSuccess": "已打開空間 Vault。",
+    "openFailed": "打開空間 Vault 失敗。",
+    "obsidianMissing": "未偵測到 Obsidian，已打開 Vault 資料夾，並在瀏覽器中開啟下載頁。",
+    "mobileSetupRequired": "請先在目前裝置上的 Obsidian 中完成這份 Space 的本地綁定。"
+  },
+  "space": {
+    "loading": "正在載入空間...",
+    "empty": "尚未選擇空間",
+    "newSpace": "新增空間",
+    "selectorTitle": "切換空間",
+    "createTitle": "建立空間",
+    "createAction": "建立空間",
+    "namePlaceholder": "空間名稱",
+    "descriptionPlaceholder": "空間描述（可選）",
+    "nameRequired": "請輸入空間名稱。",
+    "createSuccess": "已建立空間 {{name}}。",
+    "createFailed": "建立空間失敗。",
+    "switchSuccess": "已切換到 {{name}}。",
+    "switchFailed": "切換空間失敗。"
+  },
+  "contextEngine": {
+    "title": "Context Engine",
+    "systemManaged": "系統託管",
+    "loading": "正在載入上下文維護任務...",
+    "loadFailed": "載入上下文維護任務失敗。",
+    "activeCount": "{{count}} 個維護任務執行中",
+    "idleCount": "{{count}} 個維護 Agent 待命中",
+    "empty": "等待第一個上下文維護任務。",
+    "defaultTask": "尚未產生摘要",
+    "scope": "範圍：{{scope}}"
+  }
+}

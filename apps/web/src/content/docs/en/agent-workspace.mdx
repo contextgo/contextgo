@@ -1,0 +1,38 @@
+---
+eyebrow: Agent
+title: Work with agents, assistants, and runtimes
+summary: Use the agent surface to start work, manage assistants as reusable definitions, and keep runtime management separate from task entry.
+readingTime: 7 min
+updatedAt: 2026-04-12
+category: features
+---
+
+## Agent surface
+
+Use the agent surface to start a task, choose a working mode, and select the active assistant for the current session. This is the main execution-facing page for day-to-day work.
+
+The agent surface should answer three questions clearly:
+
+- Which assistant is active for this task
+- Which runtime will execute the task
+- Whether the current environment is ready to run
+
+## Assistants
+
+Assistants are reusable definitions. An assistant can include instructions, capabilities, preferred tools, and runtime associations. Use assistant management when you want to create, update, or remove these saved definitions.
+
+Changing an assistant should not change the runtime inventory on the machine. Assistant management is configuration work, not runtime administration.
+
+## Runtimes
+
+Runtime management is a separate administrative area. Use it to install, repair, detect, or verify supported CLIs.
+
+If a runtime is installed but still requires provider login or API configuration, keep that state visible to the user. Installed does not always mean ready.
+
+## Recommended workflow
+
+Use this order when preparing a new machine:
+
+1. Confirm a supported runtime is installed and ready.
+2. Create or select an assistant definition.
+3. Open the agent surface and start work with that assistant.

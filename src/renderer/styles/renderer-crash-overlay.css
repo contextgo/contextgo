@@ -1,0 +1,342 @@
+.renderer-crash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.renderer-crash-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg-10) 42%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.renderer-crash-overlay__panel {
+  position: relative;
+  width: min(920px, 100%);
+  max-height: min(84vh, 920px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--bg-1) 98%, transparent) 0%, transparent 42%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%) 0%,
+      color-mix(in srgb, var(--bg-2) 90%, var(--fill-2) 10%) 100%
+    );
+  box-shadow:
+    0 32px 96px color-mix(in srgb, var(--bg-10) 28%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--bg-1) 78%, transparent);
+  color: var(--text-primary);
+  pointer-events: auto;
+}
+
+.renderer-crash-overlay__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.renderer-crash-overlay__eyebrow {
+  color: color-mix(in srgb, var(--text-secondary) 84%, var(--text-primary) 16%);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.renderer-crash-overlay__title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+}
+
+.renderer-crash-overlay__description {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 66ch;
+}
+
+.renderer-crash-overlay__dev-hint {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border-base));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 8%, var(--bg-1) 92%);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.renderer-crash-overlay__message-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 76%, transparent);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 98%, transparent) 0%, transparent 100%),
+    color-mix(in srgb, var(--bg-2) 88%, var(--fill-2) 12%);
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.renderer-crash-overlay__message-label {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.renderer-crash-overlay__message-body {
+  font-size: 14px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.renderer-crash-overlay__main {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 18px;
+  min-height: 0;
+}
+
+.renderer-crash-overlay__column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.renderer-crash-overlay__meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 0;
+}
+
+.renderer-crash-overlay__meta-row {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 70%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--fill-2) 72%, var(--bg-1) 28%);
+}
+
+.renderer-crash-overlay__meta-row dt {
+  margin: 0 0 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.renderer-crash-overlay__meta-row dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.renderer-crash-overlay__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.renderer-crash-overlay__details {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 76%, transparent);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--bg-1) 90%, var(--fill-2) 10%);
+}
+
+.renderer-crash-overlay__details-title {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.renderer-crash-overlay__details-body {
+  margin: 0;
+  min-height: 260px;
+  max-height: min(46vh, 520px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-2) 88%, var(--fill-2) 12%);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.renderer-route-recovery {
+  display: flex;
+  min-height: calc(100vh - 96px);
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+}
+
+.renderer-route-recovery__card {
+  width: min(760px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 26px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--bg-1) 98%, transparent) 0%, transparent 38%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg-1) 96%, var(--fill-2) 4%) 0%,
+      color-mix(in srgb, var(--bg-2) 90%, var(--fill-2) 10%) 100%
+    );
+  box-shadow: 0 28px 64px color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.renderer-route-recovery__eyebrow {
+  color: color-mix(in srgb, var(--text-secondary) 84%, var(--text-primary) 16%);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.renderer-route-recovery__title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.renderer-route-recovery__description {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.renderer-route-recovery__hint {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border-base));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 8%, var(--bg-1) 92%);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.renderer-route-recovery__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.renderer-route-recovery__meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-2) 84%, var(--fill-2) 16%);
+}
+
+.renderer-route-recovery__meta-row span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.renderer-route-recovery__meta-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.renderer-route-recovery__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.renderer-route-recovery__details {
+  margin: 0;
+  min-height: 180px;
+  max-height: min(34vh, 320px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 70%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-2) 88%, var(--fill-2) 12%);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 720px) {
+  .renderer-crash-overlay {
+    padding: 16px;
+  }
+
+  .renderer-crash-overlay__panel {
+    max-height: calc(100vh - 32px);
+    padding: 18px;
+  }
+
+  .renderer-crash-overlay__main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .renderer-crash-overlay__meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .renderer-crash-overlay__details-body {
+    min-height: 180px;
+  }
+
+  .renderer-route-recovery {
+    min-height: calc(100vh - 72px);
+    padding: 16px;
+  }
+
+  .renderer-route-recovery__card {
+    padding: 18px;
+  }
+
+  .renderer-route-recovery__meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

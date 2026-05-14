@@ -1,0 +1,56 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "morph-ppt",
+  "assistantPresetId": "builtin-morph-ppt",
+  "displayName": "Morph PPT",
+  "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "."
+        }
+      ],
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "slide narrative design and deck structure",
+        "Morph animation planning and reproducible deck generation",
+        "presentation asset organization and delivery handoff"
+      ],
+      "suggestedArtifacts": ["deck briefs", "presentation specs", "asset inventories", "build notes"]
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "repo-relative",
+          "root": "src/process/resources/skills/morph-ppt"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "enabled-skills",
+      "defaultEnabledSkillNames": ["morph-ppt"],
+      "packagedSkillNames": ["morph-ppt"]
+    }
+  }
+}

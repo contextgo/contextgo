@@ -1,0 +1,64 @@
+.presetPopover {
+  max-width: min(376px, calc(100vw - 24px)) !important;
+}
+
+.presetPopover :global(.arco-popover-content) {
+  background: var(--app-popup-surface) !important;
+  border: var(--app-popup-border) !important;
+  border-radius: 24px !important;
+  box-shadow: var(--app-popup-shadow) !important;
+  outline: 1px solid color-mix(in srgb, var(--border-base) 42%, transparent);
+  outline-offset: -1px;
+  overflow: hidden !important;
+  backdrop-filter: blur(16px) saturate(110%);
+  -webkit-backdrop-filter: blur(16px) saturate(110%);
+}
+
+.presetPopover :global(.arco-popover-inner) {
+  background: transparent !important;
+}
+
+.presetPopover :global(.arco-popover-inner-content) {
+  padding: 0 !important;
+}
+
+.presetPopover :global(.arco-trigger-arrow.arco-popover-arrow) {
+  background: var(--app-popup-surface) !important;
+}
+
+.presetPopoverShell {
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 40px));
+  max-width: 100%;
+  padding: 10px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.presetPopoverScrollArea {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  padding-inline: 2px;
+}
+
+.presetPopoverScrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.presetPopoverAction {
+  width: 100%;
+  border-radius: 14px;
+}
+
+.presetPopoverFooter {
+  padding-top: 2px;
+}
+
+.presetPopoverPrimaryAction {
+  min-height: 38px;
+  font-weight: 600;
+  box-shadow: 0 10px 24px color-mix(in srgb, rgb(var(--primary-6)) 22%, transparent);
+}

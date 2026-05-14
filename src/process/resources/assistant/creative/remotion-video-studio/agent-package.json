@@ -1,0 +1,231 @@
+{
+  "protocolVersion": "agent-package.v1",
+  "packageId": "remotion-video-studio",
+  "assistantPresetId": "builtin-remotion-video-studio",
+  "displayName": "Remotion Video Studio",
+  "runtimeNeutral": true,
+  "entryDocument": {
+    "file": "AGENTS.md",
+    "runtimeEntryProjections": [
+      {
+        "runtime": "claude",
+        "target": "CLAUDE.md"
+      },
+      {
+        "runtime": "gemini",
+        "target": "GEMINI.md"
+      }
+    ]
+  },
+  "docsDirectory": {
+    "root": "docs"
+  },
+  "payloads": {
+    "workspaceScaffold": {
+      "logicalId": "workspaceScaffold",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "workspace"
+        }
+      ],
+      "installSurface": "workspace-root-docs",
+      "runtimeProjection": "none",
+      "focusAreas": [
+        "Remotion project bootstrap, React/TSX composition, and parameterized video architecture",
+        "Studio preview, still checks, local render, SSR render, and optional Lambda render planning",
+        "Infermesh / AI Media Studio asset lineage, caption/audio workflows, manifests, and render QC"
+      ],
+      "suggestedArtifacts": [
+        "Remotion project briefs",
+        "composition specs",
+        "render manifests",
+        "caption plans",
+        "asset lineage ledgers",
+        "QC reports"
+      ],
+      "templates": [
+        {
+          "source": "workspace/AGENTS.md",
+          "target": "AGENTS.md"
+        },
+        {
+          "source": "workspace/docs/videos/remotion/README.md",
+          "target": "docs/videos/remotion/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/remotion/briefs/README.md",
+          "target": "docs/videos/remotion/briefs/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/remotion/projects/README.md",
+          "target": "docs/videos/remotion/projects/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/remotion/assets/README.md",
+          "target": "docs/videos/remotion/assets/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/remotion/renders/README.md",
+          "target": "docs/videos/remotion/renders/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/remotion/manifests/README.md",
+          "target": "docs/videos/remotion/manifests/README.md"
+        },
+        {
+          "source": "workspace/docs/videos/remotion/qc/README.md",
+          "target": "docs/videos/remotion/qc/README.md"
+        }
+      ]
+    },
+    "skills": {
+      "logicalId": "skills",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "official-skills/skills"
+        },
+        {
+          "kind": "package-relative",
+          "root": "contextgo-skills/skills"
+        }
+      ],
+      "installSurface": ".contextgo/skills",
+      "runtimeProjection": "native-skills-only",
+      "bootstrapStrategy": "packaged-skills",
+      "defaultEnabledSkillNames": [
+        "remotion-best-practices",
+        "remotion-project-bootstrap",
+        "remotion-composition",
+        "remotion-render-ops",
+        "remotion-player-app",
+        "remotion-captions",
+        "remotion-ai-media",
+        "remotion-qc"
+      ],
+      "packagedSkillNames": [
+        "remotion-best-practices",
+        "remotion-project-bootstrap",
+        "remotion-composition",
+        "remotion-render-ops",
+        "remotion-player-app",
+        "remotion-captions",
+        "remotion-ai-media",
+        "remotion-lambda",
+        "remotion-qc"
+      ],
+      "hidePackageOwnedSkillsFromLibrary": true
+    },
+    "requirements": {
+      "logicalId": "requirements",
+      "sources": [
+        {
+          "kind": "package-relative",
+          "root": "docs"
+        },
+        {
+          "kind": "package-relative",
+          "root": "tools"
+        }
+      ],
+      "installSurface": ".contextgo/requirements/",
+      "runtimeProjection": "none",
+      "tools": [
+        {
+          "id": "nodejs-modern",
+          "kind": "cli",
+          "required": true,
+          "label": "Node.js compatible with Remotion 4.x",
+          "description": "Required for Remotion projects, create-video, Studio, and @remotion/renderer workflows."
+        },
+        {
+          "id": "package-manager",
+          "kind": "cli",
+          "required": true,
+          "label": "npm, pnpm, yarn, or bun",
+          "description": "Used to install Remotion packages and run project scripts."
+        },
+        {
+          "id": "create-video",
+          "kind": "cli",
+          "required": true,
+          "label": "Remotion create-video",
+          "description": "Use npx create-video@latest or an equivalent package-manager runner to scaffold projects."
+        },
+        {
+          "id": "remotion-cli",
+          "kind": "cli",
+          "required": true,
+          "label": "Remotion CLI",
+          "description": "Required for Studio preview, still checks, and local render commands."
+        },
+        {
+          "id": "ffmpeg",
+          "kind": "cli",
+          "required": false,
+          "label": "FFmpeg",
+          "description": "Optional for advanced trimming, silence detection, media probing, and external encode checks."
+        },
+        {
+          "id": "aws-cli",
+          "kind": "cli",
+          "required": false,
+          "label": "AWS CLI",
+          "description": "Optional for explicit Remotion Lambda deployment and render operations."
+        }
+      ],
+      "credentials": [
+        {
+          "id": "remotion-license",
+          "kind": "api_key",
+          "required": false,
+          "label": "Remotion license",
+          "provider": "remotion",
+          "description": "Workspace-scoped license information may be required depending on commercial use case.",
+          "env": "REMOTION_LICENSE_KEY"
+        },
+        {
+          "id": "aws-credentials",
+          "kind": "service_account",
+          "required": false,
+          "label": "AWS credentials",
+          "provider": "aws",
+          "description": "Workspace-scoped AWS credentials are only needed for explicit Remotion Lambda workflows."
+        },
+        {
+          "id": "infermesh-access",
+          "kind": "bearer_token",
+          "required": false,
+          "label": "Infermesh access",
+          "provider": "infermesh",
+          "description": "Use the user's ContextGo / Infermesh login for AI image, video, audio, STT, or TTS asset generation. This package only consumes the generated assets."
+        }
+      ]
+    },
+    "commands": {
+      "logicalId": "commands",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "remotion-video-studio"
+        }
+      ],
+      "installSurface": ".contextgo/commands.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "remotion-video-studio"
+    },
+    "schedules": {
+      "logicalId": "schedules",
+      "sources": [
+        {
+          "kind": "workspace-automation-profile",
+          "root": "remotion-video-studio"
+        }
+      ],
+      "installSurface": ".contextgo/schedules.json",
+      "runtimeProjection": "none",
+      "workspaceAutomationProfile": "remotion-video-studio"
+    }
+  }
+}

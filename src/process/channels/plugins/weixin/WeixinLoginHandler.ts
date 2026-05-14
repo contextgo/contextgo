@@ -1,0 +1,103 @@
+/**
+ * @license
+ * Copyright 2025 ContextGo (contextgo.io)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import type { BrowserWindow } from 'electron';
+import { BrowserWindow as ElectronBrowserWindow } from 'electron';
+import { startLogin } from './WeixinLogin';
+import type { LoginHandle } from './WeixinLogin';
+
+export type WeixinLoginResult = {
+  accountId: string;
+  botToken: string;
+  baseUrl: string;
+  scannerUserId?: string;
+};
+
+export type WeixinLoginProgressCallbacks = {
+  onQR?: (payload: { qrcodeUrl: string }) => void;
+  onScanned?: () => void;
+  onDone?: (result: WeixinLoginResult) => void;
+};
+
+/**
+ * Manages the WeChat QR-code login flow over Electron IPC.
+ * Instantiated once by weixinLoginBridge and reused for all login requests.
+ */
+export class WeixinLoginHandler {
+  private loginHandle: LoginHandle | null = null;
+
+  constructor(private readonly getWindow: () => BrowserWindow | null) {}
+
+  private renderQRPage(pageUrl: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const hidden = new ElectronBrowserWindow({
+        width: 300,
+        height: 300,
+        show: false,
+        webPreferences: { nodeIntegration: false, contextIsolation: true },
+      });
+
+      const timeoutId = setTimeout(() => {
+        hidden.destroy();
+        reject(new Error('Timeout waiting for QR canvas to render'));
+      }, 10_000);
+
+      const poll = setInterval(() => {
+        hidden.webContents
+          .executeJavaScript(
+            `(function(){const c=document.querySelector('canvas');return c?c.toDataURL('image/png'):null})()`
+          )
+          .then((dataUrl: string | null) => {
+            if (dataUrl) {
+              clearTimeout(timeoutId);
+              clearInterval(poll);
+              hidden.destroy();
+              resolve(dataUrl);
+            }
+          })
+          .catch(() => {});
+      }, 300);
+
+      hidden.webContents.on('did-fail-load', (_e, _code, desc) => {
+        clearTimeout(timeoutId);
+        clearInterval(poll);
+        hidden.destroy();
+        reject(new Error(`QR page load failed: ${desc}`));
+      });
+
+      void hidden.loadURL(pageUrl);
+    });
+  }
+
+  startLogin(callbacks: WeixinLoginProgressCallbacks = {}): Promise<WeixinLoginResult> {
+    this.loginHandle?.abort();
+
+    return new Promise((resolve, reject) => {
+      this.loginHandle = startLogin({
+        onQR: (pageUrl) => {
+          this.renderQRPage(pageUrl)
+            .then((dataUrl) => callbacks.onQR?.({ qrcodeUrl: dataUrl }))
+            .catch((err) => console.error('[WeixinLoginHandler] Failed to render QR page:', err));
+        },
+        onScanned: () => {
+          callbacks.onScanned?.();
+        },
+        onDone: (result) => {
+          callbacks.onDone?.(result);
+          resolve(result);
+        },
+        onError: (error) => {
+          reject(error);
+        },
+      });
+    });
+  }
+
+  abort(): void {
+    this.loginHandle?.abort();
+    this.loginHandle = null;
+  }
+}

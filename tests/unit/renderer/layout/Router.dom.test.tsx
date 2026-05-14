@@ -1,0 +1,414 @@
+import { act, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { Outlet, useLocation, useParams } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mockUseConversationTabs = vi.fn();
+const mockGetConversation = vi.fn();
+const preloadRoutePathMock = vi.fn();
+const warmCriticalRendererRoutesMock = vi.fn();
+
+const mountStats = {
+  mounts: 0,
+  unmounts: 0,
+};
+const workbenchHostPropsSpy = vi.fn();
+
+vi.mock('@renderer/hooks/context/AuthContext', () => ({
+  useAuth: () => ({
+    status: 'authenticated',
+  }),
+}));
+
+vi.mock('@renderer/hooks/context/ConversationHistoryContext', () => ({
+  ConversationHistoryProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock('@renderer/pages/conversation/hooks/ConversationTabsContext', () => ({
+  useConversationTabs: () => mockUseConversationTabs(),
+}));
+
+vi.mock('@/common', () => ({
+  ipcBridge: {
+    database: {
+      getUserConversations: {
+        invoke: vi.fn().mockResolvedValue([]),
+      },
+    },
+    conversation: {
+      get: {
+        invoke: (...args: unknown[]) => mockGetConversation(...args),
+      },
+    },
+  },
+}));
+
+vi.mock('@renderer/components/layout/AppLoader', () => ({
+  default: () => <div data-testid='app-loader'>loading</div>,
+}));
+
+vi.mock('@renderer/components/layout/Sider', () => ({
+  default: () => <div data-testid='mock-sider'>sider</div>,
+}));
+
+vi.mock('@/renderer/components/layout/Layout', () => ({
+  default: () => (
+    <div data-testid='layout'>
+      <Outlet />
+    </div>
+  ),
+}));
+
+vi.mock('@renderer/utils/ui/clipboard', () => ({
+  copyText: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@renderer/pages/conversation/GroupedHistory/ConversationSearchPopover', () => ({
+  CONVERSATION_SEARCH_ROUTE: '/conversation-search',
+  ConversationSearchPage: () => <div>search</div>,
+}));
+
+vi.mock('@renderer/components/layout/routerLocation', () => ({
+  getLastStableHashRoute: () => '/guid',
+  normalizeHashRouteShellHref: (href: string) => href,
+  preloadRoutePath: (...args: unknown[]) => preloadRoutePathMock(...args),
+  rememberStableHashRoute: vi.fn(),
+  warmCriticalRendererRoutes: (...args: unknown[]) => warmCriticalRendererRoutesMock(...args),
+}));
+
+vi.mock('@renderer/pages/conversation', () => ({
+  default: () => {
+    const { id } = useParams();
+
+    React.useEffect(() => {
+      mountStats.mounts += 1;
+      return () => {
+        mountStats.unmounts += 1;
+      };
+    }, []);
+
+    return <div data-testid='conversation-page'>{id}</div>;
+  },
+}));
+
+vi.mock('@renderer/pages/WorkbenchHost', () => ({
+  default: ({
+    definition,
+    children,
+  }: {
+    definition: {
+      kind: string;
+      capabilities: string[];
+      shellContract: {
+        shellStyle: string;
+        titlebarSlot: string;
+        toolbarSlot: string;
+      };
+    };
+    children?: React.ReactNode;
+  }) => {
+    workbenchHostPropsSpy({ definition });
+    return (
+      <div data-testid='workbench-host' data-workbench-kind={definition.kind}>
+        {children}
+      </div>
+    );
+  },
+}));
+
+vi.mock('@renderer/pages/guid', () => ({
+  default: () => <div>guid</div>,
+}));
+
+vi.mock('@renderer/pages/RemoteDevicesPage', () => ({
+  default: () => <div>remote-devices</div>,
+}));
+
+vi.mock('@renderer/pages/connectors', () => ({
+  default: () => <div>connectors</div>,
+}));
+
+vi.mock('@renderer/pages/schedule/GlobalScheduleSettings', () => ({
+  default: () => <div>schedule</div>,
+}));
+
+vi.mock('@renderer/pages/settings/AgentSettings', () => ({
+  default: () => {
+    const location = useLocation();
+    return <div data-testid='agent-settings-route'>{location.pathname}</div>;
+  },
+}));
+
+vi.mock('@renderer/pages/agents', () => ({
+  default: () => {
+    const location = useLocation();
+    return <div data-testid='agents-route'>{location.pathname}</div>;
+  },
+}));
+
+vi.mock('@renderer/pages/settings/AgentSettings/AgentEntrySettings', () => ({
+  default: () => <div>agent-entry-settings</div>,
+}));
+
+vi.mock('@renderer/pages/settings/AgentSettings/HooksManagement', () => ({
+  default: () => <div>hooks</div>,
+}));
+
+vi.mock('@renderer/pages/settings/SkillsHubSettings', () => ({
+  default: () => <div>skills-hub</div>,
+}));
+
+vi.mock('@renderer/pages/settings/DisplaySettings', () => ({
+  default: () => <div>display-settings</div>,
+}));
+
+vi.mock('@renderer/pages/settings/GeminiSettings', () => ({
+  default: () => <div>gemini-settings</div>,
+}));
+
+vi.mock('@renderer/pages/settings/ModeSettings', () => ({
+  default: () => <div>mode-settings</div>,
+}));
+
+vi.mock('@renderer/pages/settings/SystemSettings', () => ({
+  default: () => <div>system-settings</div>,
+}));
+
+vi.mock('@renderer/pages/settings/ToolsSettings', () => ({
+  default: () => <div>tools-settings</div>,
+}));
+
+vi.mock('@renderer/pages/settings/ToolsSettings/CommandSettings', () => ({
+  default: () => <div>command-settings</div>,
+}));
+
+vi.mock('@renderer/pages/settings/WebuiSettings', () => ({
+  default: () => <div>webui-settings</div>,
+}));
+
+vi.mock('@renderer/pages/settings/ExtensionSettingsPage', () => ({
+  default: () => <div>extension-settings</div>,
+}));
+
+vi.mock('@renderer/pages/login', () => ({
+  default: () => <div>login</div>,
+}));
+
+vi.mock('@renderer/pages/TestShowcase', () => ({
+  default: () => <div>showcase</div>,
+}));
+
+import Router from '@/renderer/components/layout/Router';
+
+const renderRouter = () => {
+  return render(
+    <Router
+      renderLayout={() => (
+        <div data-testid='layout'>
+          <Outlet />
+        </div>
+      )}
+    />
+  );
+};
+
+describe('Router route switching', () => {
+  beforeEach(() => {
+    mountStats.mounts = 0;
+    mountStats.unmounts = 0;
+    workbenchHostPropsSpy.mockClear();
+    preloadRoutePathMock.mockReset();
+    warmCriticalRendererRoutesMock.mockReset();
+    mockUseConversationTabs.mockReturnValue({
+      openTabs: [],
+      activeTabId: null,
+      closeAllTabs: vi.fn(),
+    });
+    mockGetConversation.mockReset();
+    delete (window as Window & { electronAPI?: unknown }).electronAPI;
+    window.history.replaceState({}, '', '/#/conversation/alpha');
+  });
+
+  it('keeps the conversation route mounted when only the route param changes', async () => {
+    renderRouter();
+
+    expect(await screen.findByTestId('workbench-host')).toHaveAttribute('data-workbench-kind', 'conversation-cowork');
+    expect(await screen.findByTestId('conversation-page')).toHaveTextContent('alpha');
+    expect(workbenchHostPropsSpy).toHaveBeenCalledWith({
+      definition: {
+        kind: 'conversation-cowork',
+        capabilities: ['chat', 'preview', 'workspace', 'browser'],
+        shellContract: {
+          shellStyle: 'conversation',
+          titlebar: {
+            primarySlotId: 'app-titlebar-chat-slot',
+          },
+          toolbar: {
+            slotId: 'app-titlebar-toolbar-slot',
+          },
+        },
+      },
+    });
+    expect(mountStats.mounts).toBe(1);
+    expect(mountStats.unmounts).toBe(0);
+
+    await act(async () => {
+      window.location.hash = '#/conversation/beta';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('conversation-page')).toHaveTextContent('beta');
+    });
+    expect(mountStats.mounts).toBe(1);
+    expect(mountStats.unmounts).toBe(0);
+  });
+
+  it('keeps the conversation route mounted across unrelated parent rerenders', async () => {
+    const Shell: React.FC = () => {
+      const [tick, setTick] = React.useState(0);
+
+      return (
+        <div data-testid='router-shell' data-tick={tick}>
+          <button type='button' onClick={() => setTick((current) => current + 1)}>
+            rerender
+          </button>
+          <Router
+            renderLayout={() => (
+              <div data-testid='layout'>
+                <Outlet />
+              </div>
+            )}
+          />
+        </div>
+      );
+    };
+
+    render(<Shell />);
+
+    expect(await screen.findByTestId('conversation-page')).toHaveTextContent('alpha');
+    expect(mountStats.mounts).toBe(1);
+    expect(mountStats.unmounts).toBe(0);
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'rerender' }).click();
+    });
+
+    expect(screen.getByTestId('conversation-page')).toHaveTextContent('alpha');
+    expect(mountStats.mounts).toBe(1);
+    expect(mountStats.unmounts).toBe(0);
+  });
+
+  it('renders the embedded remote devices page on the official remote route', async () => {
+    window.history.replaceState({}, '', '/#/remote/devices');
+
+    renderRouter();
+
+    expect(await screen.findByText('remote-devices')).toBeInTheDocument();
+  });
+
+  it('redirects the removed webui settings route to system settings', async () => {
+    window.history.replaceState({}, '', '/#/settings/webui');
+
+    renderRouter();
+
+    expect(await screen.findByText('system-settings')).toBeInTheDocument();
+    expect(screen.queryByText('webui-settings')).not.toBeInTheDocument();
+  });
+
+  it('routes AI assistant workspace through the top-level agents page instead of settings', async () => {
+    window.history.replaceState({}, '', '/#/agents/new');
+
+    renderRouter();
+
+    expect(await screen.findByTestId('agents-route')).toHaveTextContent('/agents/new');
+    expect(screen.queryByTestId('agent-settings-route')).not.toBeInTheDocument();
+  });
+
+  it('falls back to guid without mounting the conversation route when the restored active tab is invalid', async () => {
+    let resolveConversation: ((value: null) => void) | null = null;
+    const closeAllTabs = vi.fn();
+
+    window.history.replaceState({}, '', '/#/');
+    mockUseConversationTabs.mockReturnValue({
+      openTabs: [{ id: 'missing-conversation', name: 'Missing', workspace: '', type: 'acp' }],
+      activeTabId: 'missing-conversation',
+      closeAllTabs,
+    });
+    mockGetConversation.mockImplementation(
+      () =>
+        new Promise<null>((resolve) => {
+          resolveConversation = resolve;
+        })
+    );
+
+    renderRouter();
+
+    expect(screen.getByTestId('app-loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('conversation-page')).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveConversation?.(null);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('guid')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('conversation-page')).not.toBeInTheDocument();
+    expect(closeAllTabs).toHaveBeenCalledTimes(1);
+    expect(mountStats.mounts).toBe(0);
+  });
+
+  it('waits for conversation route preloading before redirecting restored startup tabs', async () => {
+    let resolvePreload: (() => void) | null = null;
+
+    window.history.replaceState({}, '', '/#/');
+    mockUseConversationTabs.mockReturnValue({
+      openTabs: [{ id: 'alpha', name: 'Alpha', workspace: '/tmp/alpha', type: 'acp' }],
+      activeTabId: 'alpha',
+      closeAllTabs: vi.fn(),
+    });
+    mockGetConversation.mockResolvedValue({
+      id: 'alpha',
+      type: 'acp',
+      name: 'Alpha',
+      extra: { workspace: '/tmp/alpha' },
+    });
+    preloadRoutePathMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePreload = resolve;
+        })
+    );
+
+    renderRouter();
+
+    expect(screen.getByTestId('app-loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('layout')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(preloadRoutePathMock).toHaveBeenCalledWith('/conversation/alpha');
+    });
+
+    expect(screen.queryByTestId('conversation-page')).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolvePreload?.();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('layout')).toBeInTheDocument();
+      expect(screen.getByTestId('conversation-page')).toHaveTextContent('alpha');
+    });
+  });
+
+  it('skips desktop route warming so startup does not inject unrelated lazy-route CSS', async () => {
+    (window as Window & { electronAPI?: unknown }).electronAPI = {};
+
+    renderRouter();
+
+    await screen.findByTestId('conversation-page');
+
+    expect(warmCriticalRendererRoutesMock).not.toHaveBeenCalled();
+  });
+});

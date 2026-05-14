@@ -1,0 +1,253 @@
+.modalBody {
+  display: flex;
+  width: 100%;
+  min-height: 220px;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.filterRail {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  scrollbar-width: none;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
+  border-radius: 999px;
+  padding: 6px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 98%, transparent) 0%, transparent 100%),
+    color-mix(in srgb, var(--bg-2) 86%, var(--fill-2) 14%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--bg-1) 72%, transparent),
+    0 14px 32px color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.filterRail::-webkit-scrollbar {
+  display: none;
+}
+
+.filterTabs {
+  width: max-content;
+  min-width: 100%;
+}
+
+.filterTabs :global(.arco-tabs-header) {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  gap: 8px;
+}
+
+.filterTabs :global(.arco-tabs-header-wrapper) {
+  width: max-content;
+  min-width: 100%;
+  justify-content: flex-start;
+}
+
+.filterTabs :global(.arco-tabs-header-scroll) {
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
+}
+
+.filterTabs :global(.arco-tabs-header-nav-rounded) {
+  display: inline-flex;
+  min-width: max-content;
+  padding: 0;
+}
+
+.filterTabs :global(.arco-tabs-header-nav-rounded .arco-tabs-header-title) {
+  min-height: 38px;
+  margin: 0;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: transparent;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
+}
+
+.filterTabs :global(.arco-tabs-header-nav-rounded .arco-tabs-header-title:hover) {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--border-base) 64%, transparent);
+  background: color-mix(in srgb, var(--fill-2) 80%, var(--bg-1) 20%);
+}
+
+.filterTabs :global(.arco-tabs-header-nav-rounded .arco-tabs-header-title-active),
+.filterTabs :global(.arco-tabs-header-nav-rounded .arco-tabs-header-title-active:hover) {
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--border-base) 88%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 98%, transparent) 0%, transparent 100%),
+    color-mix(in srgb, var(--bg-1) 94%, var(--fill-1) 6%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--bg-1) 76%, transparent),
+    0 8px 20px color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.filterTabs :global(.arco-tabs-header-nav-rounded .arco-tabs-header-title:focus-visible) {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.filterTabs :global(.arco-tabs-content) {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  .filterRail {
+    border-radius: 20px;
+    padding: 8px;
+  }
+
+  .filterTabs :global(.arco-tabs-header-nav-rounded) {
+    gap: 6px;
+  }
+
+  .filterTabs :global(.arco-tabs-header-nav-rounded .arco-tabs-header-title) {
+    min-height: 34px;
+    padding: 0 12px;
+  }
+}
+
+.sessionsList {
+  display: flex;
+  max-height: 420px;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.sessionCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--border-base) 82%, transparent);
+  border-radius: 24px;
+  padding: 16px 18px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 98%, transparent) 0%, transparent 100%),
+    color-mix(in srgb, var(--bg-2) 94%, var(--fill-2) 6%);
+  box-shadow: 0 16px 36px color-mix(in srgb, var(--text-primary) 6%, transparent);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.sessionCard:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--border-base) 94%, transparent);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+
+.sessionTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sessionMeta {
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sessionSignalRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sessionSignal {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--border-base) 72%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-1) 74%, var(--bg-1) 26%);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.groupList {
+  display: flex;
+  max-height: 420px;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.groupHeader {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--border-base) 78%, transparent);
+  border-radius: 22px;
+  padding: 14px 16px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg-1) 96%, transparent) 0%, transparent 100%),
+    color-mix(in srgb, var(--fill-1) 80%, var(--bg-1) 20%);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--text-primary) 5%, transparent);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.groupHeader:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--border-base) 88%, transparent);
+  box-shadow: 0 16px 34px color-mix(in srgb, var(--text-primary) 7%, transparent);
+}
+
+.groupTitle {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.groupChildren {
+  min-width: 0;
+  margin-left: 12px;
+  padding-left: 18px;
+  border-left: 1px solid color-mix(in srgb, var(--border-base) 56%, transparent);
+}
+
+.emptyBranch {
+  height: 44px;
+  border: 1px dashed color-mix(in srgb, var(--border-base) 62%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--fill-1) 64%, var(--bg-1) 36%);
+}

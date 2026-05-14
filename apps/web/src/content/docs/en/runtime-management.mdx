@@ -1,0 +1,38 @@
+---
+eyebrow: Runtimes
+title: Manage local runtimes and CLI status
+summary: Install supported runtimes, repair broken CLI environments, and distinguish between installed, authenticated, and ready states.
+readingTime: 6 min
+updatedAt: 2026-04-12
+category: features
+---
+
+## Runtime states
+
+Treat runtime status as a sequence of states:
+
+- Not installed
+- Installed
+- Authenticated or configured
+- Ready
+
+An installed runtime may still be unusable until provider login or API configuration has been completed.
+
+## Install and repair
+
+Use runtime management to install supported CLIs, re-run detection, and repair a broken installation path. Repair should stay limited to the runtime being managed.
+
+Do not treat repair as a general cleanup tool for the whole machine. It should not overwrite unrelated developer tools or global configuration.
+
+## Readiness checklist
+
+Before starting work with a runtime, confirm:
+
+- the CLI is detected
+- required provider login is complete
+- required API keys or configuration are available
+- the runtime can pass a basic health check
+
+## Administrative note
+
+ContextGo manages discovery, installation, repair, and status display. Provider authentication should still follow the official workflow for that provider.

@@ -1,0 +1,303 @@
+/* Sendbox component styles */
+
+/* Send button disabled state - override Arco Design default disabled styles */
+/* Note: Active state is handled via style prop in component */
+.send-button-custom:disabled {
+  background-color: #d3d4d9 !important;
+  border-color: #d3d4d9 !important;
+  opacity: 1 !important;
+}
+
+/* Make arrow icon thicker */
+.send-button-custom .arco-icon > svg {
+  stroke-width: 5 !important;
+  filter: drop-shadow(0 0 0.5px currentColor);
+}
+
+.sendbox-stop-button .arco-btn-icon,
+.sendbox-stop-button .arco-btn-content,
+.sendbox-stop-button .arco-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+.sendbox-stop-button svg {
+  display: block;
+}
+
+.sendbox-stop-button,
+.sendbox-stop-button:hover,
+.sendbox-stop-button:active,
+.sendbox-stop-button:focus,
+.sendbox-stop-button:focus-visible {
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease !important;
+}
+
+.sendbox-stop-button:not(:disabled):hover {
+  background-color: rgba(var(--danger-6), 0.16) !important;
+  border-color: rgba(var(--danger-6), 0.32) !important;
+  box-shadow:
+    0 8px 18px rgba(var(--danger-6), 0.12),
+    inset 0 0 0 1px rgba(var(--danger-6), 0.08) !important;
+  transform: translateY(-1px);
+}
+
+.sendbox-stop-button:not(:disabled):active {
+  background-color: rgba(var(--danger-6), 0.2) !important;
+  border-color: rgba(var(--danger-6), 0.38) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--danger-6), 0.12) !important;
+  transform: translateY(0);
+}
+
+.sendbox-stop-button:not(:disabled):focus-visible {
+  box-shadow:
+    0 0 0 2px rgba(var(--danger-6), 0.12),
+    0 0 0 5px rgba(var(--danger-6), 0.08) !important;
+}
+
+.sendbox-stop-button:disabled {
+  opacity: 1 !important;
+}
+
+/* Input placeholder color */
+::placeholder {
+  color: #a1a2aa !important;
+}
+
+/* Sendbox tools buttons - prevent layout jitter from theme hover transforms (#1075) */
+.sendbox-tools .arco-btn,
+.sendbox-tools .arco-btn:hover,
+.sendbox-tools .arco-btn:active,
+.sendbox-tools .arco-btn:focus {
+  transform: none !important;
+}
+
+/* Conversation sendbox model/permission pills: blend into background */
+.sendbox-tools .sendbox-model-btn,
+.sendbox-tools .sendbox-model-btn:hover,
+.sendbox-tools .sendbox-model-btn:active,
+.sendbox-tools .sendbox-model-btn:focus,
+.sendbox-tools .sendbox-model-btn:focus-visible {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text-secondary) !important;
+}
+
+.sendbox-tools .sendbox-model-btn:hover,
+.sendbox-tools .sendbox-model-btn:active,
+.sendbox-tools .sendbox-model-btn:focus,
+.sendbox-tools .sendbox-model-btn:focus-visible {
+  color: var(--text-primary) !important;
+}
+
+/* Shared sendbox tool button geometry */
+.sendbox-tool-button,
+.sendbox-tool-button:hover,
+.sendbox-tool-button:active,
+.sendbox-tool-button:focus,
+.sendbox-tool-button:focus-visible {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+}
+
+.sendbox-tool-button .arco-btn-icon,
+.sendbox-tool-button .arco-btn-content {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+.sendbox-tool-button .arco-icon,
+.sendbox-tool-button .arco-icon-hover,
+.sendbox-tool-button svg {
+  display: block;
+}
+
+.sendbox-tool-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sendbox-tool-pill-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sendbox-context-preview-button,
+.sendbox-context-preview-button:hover,
+.sendbox-context-preview-button:active,
+.sendbox-context-preview-button:focus,
+.sendbox-context-preview-button:focus-visible {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  width: auto !important;
+  min-width: 34px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 6px !important;
+  border-radius: 999px !important;
+  color: var(--text-secondary) !important;
+}
+
+.sendbox-context-preview-button:hover,
+.sendbox-context-preview-button:focus-visible {
+  background: var(--color-fill-2) !important;
+  color: var(--text-primary) !important;
+}
+
+.sendbox-context-preview-button .arco-btn-icon,
+.sendbox-context-preview-button .arco-btn-content {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+}
+
+.sendbox-context-preview-button__count {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+}
+
+.conversation-run-status-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
+  transition: min-height 180ms ease;
+}
+
+/* Mobile: allow horizontal scrolling for sendbox tools (model/permission pills) */
+@media (max-width: 767px) {
+  .conversation-run-status-stack {
+    justify-content: flex-start;
+  }
+
+  .sendbox-tools-scroll-mobile {
+    display: block;
+    min-width: 0;
+    max-width: calc(100vw - 140px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    touch-action: pan-x;
+  }
+
+  .sendbox-tools-scroll-mobile-track {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 4px;
+    min-width: 100%;
+    width: max-content;
+  }
+
+  .sendbox-tools-scroll-mobile-track > * {
+    flex-shrink: 0;
+  }
+
+  .sendbox-tools-scroll-mobile::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Sendbox input */
+  .sendbox-input--mobile {
+    font-size: 16px !important;
+    line-height: 24px !important;
+  }
+
+  .sendbox-input--mobile textarea,
+  .sendbox-input--mobile .arco-textarea,
+  textarea.sendbox-input--mobile {
+    font-size: 16px !important;
+    line-height: 24px !important;
+  }
+
+  .sendbox-tools-scroll-mobile .sendbox-tool-button,
+  .sendbox-tools-scroll-mobile .sendbox-tool-button:hover,
+  .sendbox-tools-scroll-mobile .sendbox-tool-button:active,
+  .sendbox-tools-scroll-mobile .sendbox-tool-button:focus,
+  .sendbox-tools-scroll-mobile .sendbox-tool-button:focus-visible,
+  .sendbox-tools-scroll-mobile .agent-mode-compact-pill,
+  .sendbox-tools-scroll-mobile .agent-mode-compact-pill:hover,
+  .sendbox-tools-scroll-mobile .agent-mode-compact-pill:active,
+  .sendbox-tools-scroll-mobile .agent-mode-compact-pill:focus,
+  .sendbox-tools-scroll-mobile .agent-mode-compact-pill:focus-visible {
+    align-self: flex-end;
+    margin-bottom: 0 !important;
+    vertical-align: bottom;
+  }
+
+  .sendbox-tools-scroll-mobile .sendbox-tool-cluster {
+    align-items: flex-end;
+    width: max-content;
+    max-width: 100%;
+  }
+
+  .sendbox-tools-scroll-mobile .sendbox-tool-pill-row {
+    align-items: center;
+    min-width: 0;
+    flex-wrap: nowrap;
+  }
+
+  .sendbox-tools-mobile-shell {
+    display: flex;
+    align-items: flex-end;
+    min-width: 0;
+    min-height: 32px;
+    height: 32px;
+    overflow: hidden;
+  }
+
+  .sendbox-tools-scroll-mobile-bottom {
+    width: 100%;
+    max-width: 100%;
+    min-height: 32px;
+    height: 32px;
+    overflow-y: hidden;
+  }
+
+  .sendbox-tools-scroll-mobile-bottom .sendbox-tools-scroll-mobile-track {
+    min-height: 32px;
+    height: 32px;
+  }
+
+  .sendbox-mobile-actions {
+    min-height: 32px;
+  }
+
+  .sendbox-mobile-actions .context-usage-indicator {
+    width: 32px !important;
+    height: 32px !important;
+  }
+}

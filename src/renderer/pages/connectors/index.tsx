@@ -1,0 +1,525 @@
+import { ipcBridge } from '@/common';
+import type { ExternalConnectorCatalogDetails } from '@/common/types/connectors/externalConnectorCatalog';
+import ContextGoSelect from '@/renderer/components/base/ContextGoSelect';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
+import { Button, Tag } from '@arco-design/web-react';
+import { ConnectionPoint, Right, Send } from '@icon-park/react';
+import classNames from 'classnames';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate, useParams } from 'react-router-dom';
+import ConnectorCapabilityPanel from './ConnectorCapabilityPanel';
+import ConnectorLogo from './ConnectorLogo';
+import { CONNECTOR_CATEGORY_ORDER, CONNECTOR_MAP, CONNECTORS } from './connectors';
+import styles from './ConnectorsPage.module.css';
+import type {
+  ConnectorAuthType,
+  ConnectorCategory,
+  ConnectorResource,
+  ConnectorStage,
+  ConnectorSupportStatus,
+  ConnectorSupportSource,
+} from './types';
+
+const getResourceKey = (resource: ConnectorResource): string => `settings.connectors.resourceTypes.${resource}`;
+const getAuthKey = (authType: ConnectorAuthType): string => `settings.connectors.authTypes.${authType}`;
+const getCategoryKey = (category: ConnectorCategory): string => `settings.connectors.categories.${category}`;
+const getStageKey = (stage: ConnectorStage): string =>
+  stage === 'priority' ? 'settings.connectors.stagePriority' : 'settings.connectors.stagePlanned';
+const getSupportStatusKey = (status: ConnectorSupportStatus): string => `settings.connectors.supportStatus.${status}`;
+const getImplementationOwnerKey = (owner?: string): string => {
+  switch (owner) {
+    case 'official':
+      return 'settings.connectors.implementationOwners.official';
+    case 'contextgo':
+      return 'settings.connectors.implementationOwners.contextgo';
+    case 'connector-repo':
+      return 'settings.connectors.implementationOwners.connectorRepo';
+    case 'hybrid':
+      return 'settings.connectors.implementationOwners.hybrid';
+    default:
+      return 'settings.connectors.implementationOwners.default';
+  }
+};
+
+const getSupportKindKey = (kind: ConnectorSupportSource['kind']): string => {
+  switch (kind) {
+    case 'official-docs':
+      return 'settings.connectors.supportKinds.officialDocs';
+    case 'official-runtime':
+      return 'settings.connectors.supportKinds.officialRuntime';
+    case 'official-sdk':
+      return 'settings.connectors.supportKinds.officialSdk';
+    case 'contextgo-native':
+      return 'settings.connectors.supportKinds.contextgoNative';
+    case 'connector-repo':
+      return 'settings.connectors.supportKinds.connectorRepo';
+    default:
+      return 'settings.connectors.supportKinds.default';
+  }
+};
+
+const createInitialCollapsedState = (): Record<ConnectorCategory, boolean> =>
+  Object.fromEntries(CONNECTOR_CATEGORY_ORDER.map((category) => [category, false])) as Record<
+    ConnectorCategory,
+    boolean
+  >;
+
+const ConnectorsPage: React.FC = () => {
+  const { connectorId } = useParams();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+  const layout = useLayoutContext();
+  const isMobile = layout?.isMobile ?? false;
+  const [collapsedCategories, setCollapsedCategories] =
+    useState<Record<ConnectorCategory, boolean>>(createInitialCollapsedState);
+  const [externalCatalogDetails, setExternalCatalogDetails] = useState<ExternalConnectorCatalogDetails | null>(null);
+  const [externalCatalogError, setExternalCatalogError] = useState<string>('');
+
+  const groupedConnectors = useMemo(
+    () =>
+      CONNECTOR_CATEGORY_ORDER.map((category) => ({
+        category,
+        items: CONNECTORS.filter((connector) => connector.category === category),
+      })).filter((group) => group.items.length > 0),
+    []
+  );
+
+  const activeConnector = connectorId ? CONNECTOR_MAP.get(connectorId) : undefined;
+  const fallbackConnector = CONNECTORS[0];
+  const resolvedConnector = activeConnector || fallbackConnector;
+
+  useEffect(() => {
+    if (connectorId && activeConnector) {
+      return;
+    }
+
+    if (!fallbackConnector) {
+      return;
+    }
+
+    void navigate(`/connectors/${fallbackConnector.id}`, { replace: true });
+  }, [activeConnector, connectorId, fallbackConnector, navigate]);
+
+  useEffect(() => {
+    if (!resolvedConnector) {
+      return;
+    }
+
+    setCollapsedCategories((previous) => {
+      if (!previous[resolvedConnector.category]) {
+        return previous;
+      }
+      return {
+        ...previous,
+        [resolvedConnector.category]: false,
+      };
+    });
+  }, [resolvedConnector]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!resolvedConnector?.externalCatalogConnector) {
+      setExternalCatalogDetails(null);
+      setExternalCatalogError('');
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setExternalCatalogDetails(null);
+    setExternalCatalogError('');
+    ipcBridge.externalConnectorCatalog.getDetails
+      .invoke({ connector: resolvedConnector.externalCatalogConnector })
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        if (result.success && result.data) {
+          setExternalCatalogDetails(result.data);
+          setExternalCatalogError('');
+          return;
+        }
+        setExternalCatalogDetails(null);
+        setExternalCatalogError(result.msg || '');
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        setExternalCatalogDetails(null);
+        setExternalCatalogError(error instanceof Error ? error.message : String(error));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedConnector]);
+
+  if (!resolvedConnector) {
+    return null;
+  }
+
+  const connectorSummary = resolvedConnector.externalCatalogConnector
+    ? t('settings.connectors.catalogExternalDesc')
+    : resolvedConnector.summary ||
+      t('settings.connectors.summaryTemplate', {
+        name: resolvedConnector.name,
+        category: t(getCategoryKey(resolvedConnector.category)),
+      });
+  const isSupported = resolvedConnector.supportStatus === 'supported';
+  const supportSources = resolvedConnector.supportSources || [];
+  const externalCapabilityGroups = externalCatalogDetails?.capabilities?.groups ?? [];
+  const externalWorkflows = externalCatalogDetails?.implemented_workflows ?? [];
+
+  const supportDescription = resolvedConnector.externalCatalogConnector
+    ? t('settings.connectors.catalogExternalDesc')
+    : t('settings.connectors.catalogPlaceholderDesc');
+  const capabilityGroupCount = externalCapabilityGroups.length;
+  const capabilityActionCount = externalCapabilityGroups.reduce((sum, group) => sum + group.actions.length, 0);
+  const readyWorkflowCount = externalWorkflows.filter((workflow) => workflow.status === 'ready').length;
+  const primaryRuntimeLabel =
+    supportSources.find((source) => source.kind === 'official-runtime')?.label ||
+    supportSources[0]?.label ||
+    externalCatalogDetails?.connector ||
+    resolvedConnector.domain;
+
+  const mobileCatalog = isMobile ? (
+    <section className={styles.mobileCatalog} data-testid='connector-mobile-catalog'>
+      <div className={styles.mobileCatalogHeader}>
+        <div className={styles.mobileCatalogHeaderCopy}>
+          <div className={styles.mobileCatalogEyebrow}>{t('settings.connectors.kind')}</div>
+          <h1 className={styles.mobileCatalogTitle}>{t('settings.connectors.title')}</h1>
+        </div>
+        <Tag color='gray' className={styles.mobileCatalogCount}>
+          {t('settings.connectors.count', { count: CONNECTORS.length })}
+        </Tag>
+      </div>
+      <p className={styles.mobileCatalogDescription}>{t('settings.connectors.description')}</p>
+      <div className={styles.mobileCatalogSelectWrap}>
+        <ContextGoSelect
+          value={resolvedConnector.id}
+          size='large'
+          className={styles.mobileCatalogSelect}
+          placeholder={t('settings.connectors.title')}
+          onChange={(value) => {
+            if (typeof value === 'string' && value !== resolvedConnector.id) {
+              void navigate(`/connectors/${value}`);
+            }
+          }}
+        >
+          {groupedConnectors.map((group) => (
+            <ContextGoSelect.OptGroup key={group.category} label={t(getCategoryKey(group.category))}>
+              {group.items.map((connector) => (
+                <ContextGoSelect.Option key={connector.id} value={connector.id}>
+                  {connector.name}
+                </ContextGoSelect.Option>
+              ))}
+            </ContextGoSelect.OptGroup>
+          ))}
+        </ContextGoSelect>
+      </div>
+      <div className={styles.mobileCatalogActive}>
+        <ConnectorLogo connector={resolvedConnector} />
+        <div className={styles.mobileCatalogActiveMeta}>
+          <div className={styles.mobileCatalogActiveName}>{resolvedConnector.name}</div>
+          <div className={styles.mobileCatalogActiveDomain}>{resolvedConnector.domain}</div>
+        </div>
+      </div>
+    </section>
+  ) : null;
+
+  return (
+    <div className='secondary-page-frame'>
+      <div className='secondary-page-inner'>
+        <div className={styles.page}>
+          <div className={classNames(styles.shell, isMobile && styles.shellMobile)}>
+            {isMobile ? mobileCatalog : null}
+            {!isMobile ? (
+              <aside className={styles.sidebar}>
+                <div className={styles.sidebarHeader}>
+                  <div className={styles.sidebarTitleRow}>
+                    <h1 className={styles.sidebarTitle}>{t('settings.connectors.title')}</h1>
+                    <div className={styles.eyebrow}>{t('settings.connectors.kind')}</div>
+                  </div>
+                  <p className={styles.sidebarDescription}>
+                    {t('settings.connectors.description')}{' '}
+                    {t('settings.connectors.count', { count: CONNECTORS.length })}
+                  </p>
+                </div>
+
+                <div className={styles.listWrap}>
+                  {groupedConnectors.map((group) => (
+                    <section key={group.category} className={styles.categorySection}>
+                      <Button
+                        type='text'
+                        className={styles.categoryToggle}
+                        aria-expanded={!collapsedCategories[group.category]}
+                        onClick={() => {
+                          setCollapsedCategories((previous) => ({
+                            ...previous,
+                            [group.category]: !previous[group.category],
+                          }));
+                        }}
+                      >
+                        <span className={styles.categoryTitle}>
+                          <span className={styles.categoryTitleMeta}>
+                            <Right
+                              theme='outline'
+                              size='14'
+                              className={classNames(
+                                styles.categoryChevron,
+                                collapsedCategories[group.category] && styles.categoryChevronCollapsed
+                              )}
+                            />
+                            <span className={styles.categoryTitleText}>{t(getCategoryKey(group.category))}</span>
+                          </span>
+                          <span className={styles.categoryCount}>{group.items.length}</span>
+                        </span>
+                      </Button>
+
+                      <div className={styles.categoryItems} hidden={collapsedCategories[group.category]}>
+                        {group.items.map((connector) => {
+                          const isActive = connector.id === resolvedConnector.id;
+                          return (
+                            <Button
+                              key={connector.id}
+                              type='text'
+                              className={classNames(styles.connectorItem, isActive && styles.connectorItemActive)}
+                              onClick={() => {
+                                void navigate(`/connectors/${connector.id}`);
+                              }}
+                            >
+                              <div className={styles.connectorItemInner}>
+                                <ConnectorLogo connector={connector} />
+                                <div className={styles.connectorMeta}>
+                                  <div className={styles.connectorNameRow}>
+                                    <span className={styles.connectorName}>{connector.name}</span>
+                                    <Tag
+                                      size='small'
+                                      color={connector.supportStatus === 'supported' ? 'green' : 'gray'}
+                                    >
+                                      {t(getSupportStatusKey(connector.supportStatus))}
+                                    </Tag>
+                                  </div>
+                                  <div className={styles.connectorDomain}>{connector.domain}</div>
+                                </div>
+                              </div>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </aside>
+            ) : null}
+
+            <section className={styles.detail}>
+              <div className={styles.detailHero}>
+                <ConnectorLogo connector={resolvedConnector} size='large' />
+                <div className={styles.detailHeroMeta}>
+                  <h2 className={styles.detailTitle}>{resolvedConnector.name}</h2>
+                  <p className={styles.detailSubtitle}>{connectorSummary}</p>
+                  <div className={styles.detailBadges}>
+                    <Tag color={isSupported ? 'green' : 'gray'}>
+                      {t(getSupportStatusKey(resolvedConnector.supportStatus))}
+                    </Tag>
+                    {!isSupported ? <Tag color='arcoblue'>{t(getStageKey(resolvedConnector.stage))}</Tag> : null}
+                    <Tag color='gray'>{t(getAuthKey(resolvedConnector.authType))}</Tag>
+                    <Tag color='cyan'>{t('settings.connectors.kind')}</Tag>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.detailSections}>
+                {externalCatalogDetails ? (
+                  <div className={styles.summaryStrip}>
+                    <div className={styles.summaryStatCard}>
+                      <div className={styles.summaryStatValue}>{capabilityGroupCount}</div>
+                      <div className={styles.summaryStatLabel}>
+                        {t('settings.connectors.summaryStats.capabilityGroups')}
+                      </div>
+                    </div>
+                    <div className={styles.summaryStatCard}>
+                      <div className={styles.summaryStatValue}>{capabilityActionCount}</div>
+                      <div className={styles.summaryStatLabel}>{t('settings.connectors.summaryStats.actions')}</div>
+                    </div>
+                    <div className={styles.summaryStatCard}>
+                      <div className={styles.summaryStatValue}>{readyWorkflowCount}</div>
+                      <div className={styles.summaryStatLabel}>
+                        {t('settings.connectors.summaryStats.readyWorkflows')}
+                      </div>
+                    </div>
+                    <div className={styles.summaryStatCard}>
+                      <div className={styles.summaryStatValue}>{primaryRuntimeLabel}</div>
+                      <div className={styles.summaryStatLabel}>
+                        {t('settings.connectors.summaryStats.primaryRuntime')}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                <section className={styles.detailSection}>
+                  <div className={styles.sectionHeader}>
+                    <h3 className={styles.sectionTitle}>{t('settings.connectors.sectionTitles.overview')}</h3>
+                    <p className={styles.sectionDescription}>{t('settings.connectors.sectionDescriptions.overview')}</p>
+                  </div>
+
+                  <div className={styles.detailGrid}>
+                    <div className={classNames(styles.detailCard, styles.detailCardWide)}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.support')}</h3>
+                      <div className={styles.supportSummary}>
+                        <Tag color={isSupported ? 'green' : 'gray'}>
+                          {t(getSupportStatusKey(resolvedConnector.supportStatus))}
+                        </Tag>
+                        <div className={styles.detailCardText}>{supportDescription}</div>
+                      </div>
+                    </div>
+
+                    <div className={styles.detailCard}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.resources')}</h3>
+                      <div className={styles.chipWrap}>
+                        {resolvedConnector.resources.map((resource) => (
+                          <Tag key={resource} size='small' color='arcoblue'>
+                            {t(getResourceKey(resource))}
+                          </Tag>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className={styles.detailCard}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.auth')}</h3>
+                      <div className={styles.detailCardText}>{t(getAuthKey(resolvedConnector.authType))}</div>
+                    </div>
+
+                    <div className={styles.detailCard}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.implementation')}</h3>
+                      <div className={styles.detailCardText}>
+                        {t(getImplementationOwnerKey(resolvedConnector.implementationOwner))}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {externalCatalogDetails ? (
+                  <section className={styles.detailSection}>
+                    <div className={styles.sectionHeader}>
+                      <h3 className={styles.sectionTitle}>
+                        {t('settings.connectors.sectionTitles.nativeCapabilitySurface')}
+                      </h3>
+                      <p className={styles.sectionDescription}>
+                        {t('settings.connectors.sectionDescriptions.nativeCapabilitySurface')}
+                      </p>
+                    </div>
+
+                    <div className={styles.detailGrid}>
+                      <ConnectorCapabilityPanel details={externalCatalogDetails} section='capabilities' />
+                    </div>
+                  </section>
+                ) : null}
+
+                {externalCatalogDetails ? (
+                  <section className={styles.detailSection}>
+                    <div className={styles.sectionHeader}>
+                      <h3 className={styles.sectionTitle}>
+                        {t('settings.connectors.sectionTitles.contextgoReadiness')}
+                      </h3>
+                      <p className={styles.sectionDescription}>
+                        {t('settings.connectors.sectionDescriptions.contextgoReadiness')}
+                      </p>
+                    </div>
+
+                    <div className={styles.detailGrid}>
+                      <ConnectorCapabilityPanel details={externalCatalogDetails} section='workflows' />
+                    </div>
+                  </section>
+                ) : null}
+
+                <section className={styles.detailSection}>
+                  <div className={styles.sectionHeader}>
+                    <h3 className={styles.sectionTitle}>{t('settings.connectors.sectionTitles.sourcesAndBoundary')}</h3>
+                    <p className={styles.sectionDescription}>
+                      {t('settings.connectors.sectionDescriptions.sourcesAndBoundary')}
+                    </p>
+                  </div>
+
+                  <div className={styles.detailGrid}>
+                    <div className={classNames(styles.detailCard, styles.detailCardWide)}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.officialSite')}</h3>
+                      <div className={styles.externalLinkCard}>
+                        <div className={styles.detailCardText}>{resolvedConnector.websiteUrl}</div>
+                        <Button
+                          type='outline'
+                          icon={<Send theme='outline' size='14' />}
+                          onClick={() => {
+                            void ipcBridge.shell.openExternal.invoke(resolvedConnector.websiteUrl);
+                          }}
+                        >
+                          {t('settings.connectors.openWebsite')}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className={classNames(styles.detailCard, styles.detailCardWide)}>
+                      <h3 className={styles.detailCardTitle}>{t('settings.connectors.supportSources')}</h3>
+                      <div className={styles.supportSourceList}>
+                        {supportSources.length === 0 ? (
+                          <div className={styles.detailCardText}>{t('settings.connectors.noSupportSources')}</div>
+                        ) : (
+                          supportSources.map((source) => (
+                            <Button
+                              key={`${source.kind}-${source.url}`}
+                              type='text'
+                              className={styles.supportSourceItem}
+                              onClick={() => {
+                                void ipcBridge.shell.openExternal.invoke(source.url);
+                              }}
+                            >
+                              <div className={styles.supportSourceMetaRow}>
+                                <Tag size='small' color='arcoblue'>
+                                  {t(getSupportKindKey(source.kind))}
+                                </Tag>
+                                <span className={styles.supportSourceLabel}>{source.label}</span>
+                              </div>
+                              <div className={styles.detailCardText}>{source.description}</div>
+                            </Button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {externalCatalogDetails ? (
+                      <ConnectorCapabilityPanel details={externalCatalogDetails} section='boundary' />
+                    ) : null}
+                  </div>
+                </section>
+
+                {externalCatalogError ? (
+                  <section className={styles.detailSection}>
+                    <div className={styles.detailGrid}>
+                      <div className={classNames(styles.detailCard, styles.detailCardWide)}>
+                        <h3 className={styles.detailCardTitle}>
+                          {t('settings.connectors.externalCatalog.unavailableTitle')}
+                        </h3>
+                        <div className={styles.detailCardText}>{externalCatalogError}</div>
+                      </div>
+                    </div>
+                  </section>
+                ) : null}
+              </div>
+
+              <div className={styles.footerNote}>
+                <ConnectionPoint theme='outline' size='16' className='mr-8px inline-block align-text-bottom' />
+                {t('settings.connectors.note')}
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ConnectorsPage;

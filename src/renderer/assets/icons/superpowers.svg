@@ -1,0 +1,20 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="32" fill="#101C2C" />
+  <rect x="10" y="10" width="108" height="108" rx="26" fill="url(#superpowersGlow)" />
+  <path
+    d="M79.197 18L35 70.762h24.983L48.803 110 93 57.238H68.017L79.197 18Z"
+    fill="#FFF5A8"
+    stroke="#FFFBE1"
+    stroke-width="5.5"
+    stroke-linejoin="round"
+  />
+  <circle cx="97" cy="31" r="7" fill="#9EE7FF" opacity="0.92" />
+  <circle cx="28" cy="95" r="5" fill="#9EE7FF" opacity="0.75" />
+  <defs>
+    <linearGradient id="superpowersGlow" x1="22" y1="18" x2="112" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2148B4" />
+      <stop offset="0.55" stop-color="#0E8FBF" />
+      <stop offset="1" stop-color="#12B9A5" />
+    </linearGradient>
+  </defs>
+</svg>

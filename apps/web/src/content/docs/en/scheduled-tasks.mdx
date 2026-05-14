@@ -1,0 +1,32 @@
+---
+eyebrow: Scheduled Tasks
+title: Run scheduled tasks on a desktop host
+summary: Configure recurring workflows, confirm host and runtime requirements, and review failures before relying on unattended execution.
+readingTime: 6 min
+updatedAt: 2026-04-12
+category: features
+---
+
+## What a scheduled task is
+
+A scheduled task runs a saved workflow on a recurring schedule. Use it for routine operations such as sync jobs, periodic reviews, report generation, or repeatable publish preparation.
+
+Each task should define its schedule, required runtime, expected inputs, and expected outputs.
+
+## Host requirements
+
+Scheduled tasks run on the desktop host. Before enabling a recurring task, confirm the following:
+
+- The host remains powered on when the task is due.
+- The required runtime is installed and authenticated.
+- The task has access to the files, connectors, or credentials it needs.
+
+If the host is offline, the scheduled task cannot complete at the expected time.
+
+## Failure handling
+
+Document how the task behaves when a run is missed or fails. At minimum, users should know whether the next run is skipped, retried, or executed at the next scheduled time only.
+
+## Recommended use
+
+Use scheduled tasks for repeatable work with stable inputs. Avoid using them for workflows that require frequent manual approval unless the approval step is clearly separated from the scheduled run.

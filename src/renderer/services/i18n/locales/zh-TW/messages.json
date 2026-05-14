@@ -1,0 +1,125 @@
+{
+  "fileChanges": "檔案變更",
+  "fileChangesCount": "{{count}} 個檔案變更",
+  "conversationInProgress": "目前正在進行對話...",
+  "confirm": "確認",
+  "canceledExecution": "已取消執行",
+  "interrupted": "已由使用者中斷",
+  "openLinkFailed": "無法開啟連結",
+  "auto_handling_permissions": "自動處理權限請求：{{request}}",
+  "copy": "複製",
+  "copySuccess": "複製成功",
+  "copyFailed": "複製失敗",
+  "copiedToClipboard": "已複製到剪貼簿",
+  "downloadSuccess": "下載成功",
+  "downloadFailed": "下載失敗",
+  "imageLoadFailed": "圖片載入失敗",
+  "scrollToBottom": "滾動到底部",
+  "availableCommands": "{{count}} 個可用指令",
+  "slash.title": "命令",
+  "slash.hint": "輸入 / 開啟命令選單",
+  "slash.empty": "找不到命令",
+  "unknownMessageType": "未知訊息類型：{{type}}",
+  "permissionRequest": "權限請求",
+  "agentRequestingPermission": "代理正在請求權限。",
+  "command": "命令：",
+  "chooseAction": "請選擇操作：",
+  "option": "選項",
+  "noOptionsAvailable": "沒有可用選項",
+  "processing": "處理中...",
+  "responseSentSuccessfully": "回覆已成功送出",
+  "fileOperation": {
+    "written": "已寫入檔案",
+    "read": "已讀取檔案",
+    "deleted": "已刪除檔案",
+    "operation": "檔案操作",
+    "summary": {
+      "read": "讀取 {{count}} 個檔案",
+      "read_other": "讀取 {{count}} 個檔案",
+      "written": "修改 {{count}} 個檔案",
+      "written_other": "修改 {{count}} 個檔案",
+      "deleted": "刪除 {{count}} 個檔案",
+      "deleted_other": "刪除 {{count}} 個檔案",
+      "operation": "執行 {{count}} 個檔案操作",
+      "operation_other": "執行 {{count}} 個檔案操作"
+    }
+  },
+  "jsonCard": {
+    "parameters": "參數",
+    "rawJson": "原始 JSON",
+    "model": "模型",
+    "prompt": "提示詞",
+    "size": "尺寸"
+  },
+  "stepSummary": {
+    "viewSteps": "查看步驟",
+    "tools": "{{count}} 個工具",
+    "tools_other": "{{count}} 個工具"
+  },
+  "contextPreview": {
+    "pill": "上下文 · {{count}}",
+    "composerTag": "傳送上下文",
+    "composerSummary": "本次將附帶 {{count}} 條上下文",
+    "composerSummary_other": "本次將附帶 {{count}} 條上下文",
+    "title": "本輪實際攜帶的上下文",
+    "subtitle": "這是使用者訊息送到 Agent 之前，實際掛載進去的上下文包。",
+    "mountedTitle": "掛載上下文",
+    "queryTermsTitle": "檢索詞",
+    "sectionsTitle": "已納入的上下文片段",
+    "sectionTokens": "{{count}} 個 token",
+    "boolean": {
+      "yes": "是",
+      "no": "否"
+    },
+    "short": {
+      "memoryRefs": "{{count}} 條記憶",
+      "memoryRefs_other": "{{count}} 條記憶",
+      "sourceRefs": "{{count}} 個來源",
+      "sourceRefs_other": "{{count}} 個來源",
+      "profileRefs": "{{count}} 個畫像",
+      "profileRefs_other": "{{count}} 個畫像"
+    },
+    "metrics": {
+      "sections": "片段數",
+      "memoryRefs": "記憶引用",
+      "sourceRefs": "來源引用",
+      "profileRefs": "畫像引用",
+      "omitted": "已省略",
+      "tokenBudget": "Token 預算",
+      "threadSummary": "執行緒摘要",
+      "mountedSections": "掛載片段",
+      "mountedProfiles": "掛載畫像",
+      "pinnedInstructions": "固定指令"
+    },
+    "searchMode": {
+      "lexical": "詞法",
+      "vector": "向量",
+      "hybrid": "混合"
+    },
+    "sectionSource": {
+      "mounted": "掛載",
+      "retrieved": "檢索",
+      "instruction": "固定"
+    },
+    "sectionKind": {
+      "threadState": "執行緒狀態",
+      "source": "來源",
+      "artifact": "產物",
+      "memory": "記憶",
+      "profile": "畫像",
+      "instruction": "指令",
+      "compaction": "壓縮摘要"
+    }
+  },
+  "confirmation": {
+    "applyChange": "應用此更改？",
+    "allowExecution": "允許執行？",
+    "proceed": "您想要繼續嗎？",
+    "allowMCPTool": "允許執行來自伺服器 \"{{serverName}}\" 的 MCP 工具 \"{{toolName}}\"？",
+    "yesAllowOnce": "是，允許一次",
+    "yesAllowAlways": "是，始終允許",
+    "yesAlwaysAllowTool": "是，始終允許來自伺服器 \"{{serverName}}\" 的工具 \"{{toolName}}\"",
+    "yesAlwaysAllowServer": "是，始終允許來自伺服器 \"{{serverName}}\" 的所有工具",
+    "no": "否 (esc)"
+  }
+}

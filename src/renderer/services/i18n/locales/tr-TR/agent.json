@@ -1,0 +1,127 @@
+{
+  "health": {
+    "detectedError": "Detected error with current agent ({{agent}})",
+    "autoSwitching": ". System will attempt to switch automatically.",
+    "evaluating": "Evaluating network latency and model availability...",
+    "checking": "Checking {{agent}} endpoint...",
+    "foundBest": "Found best alternative",
+    "recommendSwitch": "Recommended",
+    "available": "Available",
+    "lowLatency": "Low Latency",
+    "mediumLatency": "Medium Latency",
+    "highLatency": "High Latency",
+    "bestMatch": "Best Match",
+    "noAvailable": "No available agents in current environment",
+    "checkConfig": "Please check configuration or try again later"
+  },
+  "setup": {
+    "connectionError": "Connection Error",
+    "notConfigured": "{{agent}} is not configured",
+    "authRequired": "Authentication or API key is required to use this agent.",
+    "findingAlternatives": "Finding available alternatives...",
+    "checkingAgent": "Checking {{agent}}...",
+    "alternativesFound": "{{count}} available alternatives found",
+    "autoSwitching": "Auto-switching to best available agent...",
+    "configError": "Configuration error. Please check your settings or select an alternative:",
+    "noAlternatives": "No available agents found",
+    "configureFirst": "Please configure an agent in Settings first.",
+    "switching": "Switching agent..."
+  },
+  "hooks": {
+    "sidecarExported": "Sidecar dosyalari {{hookName}} için dışa aktarıldı.",
+    "markdownPath": "Markdown",
+    "metadataPath": "Meta veri",
+    "openMarkdown": "Markdown'u Aç",
+    "showInFolder": "Klasörde Göster",
+    "sidecarActionFailed": "Dışa aktarılan sidecar çıktısı açılamadı."
+  },
+  "contextEngine": {
+    "title": "Bağlam Motoru",
+    "description": "Sistem tarafından yönetilen bakım agentları oturum bağlamını sürekli sıkıştırır ve kalıcı proje bilgisini proje katmanına taşır.",
+    "systemManaged": "Sistem yönetimli",
+    "loading": "Bakım etkinliği yükleniyor...",
+    "loadFailed": "Bakım etkinliği yüklenemedi.",
+    "activeCount": "{{count}} bakım çalışması etkin",
+    "idleCount": "{{count}} bakım agentı izliyor",
+    "empty": "İlk bakım çalışması bekleniyor.",
+    "taskFallback": "Henüz özet yok",
+    "scope": "Kapsam: {{scope}}",
+    "latestEvent": "Son olay: {{event}}",
+    "updatedAt": "Güncellendi {{time}}",
+    "openConsole": "Konsolu Aç",
+    "active": "Etkin",
+    "idle": "İzlemede",
+    "state": {
+      "error": "Hata",
+      "executing": "Çalışıyor",
+      "idle": "Boşta",
+      "researching": "Araştırıyor",
+      "syncing": "Eşitleniyor",
+      "writing": "Yazıyor"
+    },
+    "groupActiveCount": "{{count}} çalışma etkin",
+    "groupWatchingCount": "{{count}} agent izliyor",
+    "artifactTitle": "Belge: {{title}}",
+    "artifactPath": "Yol: {{path}}",
+    "groups": {
+      "session_compaction": "Oturum Sıkıştırma",
+      "project_promotion": "Proje Yükseltme",
+      "other": "Diğer Bakım İşleri"
+    },
+    "operationLog": {
+      "signal": {
+        "user_interrupt": {
+          "title": "Çalıştırma tamamlanmadan durduruldu",
+          "summary": "Geçerli çalıştırma manuel olarak durduruldu."
+        },
+        "repeated_request": {
+          "title": "Görev yeniden istendi"
+        },
+        "strategy_shift": {
+          "title": "Oturum sırasında yaklaşım değişti"
+        },
+        "tool_failure_cluster": {
+          "title": "Araç hataları kümelenmeye başladı"
+        },
+        "memory_candidate_created": {
+          "title": "Gözden geçirilecek bir çıkarım yakalandı"
+        },
+        "memory_candidate_promoted": {
+          "title": "Kalıcı bir çıkarım kaydedildi"
+        },
+        "context_window_prepared": {
+          "title": "Bu tur için bağlam hazırlandı",
+          "summary": "Bu turu sürdürmek için gereken bağlam hazırlandı.",
+          "recentSignals": "{{count}} son bağlam kaydı dahil edildi."
+        }
+      },
+      "job": {
+        "session_compaction": {
+          "queued": "Oturum bağlamı güncellemesi kuyruğa alındı",
+          "completed": "Oturum bağlamı güncellendi",
+          "failed": "Oturum bağlamı güncellemesi başarısız oldu"
+        },
+        "session_pattern_detection": {
+          "queued": "Oturum örüntüsü taraması kuyruğa alındı",
+          "completed": "Oturum örüntüsü taraması tamamlandı",
+          "failed": "Oturum örüntüsü taraması başarısız oldu"
+        },
+        "project_promotion": {
+          "queued": "Proje bilgisi güncellemesi kuyruğa alındı",
+          "completed": "Proje bilgisi güncellendi",
+          "failed": "Proje bilgisi güncellemesi başarısız oldu"
+        },
+        "space_memory_distillation": {
+          "queued": "Alan hafızası damıtımı kuyruğa alındı",
+          "completed": "Alan hafızası damıtımı tamamlandı",
+          "failed": "Alan hafızası damıtımı başarısız oldu"
+        },
+        "connector_digest": {
+          "queued": "Bağlayıcı özeti kuyruğa alındı",
+          "completed": "Bağlayıcı özeti tamamlandı",
+          "failed": "Bağlayıcı özeti başarısız oldu"
+        }
+      }
+    }
+  }
+}

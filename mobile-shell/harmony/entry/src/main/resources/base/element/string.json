@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "app_name",
+      "value": "ContextGo"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "ContextGo HarmonyOS shell"
+    },
+    {
+      "name": "module_desc",
+      "value": "ContextGo HarmonyOS shell entry module"
+    }
+  ]
+}

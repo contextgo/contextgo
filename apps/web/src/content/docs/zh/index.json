@@ -1,0 +1,39 @@
+{
+  "badge": "文档中心",
+  "title": "ContextGo 文档",
+  "description": "ContextGo 官方产品文档，覆盖安装、Agent 工作流、自动化、远程访问与版本运维。",
+  "featuredLabel": "文档结构",
+  "featuredDescription": "Guides 用于完成初始配置，Features 用于查阅日常功能，Operations 用于处理账号、远程访问、更新和排障。",
+  "categories": [
+    {
+      "id": "guides",
+      "title": "Guides",
+      "description": "首次使用前先阅读这里，完成安装、登录、设备注册，并理解基础产品模型。"
+    },
+    {
+      "id": "features",
+      "title": "Features",
+      "description": "这一层说明日常会操作的功能，包括 Agents、Hooks、定时任务、运行时、Connectors 和技能。"
+    },
+    {
+      "id": "operations",
+      "title": "Operations",
+      "description": "这一层说明云账号、远程访问、软件更新、版本来源和常见排障步骤。"
+    }
+  ],
+  "order": [
+    "quick-start",
+    "product-model",
+    "agent-workspace",
+    "agent-packages",
+    "agent-collaboration",
+    "hooks-overview",
+    "scheduled-tasks",
+    "skill-market",
+    "runtime-management",
+    "connectors-and-channels",
+    "remote-access",
+    "cloud-account",
+    "updates-and-troubleshooting"
+  ]
+}

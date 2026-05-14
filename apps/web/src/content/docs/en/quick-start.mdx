@@ -1,0 +1,55 @@
+---
+eyebrow: Quick Start
+title: Set up ContextGo on your first desktop
+summary: Install the desktop app, sign in, register the current device, and confirm that the local host is ready for browser or mobile access.
+readingTime: 5 min
+updatedAt: 2026-04-12
+category: guides
+---
+
+## Before you begin
+
+ContextGo runs on a desktop host. Install and complete setup on the desktop app first. Browser and mobile access connect back to that host later.
+
+Before starting setup, confirm the following:
+
+- You can install software on the current desktop.
+- The desktop can open a browser window for sign-in.
+- The network allows ContextGo to reach its account and update services.
+
+## 1. Install the desktop app
+
+Open the download page on `contextgo.io` and install the desktop build for your platform. The website download page and the in-app updater both read release artifacts from `contextgo/contextgo-releases`.
+
+After installation, launch the app and allow the initial local services to start. On first run, ContextGo prepares the local workspace, the WebUI runtime, and the device-side components used for remote access.
+
+## 2. Sign in to a cloud account
+
+Use the cloud account entry in the desktop app to sign in with GitHub or Google. When the browser flow completes, the current desktop is registered to your account.
+
+The cloud account is used for identity, device registration, and lightweight account state. It does not move your workspace or runtime execution into the cloud.
+
+## 3. Verify the current desktop
+
+After sign-in, confirm the following in the desktop app:
+
+- The current device appears in the signed-in account.
+- Local WebUI opens successfully.
+- Device status is shown as available or active.
+
+If you plan to use browser or mobile access, also confirm that remote access is enabled for the current device.
+
+## 4. Test remote access if needed
+
+If remote access is part of your workflow, open the hosted web entry after the desktop host is online. The remote page only works when the registered desktop keeps its outbound connection available.
+
+On mobile, use the remote session as a control surface for the desktop host. Files, runtimes, and local tools still run on the desktop.
+
+## If setup does not complete
+
+Check the following in order:
+
+1. Confirm the desktop app can open the browser sign-in page.
+2. Confirm the account flow returns to ContextGo without an error.
+3. Confirm endpoint security or corporate policy is not blocking helper processes or network access.
+4. Retry the setup on a different machine if the current environment is heavily managed.

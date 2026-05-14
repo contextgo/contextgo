@@ -1,0 +1,168 @@
+---
+eyebrow: Agent
+title: 理解 Agent Packages 与工作空间安装
+summary: 把内置 Assistant 理解为可安装的能力包，理解它如何落到 .contextgo，以及为什么运行时目录只做 skills 投影。
+readingTime: 9 分钟
+updatedAt: 2026-04-14
+category: features
+---
+
+## 什么是 Agent Package
+
+在 ContextGo 里，一个 Assistant 不应该只被理解成“绑定某个 runtime 的预设”。
+
+更准确的模型是：Assistant 背后挂着一个 **Agent Package**。这个包描述一组可复用能力，然后由产品层把它安装到工作空间，再把其中一部分能力投影给具体运行时。
+
+你可以把内置 Assistant 理解成“随应用一起分发的内置安装包”。
+
+## 内置包现在放在哪里
+
+开发态下，内置 Agent Packages 跟着产品仓库一起维护，位于：
+
+```text
+src/process/resources/assistant/
+```
+
+打包后的桌面应用会把这些资源一起带进应用资源目录。用户不需要单独下载这些内置包，但它们在产品内部仍然按“包”的概念组织。
+
+## 为什么要和 runtime 解耦
+
+ContextGo 把 runtime 当成执行后端，而不是 Assistant 包的拥有者。
+
+这样做有几个好处：
+
+- 同一个 Assistant 可以切换运行时，不需要换一套包语义
+- `hooks`、`commands`、`schedules` 这些能力可以由 ContextGo 统一管理
+- 外部开源助手包可以被吸收、转化，再安装成 ContextGo 自己的产品能力
+- 未来如果从云端导入助手，也可以复用同一套包协议
+
+## 工作空间里真正的安装位置
+
+Assistant 包安装到工作空间后，产品层的主写入位置是：
+
+```text
+.contextgo/
+  skills/
+  hooks/
+  hooks.json
+  commands.json
+  schedules.json
+```
+
+这里才是工作空间里的主数据面。
+
+其中：
+
+- `.contextgo/skills` 存放包安装后的 skills
+- `.contextgo/hooks/` 和 `.contextgo/hooks.json` 存放 Hook 载荷与启用状态
+- `.contextgo/commands.json` 存放命令库
+- `.contextgo/schedules.json` 存放定时任务配置
+
+## 为什么 runtime 目录只做 skills 投影
+
+不同代码 Agent runtime 对 skills 的发现方式不同，所以 ContextGo 会把 workspace 中的 skills 投影到运行时原生目录，例如：
+
+```text
+.codex/skills
+.claude/skills
+.gemini/skills
+```
+
+但这些目录只是兼容层，不是安装源。
+
+ContextGo 的默认规则是：
+
+- runtime 只接收 skills 投影
+- `hooks`、`commands`、`schedules` 继续留在 `.contextgo/`
+- 不把第三方 runtime 的工作空间结构直接当成产品主模型
+
+这也是为什么现在不再鼓励因为某个包来自 Claude 生态，就默认在任意 workspace 里生成整套 `.claude` 结构。
+
+## Agent Package v1 协议
+
+ContextGo 把这套安装包目录约定称为 `Agent Package v1`。
+
+这个协议故意保持小而清晰。
+
+### 必需入口
+
+每个包应该有：
+
+- `agent-package.json`
+- `AGENTS.md`
+
+`agent-package.json` 是机器可读的包清单。
+
+它至少应该稳定描述：
+
+- logical payload
+- physical source root
+- 安装到 workspace 后的目标 surface
+- 是否需要 runtime projection
+- 当 UI 或 bootstrap 逻辑依赖包级能力集合时，对应的稳定字段
+  - `skills.packagedSkillNames` 用来声明包拥有的 skill 集
+  - `skills.defaultEnabledSkillNames` 只表示助手默认启用项
+  - `skills.hidePackageOwnedSkillsFromLibrary` 表示这些包内 skill 是否应从通用技能库中隐藏
+
+`AGENTS.md` 是包的入口说明，不应该写成超大手册。
+
+它应该简短说明：
+
+- 这个包适合做什么
+- 它安装了哪些能力
+- 有哪些硬边界
+- 更深的说明放在哪里
+
+### 推荐的深入文档
+
+每个包建议再提供：
+
+- `docs/`
+
+这里用于放更长的领域说明、示例、注意事项和参考资料。
+
+包还可以声明：
+
+- `workspaceScaffold`
+
+这个 payload 表示安装时可写入 linked workspace 的项目根 starter docs，例如 `AGENTS.md` 和 `docs/` 下的初始文件。前提是目标 workspace 还没有自己的根说明结构。
+
+### 可执行能力载荷
+
+一个包还可以带：
+
+- workspace scaffold templates
+- `skills/`
+- `hooks/`
+- 命令种子
+- 定时任务种子
+
+安装完成后，这些能力会被规范化到 `.contextgo/` 里。
+
+## 渐进式披露原则
+
+ContextGo 对 Agent Package 的默认写法是渐进式披露。
+
+建议按这三层拆开：
+
+- `agent-package.json`：机器可读的 payload 映射
+- `AGENTS.md`：短入口，只负责定边界、给导航
+- `workspaceScaffold`：在合适时机写入 workspace 根目录的 starter docs
+- `docs/`：放更深的文档，不默认全部加载
+- `skills/*/SKILL.md`：放任务级执行说明
+
+这样可以避免把所有内容都塞进一个很长的入口文件，也更适合后续维护和导入。
+
+## 未来的云端导入
+
+ContextGo 未来希望让内置助手和云端导入助手共用同一套包协议。
+
+也就是说，未来变化的应该只是“包从哪里来”，而不是“安装到 workspace 后长什么样”。
+
+目标模型是：
+
+- 内置助手使用同一协议
+- 本地导入使用同一协议
+- 未来云端分发也使用同一协议
+
+这样后续扩展助手时，不需要每次都围绕某个 runtime 的私有目录重新设计一遍。

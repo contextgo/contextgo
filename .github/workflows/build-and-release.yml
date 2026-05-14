@@ -1,0 +1,1027 @@
+name: Build and Release
+
+permissions:
+  contents: write
+  issues: read
+  pull-requests: read
+  actions: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_android_shell:
+        description: 'Build and publish the Android mobile shell'
+        required: false
+        default: false
+        type: boolean
+      build_ios_shell:
+        description: 'Build and publish the iOS mobile shell archive/export artifacts'
+        required: false
+        default: false
+        type: boolean
+      build_harmony_shell:
+        description: 'Build and publish the HarmonyOS mobile shell artifacts'
+        required: false
+        default: false
+        type: boolean
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && format('build-and-release-dispatch-{0}', github.run_id) || format('build-and-release-{0}', github.ref_name || github.run_id) }}
+  cancel-in-progress: false
+
+env:
+  BUN_INSTALL_REGISTRY: 'https://registry.npmjs.org/'
+  PUBLIC_RELEASE_REPOSITORY: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
+
+jobs:
+  prepare-matrix:
+    name: Prepare Build Matrix
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      control_runner: ${{ steps.set-matrix.outputs.control_runner }}
+    env:
+      RUNNER_MODE: ${{ vars.BUILD_RUNNER_MODE != '' && vars.BUILD_RUNNER_MODE || 'hosted' }}
+      RELEASE_BUILD_PLATFORMS: ${{ vars.RELEASE_BUILD_PLATFORMS != '' && vars.RELEASE_BUILD_PLATFORMS || 'all' }}
+      CONTROL_RUNNER: >-
+        ${{
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        }}
+      MACOS_RUNNER: >-
+        ${{
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["macos-14"]'
+        }}
+      WINDOWS_RUNNER: >-
+        ${{
+          github.event_name != 'workflow_dispatch' &&
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_WINDOWS_RUNNER_LABELS_JSON ||
+            '["self-hosted","Windows"]'
+          ) ||
+          '["windows-2022"]'
+        }}
+      LINUX_RUNNER: >-
+        ${{
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+            '["self-hosted","Linux"]'
+          ) ||
+          '["ubuntu-latest"]'
+        }}
+
+    steps:
+      - name: Generate build matrix
+        id: set-matrix
+        shell: bash
+        run: |
+          escape_json() {
+            printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+          }
+
+          build_entry() {
+            local platform="$1"
+            local runner="$2"
+            local command="$3"
+            local artifact_name="$4"
+            local arch="$5"
+            local runner_escaped
+
+            runner_escaped=$(escape_json "$runner")
+
+            printf '{"platform":"%s","runner":"%s","command":"%s","artifact-name":"%s","arch":"%s"}' \
+              "$platform" \
+              "$runner_escaped" \
+              "$command" \
+              "$artifact_name" \
+              "$arch"
+          }
+
+          should_include() {
+            if [ "$RELEASE_BUILD_PLATFORMS" = "all" ]; then
+              return 0
+            fi
+
+            local normalized=",$(printf '%s' "$RELEASE_BUILD_PLATFORMS" | tr -d '[:space:]'),"
+
+            case "$normalized" in
+              *,"$1",*) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          entries=()
+
+          if should_include 'macos-arm64'; then
+            entries+=("$(build_entry 'macos-arm64' "$MACOS_RUNNER" 'node scripts/build-with-builder.js arm64 --mac --arm64' 'macos-build-arm64' 'arm64')")
+          fi
+
+          if should_include 'macos-x64'; then
+            entries+=("$(build_entry 'macos-x64' "$MACOS_RUNNER" 'node scripts/build-with-builder.js x64 --mac --x64' 'macos-build-x64' 'x64')")
+          fi
+
+          if should_include 'windows-x64'; then
+            entries+=("$(build_entry 'windows-x64' "$WINDOWS_RUNNER" 'node scripts/build-with-builder.js x64 --win --x64' 'windows-build-x64' 'x64')")
+          fi
+
+          if should_include 'windows-arm64'; then
+            entries+=("$(build_entry 'windows-arm64' "$WINDOWS_RUNNER" 'node scripts/build-with-builder.js arm64 --win --arm64' 'windows-build-arm64' 'arm64')")
+          fi
+
+          if should_include 'linux'; then
+            entries+=("$(build_entry 'linux' "$LINUX_RUNNER" 'bun run dist:linux' 'linux-build' 'x64-arm64')")
+          fi
+
+          if [ ${#entries[@]} -eq 0 ]; then
+            echo "No build platforms selected. Set RELEASE_BUILD_PLATFORMS to 'all' or a comma-separated subset."
+            exit 1
+          fi
+
+          MATRIX=$(printf '{"include":[%s]}' "$(IFS=,; echo "${entries[*]}")")
+
+          echo "control_runner=$CONTROL_RUNNER" >> "$GITHUB_OUTPUT"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Runner mode: $RUNNER_MODE"
+          echo "Control runner: $CONTROL_RUNNER"
+          echo "Selected platforms: $RELEASE_BUILD_PLATFORMS"
+          echo "$MATRIX"
+
+  build-pipeline:
+    name: Build Pipeline
+    needs: [prepare-matrix, validate-release-context]
+    uses: ./.github/workflows/_build-reusable.yml
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    with:
+      matrix: ${{ needs.prepare-matrix.outputs.matrix }}
+      control_runner: ${{ needs.prepare-matrix.outputs.control_runner }}
+      release_repository: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
+    secrets: inherit
+
+  build-android-shell:
+    name: Build Android Shell
+    needs: [prepare-matrix, validate-release-context]
+    if: >-
+      github.event_name == 'push' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        inputs.build_android_shell
+      )
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+            '["self-hosted","Linux"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare Android signing inputs
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            KEYSTORE_DIR="${GITHUB_WORKSPACE}/mobile-shell/build/signing"
+            KEYSTORE_PATH="${KEYSTORE_DIR}/contextgo-android.keystore"
+            mkdir -p "${KEYSTORE_DIR}"
+            echo "${ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${KEYSTORE_PATH}"
+            test -s "${KEYSTORE_PATH}"
+            chmod 600 "${KEYSTORE_PATH}"
+            echo "ANDROID_KEYSTORE_PATH=${KEYSTORE_PATH}" >> "${GITHUB_ENV}"
+          fi
+
+      - name: Configure Gradle proxy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PROXY_URL="${HTTPS_PROXY:-${https_proxy:-${HTTP_PROXY:-${http_proxy:-}}}}"
+          if [ -z "${PROXY_URL}" ]; then
+            echo "No HTTP proxy detected for Gradle."
+            exit 0
+          fi
+
+          export PROXY_URL
+          PROXY_HOST="$(node -e "console.log(new URL(process.env.PROXY_URL).hostname)")"
+          PROXY_PORT="$(node -e "const url = new URL(process.env.PROXY_URL); console.log(url.port || (url.protocol === 'https:' ? '443' : '80'))")"
+          NON_PROXY="${NO_PROXY:-${no_proxy:-}}"
+          PROXY_JVM_OPTS="-Dhttp.proxyHost=${PROXY_HOST} -Dhttp.proxyPort=${PROXY_PORT} -Dhttps.proxyHost=${PROXY_HOST} -Dhttps.proxyPort=${PROXY_PORT}"
+
+          if [ -n "${NON_PROXY}" ]; then
+            JAVA_NON_PROXY_HOSTS="$(printf '%s' "${NON_PROXY}" | sed 's/,/|/g')"
+            PROXY_JVM_OPTS="${PROXY_JVM_OPTS} -Dhttp.nonProxyHosts=${JAVA_NON_PROXY_HOSTS} -Dhttps.nonProxyHosts=${JAVA_NON_PROXY_HOSTS}"
+          fi
+
+          FINAL_GRADLE_OPTS="${PROXY_JVM_OPTS}"
+          if [ -n "${GRADLE_OPTS:-}" ]; then
+            FINAL_GRADLE_OPTS="${GRADLE_OPTS} ${FINAL_GRADLE_OPTS}"
+          fi
+
+          FINAL_JAVA_TOOL_OPTIONS="${PROXY_JVM_OPTS}"
+          if [ -n "${JAVA_TOOL_OPTIONS:-}" ]; then
+            FINAL_JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} ${FINAL_JAVA_TOOL_OPTIONS}"
+          fi
+
+          {
+            echo "GRADLE_OPTS<<EOF"
+            echo "${FINAL_GRADLE_OPTS}"
+            echo "EOF"
+            echo "JAVA_TOOL_OPTIONS<<EOF"
+            echo "${FINAL_JAVA_TOOL_OPTIONS}"
+            echo "EOF"
+          } >> "${GITHUB_ENV}"
+
+          echo "Configured Gradle proxy from runner environment."
+
+      - name: Setup Android SDK
+        continue-on-error: true
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Verify Android SDK environment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-${HOME}/.android/sdk}}"
+          PLATFORM_TOOLS_BIN="${SDK_ROOT}/platform-tools/adb"
+          CMDLINE_TOOLS_ROOT=""
+
+          for candidate in \
+            "${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
+            "${SDK_ROOT}/cmdline-tools/20.0/bin/sdkmanager"; do
+            if [ -x "${candidate}" ]; then
+              CMDLINE_TOOLS_ROOT="$(dirname "$(dirname "${candidate}")")"
+              break
+            fi
+          done
+
+          if [ ! -x "${PLATFORM_TOOLS_BIN}" ]; then
+            echo "::error::Android SDK platform-tools were not installed under ${SDK_ROOT}"
+            exit 1
+          fi
+
+          if [ -z "${CMDLINE_TOOLS_ROOT}" ]; then
+            echo "::error::Android SDK command-line tools were not installed under ${SDK_ROOT}"
+            exit 1
+          fi
+
+          {
+            echo "ANDROID_HOME=${SDK_ROOT}"
+            echo "ANDROID_SDK_ROOT=${SDK_ROOT}"
+          } >> "${GITHUB_ENV}"
+
+          {
+            echo "${SDK_ROOT}/platform-tools"
+            echo "${CMDLINE_TOOLS_ROOT}/bin"
+          } >> "${GITHUB_PATH}"
+
+          echo "Verified Android SDK at ${SDK_ROOT}"
+
+      - name: Build Android shell
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          CONTEXTGO_RELEASE_BUILD_NUMBER="${GITHUB_RUN_NUMBER}" \
+          CONTEXTGO_RELEASE_VERSION_CODE="${GITHUB_RUN_NUMBER}" \
+          bash mobile-shell/scripts/build-android-release.sh "${VERSION}" mobile-shell/build/android-release
+
+      - name: Upload Android shell artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-shell-build
+          path: |
+            mobile-shell/build/android-release/*.apk
+            mobile-shell/build/android-release/*.aab
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Clean up Android signing inputs
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          rm -f "${GITHUB_WORKSPACE}/mobile-shell/build/signing/contextgo-android.keystore"
+
+  build-ios-shell:
+    name: Build iOS Shell
+    needs: [prepare-matrix, validate-release-context]
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.build_ios_shell
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["macos-14"]'
+        )
+      }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Prepare iOS signing inputs
+        shell: bash
+        env:
+          IOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          IOS_BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
+          CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST_BASE64: ${{ secrets.CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD || 'temp-keychain-password' }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "${IOS_BUILD_CERTIFICATE_BASE64:-}" ]; then
+            CERT_PATH="${RUNNER_TEMP}/contextgo-ios-build.p12"
+            echo "${IOS_BUILD_CERTIFICATE_BASE64}" | base64 --decode > "${CERT_PATH}"
+            security create-keychain -p "${KEYCHAIN_PASSWORD}" build-ios.keychain
+            security default-keychain -s build-ios.keychain
+            security unlock-keychain -p "${KEYCHAIN_PASSWORD}" build-ios.keychain
+            security import "${CERT_PATH}" -k build-ios.keychain -P "${IOS_P12_PASSWORD}" -T /usr/bin/codesign -T /usr/bin/security
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" build-ios.keychain
+            rm -f "${CERT_PATH}"
+          fi
+
+          if [ -n "${IOS_BUILD_PROVISION_PROFILE_BASE64:-}" ]; then
+            PROFILE_DIR="${HOME}/Library/MobileDevice/Provisioning Profiles"
+            mkdir -p "${PROFILE_DIR}"
+            PROFILE_PATH="${PROFILE_DIR}/contextgo.mobileprovision"
+            echo "${IOS_BUILD_PROVISION_PROFILE_BASE64}" | base64 --decode > "${PROFILE_PATH}"
+            echo "CONTEXTGO_IOS_PROVISION_PROFILE_PATH=${PROFILE_PATH}" >> "${GITHUB_ENV}"
+          fi
+
+          if [ -n "${CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST_BASE64:-}" ]; then
+            EXPORT_OPTIONS_PATH="${RUNNER_TEMP}/ContextGo-ExportOptions.plist"
+            echo "${CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST_BASE64}" | base64 --decode > "${EXPORT_OPTIONS_PATH}"
+            echo "CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST=${EXPORT_OPTIONS_PATH}" >> "${GITHUB_ENV}"
+          fi
+
+      - name: Build iOS shell
+        shell: bash
+        env:
+          IOS_DEVELOPMENT_TEAM: ${{ vars.IOS_DEVELOPMENT_TEAM }}
+          IOS_CODE_SIGN_IDENTITY: ${{ vars.IOS_CODE_SIGN_IDENTITY }}
+          IOS_PROVISIONING_PROFILE_SPECIFIER: ${{ vars.IOS_PROVISIONING_PROFILE_SPECIFIER }}
+          CONTEXTGO_IOS_SCHEME: ${{ vars.CONTEXTGO_IOS_SCHEME != '' && vars.CONTEXTGO_IOS_SCHEME || 'ContextGo' }}
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          OUTPUT_DIR="mobile-shell/build/ios-release"
+
+          CONTEXTGO_RELEASE_BUILD_NUMBER="${GITHUB_RUN_NUMBER}" \
+          bash mobile-shell/scripts/build-ios-release.sh "${VERSION}" "${OUTPUT_DIR}"
+
+          ARCHIVE_PATH="${OUTPUT_DIR}/ContextGo.xcarchive"
+          if [ -d "${ARCHIVE_PATH}" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "${ARCHIVE_PATH}" "${OUTPUT_DIR}/ContextGo-${VERSION}-ios-universal.xcarchive.zip"
+          fi
+
+      - name: Upload iOS shell artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-shell-build
+          path: |
+            mobile-shell/build/ios-release/*.ipa
+            mobile-shell/build/ios-release/*.xcarchive.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Clean up iOS signing inputs
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          security delete-keychain build-ios.keychain 2>/dev/null || true
+          rm -f "${HOME}/Library/MobileDevice/Provisioning Profiles/contextgo.mobileprovision" 2>/dev/null || true
+
+  build-harmony-shell:
+    name: Build HarmonyOS Shell
+    needs: [prepare-matrix, validate-release-context]
+    if: >-
+      github.event_name == 'push' ||
+      (
+        github.event_name == 'workflow_dispatch' &&
+        inputs.build_harmony_shell
+      )
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["macos-14"]'
+        )
+      }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build HarmonyOS shell
+        shell: bash
+        env:
+          DEVECO_SDK_HOME: ${{ vars.DEVECO_SDK_HOME }}
+          CONTEXTGO_HARMONY_TOOLS_ROOT: ${{ vars.CONTEXTGO_HARMONY_TOOLS_ROOT }}
+          CONTEXTGO_HARMONY_RELEASE_COMMAND: ${{ vars.CONTEXTGO_HARMONY_RELEASE_COMMAND }}
+          CONTEXTGO_HARMONY_ARCH: ${{ vars.CONTEXTGO_HARMONY_ARCH != '' && vars.CONTEXTGO_HARMONY_ARCH || 'arm64' }}
+          CONTEXTGO_HARMONY_COMMANDLINE_TOOLS_URL: ${{ vars.CONTEXTGO_HARMONY_COMMANDLINE_TOOLS_URL }}
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          BOOTSTRAP_PARENT="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/contextgo-harmony-tools"
+          BOOTSTRAP_ROOT="${BOOTSTRAP_PARENT}/command-line-tools"
+
+          resolve_tooling() {
+            local output
+
+            if ! output="$(bash mobile-shell/scripts/resolve-harmony-tooling.sh)"; then
+              return 1
+            fi
+
+            while IFS='=' read -r key value; do
+              export "${key}=${value}"
+            done <<< "${output}"
+          }
+
+          if ! resolve_tooling; then
+            TOOLS_URL="${CONTEXTGO_HARMONY_COMMANDLINE_TOOLS_URL:-https://github.com/harmonyos-dev/hos-sdk/releases/download/v2.0.2/commandline-tools-mac-2.0.0.2.zip}"
+            TOOLS_ARCHIVE="${BOOTSTRAP_PARENT}/command-line-tools.zip"
+
+            echo "Bootstrapping HarmonyOS command-line tools from ${TOOLS_URL}"
+            rm -rf "${BOOTSTRAP_PARENT}"
+            mkdir -p "${BOOTSTRAP_PARENT}"
+            curl -L "${TOOLS_URL}" -o "${TOOLS_ARCHIVE}"
+            unzip -q "${TOOLS_ARCHIVE}" -d "${BOOTSTRAP_PARENT}"
+
+            export CONTEXTGO_HARMONY_BOOTSTRAP_ROOT="${BOOTSTRAP_ROOT}"
+            resolve_tooling
+          fi
+
+          export PATH="$(dirname "${CONTEXTGO_HARMONY_OHPM}"):${PATH}"
+          export PATH="$(dirname "${CONTEXTGO_HARMONY_HVIGORW}"):${PATH}"
+
+          echo "Using Harmony tools root: ${HARMONY_TOOLS_ROOT}"
+          echo "Using Harmony SDK home: ${DEVECO_SDK_HOME}"
+          echo "Using ohpm: ${CONTEXTGO_HARMONY_OHPM}"
+          echo "Using hvigorw: ${CONTEXTGO_HARMONY_HVIGORW}"
+
+          EFFECTIVE_BUILD_COMMAND="${CONTEXTGO_HARMONY_RELEASE_COMMAND:-}"
+          if [ -z "${EFFECTIVE_BUILD_COMMAND}" ]; then
+            printf -v EFFECTIVE_BUILD_COMMAND '"%s" install && "%s" assembleApp --debug --stacktrace' \
+              "${CONTEXTGO_HARMONY_OHPM}" \
+              "${CONTEXTGO_HARMONY_HVIGORW}"
+          fi
+
+          DEVECO_SDK_HOME="${DEVECO_SDK_HOME}" \
+          CONTEXTGO_HARMONY_RELEASE_COMMAND="${EFFECTIVE_BUILD_COMMAND}" \
+          bash mobile-shell/scripts/build-harmony-release.sh "${VERSION}" mobile-shell/build/harmony-release
+
+      - name: Upload HarmonyOS shell artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: harmony-shell-build
+          path: |
+            mobile-shell/build/harmony-release/*.hap
+            mobile-shell/build/harmony-release/*.app
+          if-no-files-found: error
+          retention-days: 7
+
+  # 治理策略：禁用自动重试，避免重型发布 workflow 在付费仓库里重复消耗分钟数
+  auto-retry-workflow:
+    name: Auto Retry on Build Failure
+    runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
+    needs: [prepare-matrix, build-pipeline]
+    if: false
+
+    steps:
+      - name: Log retry information
+        shell: bash
+        run: |
+          echo "=========================================="
+          echo "🔄 Auto retry triggered (first failure)"
+          echo "=========================================="
+          echo "Build failed on first attempt, preparing auto retry..."
+          echo "Current attempt: ${{ github.run_attempt }}"
+          echo "Wait strategy: 5 minutes cooldown before retry"
+          echo "=========================================="
+
+      - name: Wait before retry (5 min cooldown)
+        shell: bash
+        run: |
+          echo "⏳ Waiting 5 minutes before retry..."
+          echo "Start: $(date)"
+          sleep 300
+          echo "End: $(date)"
+          echo "Triggering retry..."
+
+      - name: Trigger workflow rerun
+        shell: bash
+        run: |
+          echo "🔄 Triggering full workflow rerun (attempt 2)..."
+
+          # Use re-run API (not rerun-failed-jobs, to avoid loops)
+          response=$(curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -w "\n%{http_code}" \
+            https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/rerun)
+
+          http_code=$(echo "$response" | tail -n1)
+
+          if [ "$http_code" = "201" ]; then
+            echo ""
+            echo "✅ Retry triggered successfully"
+            echo "This will be attempt 2"
+            echo "Details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          else
+            echo ""
+            echo "❌ Retry trigger failed, HTTP status: $http_code"
+            echo "Response:"
+            echo "$response" | head -n-1
+            exit 1
+          fi
+
+  validate-release-context:
+    name: Validate Release Context
+    runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
+    needs: [prepare-matrix]
+    outputs:
+      tag_name: ${{ steps.resolve.outputs.tag_name }}
+      version: ${{ steps.resolve.outputs.version }}
+      prerelease: ${{ steps.resolve.outputs.prerelease }}
+      release_kind: ${{ steps.resolve.outputs.release_kind }}
+      source_mode: ${{ steps.resolve.outputs.source_mode }}
+
+    steps:
+      - name: Download source archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+
+          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          rm -rf "${EXTRACT_DIR}"
+
+          curl --fail --show-error --silent --location --http1.1 \
+            --retry 8 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 900 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            -o "${ARCHIVE}"
+
+          mkdir -p "${EXTRACT_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
+
+          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -z "${SOURCE_DIR}" ]; then
+            echo "::error::Failed to unpack source archive"
+            exit 1
+          fi
+
+          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Resolve release tag and version policy
+        id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          STABLE_REGEX='^[0-9]+\.[0-9]+\.[0-9]+$'
+          PRERELEASE_REGEX='^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$'
+          PUBLIC_TAG_REGEX='^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$'
+
+          if [[ "${VERSION}" =~ ${STABLE_REGEX} ]]; then
+            RELEASE_KIND='stable'
+            PRERELEASE='false'
+          elif [[ "${VERSION}" =~ ${PRERELEASE_REGEX} ]]; then
+            RELEASE_KIND="${BASH_REMATCH[1]}"
+            PRERELEASE='true'
+          else
+            echo "::error::package.json version '${VERSION}' must use SemVer public release forms: X.Y.Z or X.Y.Z-(alpha|beta|rc).N"
+            exit 1
+          fi
+
+          TAG_NAME="v${VERSION}"
+          SOURCE_MODE='manual'
+
+          if [ "${GITHUB_EVENT_NAME}" = 'push' ]; then
+            ACTUAL_TAG="${GITHUB_REF_NAME}"
+            SOURCE_MODE='tag'
+
+            if [[ ! "${ACTUAL_TAG}" =~ ${PUBLIC_TAG_REGEX} ]]; then
+              echo "::error::Unsupported public release tag '${ACTUAL_TAG}'. Allowed forms: vX.Y.Z, vX.Y.Z-alpha.N, vX.Y.Z-beta.N, vX.Y.Z-rc.N"
+              exit 1
+            fi
+
+            if [ "${ACTUAL_TAG}" != "${TAG_NAME}" ]; then
+              echo "::error::Tag '${ACTUAL_TAG}' does not match package.json version '${VERSION}' (expected '${TAG_NAME}')."
+              exit 1
+            fi
+
+            AUTH_REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+            git init -q
+            git remote add origin "${AUTH_REMOTE}"
+            git fetch --force --depth=1 origin main "refs/tags/${ACTUAL_TAG}:refs/tags/${ACTUAL_TAG}"
+
+            TAG_COMMIT="$(git rev-list -n1 "refs/tags/${ACTUAL_TAG}")"
+            if ! git merge-base --is-ancestor "${TAG_COMMIT}" "origin/main"; then
+              echo "::error::Release tag '${ACTUAL_TAG}' must point to a commit reachable from origin/main."
+              exit 1
+            fi
+          elif [ "${GITHUB_REF}" != 'refs/heads/main' ]; then
+            echo "::error::Manual public release is only supported from refs/heads/main."
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+          echo "release_kind=${RELEASE_KIND}" >> "$GITHUB_OUTPUT"
+          echo "source_mode=${SOURCE_MODE}" >> "$GITHUB_OUTPUT"
+
+  # 在 main 分支的手动发布流程中创建稳定版本 tag
+  create-tag:
+    name: Create Tag from Branch
+    runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
+    needs: [prepare-matrix, validate-release-context, build-pipeline]
+    if: success() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    outputs:
+      tag_name: ${{ steps.create_tag.outputs.tag_name }}
+      release_kind: ${{ steps.create_tag.outputs.release_kind }}
+      prerelease: ${{ steps.create_tag.outputs.prerelease }}
+
+    steps:
+      - name: Download source archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+
+          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          rm -rf "${EXTRACT_DIR}"
+
+          curl --fail --show-error --silent --location --http1.1 \
+            --retry 8 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 900 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            -o "${ARCHIVE}"
+
+          mkdir -p "${EXTRACT_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
+
+          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -z "${SOURCE_DIR}" ]; then
+            echo "::error::Failed to unpack source archive"
+            exit 1
+          fi
+
+          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Create and push tag
+        id: create_tag
+        shell: bash
+        run: |
+          TAG_NAME="${{ needs.validate-release-context.outputs.tag_name }}"
+          RELEASE_KIND="${{ needs.validate-release-context.outputs.release_kind }}"
+          PRERELEASE="${{ needs.validate-release-context.outputs.prerelease }}"
+          echo "🚀 Creating release tag from main: $TAG_NAME (${RELEASE_KIND})"
+
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "release_kind=$RELEASE_KIND" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+
+          EXISTING_TAG_STATUS=$(curl --silent --output /tmp/contextgo-tag-check.json --write-out "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG_NAME}")
+
+          if [ "$EXISTING_TAG_STATUS" = "200" ]; then
+            echo "::error::Tag ${TAG_NAME} already exists. Bump package.json version on main before rerunning the release workflow."
+            cat /tmp/contextgo-tag-check.json
+            exit 1
+          fi
+
+          if [ "$EXISTING_TAG_STATUS" != "404" ]; then
+            echo "::error::Failed to query existing tag ${TAG_NAME} (HTTP ${EXISTING_TAG_STATUS})."
+            cat /tmp/contextgo-tag-check.json
+            exit 1
+          fi
+
+          CREATE_TAG_STATUS=$(curl --silent --output /tmp/contextgo-tag-create.json --write-out "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs" \
+            -d "{\"ref\":\"refs/tags/${TAG_NAME}\",\"sha\":\"${GITHUB_SHA}\"}")
+
+          if [ "$CREATE_TAG_STATUS" != "201" ]; then
+            echo "::error::Failed to create tag ${TAG_NAME} (HTTP ${CREATE_TAG_STATUS})."
+            cat /tmp/contextgo-tag-create.json
+            exit 1
+          fi
+
+          echo "✅ Successfully created and pushed tag: $TAG_NAME"
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+
+  # 发布到 GitHub Releases
+  release:
+    name: Create Release
+    runs-on: ${{ fromJSON(needs.prepare-matrix.outputs.control_runner) }}
+    needs:
+      [
+        prepare-matrix,
+        validate-release-context,
+        build-pipeline,
+        build-android-shell,
+        build-ios-shell,
+        build-harmony-shell,
+        create-tag,
+      ]
+    if: >-
+      always() &&
+      needs.validate-release-context.result == 'success' &&
+      needs.build-pipeline.result == 'success' &&
+      (needs.create-tag.result == 'success' || needs.create-tag.result == 'skipped') &&
+      (needs.build-android-shell.result == 'success' || needs.build-android-shell.result == 'skipped') &&
+      (needs.build-ios-shell.result == 'success' || needs.build-ios-shell.result == 'skipped') &&
+      (needs.build-harmony-shell.result == 'success' || needs.build-harmony-shell.result == 'skipped')
+    environment: release
+    steps:
+      - name: Download source archive
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+
+          find "${WORKSPACE}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          rm -rf "${EXTRACT_DIR}"
+
+          curl --fail --show-error --silent --location --http1.1 \
+            --retry 8 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 900 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            -o "${ARCHIVE}"
+
+          mkdir -p "${EXTRACT_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
+
+          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -z "${SOURCE_DIR}" ]; then
+            echo "::error::Failed to unpack source archive"
+            exit 1
+          fi
+
+          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+
+      - name: Get version for release
+        id: version
+        shell: bash
+        run: |
+          TAG_NAME="${{ needs.validate-release-context.outputs.tag_name }}"
+          RELEASE_KIND="${{ needs.validate-release-context.outputs.release_kind }}"
+          PRERELEASE="${{ needs.validate-release-context.outputs.prerelease }}"
+          SOURCE_MODE="${{ needs.validate-release-context.outputs.source_mode }}"
+          echo "🚀 Creating ${RELEASE_KIND} release from ${SOURCE_MODE}: $TAG_NAME"
+
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "release_kind=$RELEASE_KIND" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+          echo "source_mode=$SOURCE_MODE" >> $GITHUB_OUTPUT
+
+      - name: Validate release publishing token
+        shell: bash
+        env:
+          EFFECTIVE_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ "${PUBLIC_RELEASE_REPOSITORY}" != "${GITHUB_REPOSITORY}" ] && [ -z "${EFFECTIVE_TOKEN:-}" ]; then
+            echo "::error::GH_TOKEN is required to publish releases to ${PUBLIC_RELEASE_REPOSITORY} from ${GITHUB_REPOSITORY}."
+            exit 1
+          fi
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: build-artifacts
+
+      - name: Prepare release assets (normalize updater metadata)
+        shell: bash
+        run: bash scripts/prepare-release-assets.sh build-artifacts release-assets
+
+      - name: Verify release assets
+        shell: bash
+        run: bash scripts/verify-release-assets.sh release-assets
+
+      - name: Setup Node.js for public site content sync
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install website dependencies for public content export
+        shell: bash
+        run: npm ci
+        working-directory: apps/web
+
+      - name: Generate public release notes
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag_name }}
+          RELEASE_KIND: ${{ steps.version.outputs.release_kind }}
+          RELEASE_SOURCE_MODE: ${{ steps.version.outputs.source_mode }}
+        run: |
+          cat > release-assets/release-notes.md <<EOF
+          Public ${RELEASE_KIND} release for ContextGo ${RELEASE_TAG}.
+
+          This release is published automatically from the private source repository build pipeline (${RELEASE_SOURCE_MODE} mode).
+          The attached installers and manifests are the canonical public distribution artifacts for this version.
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ env.PUBLIC_RELEASE_REPOSITORY }}
+          token: ${{ secrets.GH_TOKEN != '' && secrets.GH_TOKEN || github.token }}
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          name: ${{ steps.version.outputs.tag_name }}
+          body_path: release-assets/release-notes.md
+          files: |
+            release-assets/**/*.exe
+            release-assets/**/*.msi
+            release-assets/**/*.dmg
+            release-assets/**/*.deb
+            release-assets/**/*.apk
+            release-assets/**/*.aab
+            release-assets/**/*.hap
+            release-assets/**/*.app
+            release-assets/**/*.zip
+            release-assets/**/*.json
+            release-assets/**/*.yml
+            release-assets/**/*.md
+          draft: false
+          make_latest: ${{ steps.version.outputs.prerelease == 'true' && 'false' || 'true' }}
+          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
+
+      - name: Sync public site content to public release repository
+        shell: bash
+        env:
+          PUBLISH_TOKEN: ${{ secrets.GH_TOKEN != '' && secrets.GH_TOKEN || github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag_name }}
+          SOURCE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          TARGET_DIR="${RUNNER_TEMP}/contextgo-release-repo"
+          AUTH_REMOTE="https://x-access-token:${PUBLISH_TOKEN}@github.com/${PUBLIC_RELEASE_REPOSITORY}.git"
+
+          rm -rf "${TARGET_DIR}"
+          git clone "${AUTH_REMOTE}" "${TARGET_DIR}"
+
+          node scripts/release/export-release-site-content.mjs \
+            --target "${TARGET_DIR}" \
+            --version "${RELEASE_TAG}" \
+            --source-ref "${SOURCE_REF}"
+
+          cd "${TARGET_DIR}"
+
+          if [ -z "$(git status --porcelain -- README.md docs site)" ]; then
+            echo "No release repository content changes to publish."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs site
+          git commit -m "docs(release): sync public release repository content for ${RELEASE_TAG}"
+          git push origin HEAD:main

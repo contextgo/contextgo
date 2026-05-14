@@ -1,0 +1,65 @@
+/**
+ * @license
+ * Copyright 2025 ContextGo (contextgo.io)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import FontSizeControl from '@/renderer/components/settings/FontSizeControl';
+import { ThemeSwitcher } from '@/renderer/components/settings/ThemeSwitcher';
+import ContextGoScrollArea from '@/renderer/components/base/ContextGoScrollArea';
+import { useSettingsViewMode } from '../settingsViewContext';
+
+/**
+ * 偏好设置行组件 / Preference row component
+ * 用于显示标签和对应的控件，统一的水平布局 / Used for displaying labels and corresponding controls in a unified horizontal layout
+ */
+const PreferenceRow: React.FC<{
+  /** 标签文本 / Label text */
+  label: string;
+  /** 控件元素 / Control element */
+  children: React.ReactNode;
+}> = ({ label, children }) => (
+  <div className='flex flex-col items-stretch gap-10px py-12px md:flex-row md:items-center md:justify-between md:gap-24px'>
+    <div className='text-14px text-t-primary leading-22px'>{label}</div>
+    <div className='w-full flex md:flex-1 md:justify-end'>{children}</div>
+  </div>
+);
+
+/**
+ * 显示设置内容组件 / Display settings content component
+ *
+ * 提供显示相关的配置选项，包括主题和缩放比例
+ * Provides display-related configuration options including theme and zoom scale
+ */
+const DisplayModalContent: React.FC = () => {
+  const { t } = useTranslation();
+  const viewMode = useSettingsViewMode();
+  const isPageMode = viewMode === 'page';
+
+  const displayItems = [
+    { key: 'theme', label: t('settings.theme'), component: <ThemeSwitcher /> },
+    { key: 'fontSize', label: t('settings.fontSize'), component: <FontSizeControl /> },
+  ];
+
+  return (
+    <div className='flex h-full w-full flex-col'>
+      <ContextGoScrollArea className='flex-1 min-h-0 pb-16px' disableOverflow={isPageMode}>
+        <div className='space-y-16px'>
+          <div className='bg-2 space-y-10px rd-16px px-16px py-14px md:space-y-12px md:px-24px md:py-16px lg:px-28px'>
+            <div className='flex w-full flex-col divide-y divide-border-2'>
+              {displayItems.map((item) => (
+                <PreferenceRow key={item.key} label={item.label}>
+                  {item.component}
+                </PreferenceRow>
+              ))}
+            </div>
+          </div>
+        </div>
+      </ContextGoScrollArea>
+    </div>
+  );
+};
+
+export default DisplayModalContent;

@@ -1,0 +1,168 @@
+---
+eyebrow: Agent
+title: Understand agent packages and workspace installation
+summary: Treat built-in assistants as installable capability bundles, understand how they land in .contextgo, and why runtime directories only project skills.
+readingTime: 9 min
+updatedAt: 2026-04-14
+category: features
+---
+
+## What an agent package is
+
+In ContextGo, an assistant should not be modeled only as “a preset tied to one runtime.”
+
+The more accurate model is an **Agent Package**. The package carries reusable capability payload, ContextGo installs it into the workspace, and then projects only the runtime-compatible subset into the selected runtime.
+
+You can think of a built-in assistant as a bundled installation package that ships with the app.
+
+## Where built-in packages live
+
+In development, bundled Agent Packages live in the product repository under:
+
+```text
+src/process/resources/assistant/
+```
+
+In the packaged desktop app, those resources ship inside the application bundle. Users do not need to install built-in packages separately, but the product still treats them as packages internally.
+
+## Why packages are decoupled from runtimes
+
+ContextGo treats the runtime as the execution backend, not as the owner of the assistant package model.
+
+This gives the product a cleaner boundary:
+
+- the same assistant can move across runtimes without redefining the package
+- `hooks`, `commands`, and `schedules` stay under ContextGo control
+- external open-source assistant packs can be absorbed and translated into first-party product behavior
+- future cloud-delivered assistants can reuse the same package contract
+
+## Where the package installs in a workspace
+
+After installation, the product-owned workspace state lives under:
+
+```text
+.contextgo/
+  skills/
+  hooks/
+  hooks.json
+  commands.json
+  schedules.json
+```
+
+This is the canonical workspace installation root.
+
+In practice:
+
+- `.contextgo/skills` stores installed skills
+- `.contextgo/hooks/` and `.contextgo/hooks.json` store hook payload and hook selection state
+- `.contextgo/commands.json` stores the managed command library
+- `.contextgo/schedules.json` stores scheduled task configuration
+
+## Why runtime directories only project skills
+
+Different coding runtimes discover skills through their own native directories, so ContextGo may project workspace skills into locations such as:
+
+```text
+.codex/skills
+.claude/skills
+.gemini/skills
+```
+
+Those directories are compatibility views, not the source of truth.
+
+The default rule is:
+
+- runtimes only receive skill projections
+- `hooks`, `commands`, and `schedules` remain under `.contextgo/`
+- third-party runtime workspace layout does not become the product’s primary model
+
+This is why ContextGo should not generate a full `.claude` workspace structure in every project just because one absorbed package originally came from the Claude ecosystem.
+
+## The Agent Package v1 protocol
+
+ContextGo calls this directory contract `Agent Package v1`.
+
+The protocol is intentionally small.
+
+### Required entry point
+
+Each package should have:
+
+- `agent-package.json`
+- `AGENTS.md`
+
+`agent-package.json` is the machine-readable package manifest.
+
+It should hold the stable mapping from:
+
+- logical payload
+- physical source root
+- installed workspace surface
+- runtime projection behavior
+- package-owned capability metadata when UI or bootstrap logic depends on it
+  - `skills.packagedSkillNames` declares the package-owned skill set
+  - `skills.defaultEnabledSkillNames` declares assistant defaults
+  - `skills.hidePackageOwnedSkillsFromLibrary` hides package-owned skills from the generic library when appropriate
+
+`AGENTS.md` is the human-facing package entry point. It should stay concise instead of turning into a giant manual.
+
+It should explain:
+
+- what the package is for
+- which capabilities it installs
+- the hard boundaries of the package
+- where deeper guidance lives
+
+### Recommended deep documentation
+
+Each package should also provide:
+
+- `docs/`
+
+Use that directory for longer references, examples, domain guidance, and other material that should not be loaded eagerly.
+
+Packages may also declare:
+
+- `workspaceScaffold`
+
+This payload represents starter project-root docs that ContextGo can seed into a linked workspace, such as `AGENTS.md` plus initial files under `docs/`, when the workspace does not already expose its own root guidance.
+
+### Executable capability payload
+
+A package may also include:
+
+- workspace scaffold templates
+- `skills/`
+- `hooks/`
+- command seeds
+- schedule seeds
+
+After installation, ContextGo normalizes those capabilities into the `.contextgo/` workspace shape.
+
+## Progressive disclosure
+
+The default writing model for Agent Packages is progressive disclosure.
+
+Split package content across three layers:
+
+- `agent-package.json`: machine-readable payload mapping
+- `AGENTS.md`: short entry point and boundaries
+- `workspaceScaffold`: project-root starter docs written during workspace bootstrap when appropriate
+- `docs/`: deeper package documentation
+- `skills/*/SKILL.md`: task-level executable guidance
+
+This keeps the entry point readable and makes packages easier to maintain and distribute.
+
+## Future cloud import
+
+ContextGo is designed so bundled assistants and future cloud-delivered assistants can share the same package contract.
+
+The source of the package may change, but the installed workspace shape should not.
+
+The target model is:
+
+- bundled assistants use the same package protocol
+- local imports use the same package protocol
+- future cloud imports use the same package protocol
+
+That keeps package distribution separate from runtime-specific filesystem behavior.

@@ -1,0 +1,378 @@
+name: iOS TestFlight Reusable
+
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        description: 'Git ref or SHA to build'
+        required: true
+        type: string
+      require_release_tag:
+        description: 'Require a matching vX.Y.Z tag at the checked out commit'
+        required: false
+        default: false
+        type: boolean
+      use_hosted_runner:
+        description: 'Force GitHub-hosted macOS runner instead of self-hosted labels'
+        required: false
+        default: false
+        type: boolean
+      hosted_runner_label:
+        description: 'GitHub-hosted macOS label to use when use_hosted_runner is true'
+        required: false
+        default: macos-15
+        type: string
+
+jobs:
+  build-and-upload:
+    name: Build and Upload iOS TestFlight
+    runs-on: >-
+      ${{
+        fromJSON(
+          inputs.use_hosted_runner &&
+          format('["{0}"]', inputs.hosted_runner_label) ||
+          !inputs.use_hosted_runner &&
+          (
+            vars.SELF_HOSTED_IOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_IOS_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            ''
+          ) != '' &&
+          (
+            vars.SELF_HOSTED_IOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_IOS_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON
+          ) ||
+          '["macos-15"]'
+        )
+      }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 1
+          fetch-tags: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Resolve iOS release version
+        id: version
+        shell: bash
+        env:
+          REQUIRE_RELEASE_TAG: ${{ inputs.require_release_tag }}
+        run: |
+          set -euo pipefail
+
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG_NAME="v${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+
+          if [ "${REQUIRE_RELEASE_TAG}" = "true" ]; then
+            git fetch --force --tags origin
+            TAG_SHA="$(git rev-list -n 1 "${TAG_NAME}" 2>/dev/null || true)"
+            HEAD_SHA="$(git rev-parse HEAD)"
+
+            if [ -z "${TAG_SHA}" ]; then
+              echo "::error::Expected release tag ${TAG_NAME} but it does not exist."
+              exit 1
+            fi
+
+            if [ "${TAG_SHA}" != "${HEAD_SHA}" ]; then
+              echo "::error::Tag ${TAG_NAME} points to ${TAG_SHA}, but checked out commit is ${HEAD_SHA}."
+              exit 1
+            fi
+          fi
+
+          echo "Resolved iOS TestFlight version: ${VERSION}"
+
+      - name: Resolve iOS build number
+        id: build_number
+        shell: bash
+        env:
+          GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT_VALUE: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+
+          # Use a globally unique numeric build number so repeated uploads for the same
+          # marketing version do not collide in App Store Connect.
+          BUILD_NUMBER="${GITHUB_RUN_ID_VALUE}$(printf '%02d' "${GITHUB_RUN_ATTEMPT_VALUE}")"
+          echo "build_number=${BUILD_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "Resolved iOS build number: ${BUILD_NUMBER}"
+
+      - name: Prepare App Store Connect upload API key
+        id: upload_api_key
+        shell: bash
+        env:
+          APPLE_API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
+          APPLE_API_KEY_ID: ${{ vars.APPLE_API_KEY_ID != '' && vars.APPLE_API_KEY_ID || secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ vars.APPLE_API_ISSUER_ID != '' && vars.APPLE_API_ISSUER_ID || secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${APPLE_API_PRIVATE_KEY:-}" ] || [ -z "${APPLE_API_KEY_ID:-}" ] || [ -z "${APPLE_API_ISSUER_ID:-}" ]; then
+            echo "::error::APPLE_API_PRIVATE_KEY plus APPLE_API_KEY_ID and APPLE_API_ISSUER_ID are required for TestFlight upload."
+            exit 1
+          fi
+
+          API_DIR="${RUNNER_TEMP}/appstoreconnect-upload"
+          mkdir -p "${API_DIR}"
+          API_KEY_PATH="${API_DIR}/AuthKey_${APPLE_API_KEY_ID}.p8"
+          printf '%s\n' "${APPLE_API_PRIVATE_KEY}" > "${API_KEY_PATH}"
+          chmod 600 "${API_KEY_PATH}"
+
+          echo "path=${API_KEY_PATH}" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare optional provisioning API key
+        id: provisioning_api_key
+        shell: bash
+        env:
+          APPLE_PROVISIONING_API_PRIVATE_KEY: ${{ secrets.APPLE_PROVISIONING_API_PRIVATE_KEY }}
+          APPLE_PROVISIONING_API_KEY_ID: ${{ vars.APPLE_PROVISIONING_API_KEY_ID != '' && vars.APPLE_PROVISIONING_API_KEY_ID || secrets.APPLE_PROVISIONING_API_KEY_ID }}
+          APPLE_PROVISIONING_API_ISSUER_ID: ${{ vars.APPLE_PROVISIONING_API_ISSUER_ID != '' && vars.APPLE_PROVISIONING_API_ISSUER_ID || secrets.APPLE_PROVISIONING_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+
+          provided_count=0
+          [ -n "${APPLE_PROVISIONING_API_PRIVATE_KEY:-}" ] && provided_count=$((provided_count + 1))
+          [ -n "${APPLE_PROVISIONING_API_KEY_ID:-}" ] && provided_count=$((provided_count + 1))
+          [ -n "${APPLE_PROVISIONING_API_ISSUER_ID:-}" ] && provided_count=$((provided_count + 1))
+
+          if [ "${provided_count}" -eq 0 ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "${provided_count}" -ne 3 ]; then
+            echo "::error::APPLE_PROVISIONING_API_PRIVATE_KEY, APPLE_PROVISIONING_API_KEY_ID, and APPLE_PROVISIONING_API_ISSUER_ID must be set together."
+            exit 1
+          fi
+
+          API_DIR="${RUNNER_TEMP}/appstoreconnect-provisioning"
+          mkdir -p "${API_DIR}"
+          API_KEY_PATH="${API_DIR}/AuthKey_${APPLE_PROVISIONING_API_KEY_ID}.p8"
+          printf '%s\n' "${APPLE_PROVISIONING_API_PRIVATE_KEY}" > "${API_KEY_PATH}"
+          chmod 600 "${API_KEY_PATH}"
+
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "path=${API_KEY_PATH}" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare iOS signing inputs
+        id: signing
+        shell: bash
+        env:
+          IOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          IOS_BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD || 'temp-keychain-password' }}
+          PROVISIONING_API_ENABLED: ${{ steps.provisioning_api_key.outputs.enabled }}
+        run: |
+          set -euo pipefail
+
+          has_cert=0
+          has_password=0
+          has_profile=0
+          [ -n "${IOS_BUILD_CERTIFICATE_BASE64:-}" ] && has_cert=1
+          [ -n "${IOS_P12_PASSWORD:-}" ] && has_password=1
+          [ -n "${IOS_BUILD_PROVISION_PROFILE_BASE64:-}" ] && has_profile=1
+          manual_count=$((has_cert + has_password + has_profile))
+
+          if [ "${manual_count}" -ne 0 ] && [ "${manual_count}" -ne 3 ]; then
+            echo "::error::IOS_BUILD_CERTIFICATE_BASE64, IOS_P12_PASSWORD, and IOS_BUILD_PROVISION_PROFILE_BASE64 must be set together for manual signing."
+            exit 1
+          fi
+
+          if [ "${manual_count}" -eq 3 ]; then
+            CERT_PATH="${RUNNER_TEMP}/contextgo-ios-build.p12"
+            PROFILE_STAGING_PATH="${RUNNER_TEMP}/contextgo.mobileprovision"
+            PROFILE_DIR="${HOME}/Library/Developer/Xcode/UserData/Provisioning Profiles"
+            PROFILE_PLIST="${RUNNER_TEMP}/contextgo.mobileprovision.plist"
+            KEYCHAIN_PATH="${RUNNER_TEMP}/build-ios-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.keychain-db"
+
+            echo "${IOS_BUILD_CERTIFICATE_BASE64}" | base64 --decode > "${CERT_PATH}"
+            echo "${IOS_BUILD_PROVISION_PROFILE_BASE64}" | base64 --decode > "${PROFILE_STAGING_PATH}"
+
+            rm -f "${KEYCHAIN_PATH}"
+            security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+            EXISTING_KEYCHAINS="$(security list-keychains -d user | tr -d '\"')"
+            security list-keychains -d user -s "${KEYCHAIN_PATH}" ${EXISTING_KEYCHAINS}
+            security default-keychain -s "${KEYCHAIN_PATH}"
+            security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+            security import "${CERT_PATH}" -k "${KEYCHAIN_PATH}" -P "${IOS_P12_PASSWORD}" -T /usr/bin/codesign -T /usr/bin/security
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+
+            security cms -D -i "${PROFILE_STAGING_PATH}" > "${PROFILE_PLIST}"
+            PROFILE_NAME="$(/usr/libexec/PlistBuddy -c 'Print :Name' "${PROFILE_PLIST}")"
+            PROFILE_UUID="$(/usr/libexec/PlistBuddy -c 'Print :UUID' "${PROFILE_PLIST}")"
+            PROFILE_PATH="${PROFILE_DIR}/${PROFILE_UUID}.mobileprovision"
+
+            mkdir -p "${PROFILE_DIR}"
+            cp "${PROFILE_STAGING_PATH}" "${PROFILE_PATH}"
+
+            echo "manual=true" >> "$GITHUB_OUTPUT"
+            echo "code_sign_style=Manual" >> "$GITHUB_OUTPUT"
+            echo "profile_name=${PROFILE_NAME}" >> "$GITHUB_OUTPUT"
+            echo "profile_uuid=${PROFILE_UUID}" >> "$GITHUB_OUTPUT"
+            echo "profile_path=${PROFILE_PATH}" >> "$GITHUB_OUTPUT"
+            echo "keychain_path=${KEYCHAIN_PATH}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "${PROVISIONING_API_ENABLED}" != "true" ]; then
+            echo "::error::Provide either manual signing secrets (p12 + mobileprovision) or the optional Team provisioning API key inputs."
+            exit 1
+          fi
+
+          echo "manual=false" >> "$GITHUB_OUTPUT"
+          echo "code_sign_style=Automatic" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare iOS export options
+        id: export_options
+        shell: bash
+        env:
+          IOS_DEVELOPMENT_TEAM: ${{ vars.IOS_DEVELOPMENT_TEAM != '' && vars.IOS_DEVELOPMENT_TEAM || 'DQ362F38WB' }}
+          IOS_APP_BUNDLE_ID: ${{ vars.IOS_APP_BUNDLE_ID != '' && vars.IOS_APP_BUNDLE_ID || 'io.contextgo.ios' }}
+          IOS_CODE_SIGN_IDENTITY: ${{ vars.IOS_CODE_SIGN_IDENTITY }}
+          MANUAL_SIGNING: ${{ steps.signing.outputs.manual }}
+          PROFILE_NAME: ${{ steps.signing.outputs.profile_name }}
+        run: |
+          set -euo pipefail
+
+          EXPORT_OPTIONS_PATH="${RUNNER_TEMP}/ContextGoExportOptions.plist"
+
+          if [ "${MANUAL_SIGNING}" = "true" ]; then
+            SIGNING_CERTIFICATE_BLOCK=""
+            if [ -n "${IOS_CODE_SIGN_IDENTITY:-}" ]; then
+              SIGNING_CERTIFICATE_BLOCK=$'  <key>signingCertificate</key>\n'
+              SIGNING_CERTIFICATE_BLOCK+=$"  <string>${IOS_CODE_SIGN_IDENTITY}</string>"
+            fi
+
+            cat > "${EXPORT_OPTIONS_PATH}" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>destination</key>
+            <string>export</string>
+            <key>manageAppVersionAndBuildNumber</key>
+            <false/>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${IOS_APP_BUNDLE_ID}</key>
+              <string>${PROFILE_NAME}</string>
+            </dict>
+          ${SIGNING_CERTIFICATE_BLOCK}
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>teamID</key>
+            <string>${IOS_DEVELOPMENT_TEAM}</string>
+            <key>testFlightInternalTestingOnly</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+          else
+            cat > "${EXPORT_OPTIONS_PATH}" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>destination</key>
+            <string>export</string>
+            <key>manageAppVersionAndBuildNumber</key>
+            <false/>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>teamID</key>
+            <string>${IOS_DEVELOPMENT_TEAM}</string>
+            <key>testFlightInternalTestingOnly</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+          fi
+
+          echo "path=${EXPORT_OPTIONS_PATH}" >> "$GITHUB_OUTPUT"
+
+      - name: Bootstrap mobile shell
+        shell: bash
+        run: bash mobile-shell/scripts/bootstrap.sh
+
+      - name: Build iOS archive and export IPA
+        shell: bash
+        env:
+          CONTEXTGO_RELEASE_BUILD_NUMBER: ${{ steps.build_number.outputs.build_number }}
+          CONTEXTGO_IOS_EXPORT_OPTIONS_PLIST: ${{ steps.export_options.outputs.path }}
+          IOS_DEVELOPMENT_TEAM: ${{ vars.IOS_DEVELOPMENT_TEAM != '' && vars.IOS_DEVELOPMENT_TEAM || 'DQ362F38WB' }}
+          IOS_CODE_SIGN_STYLE: ${{ steps.signing.outputs.code_sign_style }}
+          IOS_CODE_SIGN_IDENTITY: ${{ vars.IOS_CODE_SIGN_IDENTITY }}
+          IOS_PROVISIONING_PROFILE_SPECIFIER: ${{ steps.signing.outputs.profile_name }}
+          APPLE_API_KEY_ID: ${{ steps.provisioning_api_key.outputs.enabled == 'true' && (vars.APPLE_PROVISIONING_API_KEY_ID != '' && vars.APPLE_PROVISIONING_API_KEY_ID || secrets.APPLE_PROVISIONING_API_KEY_ID) || '' }}
+          APPLE_API_ISSUER_ID: ${{ steps.provisioning_api_key.outputs.enabled == 'true' && (vars.APPLE_PROVISIONING_API_ISSUER_ID != '' && vars.APPLE_PROVISIONING_API_ISSUER_ID || secrets.APPLE_PROVISIONING_API_ISSUER_ID) || '' }}
+          APPLE_API_PRIVATE_KEY_FILE: ${{ steps.provisioning_api_key.outputs.enabled == 'true' && steps.provisioning_api_key.outputs.path || '' }}
+        run: |
+          set -euo pipefail
+          bash mobile-shell/scripts/build-ios-release.sh "${{ steps.version.outputs.version }}" "${RUNNER_TEMP}/ios-testflight"
+
+      - name: Upload IPA to TestFlight
+        shell: bash
+        env:
+          APPLE_API_KEY_ID: ${{ vars.APPLE_API_KEY_ID != '' && vars.APPLE_API_KEY_ID || secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ vars.APPLE_API_ISSUER_ID != '' && vars.APPLE_API_ISSUER_ID || secrets.APPLE_API_ISSUER_ID }}
+          APPLE_API_PRIVATE_KEY_FILE: ${{ steps.upload_api_key.outputs.path }}
+        run: |
+          set -euo pipefail
+
+          IPA_PATH="$(find "${RUNNER_TEMP}/ios-testflight" -maxdepth 1 -type f -name '*.ipa' | sort | head -n 1 || true)"
+          if [ -z "${IPA_PATH}" ]; then
+            echo "::error::No IPA was exported for TestFlight upload."
+            exit 1
+          fi
+
+          bash mobile-shell/scripts/upload-ios-testflight.sh "${IPA_PATH}"
+
+      - name: Upload iOS build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-testflight-build
+          path: |
+            ${{ runner.temp }}/ios-testflight/ContextGo.xcarchive
+            ${{ runner.temp }}/ios-testflight/*.ipa
+            ${{ runner.temp }}/ios-testflight/export/*
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Clean up iOS signing inputs
+        if: always()
+        shell: bash
+        env:
+          PROFILE_UUID: ${{ steps.signing.outputs.profile_uuid }}
+          KEYCHAIN_PATH: ${{ steps.signing.outputs.keychain_path }}
+        run: |
+          set +e
+          if [ -n "${KEYCHAIN_PATH:-}" ]; then
+            security delete-keychain "${KEYCHAIN_PATH}" 2>/dev/null || true
+          fi
+          if [ -n "${PROFILE_UUID:-}" ]; then
+            rm -f "${HOME}/Library/Developer/Xcode/UserData/Provisioning Profiles/${PROFILE_UUID}.mobileprovision" 2>/dev/null || true
+          fi
+          rm -rf "${RUNNER_TEMP}/ios-testflight" 2>/dev/null || true

@@ -1,0 +1,515 @@
+:root {
+  --docs-page-bg: #ffffff;
+  --docs-page-muted: #f5f7fa;
+  --docs-surface: rgba(255, 255, 255, 0.9);
+  --docs-surface-strong: #ffffff;
+  --docs-border: #e5e7eb;
+  --docs-border-strong: #d1d5db;
+  --docs-text-primary: #111111;
+  --docs-text-secondary: #5f6877;
+  --docs-text-tertiary: #8b95a7;
+  --docs-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  --docs-shadow-soft: 0 10px 24px rgba(15, 23, 42, 0.05);
+  --docs-brand-discord: #5865f2;
+  --docs-brand-github: #111111;
+}
+
+html.dark,
+html[data-theme='dark'] {
+  --docs-page-bg: #0c1015;
+  --docs-page-muted: #10161d;
+  --docs-surface: rgba(21, 28, 36, 0.88);
+  --docs-surface-strong: #151c24;
+  --docs-border: #26303c;
+  --docs-border-strong: #354152;
+  --docs-text-primary: #f5f7fb;
+  --docs-text-secondary: #c2cad6;
+  --docs-text-tertiary: #8c97a8;
+  --docs-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  --docs-shadow-soft: 0 10px 24px rgba(0, 0, 0, 0.18);
+  --docs-brand-discord: #7c89ff;
+  --docs-brand-github: #f5f7fb;
+}
+
+body {
+  background: var(--docs-page-bg);
+  color: var(--docs-text-primary);
+}
+
+#navbar,
+#navbar-transition {
+  background: var(--docs-surface);
+  border-bottom: 1px solid var(--docs-border);
+  backdrop-filter: blur(14px);
+}
+
+#navbar img {
+  max-height: 28px;
+}
+
+#topbar-cta-button a {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+#topbar-cta-button a > span {
+  background: var(--docs-text-primary);
+}
+
+html.dark #topbar-cta-button a > span,
+html[data-theme='dark'] #topbar-cta-button a > span {
+  background: #f5f7fb;
+}
+
+#topbar-cta-button a div span,
+#topbar-cta-button a div svg {
+  color: var(--docs-page-bg);
+}
+
+html.dark #topbar-cta-button a div span,
+html.dark #topbar-cta-button a div svg,
+html[data-theme='dark'] #topbar-cta-button a div span,
+html[data-theme='dark'] #topbar-cta-button a div svg {
+  color: #0c1015;
+}
+
+#navbar a[href='https://discord.gg/6HWsa2jB5w'],
+#navbar a[href='https://github.com/contextgo/contextgo'] {
+  align-items: center;
+  align-self: center;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  display: inline-flex;
+  flex: none;
+  font-size: 0;
+  height: 2rem;
+  justify-content: center;
+  line-height: 0;
+  min-width: 2rem;
+  overflow: hidden;
+  padding: 0;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+  vertical-align: middle;
+  width: 2rem;
+}
+
+#navbar a[href='https://discord.gg/6HWsa2jB5w'] {
+  color: var(--docs-brand-discord);
+  /* Tighten the pair optically because the Discord mark reads narrower than GitHub. */
+  margin-right: -0.25rem;
+}
+
+#navbar a[href='https://github.com/contextgo/contextgo'] {
+  color: var(--docs-brand-github);
+}
+
+#navbar a[href='https://discord.gg/6HWsa2jB5w']:hover,
+#navbar a[href='https://github.com/contextgo/contextgo']:hover {
+  opacity: 0.72;
+  transform: translateY(-1px);
+}
+
+#navbar a[href='https://discord.gg/6HWsa2jB5w']::before,
+#navbar a[href='https://github.com/contextgo/contextgo']::before {
+  background-color: currentColor;
+  content: '';
+  display: block;
+  flex: none;
+  height: 1.08rem;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  width: 1.08rem;
+}
+
+#navbar a[href='https://discord.gg/6HWsa2jB5w']::before {
+  height: 0.95rem;
+  mask-image: url('/logo/social/discord.svg');
+  width: 1.25rem;
+  -webkit-mask-image: url('/logo/social/discord.svg');
+}
+
+#navbar a[href='https://github.com/contextgo/contextgo']::before {
+  mask-image: url('/logo/social/github.svg');
+  -webkit-mask-image: url('/logo/social/github.svg');
+}
+
+#search-bar-entry,
+#search-bar-entry-mobile {
+  border-radius: 999px;
+  border: 1px solid var(--docs-border);
+  background: var(--docs-surface-strong);
+  box-shadow: none;
+}
+
+#navigation-items,
+#sidebar,
+#table-of-contents-content {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-size: 14px;
+}
+
+#sidebar a,
+#table-of-contents-content a {
+  border-radius: 14px;
+}
+
+#sidebar [data-active='true'] > a {
+  background: var(--docs-page-muted);
+  color: var(--docs-text-primary);
+  text-shadow: none;
+}
+
+html.dark #sidebar [data-active='true'] > a,
+html[data-theme='dark'] #sidebar [data-active='true'] > a {
+  background: #18212b;
+}
+
+#sidebar [data-active='true'] > a span {
+  font-weight: 600;
+}
+
+#sidebar .sidebar-group-header h5 {
+  color: var(--docs-text-tertiary);
+  font-size: 0.73rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+#content-area {
+  max-width: 880px;
+}
+
+#content-area h1,
+#content-area h2,
+#content-area h3,
+#content-area h4 {
+  color: var(--docs-text-primary);
+}
+
+#content-area h1 {
+  letter-spacing: -0.05em;
+  line-height: 0.98;
+}
+
+#content-area h2 {
+  margin-top: 2.75rem;
+  letter-spacing: -0.03em;
+}
+
+#content-area p,
+#content-area li {
+  color: var(--docs-text-secondary);
+  font-size: 15.5px;
+  line-height: 1.82;
+}
+
+#content-area code,
+#content-area pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+#content-area code {
+  font-size: 0.9em;
+}
+
+#content-area img {
+  border: 1px solid var(--docs-border);
+  border-radius: 20px;
+  box-shadow: var(--docs-shadow);
+  margin: 1.5rem 0 2rem;
+}
+
+#content-area blockquote,
+#content-area pre {
+  border-radius: 18px;
+  border: 1px solid var(--docs-border);
+  box-shadow: var(--docs-shadow-soft);
+}
+
+#table-of-contents-content {
+  color: var(--docs-text-tertiary);
+  opacity: 1;
+}
+
+#navigation-items a.nav-anchor[href='https://contextgo.io'] {
+  align-items: center;
+  gap: 0.6rem;
+}
+
+#navigation-items a.nav-anchor[href='https://contextgo.io'] > div:first-child {
+  background-color: #111111;
+  background-image: url('/brand/main-site-icon.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  border: 1px solid var(--docs-border);
+  border-radius: 0.45rem;
+  box-shadow: var(--docs-shadow-soft);
+  height: 1.5rem;
+  margin-right: 0;
+  padding: 0;
+  width: 1.5rem;
+}
+
+#navigation-items a.nav-anchor[href='https://contextgo.io'] > div:first-child svg {
+  display: none;
+}
+
+html.dark #navigation-items a.nav-anchor[href='https://contextgo.io'] > div:first-child,
+html[data-theme='dark'] #navigation-items a.nav-anchor[href='https://contextgo.io'] > div:first-child {
+  border-color: var(--docs-border-strong);
+}
+
+#footer a[href*='utm_campaign=poweredBy'] {
+  display: none !important;
+}
+
+#footer > div:last-child:has(a[href*='utm_campaign=poweredBy']) {
+  display: none !important;
+}
+
+.docs-home-shell {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.docs-home-hero {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.docs-home-copy {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.docs-home-wordmark,
+.docs-home-hero-media,
+.docs-home-card-media {
+  border: 0 !important;
+  box-shadow: none !important;
+  display: block;
+  margin: 0 !important;
+}
+
+.docs-home-wordmark {
+  max-width: 20rem;
+  width: 100%;
+}
+
+.docs-home-kicker {
+  color: var(--docs-text-tertiary);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.docs-home-lead {
+  color: var(--docs-text-primary);
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+  line-height: 1.7;
+  margin: 0;
+  max-width: 42rem;
+}
+
+.docs-home-hero-visual,
+.docs-home-card-frame {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--docs-surface-strong) 95%, transparent),
+    var(--docs-page-muted)
+  );
+  border: 1px solid var(--docs-border);
+  border-radius: 22px;
+  box-shadow: var(--docs-shadow-soft);
+  overflow: hidden;
+}
+
+.docs-home-hero-visual {
+  padding: 1rem;
+}
+
+.docs-home-hero-media {
+  border-radius: 18px;
+  width: 100%;
+}
+
+.docs-home-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.docs-home-card {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--docs-surface-strong) 92%, transparent),
+    var(--docs-page-muted)
+  );
+  border: 1px solid var(--docs-border);
+  border-radius: 22px;
+  box-shadow: var(--docs-shadow-soft);
+  color: inherit;
+  display: grid;
+  gap: 0.7rem;
+  min-height: 12rem;
+  padding: 1.35rem;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.docs-home-card:hover {
+  border-color: var(--docs-border-strong);
+  box-shadow: var(--docs-shadow);
+  transform: translateY(-2px);
+}
+
+.docs-home-card-frame {
+  padding: 0.75rem;
+}
+
+.docs-home-card-media {
+  aspect-ratio: 16 / 10;
+  border-radius: 16px;
+  object-fit: cover;
+  object-position: top center;
+  width: 100%;
+}
+
+.docs-home-card-label {
+  color: var(--docs-text-tertiary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.docs-home-card strong {
+  color: var(--docs-text-primary);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.docs-home-card p {
+  color: var(--docs-text-secondary);
+  font-size: 0.94rem;
+  line-height: 1.72;
+  margin: 0;
+}
+
+.docs-home-notes {
+  background: var(--docs-page-muted);
+  border: 1px solid var(--docs-border);
+  border-radius: 22px;
+  padding: 1.3rem 1.4rem;
+}
+
+.docs-home-notes span {
+  color: var(--docs-text-primary);
+  display: block;
+  font-size: 0.96rem;
+  font-weight: 600;
+  margin-bottom: 0.7rem;
+}
+
+.docs-home-notes ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.docs-home-notes li {
+  margin: 0.45rem 0;
+}
+
+@media (min-width: 1024px) {
+  #sidebar {
+    width: 16rem;
+  }
+
+  #sidebar-content {
+    padding-right: 1rem;
+  }
+
+  #content-area {
+    flex: 1 1 auto;
+    max-width: 920px;
+    padding-left: 15rem !important;
+    padding-right: 1.25rem;
+    width: auto !important;
+  }
+
+  #content-side-layout + #content-area {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+  }
+
+  #sidebar {
+    padding-right: 0.5rem;
+  }
+
+  .docs-home-hero {
+    align-items: start;
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  #content-side-layout {
+    flex: 0 0 13.5rem;
+    gap: 0;
+    margin-left: 0;
+    max-width: 13.5rem;
+    width: 13.5rem;
+  }
+
+  #table-of-contents-layout {
+    padding-left: 0 !important;
+    width: 13.5rem;
+  }
+
+  #table-of-contents {
+    width: 100%;
+  }
+
+  #content-area {
+    max-width: 1040px;
+    padding-right: 0.75rem;
+    width: calc(100% - 14.5rem) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .docs-home-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .docs-home-card {
+    min-height: auto;
+  }
+
+  .docs-home-lead {
+    font-size: 1.04rem;
+  }
+}

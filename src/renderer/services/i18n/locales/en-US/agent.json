@@ -1,0 +1,127 @@
+{
+  "health": {
+    "detectedError": "Detected error with current agent ({{agent}})",
+    "autoSwitching": ". System will attempt to switch automatically.",
+    "evaluating": "Evaluating network latency and model availability...",
+    "checking": "Checking {{agent}} endpoint...",
+    "foundBest": "Found best alternative",
+    "recommendSwitch": "Recommended",
+    "available": "Available",
+    "lowLatency": "Low Latency",
+    "mediumLatency": "Medium Latency",
+    "highLatency": "High Latency",
+    "bestMatch": "Best Match",
+    "noAvailable": "No available agents in current environment",
+    "checkConfig": "Please check configuration or try again later"
+  },
+  "setup": {
+    "connectionError": "Connection Error",
+    "notConfigured": "{{agent}} is not configured",
+    "authRequired": "Authentication or API key is required to use this agent.",
+    "findingAlternatives": "Finding available alternatives...",
+    "checkingAgent": "Checking {{agent}}...",
+    "alternativesFound": "{{count}} available alternatives found",
+    "autoSwitching": "Auto-switching to best available agent...",
+    "configError": "Configuration error. Please check your settings or select an alternative:",
+    "noAlternatives": "No available agents found",
+    "configureFirst": "Please configure an agent in Settings first.",
+    "switching": "Switching agent..."
+  },
+  "hooks": {
+    "sidecarExported": "Sidecar files exported for {{hookName}}.",
+    "markdownPath": "Markdown",
+    "metadataPath": "Metadata",
+    "openMarkdown": "Open Markdown",
+    "showInFolder": "Show In Folder",
+    "sidecarActionFailed": "Failed to open exported sidecar output."
+  },
+  "contextEngine": {
+    "title": "Context Engine",
+    "description": "System-managed maintenance agents continuously compact session context and promote stable project knowledge.",
+    "systemManaged": "System-managed",
+    "loading": "Loading maintenance activity...",
+    "loadFailed": "Failed to load maintenance activity.",
+    "activeCount": "{{count}} maintenance runs active",
+    "idleCount": "{{count}} maintenance agents watching",
+    "empty": "Waiting for the first maintenance run.",
+    "taskFallback": "No summary yet",
+    "groupActiveCount": "{{count}} runs active",
+    "groupWatchingCount": "{{count}} agents watching",
+    "scope": "Scope: {{scope}}",
+    "artifactTitle": "Doc: {{title}}",
+    "artifactPath": "Path: {{path}}",
+    "latestEvent": "Latest: {{event}}",
+    "updatedAt": "Updated {{time}}",
+    "openConsole": "Open Console",
+    "active": "Active",
+    "idle": "Watching",
+    "groups": {
+      "session_compaction": "Session Compaction",
+      "project_promotion": "Project Promotion",
+      "other": "Other Maintenance"
+    },
+    "state": {
+      "error": "Error",
+      "executing": "Executing",
+      "idle": "Idle",
+      "researching": "Researching",
+      "syncing": "Syncing",
+      "writing": "Writing"
+    },
+    "operationLog": {
+      "signal": {
+        "user_interrupt": {
+          "title": "Run stopped before completion",
+          "summary": "The current run was stopped manually."
+        },
+        "repeated_request": {
+          "title": "Task was repeated"
+        },
+        "strategy_shift": {
+          "title": "Approach changed during the session"
+        },
+        "tool_failure_cluster": {
+          "title": "Tool failures started clustering"
+        },
+        "memory_candidate_created": {
+          "title": "Captured a takeaway for review"
+        },
+        "memory_candidate_promoted": {
+          "title": "Saved a stable takeaway"
+        },
+        "context_window_prepared": {
+          "title": "Prepared context for this turn",
+          "summary": "Prepared the context needed to continue this turn.",
+          "recentSignals": "Included {{count}} recent context records."
+        }
+      },
+      "job": {
+        "session_compaction": {
+          "queued": "Session context update queued",
+          "completed": "Session context updated",
+          "failed": "Session context update failed"
+        },
+        "session_pattern_detection": {
+          "queued": "Session pattern scan queued",
+          "completed": "Session pattern scan completed",
+          "failed": "Session pattern scan failed"
+        },
+        "project_promotion": {
+          "queued": "Project knowledge update queued",
+          "completed": "Project knowledge updated",
+          "failed": "Project knowledge update failed"
+        },
+        "space_memory_distillation": {
+          "queued": "Space memory distillation queued",
+          "completed": "Space memory distillation completed",
+          "failed": "Space memory distillation failed"
+        },
+        "connector_digest": {
+          "queued": "Connector digest queued",
+          "completed": "Connector digest completed",
+          "failed": "Connector digest failed"
+        }
+      }
+    }
+  }
+}

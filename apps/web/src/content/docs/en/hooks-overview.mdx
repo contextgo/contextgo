@@ -1,0 +1,36 @@
+---
+eyebrow: Hooks
+title: Configure hooks for workflow events
+summary: Define when a hook runs, what context it receives, and how to roll out hook behavior without disrupting the main task flow.
+readingTime: 6 min
+updatedAt: 2026-04-12
+category: features
+---
+
+## What a hook does
+
+A hook runs additional logic when a defined workflow event occurs. Common uses include validation, formatting, routing, notification, and post-processing.
+
+Use hooks when the same follow-up step needs to happen consistently around a task or publish action.
+
+## Trigger points
+
+Document the trigger point before configuring a hook. A hook should make it clear whether it runs:
+
+- before a task starts
+- after output is produced
+- when a publish action is requested
+- when a task changes state
+
+## Hook inputs and outputs
+
+For each hook, record the following:
+
+- The event that triggers it
+- The context it can read
+- The side effects it is allowed to produce
+- The failure behavior when the hook does not complete
+
+## Rollout guidance
+
+Start with hooks that are easy to verify and easy to disable. Review logs or outputs after each change. For production workflows, avoid large hook chains until each step has been tested independently.

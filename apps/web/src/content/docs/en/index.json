@@ -1,0 +1,39 @@
+{
+  "badge": "Documentation",
+  "title": "ContextGo Docs",
+  "description": "Official product documentation for installation, agent workflows, automation, remote access, and release operations.",
+  "featuredLabel": "Documentation layout",
+  "featuredDescription": "Use Guides for initial setup, Features for day-to-day product capabilities, and Operations for account, remote access, updates, and troubleshooting.",
+  "categories": [
+    {
+      "id": "guides",
+      "title": "Guides",
+      "description": "Read these pages before first use. They cover installation, account sign-in, device registration, and the basic product model."
+    },
+    {
+      "id": "features",
+      "title": "Features",
+      "description": "These pages document the working surfaces in the product, including agents, hooks, scheduled tasks, runtimes, connectors, and skills."
+    },
+    {
+      "id": "operations",
+      "title": "Operations",
+      "description": "These pages cover cloud account behavior, remote access, software updates, release sources, and common troubleshooting steps."
+    }
+  ],
+  "order": [
+    "quick-start",
+    "product-model",
+    "agent-workspace",
+    "agent-packages",
+    "agent-collaboration",
+    "hooks-overview",
+    "scheduled-tasks",
+    "skill-market",
+    "runtime-management",
+    "connectors-and-channels",
+    "remote-access",
+    "cloud-account",
+    "updates-and-troubleshooting"
+  ]
+}

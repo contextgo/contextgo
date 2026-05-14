@@ -1,0 +1,34 @@
+---
+eyebrow: Connectors
+title: Use connectors and channels
+summary: Connect external sources to the desktop host, route outputs to delivery channels, and document the access requirements for each integration.
+readingTime: 6 min
+updatedAt: 2026-04-12
+category: features
+---
+
+## Connectors
+
+Connectors bring external context into ContextGo. A connector can provide files, documents, shared drives, chat content, or structured system data to the desktop host.
+
+For each connector, document:
+
+- the source system
+- the access method and required permissions
+- the scope of content exposed to agents or automation
+
+## Channels
+
+Channels send output to a destination such as a publishing target, notification path, or delivery surface. A workflow may use one or more channels after content has been processed locally.
+
+## Typical flow
+
+The common pattern is:
+
+1. Connect a source system.
+2. Use the imported context in an agent task, hook, or scheduled task.
+3. Deliver the result through a configured channel.
+
+## Access guidance
+
+Grant the minimum permissions required for the intended workflow. If a connector or channel requires elevated access, record that requirement before enabling it on production devices.

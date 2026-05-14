@@ -1,0 +1,620 @@
+from __future__ import annotations
+
+import base64
+import hashlib
+import hmac
+import json
+import time
+from hashlib import sha256
+from typing import Any, Optional
+
+import httpx
+
+from .config import Settings
+from .db import User
+
+DEFAULT_PROVIDER_ID = "infermesh-cloud-managed"
+DEFAULT_TOKEN_NAME = "ContextGo Auto Connect"
+DEFAULT_TOKEN_GROUP = "default"
+CONTEXTGO_HANDOFF_AUDIENCE = "infermesh-handoff"
+NEW_API_USER_HEADER = "New-Api-User"
+SERVICE_TOKEN_ID_HEADER = "CF-Access-Client-Id"
+SERVICE_TOKEN_SECRET_HEADER = "CF-Access-Client-Secret"
+USER_AGENT = "ContextGo Cloud"
+
+
+class InfermeshProvisionError(RuntimeError):
+    """Raised when InferMesh provisioning cannot complete safely."""
+
+
+def is_infermesh_handoff_configured(settings: Settings) -> bool:
+    required_values = (
+        settings.infermesh_portal_url,
+        settings.oidc_client_secret or settings.infermesh_password_secret,
+    )
+    return all(required_values)
+
+
+def is_infermesh_provider_configured(settings: Settings) -> bool:
+    required_values = (
+        settings.infermesh_api_base_url,
+        settings.infermesh_console_base_url,
+        settings.infermesh_admin_base_url,
+        settings.infermesh_admin_username,
+        settings.infermesh_admin_password,
+        settings.infermesh_password_secret,
+    )
+    return all(required_values)
+
+
+def is_infermesh_configured(settings: Settings) -> bool:
+    return is_infermesh_provider_configured(settings)
+
+
+def _normalize_base_url(raw_url: Optional[str]) -> str:
+    if not raw_url:
+        raise InfermeshProvisionError("InferMesh base URL is not configured")
+    return raw_url.rstrip("/")
+
+
+def build_infermesh_username(settings: Settings, user: User) -> str:
+    normalized_uid = "".join(char for char in user.id.lower() if char.isalnum())
+    if len(normalized_uid) < 8:
+        normalized_uid = f"{normalized_uid}{sha256(user.id.encode('utf-8')).hexdigest()}"
+    return f"cgo-{normalized_uid[:8]}"
+
+
+def build_infermesh_password(settings: Settings, user: User) -> str:
+    secret = settings.infermesh_password_secret or settings.oidc_client_secret
+    if not secret:
+        raise InfermeshProvisionError("InferMesh password secret is not configured")
+    digest = sha256(f"{secret}:{user.id}".encode("utf-8")).hexdigest()
+    return f"Cg{digest[:18]}"
+
+
+def build_infermesh_display_name(user: User) -> str:
+    candidate = (user.display_name or user.username or user.email.split("@")[0] or "ContextGo").strip()
+    return candidate[:20] or "ContextGo"
+
+
+def _base64url_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b'=').decode('ascii')
+
+
+def _build_handoff_signing_key(settings: Settings) -> bytes:
+    secret = settings.oidc_client_secret or settings.infermesh_password_secret
+    if not secret:
+        raise InfermeshProvisionError("InferMesh handoff secret is not configured")
+    return sha256(f"contextgo-handoff:{secret}".encode("utf-8")).digest()
+
+
+def create_infermesh_handoff_token(settings: Settings, user: User, *, ttl_seconds: int = 60) -> str:
+    issued_at = int(time.time())
+    payload = {
+        "iss": settings.auth_base_url,
+        "aud": CONTEXTGO_HANDOFF_AUDIENCE,
+        "sub": user.id,
+        "email": user.email,
+        "username": build_infermesh_username(settings, user),
+        "password": build_infermesh_password(settings, user),
+        "display_name": build_infermesh_display_name(user),
+        "iat": issued_at,
+        "exp": issued_at + ttl_seconds,
+    }
+    payload_bytes = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    payload_segment = _base64url_encode(payload_bytes)
+    signature = hmac.new(_build_handoff_signing_key(settings), payload_segment.encode("ascii"), hashlib.sha256).digest()
+    return f"{payload_segment}.{_base64url_encode(signature)}"
+
+
+def build_infermesh_handoff_url(settings: Settings, user: User) -> str:
+    portal_base_url = _normalize_base_url(settings.infermesh_portal_url)
+    token = create_infermesh_handoff_token(settings, user)
+    return f"{portal_base_url}/api/oauth/contextgo/handoff?token={token}"
+
+
+def detect_model_protocol(model_name: str) -> str:
+    normalized = model_name.strip().lower()
+    if normalized.startswith("claude") or normalized.startswith("anthropic"):
+        return "anthropic"
+    if normalized.startswith("gemini") or normalized.startswith("models/gemini"):
+        return "gemini"
+    return "openai"
+
+
+def normalize_token_group(group: Optional[str]) -> str:
+    if group is None:
+        return ""
+
+    normalized = group.strip()
+    if not normalized:
+        return ""
+
+    if len(normalized) > 80:
+        raise InfermeshProvisionError("InferMesh token group is too long")
+
+    allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
+    if any(char not in allowed_chars for char in normalized):
+        raise InfermeshProvisionError("InferMesh token group contains unsupported characters")
+
+    return normalized
+
+
+def _token_name_for_group(group: str) -> str:
+    if not group:
+        return DEFAULT_TOKEN_NAME
+    return f"{DEFAULT_TOKEN_NAME} ({group})"
+
+
+def _read_token_group(token: dict[str, Any]) -> str:
+    raw_group = token.get("group")
+    if isinstance(raw_group, str):
+        return raw_group.strip()
+    return ""
+
+
+def _is_user_exists_message(message: str) -> bool:
+    normalized = message.lower()
+    return "用户已存在" in message or "duplicate entry" in normalized and "users.username" in normalized
+
+
+def _default_token_groups() -> list[dict[str, str]]:
+    return [{"name": DEFAULT_TOKEN_GROUP, "displayName": DEFAULT_TOKEN_GROUP}]
+
+
+def _build_admin_headers(settings: Settings) -> dict[str, str]:
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+    client_id = settings.infermesh_admin_access_client_id
+    client_secret = settings.infermesh_admin_access_client_secret
+    if client_id and client_secret:
+        headers[SERVICE_TOKEN_ID_HEADER] = client_id
+        headers[SERVICE_TOKEN_SECRET_HEADER] = client_secret
+    return headers
+
+
+def _build_user_headers(user_id: int) -> dict[str, str]:
+    return {
+        "Accept": "application/json",
+        NEW_API_USER_HEADER: str(user_id),
+        "User-Agent": USER_AGENT,
+    }
+
+
+async def _parse_newapi_response(response: httpx.Response) -> Any:
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise InfermeshProvisionError(f"InferMesh returned non-JSON response ({response.status_code})") from error
+
+    if not isinstance(payload, dict):
+        raise InfermeshProvisionError(f"InferMesh returned unexpected response shape ({response.status_code})")
+
+    if not response.is_success or payload.get("success") is not True:
+        message = str(payload.get("message") or response.text or f"HTTP {response.status_code}")
+        raise InfermeshProvisionError(message)
+
+    return payload.get("data")
+
+
+async def _bootstrap_admin_access(client: httpx.AsyncClient, settings: Settings) -> None:
+    admin_base_url = _normalize_base_url(settings.infermesh_admin_base_url)
+    client_id = settings.infermesh_admin_access_client_id
+    client_secret = settings.infermesh_admin_access_client_secret
+    if not client_id or not client_secret:
+        return
+
+    response = await client.get(
+        f"{admin_base_url}/",
+        headers={
+            SERVICE_TOKEN_ID_HEADER: client_id,
+            SERVICE_TOKEN_SECRET_HEADER: client_secret,
+            "User-Agent": USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+    )
+    response.raise_for_status()
+
+
+async def _login_user(
+    client: httpx.AsyncClient,
+    *,
+    base_url: str,
+    username: str,
+    password: str,
+    extra_headers: Optional[dict[str, str]] = None,
+    allow_invalid_credentials: bool = False,
+) -> Optional[dict[str, Any]]:
+    response = await client.post(
+        f"{base_url}/api/user/login",
+        json={"username": username, "password": password},
+        headers={"Accept": "application/json", "User-Agent": USER_AGENT, **(extra_headers or {})},
+    )
+
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise InfermeshProvisionError(f"InferMesh login returned non-JSON response ({response.status_code})") from error
+
+    if response.is_success and payload.get("success") is True and isinstance(payload.get("data"), dict):
+        data = payload["data"]
+        user_id = data.get("id")
+        if isinstance(user_id, int):
+            return data
+        raise InfermeshProvisionError("InferMesh login response missing user ID")
+
+    message = str(payload.get("message") or response.text or f"HTTP {response.status_code}")
+    if allow_invalid_credentials and "用户名或密码错误" in message:
+        return None
+    raise InfermeshProvisionError(message)
+
+
+async def _ensure_user_exists(
+    client: httpx.AsyncClient,
+    settings: Settings,
+    *,
+    username: str,
+    password: str,
+    display_name: str,
+) -> None:
+    admin_base_url = _normalize_base_url(settings.infermesh_admin_base_url)
+    admin_headers = _build_admin_headers(settings)
+    admin_login = await _login_user(
+        client,
+        base_url=admin_base_url,
+        username=settings.infermesh_admin_username or "",
+        password=settings.infermesh_admin_password or "",
+        extra_headers=admin_headers,
+    )
+    admin_user_id = admin_login["id"]
+
+    response = await client.post(
+        f"{admin_base_url}/api/user/",
+        json={
+            "username": username,
+            "password": password,
+            "display_name": display_name,
+            "role": 1,
+        },
+        headers={**admin_headers, **_build_user_headers(admin_user_id)},
+    )
+
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise InfermeshProvisionError("InferMesh create-user response was not JSON") from error
+
+    if response.is_success and payload.get("success") is True:
+        return
+
+    message = str(payload.get("message") or response.text or f"HTTP {response.status_code}")
+    if _is_user_exists_message(message):
+        await _reset_existing_user_password(
+            client,
+            admin_base_url,
+            admin_headers,
+            admin_user_id=admin_user_id,
+            username=username,
+            password=password,
+            display_name=display_name,
+        )
+        return
+    raise InfermeshProvisionError(message)
+
+
+async def _reset_existing_user_password(
+    client: httpx.AsyncClient,
+    admin_base_url: str,
+    admin_headers: dict[str, str],
+    *,
+    admin_user_id: int,
+    username: str,
+    password: str,
+    display_name: str,
+) -> None:
+    search_response = await client.get(
+        f"{admin_base_url}/api/user/search",
+        params={"keyword": username, "size": 10, "page_size": 10, "p": 0},
+        headers={**admin_headers, **_build_user_headers(admin_user_id)},
+    )
+    search_data = await _parse_newapi_response(search_response)
+    items = search_data.get("items") if isinstance(search_data, dict) else None
+    if not isinstance(items, list):
+        raise InfermeshProvisionError("InferMesh existing user lookup returned invalid data")
+
+    existing = next((item for item in items if isinstance(item, dict) and item.get("username") == username), None)
+    user_id = existing.get("id") if existing else None
+    if not isinstance(user_id, int):
+        raise InfermeshProvisionError("InferMesh existing user was not found")
+
+    detail_response = await client.get(
+        f"{admin_base_url}/api/user/{user_id}",
+        headers={**admin_headers, **_build_user_headers(admin_user_id)},
+    )
+    detail = await _parse_newapi_response(detail_response)
+    if not isinstance(detail, dict):
+        raise InfermeshProvisionError("InferMesh existing user detail returned invalid data")
+
+    update_response = await client.put(
+        f"{admin_base_url}/api/user/",
+        json={
+            "id": user_id,
+            "username": username,
+            "password": password,
+            "display_name": detail.get("display_name") or display_name,
+            "role": detail.get("role", 1),
+            "status": detail.get("status", 1),
+            "group": detail.get("group", DEFAULT_TOKEN_GROUP),
+            "quota": detail.get("quota", 0),
+            "remark": detail.get("remark", ""),
+        },
+        headers={**admin_headers, **_build_user_headers(admin_user_id)},
+    )
+    await _parse_newapi_response(update_response)
+
+
+async def _list_tokens(
+    client: httpx.AsyncClient,
+    base_url: str,
+    user_id: int,
+    *,
+    keyword: str = DEFAULT_TOKEN_NAME,
+) -> list[dict[str, Any]]:
+    response = await client.get(
+        f"{base_url}/api/token/search",
+        params={"keyword": keyword, "size": 100, "page_size": 100, "p": 1},
+        headers=_build_user_headers(user_id),
+    )
+    data = await _parse_newapi_response(response)
+    if not isinstance(data, dict):
+        return []
+    items = data.get("items")
+    if not isinstance(items, list):
+        return []
+    return [item for item in items if isinstance(item, dict)]
+
+
+async def _create_token(client: httpx.AsyncClient, base_url: str, user_id: int, group: str) -> None:
+    response = await client.post(
+        f"{base_url}/api/token/",
+        json={
+            "name": _token_name_for_group(group),
+            "expired_time": -1,
+            "unlimited_quota": True,
+            "remain_quota": 0,
+            "model_limits_enabled": False,
+            "group": group,
+            "cross_group_retry": False,
+        },
+        headers=_build_user_headers(user_id),
+    )
+    await _parse_newapi_response(response)
+
+
+async def _get_token_key(client: httpx.AsyncClient, base_url: str, user_id: int, token_id: int) -> str:
+    response = await client.post(
+        f"{base_url}/api/token/{token_id}/key",
+        headers=_build_user_headers(user_id),
+    )
+    data = await _parse_newapi_response(response)
+    if not isinstance(data, dict):
+        raise InfermeshProvisionError("InferMesh token-key response was invalid")
+    key = data.get("key")
+    if not isinstance(key, str) or not key.strip():
+        raise InfermeshProvisionError("InferMesh token key is missing")
+    return key.strip()
+
+
+async def _ensure_token_key(client: httpx.AsyncClient, base_url: str, user_id: int, group: str) -> str:
+    token_name = _token_name_for_group(group)
+
+    def find_exact_match(tokens: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        exact_match = next(
+            (
+                item
+                for item in tokens
+                if item.get("name") == token_name
+                and (_read_token_group(item) == group or (group == DEFAULT_TOKEN_GROUP and _read_token_group(item) == ""))
+            ),
+            None,
+        )
+        if exact_match is None and group == DEFAULT_TOKEN_GROUP:
+            exact_match = next((item for item in tokens if item.get("name") == DEFAULT_TOKEN_NAME), None)
+        return exact_match
+
+    tokens = await _list_tokens(client, base_url, user_id)
+    exact_match = find_exact_match(tokens)
+    if exact_match is None:
+        tokens = await _list_tokens(client, base_url, user_id, keyword="")
+        exact_match = find_exact_match(tokens)
+
+    if exact_match is None:
+        await _create_token(client, base_url, user_id, group)
+        tokens = await _list_tokens(client, base_url, user_id)
+        exact_match = find_exact_match(tokens)
+    if exact_match is None:
+        tokens = await _list_tokens(client, base_url, user_id, keyword="")
+        exact_match = find_exact_match(tokens)
+
+    if exact_match is None:
+        raise InfermeshProvisionError("InferMesh managed token was not found after creation")
+
+    token_id = exact_match.get("id")
+    if not isinstance(token_id, int):
+        raise InfermeshProvisionError("InferMesh token ID is invalid")
+
+    return await _get_token_key(client, base_url, user_id, token_id)
+
+
+def _normalize_group_item(item: Any) -> Optional[dict[str, str]]:
+    if isinstance(item, str):
+        name = item.strip()
+        if not name:
+            return None
+        return {"name": name, "displayName": name}
+
+    if not isinstance(item, dict):
+        return None
+
+    raw_name = item.get("name") or item.get("id") or item.get("group") or item.get("key")
+    if not isinstance(raw_name, str) or not raw_name.strip():
+        return None
+
+    name = raw_name.strip()
+    raw_display_name = item.get("display_name") or item.get("displayName") or item.get("label") or item.get("desc")
+    display_name = raw_display_name.strip() if isinstance(raw_display_name, str) and raw_display_name.strip() else name
+    result = {"name": name, "displayName": display_name}
+    raw_description = item.get("description") or item.get("remark")
+    if isinstance(raw_description, str) and raw_description.strip():
+        result["description"] = raw_description.strip()
+    return result
+
+
+def _extract_group_items(payload: Any) -> list[Any]:
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        return []
+    data = payload.get("data")
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        for key in ("groups", "items"):
+            items = data.get(key)
+            if isinstance(items, list):
+                return items
+        return [{"name": name, "displayName": label} for name, label in data.items() if isinstance(name, str)]
+    for key in ("groups", "items"):
+        items = payload.get(key)
+        if isinstance(items, list):
+            return items
+    return []
+
+
+async def list_infermesh_token_groups(settings: Settings) -> list[dict[str, str]]:
+    if not is_infermesh_provider_configured(settings):
+        raise InfermeshProvisionError("InferMesh integration is not configured")
+
+    console_base_url = _normalize_base_url(settings.infermesh_console_base_url)
+    async with httpx.AsyncClient(timeout=15.0, follow_redirects=False) as client:
+        response = await client.get(
+            f"{console_base_url}/api/group/",
+            headers={"Accept": "application/json", "User-Agent": USER_AGENT},
+        )
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return _default_token_groups()
+
+    if not response.is_success:
+        return _default_token_groups()
+
+    groups: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for item in _extract_group_items(payload):
+        group = _normalize_group_item(item)
+        if group is None or group["name"] in seen:
+            continue
+        seen.add(group["name"])
+        groups.append(group)
+
+    if DEFAULT_TOKEN_GROUP not in seen:
+        groups.insert(0, {"name": DEFAULT_TOKEN_GROUP, "displayName": DEFAULT_TOKEN_GROUP})
+
+    return groups or _default_token_groups()
+
+
+async def _fetch_models(api_base_url: str, api_key: str) -> list[str]:
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.get(
+            f"{api_base_url}/v1/models",
+            headers={
+                "Accept": "application/json",
+                "Authorization": f"Bearer {api_key}",
+                "User-Agent": USER_AGENT,
+            },
+        )
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise InfermeshProvisionError("InferMesh model list response was not JSON") from error
+
+    if not response.is_success:
+        message = str(payload.get("message") or response.text or f"HTTP {response.status_code}")
+        raise InfermeshProvisionError(f"InferMesh model discovery failed: {message}")
+
+    items = payload.get("data")
+    if not isinstance(items, list):
+        return []
+
+    models: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        model_id = item.get("id")
+        if isinstance(model_id, str) and model_id.strip():
+            models.append(model_id.strip())
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for model_name in models:
+        if model_name in seen:
+            continue
+        seen.add(model_name)
+        deduped.append(model_name)
+    return deduped
+
+
+async def provision_infermesh_provider(settings: Settings, user: User, group: Optional[str] = None) -> dict[str, Any]:
+    if not is_infermesh_provider_configured(settings):
+        raise InfermeshProvisionError("InferMesh integration is not configured")
+
+    api_base_url = _normalize_base_url(settings.infermesh_api_base_url)
+    console_base_url = _normalize_base_url(settings.infermesh_console_base_url)
+    token_group = normalize_token_group(group)
+
+    username = build_infermesh_username(settings, user)
+    password = build_infermesh_password(settings, user)
+    display_name = build_infermesh_display_name(user)
+
+    async with httpx.AsyncClient(timeout=15.0, follow_redirects=False) as client:
+        await _bootstrap_admin_access(client, settings)
+
+        user_login = await _login_user(
+            client,
+            base_url=console_base_url,
+            username=username,
+            password=password,
+            allow_invalid_credentials=True,
+        )
+        if user_login is None:
+            await _ensure_user_exists(
+                client,
+                settings,
+                username=username,
+                password=password,
+                display_name=display_name,
+            )
+            user_login = await _login_user(
+                client,
+                base_url=console_base_url,
+                username=username,
+                password=password,
+            )
+
+        user_id = user_login["id"]
+        token_key = await _ensure_token_key(client, console_base_url, user_id, token_group)
+
+    models = await _fetch_models(api_base_url, token_key)
+    model_protocols = {model_name: detect_model_protocol(model_name) for model_name in models}
+
+    return {
+        "id": DEFAULT_PROVIDER_ID,
+        "name": settings.infermesh_provider_name,
+        "platform": "new-api",
+        "baseUrl": api_base_url,
+        "apiKey": token_key,
+        "model": models,
+        "modelProtocols": model_protocols,
+        "tokenGroup": token_group or DEFAULT_TOKEN_GROUP,
+    }

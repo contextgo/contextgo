@@ -1,0 +1,13 @@
+{
+  "name": "contextgo-docs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "sync": "node scripts/sync-from-contextgo.mjs",
+    "dev": "npm run sync && cd site && node ../scripts/run-mint.mjs dev",
+    "validate": "npm run sync && cd site && node ../scripts/run-mint.mjs validate",
+    "broken-links": "npm run sync && cd site && node ../scripts/run-mint.mjs broken-links",
+    "build": "npm run sync && node scripts/prepare-export.mjs && cd site && node ../scripts/run-mint.mjs export --output ../dist/site-export.zip",
+    "serve": "npm run dev"
+  }
+}

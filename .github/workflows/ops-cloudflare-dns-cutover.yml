@@ -1,0 +1,122 @@
+name: Ops Cloudflare DNS Cutover
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_ip:
+        description: Target IPv4 address for ContextGo cloud hostnames.
+        required: true
+        default: 34.96.253.193
+      hostnames:
+        description: Comma-separated hostnames to update.
+        required: true
+        default: api.contextgo.io,auth.contextgo.io,remote.contextgo.io
+
+permissions:
+  contents: read
+
+jobs:
+  cutover:
+    name: Update ContextGo Cloudflare DNS
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TARGET_IP: ${{ inputs.target_ip }}
+      HOSTNAMES: ${{ inputs.hostnames }}
+      ZONE_NAME: contextgo.io
+    steps:
+      - name: Validate inputs
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "CLOUDFLARE_API_TOKEN secret is missing" >&2
+            exit 1
+          fi
+          python3 - <<'PY'
+          import ipaddress
+          import os
+
+          ipaddress.ip_address(os.environ["TARGET_IP"])
+          hostnames = [item.strip() for item in os.environ["HOSTNAMES"].split(",") if item.strip()]
+          if not hostnames:
+              raise SystemExit("No hostnames provided")
+          for hostname in hostnames:
+              if not hostname.endswith(".contextgo.io"):
+                  raise SystemExit(f"Refusing non-contextgo hostname: {hostname}")
+          print("target", os.environ["TARGET_IP"])
+          print("hostnames", ",".join(hostnames))
+          PY
+
+      - name: Patch Cloudflare A records
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          target_ip = os.environ["TARGET_IP"]
+          zone_name = os.environ["ZONE_NAME"]
+          hostnames = [item.strip() for item in os.environ["HOSTNAMES"].split(",") if item.strip()]
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Content-Type": "application/json",
+          }
+
+          def request(method: str, url: str, payload: dict[str, object] | None = None) -> dict[str, object]:
+              data = None if payload is None else json.dumps(payload).encode("utf-8")
+              req = urllib.request.Request(url, data=data, headers=headers, method=method)
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      return json.load(response)
+              except urllib.error.HTTPError as error:
+                  body = error.read().decode("utf-8", "replace")
+                  raise SystemExit(f"Cloudflare {method} {url} failed with {error.code}: {body}") from error
+
+          zones = request("GET", f"https://api.cloudflare.com/client/v4/zones?name={zone_name}")
+          zone_results = zones.get("result", [])
+          if not zones.get("success") or not isinstance(zone_results, list) or not zone_results:
+              raise SystemExit(f"Zone not found or inaccessible: {zone_name}")
+
+          zone_id = zone_results[0]["id"]
+          for hostname in hostnames:
+              records = request(
+                  "GET",
+                  f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records?type=A&name={hostname}",
+              )
+              result = records.get("result", [])
+              if not isinstance(result, list):
+                  raise SystemExit(f"Unexpected DNS response for {hostname}")
+
+              if result:
+                  record = result[0]
+                  payload = {
+                      "type": "A",
+                      "name": hostname,
+                      "content": target_ip,
+                      "ttl": record.get("ttl", 1),
+                      "proxied": record.get("proxied", False),
+                  }
+                  updated = request(
+                      "PATCH",
+                      f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record['id']}",
+                      payload,
+                  )
+                  changed = updated["result"]
+                  print(
+                      f"updated {hostname} {record.get('content')} -> {changed.get('content')} "
+                      f"proxied={changed.get('proxied')} ttl={changed.get('ttl')}"
+                  )
+              else:
+                  created = request(
+                      "POST",
+                      f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records",
+                      {"type": "A", "name": hostname, "content": target_ip, "ttl": 1, "proxied": False},
+                  )
+                  record = created["result"]
+                  print(f"created {hostname} -> {record.get('content')} proxied={record.get('proxied')}")
+          PY

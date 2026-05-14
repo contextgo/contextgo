@@ -1,0 +1,576 @@
+name: Deploy Hosted Services
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'apps/cloud/**'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/deploy-site.yml'
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: 'Deployment target'
+        required: false
+        default: both
+        type: choice
+        options:
+          - cloud
+          - site
+          - both
+
+concurrency:
+  group: deploy-hosted-services-main
+  cancel-in-progress: true
+
+jobs:
+  detect-targets:
+    name: Detect Deployment Targets
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_CONTROL_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    outputs:
+      deploy_site: ${{ steps.targets.outputs.deploy_site }}
+      deploy_cloud: ${{ steps.targets.outputs.deploy_cloud }}
+    steps:
+      - name: Checkout code for diff detection
+        if: github.event_name == 'push'
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Determine deployment targets
+        id: targets
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DEPLOY_TARGET: ${{ inputs.deploy_target }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            case "${DEPLOY_TARGET:-both}" in
+              site)
+                echo "deploy_site=true" >> "${GITHUB_OUTPUT}"
+                echo "deploy_cloud=false" >> "${GITHUB_OUTPUT}"
+                ;;
+              cloud)
+                echo "deploy_site=false" >> "${GITHUB_OUTPUT}"
+                echo "deploy_cloud=true" >> "${GITHUB_OUTPUT}"
+                ;;
+              both)
+                echo "deploy_site=true" >> "${GITHUB_OUTPUT}"
+                echo "deploy_cloud=true" >> "${GITHUB_OUTPUT}"
+                ;;
+              *)
+                echo "::error::Unsupported deploy_target: ${DEPLOY_TARGET}"
+                exit 1
+                ;;
+            esac
+            exit 0
+          fi
+
+          if [ "${BEFORE_SHA}" = "0000000000000000000000000000000000000000" ]; then
+            git ls-tree -r --name-only "${AFTER_SHA}" > "${RUNNER_TEMP}/changed-files.txt"
+          else
+            git diff --name-only "${BEFORE_SHA}" "${AFTER_SHA}" > "${RUNNER_TEMP}/changed-files.txt"
+          fi
+
+          echo "Changed files:"
+          sed -n '1,200p' "${RUNNER_TEMP}/changed-files.txt"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          changed_files = [
+              line.strip()
+              for line in Path(os.environ["RUNNER_TEMP"]).joinpath("changed-files.txt").read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+
+          site = False
+          cloud = False
+          exact_site_files = {
+              "package.json",
+              "bun.lock",
+          }
+
+          for path in changed_files:
+              if path == ".github/workflows/deploy-site.yml":
+                  site = True
+                  cloud = True
+                  continue
+
+              if path.startswith("apps/web/") or path in exact_site_files:
+                  site = True
+
+              if path.startswith("apps/cloud/"):
+                  cloud = True
+
+          github_output = Path(os.environ["GITHUB_OUTPUT"])
+          with github_output.open("a", encoding="utf-8") as handle:
+              handle.write(f"deploy_site={'true' if site else 'false'}\n")
+              handle.write(f"deploy_cloud={'true' if cloud else 'false'}\n")
+
+          print(f"deploy_site={site}")
+          print(f"deploy_cloud={cloud}")
+          PY
+
+  deploy-site:
+    name: Deploy contextgo.io
+    needs: detect-targets
+    if: needs.detect-targets.outputs.deploy_site == 'true'
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          (
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_RELEASE_CONTROL_RUNNER_LABELS_JSON ||
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON != '' &&
+            vars.SELF_HOSTED_MACOS_RUNNER_LABELS_JSON ||
+            '["self-hosted","macOS"]'
+          ) ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ github.workspace }}
+    env:
+      CONTEXTGO_RELEASE_REPO: ${{ vars.CONTEXTGO_RELEASE_REPO != '' && vars.CONTEXTGO_RELEASE_REPO || 'contextgo/contextgo-releases' }}
+      NEXT_PUBLIC_CONTEXTGO_GITHUB_URL: ${{ vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL != '' && vars.NEXT_PUBLIC_CONTEXTGO_GITHUB_URL || 'https://github.com/contextgo/contextgo' }}
+      NEXT_PUBLIC_DOCS_SITE_URL: ${{ vars.NEXT_PUBLIC_DOCS_SITE_URL != '' && vars.NEXT_PUBLIC_DOCS_SITE_URL || 'https://docs.contextgo.io' }}
+      CONTEXTGO_ANDROID_URL: ${{ vars.CONTEXTGO_ANDROID_URL }}
+      CONTEXTGO_IOS_URL: ${{ vars.CONTEXTGO_IOS_URL }}
+      CONTEXTGO_IOS_LABEL: ${{ vars.CONTEXTGO_IOS_LABEL }}
+      CONTEXTGO_HARMONY_URL: ${{ vars.CONTEXTGO_HARMONY_URL }}
+      CONTEXTGO_HARMONY_LABEL: ${{ vars.CONTEXTGO_HARMONY_LABEL }}
+      SITE_CLOUDFLARE_PROJECT_NAME: ${{ vars.SITE_CLOUDFLARE_PROJECT_NAME != '' && vars.SITE_CLOUDFLARE_PROJECT_NAME || 'contextgo-web' }}
+
+    steps:
+      - name: Verify Cloudflare deploy secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          missing_secrets=()
+
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            missing_secrets+=("CLOUDFLARE_API_TOKEN")
+          fi
+
+          if [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            missing_secrets+=("CLOUDFLARE_ACCOUNT_ID")
+          fi
+
+          if [ "${#missing_secrets[@]}" -gt 0 ]; then
+            echo "::error::Missing required GitHub Actions secrets: ${missing_secrets[*]}"
+            exit 1
+          fi
+
+      - name: Download source archive
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+
+          rm -rf "${EXTRACT_DIR}"
+
+          curl --fail --show-error --silent --location --http1.1 \
+            --retry 8 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 900 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            -o "${ARCHIVE}"
+
+          mkdir -p "${EXTRACT_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
+
+          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -z "${SOURCE_DIR}" ]; then
+            echo "::error::Failed to unpack source archive"
+            exit 1
+          fi
+
+          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install website dependencies
+        run: npm ci
+        working-directory: ${{ github.workspace }}/apps/web
+
+      - name: Generate website public content
+        run: npm run content:build
+        working-directory: ${{ github.workspace }}/apps/web
+
+      - name: Lint website
+        run: npm run lint
+        working-directory: ${{ github.workspace }}/apps/web
+
+      - name: Build website
+        run: npm run build
+        working-directory: ${{ github.workspace }}/apps/web
+
+      - name: Prepare Vercel build output
+        env:
+          NPM_CONFIG_LEGACY_PEER_DEPS: 'true'
+        run: |
+          set -euo pipefail
+
+          mkdir -p "${GITHUB_WORKSPACE}/.vercel"
+
+          cat > "${GITHUB_WORKSPACE}/.vercel/project.json" <<'EOF'
+          {"projectId":"_","orgId":"_","settings":{"framework":"nextjs","rootDirectory":"apps/web"}}
+          EOF
+
+          npx -y vercel@50.44.0 build --yes
+
+          rm -rf "${GITHUB_WORKSPACE}/apps/web/.vercel/output"
+          mkdir -p "${GITHUB_WORKSPACE}/apps/web/.vercel"
+          cp -R "${GITHUB_WORKSPACE}/.vercel/output" "${GITHUB_WORKSPACE}/apps/web/.vercel/output"
+
+      - name: Build Cloudflare Pages output
+        env:
+          NPM_CONFIG_LEGACY_PEER_DEPS: 'true'
+        run: npx @cloudflare/next-on-pages --skip-build
+        working-directory: ${{ github.workspace }}/apps/web
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy .vercel/output/static --project-name "$SITE_CLOUDFLARE_PROJECT_NAME" --branch main
+        working-directory: ${{ github.workspace }}/apps/web
+
+      - name: Submit site URLs to IndexNow
+        continue-on-error: true
+        run: node scripts/seo/submit-indexnow.mjs --target site --content-root apps/web/src/content
+
+  deploy-cloud:
+    name: Deploy apps/cloud backend to VM
+    needs: detect-targets
+    if: needs.detect-targets.outputs.deploy_cloud == 'true'
+    runs-on: >-
+      ${{
+        fromJSON(
+          vars.BUILD_RUNNER_MODE == 'self-hosted' &&
+          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON != '' &&
+          vars.SELF_HOSTED_LINUX_RUNNER_LABELS_JSON ||
+          '["ubuntu-latest"]'
+        )
+      }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ github.workspace }}
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_COMPUTE_ZONE: ${{ vars.GCP_COMPUTE_ZONE }}
+      GCP_COMPUTE_VM_INSTANCE: ${{ vars.GCP_COMPUTE_VM_INSTANCE }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_WORKLOAD_IDENTITY_PROVIDER || secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      GCP_SERVICE_ACCOUNT_EMAIL: ${{ vars.GCP_SERVICE_ACCOUNT_EMAIL != '' && vars.GCP_SERVICE_ACCOUNT_EMAIL || secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+      CLOUD_DEPLOY_PATH: ${{ vars.CLOUD_DEPLOY_PATH != '' && vars.CLOUD_DEPLOY_PATH || '/opt/contextgo-cloud' }}
+      CLOUD_ENV_FILE: ${{ vars.CLOUD_ENV_FILE != '' && vars.CLOUD_ENV_FILE || '/etc/contextgo-cloud/contextgo-cloud.env' }}
+      CLOUD_SERVICE_NAME: ${{ vars.CLOUD_SERVICE_NAME != '' && vars.CLOUD_SERVICE_NAME || 'contextgo-cloud' }}
+      CLOUD_DEPLOY_OWNER: ${{ vars.CLOUD_DEPLOY_OWNER != '' && vars.CLOUD_DEPLOY_OWNER || 'contextgo' }}
+      CONTEXTGO_OIDC_CLIENT_SECRET: ${{ secrets.CONTEXTGO_OIDC_CLIENT_SECRET }}
+      CONTEXTGO_OIDC_SIGNING_KEY_PEM: ${{ secrets.CONTEXTGO_OIDC_SIGNING_KEY_PEM }}
+
+    steps:
+      - name: Verify GCP deploy configuration
+        run: |
+          set -euo pipefail
+
+          missing=()
+
+          if [ -z "${GCP_PROJECT_ID:-}" ]; then
+            missing+=("GCP_PROJECT_ID")
+          fi
+
+          if [ -z "${GCP_COMPUTE_ZONE:-}" ]; then
+            missing+=("GCP_COMPUTE_ZONE")
+          fi
+
+          if [ -z "${GCP_COMPUTE_VM_INSTANCE:-}" ]; then
+            missing+=("GCP_COMPUTE_VM_INSTANCE")
+          fi
+
+          if [ -z "${GCP_WORKLOAD_IDENTITY_PROVIDER:-}" ]; then
+            missing+=("GCP_WORKLOAD_IDENTITY_PROVIDER")
+          fi
+
+          if [ -z "${GCP_SERVICE_ACCOUNT_EMAIL:-}" ]; then
+            missing+=("GCP_SERVICE_ACCOUNT_EMAIL")
+          fi
+
+          if [ -z "${CONTEXTGO_OIDC_CLIENT_SECRET:-}" ]; then
+            missing+=("CONTEXTGO_OIDC_CLIENT_SECRET")
+          fi
+
+          if [ -z "${CONTEXTGO_OIDC_SIGNING_KEY_PEM:-}" ]; then
+            missing+=("CONTEXTGO_OIDC_SIGNING_KEY_PEM")
+          fi
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing required GCP deployment configuration: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Download source archive
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          ARCHIVE_REF: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          ARCHIVE="${RUNNER_TEMP}/contextgo-source.tar.gz"
+          EXTRACT_DIR="${RUNNER_TEMP}/contextgo-source"
+
+          rm -rf "${EXTRACT_DIR}"
+
+          curl --fail --show-error --silent --location --http1.1 \
+            --retry 8 \
+            --retry-all-errors \
+            --retry-delay 5 \
+            --connect-timeout 20 \
+            --max-time 900 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/tarball/${ARCHIVE_REF}" \
+            -o "${ARCHIVE}"
+
+          mkdir -p "${EXTRACT_DIR}"
+          tar -xzf "${ARCHIVE}" -C "${EXTRACT_DIR}"
+
+          SOURCE_DIR="$(find "${EXTRACT_DIR}" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+          if [ -z "${SOURCE_DIR}" ]; then
+            echo "::error::Failed to unpack source archive"
+            exit 1
+          fi
+
+          cp -R "${SOURCE_DIR}/." "${WORKSPACE}/"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install cloud Python dependencies
+        run: python3 -m pip install -r apps/cloud/requirements.txt
+
+      - name: Run cloud tests
+        run: python3 -m unittest discover -s apps/cloud/tests
+
+      - name: Build cloud deploy bundle
+        run: |
+          set -euo pipefail
+
+          PACKAGE_ROOT="${RUNNER_TEMP}/contextgo-cloud-deploy"
+          ARCHIVE_PATH="${RUNNER_TEMP}/contextgo-cloud-deploy.tgz"
+
+          rm -rf "${PACKAGE_ROOT}" "${ARCHIVE_PATH}"
+          mkdir -p "${PACKAGE_ROOT}/cloud"
+
+          cp -R apps/cloud/. "${PACKAGE_ROOT}/cloud/"
+
+          tar -czf "${ARCHIVE_PATH}" -C "${PACKAGE_ROOT}" .
+          echo "CLOUD_DEPLOY_ARCHIVE=${ARCHIVE_PATH}" >> "${GITHUB_ENV}"
+
+      - name: Prepare OIDC deploy secrets
+        run: |
+          set -euo pipefail
+
+          CLIENT_SECRET_PATH="${RUNNER_TEMP}/contextgo-oidc-client-secret.txt"
+          SIGNING_KEY_PATH="${RUNNER_TEMP}/contextgo-oidc-signing-key.pem"
+
+          printf '%s' "${CONTEXTGO_OIDC_CLIENT_SECRET}" > "${CLIENT_SECRET_PATH}"
+          printf '%s' "${CONTEXTGO_OIDC_SIGNING_KEY_PEM}" > "${SIGNING_KEY_PATH}"
+
+          chmod 600 "${CLIENT_SECRET_PATH}" "${SIGNING_KEY_PATH}"
+
+          echo "OIDC_CLIENT_SECRET_PATH=${CLIENT_SECRET_PATH}" >> "${GITHUB_ENV}"
+          echo "OIDC_SIGNING_KEY_PATH=${SIGNING_KEY_PATH}" >> "${GITHUB_ENV}"
+
+      - name: Upload deploy bundle to GCE
+        run: |
+          set -euo pipefail
+
+          gcloud compute scp \
+            --project "${GCP_PROJECT_ID}" \
+            --zone "${GCP_COMPUTE_ZONE}" \
+            --ssh-key-expire-after=5m \
+            "${CLOUD_DEPLOY_ARCHIVE}" \
+            "${GCP_COMPUTE_VM_INSTANCE}:~/contextgo-cloud-deploy.tgz"
+
+          gcloud compute scp \
+            --project "${GCP_PROJECT_ID}" \
+            --zone "${GCP_COMPUTE_ZONE}" \
+            --ssh-key-expire-after=5m \
+            "${OIDC_CLIENT_SECRET_PATH}" \
+            "${OIDC_SIGNING_KEY_PATH}" \
+            "${GCP_COMPUTE_VM_INSTANCE}:~/"
+
+      - name: Deploy on GCE VM
+        run: |
+          set -euo pipefail
+
+          gcloud compute ssh \
+            "${GCP_COMPUTE_VM_INSTANCE}" \
+            --project "${GCP_PROJECT_ID}" \
+            --zone "${GCP_COMPUTE_ZONE}" \
+            --ssh-key-expire-after=5m \
+            --command "CLOUD_DEPLOY_PATH='${CLOUD_DEPLOY_PATH}' CLOUD_ENV_FILE='${CLOUD_ENV_FILE}' CLOUD_SERVICE_NAME='${CLOUD_SERVICE_NAME}' CLOUD_DEPLOY_OWNER='${CLOUD_DEPLOY_OWNER}' bash -se" <<'EOF'
+          set -euo pipefail
+
+          DEPLOY_PATH="${CLOUD_DEPLOY_PATH}"
+          SERVICE_NAME="${CLOUD_SERVICE_NAME}"
+          DEPLOY_OWNER="${CLOUD_DEPLOY_OWNER}"
+          SERVICE_UNIT_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
+          DEPLOY_BUNDLE="${HOME}/contextgo-cloud-deploy.tgz"
+          OIDC_CLIENT_SECRET_FILE="${HOME}/contextgo-oidc-client-secret.txt"
+          OIDC_SIGNING_KEY_FILE="${HOME}/contextgo-oidc-signing-key.pem"
+          TMP_DIR="$(mktemp -d /tmp/contextgo-cloud-deploy.XXXXXX)"
+
+          cleanup() {
+            rm -rf "${TMP_DIR}"
+            rm -f "${DEPLOY_BUNDLE}"
+            rm -f "${OIDC_CLIENT_SECRET_FILE}" "${OIDC_SIGNING_KEY_FILE}"
+          }
+
+          trap cleanup EXIT
+
+          tar -xzf "${DEPLOY_BUNDLE}" -C "${TMP_DIR}"
+
+          if [ -d "${DEPLOY_PATH}" ]; then
+            BACKUP_PATH="${DEPLOY_PATH}.backup-$(date +%Y%m%d%H%M%S)"
+            sudo cp -a "${DEPLOY_PATH}" "${BACKUP_PATH}"
+            echo "backup=${BACKUP_PATH}"
+          fi
+
+          sudo mkdir -p "${DEPLOY_PATH}"
+          sudo find "${DEPLOY_PATH}" -mindepth 1 -maxdepth 1 ! -name .venv ! -name out -exec rm -rf -- {} +
+          sudo cp -a "${TMP_DIR}/cloud/." "${DEPLOY_PATH}/"
+
+          if [ -f "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.service" ]; then
+            sudo cp "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.service" "${SERVICE_UNIT_PATH}"
+          fi
+
+          if [ ! -f "${CLOUD_ENV_FILE}" ] && [ -f "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.env.example" ]; then
+            sudo mkdir -p "$(dirname "${CLOUD_ENV_FILE}")"
+            sudo cp "${DEPLOY_PATH}/systemd/${SERVICE_NAME}.env.example" "${CLOUD_ENV_FILE}"
+            sudo chown root:root "${CLOUD_ENV_FILE}"
+            sudo chmod 600 "${CLOUD_ENV_FILE}"
+            echo "Created ${CLOUD_ENV_FILE} from example template. Fill OAuth/OIDC secrets before relying on login flows."
+          fi
+
+          if [ -f "${OIDC_CLIENT_SECRET_FILE}" ] && [ -f "${OIDC_SIGNING_KEY_FILE}" ]; then
+            shell_single_quote() { python3 -c 'import shlex, sys; print(shlex.quote(sys.argv[1]))' "$1"; }
+
+            client_secret="$(cat "${OIDC_CLIENT_SECRET_FILE}")"
+            signing_key="$(cat "${OIDC_SIGNING_KEY_FILE}")"
+
+            if [ -z "${client_secret}" ]; then
+              echo "::error::OIDC client secret is empty"
+              exit 1
+            fi
+
+            if [ -z "${signing_key}" ]; then
+              echo "::error::OIDC signing key PEM is empty"
+              exit 1
+            fi
+
+            client_secret_quoted="$(shell_single_quote "${client_secret}")"
+            signing_key_quoted="$(shell_single_quote "${signing_key}")"
+
+            sudo perl -0pi -e 's/\n?# BEGIN CONTEXTGO MANAGED OIDC\n.*?\n# END CONTEXTGO MANAGED OIDC\n?/\n/s' "${CLOUD_ENV_FILE}"
+
+            printf '\n# BEGIN CONTEXTGO MANAGED OIDC\n' | sudo tee -a "${CLOUD_ENV_FILE}" >/dev/null
+            printf 'CONTEXTGO_OIDC_CLIENT_SECRET=%s\n' "${client_secret_quoted}" | sudo tee -a "${CLOUD_ENV_FILE}" >/dev/null
+            printf 'CONTEXTGO_OIDC_SIGNING_KEY_PEM=%s\n' "${signing_key_quoted}" | sudo tee -a "${CLOUD_ENV_FILE}" >/dev/null
+            printf '# END CONTEXTGO MANAGED OIDC\n' | sudo tee -a "${CLOUD_ENV_FILE}" >/dev/null
+          fi
+          if [ -f "${CLOUD_ENV_FILE}" ]; then
+            for required_key in \
+              CONTEXTGO_AUTH_BASE_URL \
+              CONTEXTGO_API_BASE_URL \
+              CONTEXTGO_REMOTE_BASE_URL \
+              CONTEXTGO_OIDC_CLIENT_ID \
+              CONTEXTGO_OIDC_CLIENT_SECRET \
+              CONTEXTGO_OIDC_REDIRECT_URIS \
+              CONTEXTGO_OIDC_SIGNING_KEY_PEM; do
+              if ! sudo grep -Eq "^${required_key}=" "${CLOUD_ENV_FILE}"; then
+                echo "::error::Missing ${required_key} in ${CLOUD_ENV_FILE}"
+                exit 1
+              fi
+            done
+          else
+            echo "::error::Cloud env file ${CLOUD_ENV_FILE} is missing"
+            exit 1
+          fi
+
+          sudo chown -R "${DEPLOY_OWNER}:${DEPLOY_OWNER}" "${DEPLOY_PATH}"
+
+          if [ ! -x "${DEPLOY_PATH}/.venv/bin/pip" ]; then
+            sudo -u "${DEPLOY_OWNER}" python3 -m venv "${DEPLOY_PATH}/.venv"
+          fi
+
+          sudo -u "${DEPLOY_OWNER}" "${DEPLOY_PATH}/.venv/bin/pip" install -r "${DEPLOY_PATH}/requirements.txt"
+
+          sudo systemctl daemon-reload
+          sudo systemctl restart "${SERVICE_NAME}"
+          sudo systemctl is-active --quiet "${SERVICE_NAME}"
+
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --show-error http://127.0.0.1:3001/healthz >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          curl --fail --silent --show-error http://127.0.0.1:3001/healthz
+          sudo journalctl -u "${SERVICE_NAME}" -n 50 --no-pager
+          EOF

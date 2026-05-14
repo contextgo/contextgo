@@ -1,0 +1,9 @@
+{
+  "displayName": "Star Office Extension",
+  "description": "Star Office style activity visualization tab for all agents.",
+  "settingsTabs": {
+    "star-office": { "name": "Star Office" },
+    "contextgo-home": { "name": "ContextGo Home" },
+    "contextgo-issues": { "name": "ContextGo Issues" }
+  }
+}
